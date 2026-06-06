@@ -24,3 +24,4 @@ and pick up the full state of that PR's investigation.
 |----|-------|-------|
 | [32768](32768/) | Clear baro temperature drift on arming (ArduCopter/EKF3) | arm-only design; periodic alternative explored and rejected |
 | [33338](33338/) | Periodic height-only datum reset (prototype) | experiment; reinforces arm-only (see 32768) |
+| [33318](33318/) | AC_Loiter drag/feed-forward consistency fix | SITL + vehicle confirmed; forensic agreement with reviewer root cause |
