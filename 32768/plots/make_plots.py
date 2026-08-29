@@ -141,3 +141,41 @@ ax.set_title('GPS-denied on-ground bias learning with the periodic reset firing.
 ax.legend(loc='lower right', fontsize=8.5); ax.grid(alpha=0.3)
 fig.tight_layout(); fig.savefig(os.path.join(HERE, 'plots/D_velocity_vs_bias.png'), dpi=110)
 print('D: full max=%.3f height-only max=%.3f' % (max(fy), max(hy)))
+
+# ---------- Plot E: heli post-arm altitude, baro recalibration noise ----------
+def heli_series(fn):
+    """(t since arm, estimated height = -PD) for core 0, plus the arm time."""
+    m = mavutil.mavlink_connection(os.path.join(HERE, fn))
+    arm = None
+    xs = []; ys = []
+    while True:
+        msg = m.recv_match(type=['ARM', 'XKF1'], blocking=False)
+        if msg is None:
+            break
+        if msg.get_type() == 'ARM':
+            if msg.ArmState == 1 and arm is None:
+                arm = msg.TimeUS/1e6
+        elif getattr(msg, 'C', None) == 0 and arm is not None:
+            xs.append(msg.TimeUS/1e6 - arm); ys.append(-msg.PD)
+    return xs, ys
+
+fig, ax = plt.subplots(figsize=(9, 4.5))
+for fn, label, color in [
+        ('data/heli/reset_baro_rnd_0p2.BIN', 'reset at arm, SIM_BARO_RND 0.2 (SITL default)', 'tab:red'),
+        ('data/heli/reset_baro_rnd_0.BIN', 'reset at arm, SIM_BARO_RND 0', 'tab:green'),
+        ('data/heli/no_reset_home_locked.BIN', 'no reset (home locked)', 'tab:blue')]:
+    xs, ys = heli_series(fn)
+    pts = [(x, y) for (x, y) in zip(xs, ys) if -2 <= x <= 22]   # throttle goes up at ~23 s
+    ax.plot([p[0] for p in pts], [p[1] for p in pts], color=color, label=label)
+ax.axhline(0.1, color='k', ls=':', lw=0.8)
+ax.axhline(-0.1, color='k', ls=':', lw=0.8)
+ax.axvline(0, color='k', lw=0.8)
+ax.set_xlabel('time since arm (s)')
+ax.set_ylabel('EKF height above datum (m)')
+ax.set_title('Heli StabilizeTakeOff: EKF height after the arm-time datum reset\n'
+             '(update_calibration() re-zeroes the baro from a single sample)')
+ax.legend(loc='lower right', fontsize=8)
+ax.grid(alpha=0.3)
+fig.tight_layout()
+fig.savefig(os.path.join(HERE, 'plots/E_heli_baro_recal_noise.png'), dpi=110)
+print('wrote E')

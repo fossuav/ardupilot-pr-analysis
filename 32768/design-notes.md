@@ -1,5 +1,11 @@
 # Disarmed periodic height-datum reset: design notes
 
+> **Superseded.** These notes describe the periodic disarmed reset, its
+> convergence gate and interval, none of which survive in any branch. Section
+> 2's claim that Plane's GPS gate is a bug was reversed in `analysis.md` (the
+> gate is protective). Kept for the measurements. Current state:
+> `self-review-2026-08-29.md`.
+
 ## Background
 
 Barometers drift with temperature. While a vehicle sits disarmed the EKF
