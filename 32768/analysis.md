@@ -1,5 +1,10 @@
 # Clearing disarmed baro drift on Copter: why the reset belongs at arm
 
+> **2026-08-29:** the arm-only conclusion below stands. The `HGT_RESET_ALT`
+> tolerance gate this note describes as the elevation-change guard was later
+> shown to be redundant and removed, and Plane's `update_home()` is back at
+> master; see `self-review-2026-08-29.md`.
+
 ## Thesis
 
 Resetting the EKF height datum at arm is the only safe, coherent, and
