@@ -22,6 +22,15 @@ wrong estimate never shows. The failsafe itself is the right trigger for a
 backstop: it has already declared we are flying blind, so the vertical authority
 can be bounded without having to detect that the estimate is bad.
 
+The confident wrong estimate is not hypothetical. On a MicoAir743v2 quad,
+log36 (not committed), XKF1.VD read +1.2 m/s (descending) while BARO.CRt
+read +3 to +9 and GPS.VZ -3 to -7, the vehicle gained 54 m, and XKF4.SV sat
+at 0.03 throughout. That flight was VALT on a GPS-denied source set left
+active by a throw-mode bug (fixed in #32475), not a failsafe LAND; the LAND
+fly-away that motivated this PR was reported without a log, so the
+mechanism is inferred from log36 and the SITL runaway, not measured on the
+event itself.
+
 ## The design, and how the test changed it
 
 With the bit set, two layers engage once the failsafe lands an armed vehicle and
@@ -60,6 +69,34 @@ Three things the runaway test found, in order:
 Final numbers: unprotected +912 m in 75 s at full throttle; protected, the
 ceiling latches at +10 m, the climb peaks at +12 m, the vehicle is on the
 ground at 62 s and the motors are at their minimum by 75 s.
+
+## Why the runaway detector is an integrated baro climb
+
+A baro-velocity cross-check was rejected for VALT because near the ground
+the baro is the worse signal. Measured on log36 against unfused GPS
+vertical velocity (RMSE m/s; sign = fraction of moving samples with the
+right sign):
+
+| regime | baro vs GPS | EKF vs GPS |
+|---|---|---|
+| near-ground hover, 166-216 s | 1.16, sign 70% | 0.25, sign 100% |
+| steady hover, 178-190 s | 0.94, sign 60% | 0.21, sign 100% |
+| sustained climb, 658-685 s | 1.24, sign 92% | 3.70, sign 19% |
+
+The regimes invert. A rate-based baro check would false-trip one sample in
+three in a normal hover while the EKF was right; in a sustained climb the
+baro is the only signal with the right sign. Gating on a large integrated
+ascent, not a rate, is what lets the same sensor be trusted here. DCM was
+considered as a fallback and is not one: it is an independent attitude
+check (the log36 tilt ran 15-22 deg off DCM) but has no independent
+vertical velocity.
+
+Open: whether ground effect can fake a 10 m ascent. The detector counts net
+climb from the lowest baro reading since it armed, and one indoor quad in
+the private notes recorded a -8.2 to +13.1 m baro swing in ground effect
+(MicoAir743v2 flow quad, not committed). A dip on the way down followed by
+recovery would count as a climb. Not reproduced in SITL yet; a baro offset
+step during the landing descent would test it.
 
 ## Known limit, stated in the PR
 
