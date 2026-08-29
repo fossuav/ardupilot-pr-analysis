@@ -1,7 +1,8 @@
 # PR #32768 - Clear baro temperature drift on arming (ArduCopter / EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#32768](https://github.com/ArduPilot/ardupilot/pull/32768).
-Everything here is from SITL (no real-flight data).
+All committed data is SITL; real-flight numbers are cited inline and their
+logs are not committed.
 
 ## Status (one line)
 
@@ -78,6 +79,67 @@ and AMSL inconsistent by the reference shift: FarOrigin climbed without
 bound. The frontend now always reports the public origin height. The heli
 `StabilizeTakeOff` offset (0.08-0.12 m) is `AP_Baro::update_calibration()`
 re-zeroing from a single noisy sample, not rotor wash (Plot E).
+
+## Real-flight context (2026-08-29)
+
+Numbers from the private flight notes; none of these logs are committed.
+They size the problem on hardware, show the vehicle-side trigger working,
+and record one trap.
+
+Disarmed drift on real vehicles:
+
+| vehicle, log | window | drift | baro temperature |
+|---|---|---|---|
+| MatekH743 flow quad, log12 (ground session, never armed) | 206 s | -1.17 m | 41.8 -> 61.8 C, corr -0.978, ~6 cm/C |
+| 5-inch baro-only quad, log A (motors off on the floor) | 80 s | -0.88 m | 31.6 -> 43.1 C |
+| ducted quad, log21 (SET_HOME to 3rd arm) | 112 s | 0.36 m | indoor, not recorded |
+
+A metre or so over a few minutes, so the 9 m the SITL test injects is a
+stress case, not a typical one. On the 5-inch quad, 60% of the 80 s drift
+(+6.25 of +10.46 Pa) was the TCAL_BARO_EXP correction rather than the
+sensor: the model is powf(MAX(T-25,0),exp), non-negative and increasing,
+so on a barometer that reads high when hot it adds drift. At arm that is
+just an offset and the reset clears it with the rest; in flight it is
+not (below).
+
+The arm-time reset seen working: flown on the ducted quad, log21 (not
+committed), SmallFastDrone 4.7-beta4, which carries the same vehicle-side
+change (reset on every arm rather than only when home is unset). At the
+third arm CTUN.BAlt stepped -0.21 -> 0.00 and the EKF altitude 0.03 -> 0.00
+in one sample; the rangefinder read 0.16 m before and after. Two caveats.
+That build's resetHeightDatum has a rangefinder special case; this PR's
+guard returns false whenever the rangefinder is the active height source,
+and whether it is at arm on an EK3_RNG_USE_HGT > 0 vehicle depends on the
+hysteretic switch state (Copter asserts terrain_hgt_stable only during
+takeoff and landing, so on the ground it is often still baro). Skipping is
+benign for the estimate, since calcFiltBaroOffset runs whenever baro is not
+the active source and baroHgtOffset absorbs the drift, but CTUN.BAlt keeps
+it. So the flight is evidence for the trigger, not for this guard on a
+rangefinder-height vehicle. Worth one sentence in the PR body.
+
+The trap: the same flight ends with the EKF 0.85 m below the rangefinder
+40 s after a reset that demonstrably fired. It was first blamed on the
+idle-period drift; it is not. The estimate was 0.00 at the reset and
+reached -0.52 m over the next 5 s of spool-up on the ground while the
+compensated barometer read within 0.1 m of zero: IMU drift against a baro
+deweighted for ground effect, not the reset. A wrong altitude after a
+confirmed arm reset has another cause; check the spool-up window (#32972,
+#32472) and the terrain offset (#32553) before this reset.
+
+What the reset cannot touch is in-flight drift, which on the outdoor
+vehicles is the larger number: MatekH743 flow quad 1.53 m over 3 min at
+20 m with the board cooling 22 C (logtd5); 1.2 m of CTUN.BAlt drift over
+100 s warming 9.4 C (log3; the EKF rejected most of it, BAlt minus EKF mean
++0.21 m); the 5-inch quad +0.41 to +0.66 m per flight from the TCAL term
+alone as the board prop-cools. Those need the calibration fixed or a second
+height reference, not a datum reset.
+
+One tension across the author's own PRs, for reviewers: the periodic-reset
+argument above leans partly on disarmed Z-bias learning (finding 2, Plots C
+and D), while #32471 ships an option to inhibit disarmed learning because
+it learns the motors-off bias. The arm-only conclusion does not depend on
+finding 2 (the vicon corruption and RudderDisarmMidair stand on their own),
+but the write-up leans on it.
 
 ## Plots
 

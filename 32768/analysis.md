@@ -203,7 +203,9 @@ periodic, datum resets happen at arm.
   resets during learning was 0.01 m/s/s (noise); the reset touches height/
   velocity/baro, not the accel-bias state.
 - Cannot fire in flight (`resetHeightDatum` returns early unless `onGround`, and
-  the call is gated on `!motors->armed()`).
+  the call is gated on `!motors->armed()`). Correction 2026-08-29: for a copter
+  `onGround` is `!motorsArmed`, so a mid-air re-arm with unlocked home does
+  reset; see `self-review-2026-08-29.md`.
 
 ## Conclusion
 
