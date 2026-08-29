@@ -25,3 +25,7 @@ and pick up the full state of that PR's investigation.
 | [32768](32768/) | Clear baro temperature drift on arming (ArduCopter/EKF3) | arm-only design; periodic alternative rejected; self-reviewed 2026-08-29: tolerance gate removed, EKF3 reported-origin fix |
 | [33338](33338/) | Periodic height-only datum reset (prototype) | experiment; reinforces arm-only (see 32768) |
 | [33318](33318/) | AC_Loiter drag/feed-forward consistency fix | SITL + vehicle confirmed; forensic agreement with reviewer root cause |
+| [32270](32270/) | VALT velocity alt-hold mode (rebase + ground idle at mid-stick + ground-effect correction limit) | rebased 2026-08-29; autotest passes; needs a mavlink companion PR |
+| [34208](34208/) | Interpolate the rate target in the fast rate thread | SITL A/B + hardware; opened 2026-08-29 |
+| [34209](34209/) | EKF3: no XY accel bias learning in unaided flight | autotest fails on master / passes fixed; opened 2026-08-29 |
+| [34210](34210/) | Advanced land failsafe (LAND_FS_OPTIONS bit 0) | design reshaped twice by its SITL runaway test; opened 2026-08-29 |
