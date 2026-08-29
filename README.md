@@ -25,6 +25,18 @@ and pick up the full state of that PR's investigation.
 | [32768](32768/) | Clear baro temperature drift on arming (ArduCopter/EKF3) | arm-only design; periodic alternative rejected; self-reviewed 2026-08-29: tolerance gate removed, EKF3 reported-origin fix |
 | [33338](33338/) | Periodic height-only datum reset (prototype) | experiment; reinforces arm-only (see 32768) |
 | [33318](33318/) | AC_Loiter drag/feed-forward consistency fix | SITL + vehicle confirmed; forensic agreement with reviewer root cause |
+| [32475](32475/) | Throw mode improvements: drop detection, uprighting, yaw, source sets (Copter) | ~30 real drops on six airframes distilled; direction-finding yaw unvalidated |
+| [32401](32401/) | Pending arm on switch for in-air arming (Copter) | two field cases: retries unclearable failures, resets an EKF that was fine |
+| [32514](32514/) | Reset the EKF failsafe gate on a source-set change (Copter) | field before/after; gate re-latches correctly when position returns |
+| [32471](32471/) | Hover Z-bias learning for vibration rectification (EKF3) | approved; independent VRF measurement, learning hazard, doc gap (partial) |
+| [32472](32472/) | Ground effect altitude and timeout parameters (Copter) | approved; two differences from the flown design recorded |
+| [32553](32553/) | Reset terrain offset from baro when ground effect clears (EKF3) | result needs #32472's HAGL check; reset drifts back; likely superseded by #33359 |
+| [32972](32972/) | Protect height fusion from baro ground effect at takeoff (EKF3) | 22-flight development record; pre-liftoff anchor ends at first throttle |
+| [33478](33478/) | Fuse AGL KF velocity as a velD observation (EKF3) | three flights, 36 s hands-off at 0.13 m with #33507 at 0.3; dropout gate missing |
+| [33484](33484/) | Recover velocity from a single-axis optical-flow lockout (EKF3) | Replay-tuned 500 ms, flown; near-ground flow floor on the same branch |
+| [33497](33497/) | FLOW_HF_RATEF for a half-rate HereFlow node | sensor-rate slope 0.52 -> 1.00; not reproducible in SITL |
+| [33498](33498/) | Inhibit Z gyro bias from optical flow without a yaw source (EKF3) | flight-validated; no SITL test yet |
+| [33507](33507/) | Accel-Z bias state in the AGL KF (EKF3) | bias state right, 0.05 default too stiff: 0.3 flown on two airframes |
 | [32270](32270/) | VALT velocity alt-hold mode (rebase + ground idle at mid-stick + ground-effect correction limit) | rebased 2026-08-29; autotest passes; needs a mavlink companion PR |
 | [34208](34208/) | Interpolate the rate target in the fast rate thread | SITL A/B + hardware; opened 2026-08-29 |
 | [34209](34209/) | EKF3: no XY accel bias learning in unaided flight | autotest fails on master / passes fixed; opened 2026-08-29 |
