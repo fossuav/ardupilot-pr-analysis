@@ -64,6 +64,7 @@ biquad and low-pass coefficients:
 | ramp (first-order hold) | 4.50 ms | 8.1 | 16.2 | 32.4 |
 | ZOH + FLTT 20 (stock) | 10.0 ms | 18.1 | 34.5 | 60.3 |
 | ramp + FLTT 100 | 6.1 ms | 11.0 | 21.9 | 43.6 |
+| ramp, extrapolated (not flown) | 2.20 ms | 4.0 | 7.9 | 15.8 |
 
 The ramp costs a flat +2.25 ms over ZOH. Stock `FLTT=20` costs 10 ms on its own
 and its whole job was smoothing this staircase, so doing that structurally lets
@@ -79,7 +80,35 @@ Tracking error per unit of commanded motion 0.276 -> 0.153 -> 0.097. Removing
 the notch cost nothing measurable. The three flights differ in firmware, FLTT
 and notch state at once, so the SITL A/B is the only clean attribution.
 
-## Two measurement traps
+What did not change between log95 and log98 is as telling as what did. In
+the 150-450 Hz band the target dropped 12-20 dB while the gyro and D-term
+spectra stayed put: on this vehicle the D-path noise up there arrives
+through the gyro from the motors (fundamental ~210 Hz at 12,650 RPM), which
+no target-side filter can touch. The interpolation removes the update-rate
+imaging; it does not buy a quieter D term on a vehicle whose D noise is
+gyro-borne, and whether FLTD/INS_GYRO_FILTER can then come up is a property
+of that airframe's gyro noise floor, not of this change.
+
+Two caveats on log106. It was flown about three times harder than the other
+two (target RMS 0.63 vs 0.22 rad/s), which the normalised measures absorb.
+And STAT_BOOTCNT and STAT_FLTTIME both reset against log98 (56 -> 8,
+1623 -> 113 s) with a bit-identical parameter set, down to the learned
+INS_ACC*_VRFB_Z; a reflash with a parameter restore is the likely reason,
+but same-airframe continuity is not provable from the log. The imaging
+ratio is a property of the firmware and survives that; the tracking
+comparison should be read with it in mind.
+
+A predictive (extrapolated) first-order hold recovers the ramp's 2.25 ms on
+paper (the extra row in the latency table). It was simulated and not flown:
+it trades the delay for overshoot on every target reversal, and the flown
+stack is already quicker than stock.
+
+## Three measurement traps
+
+- PIDR is logged at half the rate-thread rate, so with a 2 kHz thread the
+  true 800 Hz harmonic folds onto 200 Hz in the log. A notch that is working
+  perfectly still shows a line at its own centre frequency. This is why the
+  notch looked dead on hardware even where it was doing its job.
 
 - Line prominence does not discriminate on hardware. Measuring the comb as
   "line power vs its own sidebands" works in SITL, where the sidebands are
@@ -92,6 +121,24 @@ and notch state at once, so the SITL A/B is the only clean attribution.
   inherits the error (one such tool reported damping falling and 40 Hz output
   activity rising 6x; neither survived direct checking). Fixed by snapshotting
   the applied target with the gyro. `PIDR.Tar` was always correct.
+  Verified in SITL from the fact that RATE.RDes is logged pre-FLTT, so a
+  held target is bitwise identical between consecutive samples: held
+  fraction 80.0% (ramped firmware, old logging), 1.2% (ramped, fixed
+  logging), 80.0% (ZOH firmware, fixed logging). The third row is the
+  control: the fix reports whatever the PID received, it does not force a
+  ramp into the log.
+
+## Tuning consequences
+
+- Remove ATC_RAT_*_NTF once the interpolation is in. It buys nothing
+  against a comb and costs 0.45 ms.
+- Re-tune FLTT rather than jumping to 100. 50-60 is clean on the flown
+  vehicle; the phase table says 80 would buy another ~2 ms if the spectra
+  allow it.
+- EKF fusion transients (GPS/baro/mag steps, lane switches) live below
+  ~25 Hz and pass through in every configuration; no tolerable FLTT touches
+  them and the interpolation neither helps nor hurts. That is an EKF-side
+  problem.
 
 ## Plots
 
