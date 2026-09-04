@@ -182,3 +182,30 @@ The defensible reading: fall back to ALT_HOLD rather than LAND, and note that
 the benefit is clear-cut for flow-origin faults - which is the failure this PR
 is about - while an IMU-origin fault removes the last automatic restraint and
 relies wholly on the pilot.
+
+## The control I should have run first: master's own behaviour
+
+The table above compares the alternatives to each other but not to the
+merge-base. Adding that arm (no detection, no response) changes the reading of
+the whole exercise.
+
+| response | H1 | H2 | H2b |
+|----------|----|----|-----|
+| do nothing (master) | 81.5 / 101.5 m | 56.4 / 56.5 m | 56.7 / 57.0 m |
+| hard reset (this PR) | 1.7 / 1.8 / 2.4 m | 76.6 / 77.8 / 78.0 m | 76.5 m |
+
+So for the failure it was written for, the PR is roughly a **40x** improvement -
+82-102 m down to under 2.4 m, against a 0.27 m no-fault baseline. That is a very
+good result for the problem it targets.
+
+And the H2 regression is smaller than it looked when the only comparison was
+against the give-up arm. Master is *also* catastrophic under H2 (56 m): a
+permanently rejected axis leaves that velocity component unconstrained and
+LOITER chases it. The PR takes 56 m to 77 m. It makes an already unsurvivable
+case about 35 percent worse; it does not turn a safe case into an unsafe one.
+An earlier draft of this file implied otherwise by comparing only against arm 0,
+which was misleading.
+
+With `EK3_FLOW_QMIN` set, H2b goes from 57 m on master and 76 m on the PR to
+10 m. That is the one column where the PR plus the quality gate is
+comfortably better than master.
