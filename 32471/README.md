@@ -6,11 +6,15 @@ numbers inline; no real-flight logs committed. SITL A/B logs and plots added
 2026-09-04. Partial: the fleet-wide VRFB history (the frozen-correction /
 ground-effect conflict) is not yet here.
 
-> **Read this before changing the code.** Three changes that look obviously right
-> from reading the source alone have been measured here and are worse. They are
-> listed under "Measured and rejected" below. A 2026-09-04 review pass reasoned
-> its way into two of them from the code and had to be reverted; the PR body now
-> carries the same list so a reviewer meets it without finding this file.
+> **Read this before changing the code.** Changes that look obviously right from
+> reading the source alone have been measured here and are worse. They are listed
+> under "Measured and rejected" below. A 2026-09-04 review pass reasoned its way
+> into two of them from the code and had to be reverted; the PR body now carries
+> the same list so a reviewer meets it without finding this file.
+>
+> One entry in that list has itself been withdrawn - reverting `cb5026417f` was
+> measured on the VRF arm only, and the platform arm goes the other way. An A/B
+> that covers one arm of a two-arm feature is not a verdict on the change.
 
 ## Status (one line)
 
@@ -78,8 +82,9 @@ will be read as the difference. Say "total".
 The parameter range was +/-0.5, the EKF clamp `MAX_HOVER_BIAS_CORRECTION` 0.6,
 and a true value of ~0.57 was measured on one airframe (the reason the clamp
 was raised from 0.3). A fourth number, +/-0.3, survived in the `AP_NavEKF3.h`
-comment from before that change. Now one named constant `HOVER_Z_BIAS_LIM` at
-0.6, with `@Range` and the comment agreeing. The description gap above
+comment from before that change. Now one named constant
+`AP_InertialSensor::ACC_VRF_BIAS_Z_LIM` at 0.6, used by the EKF clamp, by
+`set_accel_vrf_bias_z()` and by the `@Range`. The description gap above
 ("say total") is fixed in the same pass.
 
 ## Measured in SITL, 2026-09-04
@@ -162,12 +167,13 @@ says so.
 
 ### Measured and rejected
 
-Three changes a code-only reading suggests, each measured worse. Do not
-reintroduce any of them without redoing the A/B in `data/ab-2026-09-04/`.
+Two changes a code-only reading suggests, each measured worse, plus one entry
+withdrawn after a wider measurement. Do not act on any row here without redoing
+the A/B in `data/ab-2026-09-04/` across **both** arms, VRF and platform.
 
 | Change | Argument for it | Measured |
 |---|---|---|
-| Route the four covariance gates off `accelBiasLearningInhibited()` onto `inhibitDelVelBiasStates` (`cb5026417f`) | `ConstrainVariances` zeroes the accel-bias cross-covariances that `Kfusion` reads, so learning cannot restart after the inhibit clears | `=6` **0.713/0.476 m** with it, **0.448 m** without; `XKF2.AZ` range 0.46 vs 0.01 |
+| ~~Revert `cb5026417f`, putting the four covariance gates back on `inhibitDelVelBiasStates`~~ **withdrawn 2026-09-04, see below** | the VRF arm measured better without it | `=6` 0.713/0.476 m with it, 0.448 m without - but the platform arm goes the other way and the revert breaks `AccelBiasMovingPlatform` |
 | Freeze P during the inhibit instead (withhold only the process noise) | avoids both the collapse and the inflation | **0.905/0.882 m**, oscillation intact - worse than either |
 | Store the motors-on delta in `INS_ACC_VRFB_Z` instead of the total | the static bias is otherwise applied twice at arm | the stored value is a total across the whole fleet; changing it silently reinterprets every one. The arm-time double count is real and belongs to bit 2: `XKF2.AZ` at arm +0.130 clear vs 0.000 set |
 
@@ -178,12 +184,28 @@ never-leaves-ground-effect regime, a different case. Lowering
 samples can latch below SF 1.25, and the binding term is `GDR` (median 0.777,
 p90 1.055) not the accelerometer (`ALR` peak 0.012).
 
-**`cb5026417f` still exists on `pr-acro-bias-inhibit` (#32473)** as
-`361da5d064`, with a commit message that argues the collapse mechanism
-convincingly. If #32473 merges after this PR the measured-worse behaviour
-returns. See `../32473/README.md`.
+`cb5026417f` also exists on `pr-acro-bias-inhibit` (#32473) as `361da5d064`.
+Both branches want it, so the two agree; the note in `../32473/README.md`
+warning that #32473 would reintroduce it is stale and should be corrected.
 
-#### The detail on cb5026417f
+#### cb5026417f is a trade, not a regression (corrected 2026-09-04, later same day)
+
+**The row above was wrong and the code was right.** The A/B behind it only ever
+covered the VRF arm. Measured today on the platform arm, which it never covered:
+
+| `ACC_ZBIAS_LEARN=4`, `SIM_PLAT_ACC_Z=-1.0` | worst height error |
+|---|---|
+| with `cb5026417f` (as shipped) | 1.632 m, `AccelBiasMovingPlatform` passes |
+| reverted | **3.9 m**, the test fails its 2.5 m gate |
+
+So the change helps the platform case by as much as it costs the VRF case, and
+both are bit 2 configurations. It stays in the branch. A review pass that reads
+only the VRF numbers will keep proposing the revert - that is what happened here,
+twice - so the entry above is kept struck through rather than deleted.
+
+The VRF-side detail below is still accurate and is why the trade is uncomfortable:
+
+#### The VRF-side cost of cb5026417f
 
 It routed four `CovariancePrediction` gates off `accelBiasLearningInhibited()`
 so the accel-bias covariance stays alive while bit 2 holds the inhibit. Written
@@ -198,8 +220,10 @@ intact, so the instability is in the zeroing and reset gates.
 
 ### Still open
 
-Bit 2 costs 0.448 m against `=2`'s 0.196 m even with `cb5026417f` gone. It
-protects the arm-time state and degrades the correction it is protecting.
+Bit 2 costs 0.713/0.476 m against `=2`'s 0.196 m. It protects the arm-time state
+and degrades the correction it is protecting. Reverting `cb5026417f` would buy
+back 0.448 m of that but costs 2.3 m on the moving platform, so the tension is
+now known to be two-sided rather than a straight loss.
 
 ## What is here
 
