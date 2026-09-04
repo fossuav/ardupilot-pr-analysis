@@ -196,6 +196,11 @@ vehicle flag is clear. Withholding only the process noise (freezing P rather
 than letting it collapse) is worse still at 0.905/0.882 m with the oscillation
 intact, so the instability is in the zeroing and reset gates.
 
+Second arm, 2026-09-04: applying the change also fails the shipped
+`AccelBiasMovingPlatform` autotest at 3.9 m against its 2.5 m gate, where the
+branch as shipped passes at 1.632 m. The VRF and platform arms agree, and a
+plain `test.Copter.AccelBiasMovingPlatform` run catches it without the harness.
+
 ### Still open
 
 Bit 2 costs 0.448 m against `=2`'s 0.196 m even with `cb5026417f` gone. It
