@@ -1,0 +1,187 @@
+diff --git a/Tools/autotest/arducopter.py b/Tools/autotest/arducopter.py
+index 7bafe2d685..6e51f6fa2a 100644
+--- a/Tools/autotest/arducopter.py
++++ b/Tools/autotest/arducopter.py
+@@ -15295,6 +15295,171 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
+         self.wait_disarmed(timeout=90)
+         self.zero_throttle()
+ 
++    def HarnessCarrierDrop(self):
++        '''Harness: carrier drop using the THROW_DROP_CNF value the parameter doc recommends'''
++        # THROW_DROP_CNF doc: "For carrier drops use 0.5-1.0s to ensure
++        # separation before motors start."  MOT_SPOOL_TIME 2 is the top of
++        # the documented SPOOL_TIME range.  Measure whether the spool-up
++        # freefall re-check survives the resulting freefall duration.
++        self.set_parameters({
++            "SIM_SHOVE_Z": -25,
++            "THROW_TYPE": 1,
++            "THROW_NEXTMODE": 2,
++            "THROW_DROP_CNF": 1.0,
++            "MOT_SPOOL_TIME": 2.0,
++        })
++        self.change_mode('THROW')
++        self.wait_ready_to_arm()
++        self.arm_vehicle()
++        self.context_collect('STATUSTEXT')
++        try:
++            self.set_parameter("SIM_SHOVE_TIME", 20000)
++        except ValueError:
++            pass
++        self.wait_altitude(120, 1000, timeout=90, relative=True)
++        self.progress("HARNESS: at altitude, watching drop")
++        try:
++            self.wait_statustext("Throw detected", check_context=True, timeout=30)
++            self.progress("HARNESS: RESULT detected=yes")
++        except Exception as e:
++            self.progress("HARNESS: RESULT detected=no (%s)" % str(e))
++        try:
++            self.wait_statustext("Throw height achieved", check_context=True, timeout=25)
++            self.progress("HARNESS: RESULT recovered=yes")
++        except Exception as e:
++            self.progress("HARNESS: RESULT recovered=no (%s)" % str(e))
++        msgs = self.context_collection('STATUSTEXT')
++        lost = [m for m in msgs if "freefall lost" in m.text]
++        self.progress("HARNESS: RESULT freefall_lost_count=%d" % len(lost))
++        alt = self.get_altitude(relative=True)
++        self.progress("HARNESS: RESULT final_alt=%.1f" % alt)
++        self.disarm_vehicle(force=True)
++        self.zero_throttle()
++
++    def HarnessSpunInHand(self):
++        '''Harness: vehicle spun about yaw but never falling, THROW_TYPE=1'''
++        # No shove at all: the vehicle stays on the ground.  SIM_TWIST_Z
++        # spins it up about yaw.  If drop detection fires, the freefall
++        # gate accepted a vehicle that is not in freefall.
++        self.set_parameters({
++            "THROW_TYPE": 1,
++            "THROW_NEXTMODE": 18,
++            "SIM_IMU_POS_X": 0.05,
++            "MOT_SPOOL_TIME": 0.5,
++        })
++        self.reboot_sitl()
++        self.set_parameters({
++            "THROW_TYPE": 1,
++            "MOT_SPOOL_TIME": 0.5,
++        })
++        self.change_mode('THROW')
++        self.wait_ready_to_arm()
++        self.arm_vehicle()
++        self.context_collect('STATUSTEXT')
++        try:
++            self.set_parameters({
++                "SIM_TWIST_Z": 40.0,
++                "SIM_TWIST_TIME": 6000,
++            })
++        except ValueError:
++            pass
++        detected = False
++        try:
++            self.wait_statustext("Throw detected", check_context=True, timeout=25)
++            detected = True
++        except Exception:
++            pass
++        self.progress("HARNESS: RESULT spun_in_hand_detected=%s" % detected)
++        alt = self.get_altitude(relative=True)
++        self.progress("HARNESS: RESULT alt_at_detect=%.2f" % alt)
++        self.disarm_vehicle(force=True)
++        self.zero_throttle()
++
++    def HarnessSrcSetLeak(self):
++        '''Harness: THROW_SRC_INI set, THROW_SRC_SET left at its default 0'''
++        # THROW_SRC_INI doc says "THROW_SRC_SET restores the operating
++        # source set at completion".  Leave THROW_SRC_SET at its default
++        # (0 = No change) and see what the vehicle is flying on after the
++        # throw completes.  SRC2 is configured with no horizontal aiding,
++        # which is what THROW_SRC_INI's doc recommends it be used for.
++        self.set_parameters({
++            "SIM_SHOVE_Z": -10.5,
++            "THROW_TYPE": 1,
++            "THROW_NEXTMODE": 2,       # ALT_HOLD (needs no position)
++            "THROW_SRC_INI": 2,        # switch to SRC2 on entry
++            "THROW_SRC_SET": 0,        # default: "No change"
++            "EK3_SRC2_POSXY": 0,       # no horizontal aiding
++            "EK3_SRC2_VELXY": 0,
++            "MOT_SPOOL_TIME": 0.5,
++        })
++        self.wait_ready_to_arm()   # EKF healthy on SRC1 before THROW switches it
++        self.change_mode('THROW')
++        self.arm_vehicle()
++        self.context_collect('STATUSTEXT')
++        try:
++            self.set_parameter("SIM_SHOVE_TIME", 20000)
++        except ValueError:
++            pass
++        self.wait_altitude(30, 1000, timeout=60, relative=True)
++        self.wait_statustext("Throw detected", check_context=True, timeout=30)
++        self.wait_statustext("Throw height achieved", check_context=True, timeout=30)
++        self.wait_mode('ALT_HOLD')
++        self.delay_sim_time(5, "settle after handoff")
++        msgs = self.context_collection('STATUSTEXT')
++        restored = [m for m in msgs if "restored EKF Source Set" in m.text]
++        applied = [m for m in msgs if m.text.startswith("EKF Source Set")]
++        self.progress("HARNESS: RESULT restore_msgs=%d completion_switch_msgs=%d"
++                      % (len(restored), len(applied)))
++        # If the vehicle is still on SRC2 (no horizontal aiding) LOITER
++        # must be refused; if the pre-throw set was restored it succeeds.
++        loiter_ok = True
++        try:
++            self.change_mode('LOITER', timeout=10)
++        except Exception:
++            loiter_ok = False
++        self.progress("HARNESS: RESULT loiter_accepted_after_throw=%s" % loiter_ok)
++        self.disarm_vehicle(force=True)
++        self.zero_throttle()
++
++    def HarnessDropAltProfile(self):
++        '''Harness: altitude profile of a drop at the default THROW_ALT_DCSND'''
++        # THROW_ALT_DCSND default is 1.0 m.  The doc says total altitude
++        # lost is "freefall distance + uprighting distance + this value".
++        # Record the altitude at release, the lowest altitude reached, and
++        # the altitude the vehicle settles at, and compare.
++        self.set_parameters({
++            "SIM_SHOVE_Z": -10.5,
++            "THROW_TYPE": 1,
++            "THROW_NEXTMODE": 18,      # stay in THROW so nothing else moves it
++            "THROW_ALT_DCSND": 1.0,    # the shipped default
++            "MOT_SPOOL_TIME": 0.5,
++        })
++        self.change_mode('THROW')
++        self.wait_ready_to_arm()
++        self.arm_vehicle()
++        self.context_collect('STATUSTEXT')
++        try:
++            self.set_parameter("SIM_SHOVE_TIME", 20000)
++        except ValueError:
++            pass
++        self.wait_altitude(30, 1000, timeout=60, relative=True)
++        self.wait_statustext("Throw detected", check_context=True, timeout=30)
++        release_alt = self.get_altitude(relative=True)
++        self.progress("HARNESS: RESULT release_alt=%.2f" % release_alt)
++        lowest = release_alt
++        tstart = self.get_sim_time()
++        while self.get_sim_time_cached() - tstart < 25:
++            a = self.get_altitude(relative=True)
++            if a < lowest:
++                lowest = a
++        settled = self.get_altitude(relative=True)
++        self.progress("HARNESS: RESULT lowest_alt=%.2f" % lowest)
++        self.progress("HARNESS: RESULT settled_alt=%.2f" % settled)
++        self.progress("HARNESS: RESULT total_loss=%.2f climb_back=%.2f"
++                      % (release_alt - settled, settled - lowest))
++        self.disarm_vehicle(force=True)
++        self.zero_throttle()
++
+     def GroundEffectCompensation_takeOffExpected(self):
+         '''Test EKF's handling of takeoff-expected'''
+         self.change_mode('ALT_HOLD')
+@@ -16843,6 +17008,10 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
+              self.BaroWindCorrection,
+              self.SetpointGlobalPos,
+              self.ThrowDoubleDrop,
++             self.HarnessCarrierDrop,
++             self.HarnessSpunInHand,
++             self.HarnessSrcSetLeak,
++             self.HarnessDropAltProfile,
+              self.ThrowModeNoGPS,
+              self.ThrowDropSourceSwitch,
+              self.ThrowAbortRestoresSourceSet,
