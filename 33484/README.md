@@ -10,6 +10,11 @@ SmallFastDrone branch, where the same option is bit 4 and the message is
 
 ## Status (one line)
 
+**Superseded in part on 2026-09-04 - see `split-and-quality-gate.md`.** The
+floor is now its own PR (#34292) and the branch has gained `EK3_FLOW_QMIN`.
+Everything below about the mechanism, the flights and the Replay tuning
+still stands.
+
 Mechanism confirmed in code and in three flights, recovery Replay-tuned to a
 500 ms threshold and flight-validated; the branch also carries the follow-on
 near-ground flow floor (`EK3_FLOW_MIN_H`), flight-validated on a second
