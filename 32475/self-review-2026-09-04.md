@@ -309,14 +309,41 @@ non-ASCII (`+/-`, degree signs) in `75be73908e`'s message - which the
 mechanical gate had missed, because its `BANNED_CHARS` covers quotes, dashes
 and arrows but not those.
 
-Still to do:
+### Pushed
 
-- **The PR description** does not follow `.github/PULL_REQUEST_TEMPLATE.md`
-  (Summary / Classification & Testing / Description), still claims VALT, and
-  does not mention that the THRO log field `AccEfZ` was renamed to `AeZ`.
-  That rename is forced by the 64-character label limit, but only because the
-  new fields are `TYaw`/`YSrc`; `TYw`/`YSr` fits at exactly 64 and would leave
-  the existing field alone.
+Force-pushed to `origin/pr-throw-mode-improvements` on 2026-09-04, replacing
+11 commits with the 8 above. PR #32475 head is now
+`8b5882e6d12199b7cd0b01d5b93c12b443cd1fe8`.
+
+The remote had been at `f1ed87b9c1`, which predates the review, so the push
+carried more than a reshuffle: the PR gained every fix from this review at the
+same time - the drop abort, the source-set restore, the parameter
+documentation, the `baro_ground_effect.cpp` revert, and the two regression
+tests. Anyone who read the old head is looking at a different change, not just
+different commit boundaries.
+
+`pr-throw-backup-2026-09-04` holds the pre-squash head at `228efea803`.
+
+### Not being done
+
+The **PR description** is being left as it stands for now, deliberately. What
+it would need when it is revisited:
+
+- The repository template (`.github/PULL_REQUEST_TEMPLATE.md`: Summary /
+  Classification & Testing / Description) rather than its own headings, with
+  the checklist trimmed to what is actually done - the autotest box can be
+  ticked now.
+- The `(and VALT where built)` clause dropped. VALT is real, but it is mode 29
+  on the SmallFastDrone branch and not in the tree the PR targets, so the
+  claim is unverifiable for a reviewer.
+- The THRO log field rename called out: `AccEfZ` became `AeZ`, which silently
+  breaks any existing analysis script or MAVExplorer graph referencing
+  `THRO.AccEfZ`. The rename is forced by the 64-character label limit, but
+  only because the new fields are named `TYaw`/`YSrc`; `TYw`/`YSr` fits at
+  exactly 64 and would have left the existing field alone. Either rename them
+  or say so in the description.
+- The measured results from this review are the kind of before/after a
+  reviewer responds to, and none of them are in the description.
 
 ## What reading ../analysis changed
 

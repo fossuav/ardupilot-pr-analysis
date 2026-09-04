@@ -12,12 +12,14 @@ THROW_DROP_CNF, THROW_SRC_INI, THROW_SRC_SET, THROW_YAW_TYPE, THROW_YAW_DEG).
 Flown across roughly thirty drops on six airframes, from hand drops at 1 m to
 releases from a carrier aircraft.
 
-Self-reviewed 2026-09-04 (see `self-review-2026-09-04.md`): a carrier drop
-fell to the ground on the spool-up abort, THROW_ALT_DCSND made the vehicle
-climb back toward the release point, and THROW_SRC_INI stranded the EKF source
-set - all three measured in SITL and now fixed with regression tests. The
-history still needs a squash: six of eleven commits panic at boot on a
-duplicate parameter index.
+Self-reviewed 2026-09-04 (see `self-review-2026-09-04.md`), fixed, history
+rebuilt and force-pushed. Head is now `8b5882e6d1`, eight commits by feature.
+Two of the three measured failures were real - a carrier drop fell to the
+ground on the spool-up abort, and THROW_SRC_INI stranded the EKF source set -
+while the third, the THROW_ALT_DCSND climb-back, turned out to be the design
+working and the change was reverted. The old series had 9 of 11 commits
+panicking at boot on a duplicate parameter index present from the first
+commit. The PR description has not been updated.
 
 ## The problem
 

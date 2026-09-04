@@ -26,7 +26,7 @@ and pick up the full state of that PR's investigation.
 | [33338](33338/) | Periodic height-only datum reset (prototype) | experiment; reinforces arm-only (see 32768) |
 | [33318](33318/) | AC_Loiter drag/feed-forward consistency fix | SITL + vehicle confirmed; forensic agreement with reviewer root cause |
 | [33359](33359/) | AGL KF for the optical-flow rangefinder height switch | indoor alt-hold divergence; Replay-validated; flight-validated on log281; third and fourth commits need #33507 |
-| [32475](32475/) | Throw mode improvements: drop detection, uprighting, yaw, source sets (Copter) | ~30 real drops on six airframes distilled; self-reviewed 2026-09-04: three measured failures fixed (drop abort, altitude target, source set), history needs a squash; direction-finding yaw unvalidated |
+| [32475](32475/) | Throw mode improvements: drop detection, uprighting, yaw, source sets (Copter) | ~30 real drops on six airframes distilled; self-reviewed 2026-09-04 and pushed as 8 commits: drop abort and source-set leak fixed, altitude-target "fix" reverted as the design was right, 9 of 11 old commits panicked at boot; direction-finding yaw unvalidated |
 | [32401](32401/) | Pending arm on switch for in-air arming (Copter) | two field cases: retries unclearable failures, resets an EKF that was fine |
 | [32514](32514/) | Reset the EKF failsafe gate on a source-set change (Copter) | field before/after; gate re-latches correctly when position returns |
 | [32471](32471/) | Hover Z-bias learning for vibration rectification (EKF3/Copter) | approved; SITL A/B 2026-09-04 shows 3x less height error against real VRF, and that bit 2 is about moving platforms not the motors-off bias; needed two new SIM knobs to measure |
