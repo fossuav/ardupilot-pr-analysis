@@ -25,6 +25,7 @@ and pick up the full state of that PR's investigation.
 | [32768](32768/) | Clear baro temperature drift on arming (ArduCopter/EKF3) | arm-only design; periodic alternative rejected; self-reviewed 2026-08-29: tolerance gate removed, EKF3 reported-origin fix |
 | [33338](33338/) | Periodic height-only datum reset (prototype) | experiment; reinforces arm-only (see 32768) |
 | [33318](33318/) | AC_Loiter drag/feed-forward consistency fix | SITL + vehicle confirmed; forensic agreement with reviewer root cause |
+| [33359](33359/) | AGL KF for the optical-flow rangefinder height switch | indoor alt-hold divergence; Replay-validated; flight-validated on log281; third and fourth commits need #33507 |
 | [32475](32475/) | Throw mode improvements: drop detection, uprighting, yaw, source sets (Copter) | ~30 real drops on six airframes distilled; direction-finding yaw unvalidated |
 | [32401](32401/) | Pending arm on switch for in-air arming (Copter) | two field cases: retries unclearable failures, resets an EKF that was fine |
 | [32514](32514/) | Reset the EKF failsafe gate on a source-set change (Copter) | field before/after; gate re-latches correctly when position returns |
