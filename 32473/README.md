@@ -38,6 +38,13 @@ Measured in [#32471](../32471/README.md), `ACC_ZBIAS_LEARN=6` with VRF present:
 `=2` is unchanged at 0.196 m either way, so the revert is a no-op whenever the
 vehicle flag is clear. Freezing P instead is worse still at 0.905/0.882 m.
 
+A second arm agrees, measured 2026-09-04 on `pr-vrf-core`: with the change
+applied, the shipped `AccelBiasMovingPlatform` autotest fails at 3.9 m against
+its 2.5 m gate; without it the same test passes at 1.632 m. That is the cheapest
+possible check on this commit - run `test.Copter.AccelBiasMovingPlatform`, no
+harness or A/B logs needed. Because #32473 sits on top of `pr-vrf-core`, the
+test is already present on this branch and `361da5d064` should make it fail.
+
 The reason it keeps coming back is that the code argument for it is good:
 `ConstrainVariances` calls `zeroStatesVarCov(13,15)` every cycle while the
 inhibit is held, and `Kfusion[i] = P[i][stateIndex]*SK` reads exactly those
