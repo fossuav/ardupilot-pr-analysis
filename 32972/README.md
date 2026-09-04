@@ -7,13 +7,17 @@ the code.
 
 ## Status (one line)
 
-Five commits on top of #32768; flight-developed on a BF_X indoor quad
-(SmallFastDronev1 board) over 22 indoor flights (Mar 2026) and run since on
-two more airframes; a SITL autotest (BaroGroundEffectAtTakeoff) is on the
-branch although the PR body still lists it as TBD; the GitHub head carries
-the old 37-commit #32768 series and must be rebased onto the 11-commit
-rewrite; the pre-liftoff anchor ends earlier than the PR body says (finding
-1).
+Eight commits on top of #32768 (five plus three review fixups);
+flight-developed on a BF_X indoor quad (SmallFastDronev1 board) over 22
+indoor flights (Mar 2026) and run since on two more airframes; two SITL
+autotests on the branch; rebased onto the 11-commit #32768 rewrite and
+pushed 2026-09-04 (263f181a18), which cleared all twelve red CI checks;
+the pre-liftoff anchor ends earlier than the PR body says (finding 1) and
+can also engage in mid-air (finding 5).
+
+The 2026-09-04 automated review and the three commits answering it are in
+[review-response-2026-09-04.md](review-response-2026-09-04.md); findings 4
+and 5 below live there in full.
 
 ## The problem
 
@@ -118,11 +122,18 @@ the hover is a different mechanism, see ../32553/.
 Upstream vehicle side (#32472, same as master): the window timer is
 anchored while !throttle_up && land_complete, with throttle_up =
 has_manual_throttle() && throttle > 0 and a 5 s cap, so in Stabilize
-the outer gate can also close 5 s after the first throttle.
+the outer gate can also close 5 s after the first throttle. In ALT_HOLD
+it never closes: has_manual_throttle() is false there, so throttle_up is
+false whatever the stick does, the timer is re-anchored every cycle and
+the 5 s cap never expires. That is why the ResetHeight suppression needed
+a bound of its own; see review-response-2026-09-04.md.
 
-The autotest arms in ALT_HOLD at idle with the stick untouched, so
-land_complete stays true for the whole 8 s: it tests the anchor and
-the ResetHeight suppression against a glitch, not a takeoff.
+BaroGroundEffectAtTakeoff arms in ALT_HOLD at idle with the stick
+untouched, so land_complete stays true for the whole 8 s: it tests the
+anchor against a glitch, not a takeoff, and it does not reach the
+ResetHeight suppression at all - the held reference keeps the innovation
+inside the gate. BaroGroundEffectResetSuppression was added for that
+branch and its expiry.
 
 The anchor noise: the PR body says R = 0.1*|DZ|; the code is
 sq(MAX(0.1*|DZ|, 1.0)), which is 1 m^2 for every allowed DZ. The
@@ -195,7 +206,8 @@ example as written will be copied onto baro-only airframes.
 
 ```
 32972/
-  README.md    <- this file
+  README.md                        <- this file
+  review-response-2026-09-04.md    rebase, the 2026-09-03 review, findings 4 and 5
 ```
 
 No logs committed. Suggested additions: BINs from
@@ -205,10 +217,17 @@ a plot of XKF1.PD against CTUN.BAlt through the glitch.
 ## Reproduce
 
 ```
-git checkout pr-baro-gnd-effect   # rebase onto pr-baro-drift-minimum first
+git checkout pr-baro-gnd-effect
 ./waf configure --board sitl && ./waf copter
 Tools/autotest/autotest.py --no-configure test.Copter.BaroGroundEffectAtTakeoff
+Tools/autotest/autotest.py --no-configure test.Copter.BaroGroundEffectResetSuppression
 ```
+
+Measure the EKF height with XKF1.PD in the log, or LOCAL_POSITION_NED.z
+live. Never GLOBAL_POSITION_INT.relative_alt: AP_AHRS falls back to the
+raw baro whenever the EKF vertical position is unhealthy, which is the
+state these tests create, so it reports the barometer and any assertion
+on it passes whether the code works or not (finding 4).
 
 The takeoff-command gap has no test yet. To build one: Stabilize,
 EK3_GND_EFF_DZ -5, EK3_RNG_USE_HGT -1, arm, raise throttle to about
@@ -222,13 +241,16 @@ drift of finding 2.
 
 ## Branches and people
 
-- `pr-baro-gnd-effect` - the PR branch. The local checkout is at
-  54e7a773b5 and lacks the fly-forward gate commit (95aeeb78e4 on
-  GitHub).
+- `pr-baro-gnd-effect` - the PR branch, at 263f181a18 (2026-09-04),
+  local and origin in sync, based on 1c88a3bf62 (#32768 head).
+  Pre-rebase backups: pr-baro-gnd-effect-backup-prerebase (3980009868)
+  and pr-baro-gnd-effect-backup-20260904 (pre-fixup, 0e2cb01baf).
 - SmallFastDrone-4.7-beta equivalents: c31449d865 (ResetHeight),
   8809637be5 (noise floor), 721f9986a7 (anchor); 873a262140 is the
   variant flown on the ducted quad.
 - Related: #32472 (vehicle-side window, where the outer gate is
   decided), #32553 (terrain reset, the log200-206 series), #33359 (AGL
   KF switch, log195), the AGL KF #32389.
-- No review comments on the ground-effect commits yet.
+- Automated review 2026-09-03 (AIReview label, external dev-call batch,
+  not GitHub Actions): four points, all answered, two of them belonging
+  to #32768 rather than here. See review-response-2026-09-04.md.
