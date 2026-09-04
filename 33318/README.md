@@ -111,6 +111,20 @@ and pursuing his scaling follow-up (pull `pilot_acceleration_max` down with the
 cap), plus a separate look at the rangefinder min-range dropout corrupting the cap
 below ~1 m. log279 is a real flight and is not committed here; numbers only.
 
+A third, independent lever turned up while tracing this: the flow speed cap that
+drives the drag term ignores the 2-state AGL KF and rides the noisy legacy
+`terrainState`, even though the AGL KF is enabled and clean. That is a small EKF3
+plumbing fix in its own right - see `agl_kf_speed_cap.md`.
+
+## Telling this apart from the flow lockout (#33484)
+
+A different Loiter flyaway on another airframe had this fix in the firmware
+and was not this bug. Drag bug: a backward lurch on release from a settled
+hold, with a healthy velocity estimate. Lockout: a hard brake against a
+velocity the vehicle does not have, after an acro-to-Loiter switch, with
+`XKF5.NI` pinned at 255 and one of `FIX`/`FIY` in the thousands while the
+other stays small. See `../33484/`.
+
 ## Plots
 
 All SITL (`LoiterFlowBrakeOvershoot` autotest: optical flow, no GPS, ~2 m height,
@@ -127,6 +141,7 @@ All SITL (`LoiterFlowBrakeOvershoot` autotest: optical flow, no GPS, ~2 m height
 33318/
   README.md          <- this file
   analysis.md        <- forensic write-up (the PR comment to the reviewer)
+  agl_kf_speed_cap.md  <- related finding: speed cap ignores the 2-state AGL KF (candidate separate PR)
   forensic_drag_analysis.py  <- reusable: reconstructs drag_decel + vel-PID I-term from a log
   plots/             <- A/B before/after PNGs + make_plots.py (regenerates from data/)
   data/
