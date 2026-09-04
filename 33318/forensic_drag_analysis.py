@@ -11,7 +11,12 @@ position-controller feed-forward (PSCN/PSCE DAN/DAE) and velocity-PID integrator
   2. whether the fix's deceleration is carried by the feed-forward (correct) or has to
      be wound into the velocity-PID I-term (the "papers over via I-term" claim).
 
-Usage: forensic_drag_analysis.py <log.bin> <t0> <t1>
+Usage: forensic_drag_analysis.py [--use-aglkf] <log.bin> <t0> <t1>
+
+--use-aglkf reconstructs the speed cap from the 2-state AGL KF (XKF6.HAgl) instead
+of terrainState (XKF5.HAGL). Use it for logs from builds that route the AGL KF
+height into getEkfControlLimits (EK3_OPTIONS bit 3 / AglKfForOptflow); otherwise the
+reconstructed cap will not match the firmware.
 """
 import sys
 import math
@@ -24,7 +29,7 @@ RNG_ON_GND = 0.1  # rngOnGnd approx (m); MAX(HAGL, rngOnGnd) in getEkfControlLim
 
 def load(path):
     mlog = mavutil.mavlink_connection(path)
-    want = ['PSCN', 'PSCE', 'PIDN', 'PIDE', 'XKF5', 'PARM']
+    want = ['PSCN', 'PSCE', 'PIDN', 'PIDE', 'XKF5', 'XKF6', 'PARM']
     d = {k: [] for k in want if k != 'PARM'}
     params = {}
     while True:
@@ -35,7 +40,7 @@ def load(path):
         if t == 'PARM':
             params[m.Name] = m.Value
             continue
-        if t == 'XKF5' and getattr(m, 'C', 0) != 0:
+        if t in ('XKF5', 'XKF6') and getattr(m, 'C', 0) != 0:
             continue
         d[t].append(m)
     return d, params
@@ -51,7 +56,31 @@ def interp(t_grid, ts, vals):
     return np.interp(t_grid, ts, vals)
 
 
-def compute(path, t0, t1):
+def hagl_on_grid(d, g, use_aglkf):
+    """Height-above-ground on the analysis grid, matching what the firmware feeds
+    the flow speed cap. Default is XKF5.HAGL (terrainState - pd). With use_aglkf,
+    use XKF6.HAgl (the 2-state AGL KF) where it is logged - it is only logged while
+    the KF is valid, so where it is absent fall back to terrainState exactly as
+    getEkfControlLimits does. Returns (hagl, label, aglkf_coverage_fraction)."""
+    th, hagl5 = arr(d['XKF5'], 'HAGL')
+    h5 = interp(g, th, hagl5)
+    if not use_aglkf:
+        return h5, 'XKF5.HAGL (terrainState)', 0.0
+    if not d.get('XKF6'):
+        return h5, 'XKF5.HAGL (--use-aglkf set but no XKF6 in log)', 0.0
+    t6, h6 = arr(d['XKF6'], 'HAgl')
+    h6g = interp(g, t6, h6)
+    # mark grid points with an XKF6 sample within 0.5 s as KF-covered (valid)
+    if len(t6) > 1:
+        idx = np.clip(np.searchsorted(t6, g), 1, len(t6) - 1)
+        gap = np.minimum(np.abs(g - t6[idx - 1]), np.abs(g - t6[idx]))
+    else:
+        gap = np.full_like(g, np.inf)
+    covered = gap < 0.5
+    return np.where(covered, h6g, h5), 'XKF6.HAgl (AGL KF)', float(np.mean(covered))
+
+
+def compute(path, t0, t1, use_aglkf=False):
     d, p = load(path)
     ang_max_deg = p.get('LOIT_ANG_MAX', 0.0)
     if ang_max_deg <= 0:
@@ -62,7 +91,6 @@ def compute(path, t0, t1):
 
     tn, dvn, vn, dpn, pn, dan, tan_ = arr(d['PSCN'], 'DVN', 'VN', 'DPN', 'PN', 'DAN', 'TAN')
     te, dve, ve, dpe, pe, dae, tae = arr(d['PSCE'], 'DVE', 'VE', 'DPE', 'PE', 'DAE', 'TAE')
-    th, hagl = arr(d['XKF5'], 'HAGL')
     tin, in_i, in_ff = arr(d['PIDN'], 'I', 'FF')
     tie, ie_i, ie_ff = arr(d['PIDE'], 'I', 'FF')
 
@@ -72,7 +100,7 @@ def compute(path, t0, t1):
     dve_g, ve_g = interp(g, te, dve), interp(g, te, ve)
     dpe_g, pe_g = interp(g, te, dpe), interp(g, te, pe)
     dae_g, tae_g = interp(g, te, dae), interp(g, te, tae)
-    hagl_g = interp(g, th, hagl)
+    hagl_g, _, _ = hagl_on_grid(d, g, use_aglkf)
     in_i_g, ie_i_g = interp(g, tin, in_i), interp(g, tie, ie_i)
 
     ekf_lim = max(flow_max - 1.0, 0.0) * np.maximum(hagl_g, RNG_ON_GND)
@@ -113,14 +141,22 @@ def plot_compare(before, after, out):
 
 
 def main():
-    if sys.argv[1] == '--plot':
+    # --use-aglkf: reconstruct the speed cap from the 2-state AGL KF (XKF6.HAgl)
+    # instead of terrainState (XKF5.HAGL). Use for logs from builds that route the
+    # AGL KF height into getEkfControlLimits (EK3_OPTIONS bit 3 / AglKfForOptflow).
+    argv = list(sys.argv)
+    use_aglkf = '--use-aglkf' in argv
+    if use_aglkf:
+        argv.remove('--use-aglkf')
+
+    if argv[1] == '--plot':
         # --plot out.png before.bin bt0 bt1 after.bin at0 at1
-        out = sys.argv[2]
-        b = compute(sys.argv[3], float(sys.argv[4]), float(sys.argv[5]))
-        a = compute(sys.argv[6], float(sys.argv[7]), float(sys.argv[8]))
+        out = argv[2]
+        b = compute(argv[3], float(argv[4]), float(argv[5]), use_aglkf)
+        a = compute(argv[6], float(argv[7]), float(argv[8]), use_aglkf)
         plot_compare(b, a, out)
         return
-    path, t0, t1 = sys.argv[1], float(sys.argv[2]), float(sys.argv[3])
+    path, t0, t1 = argv[1], float(argv[2]), float(argv[3])
     d, p = load(path)
 
     ang_max_deg = p.get('LOIT_ANG_MAX', 0.0)
@@ -133,7 +169,6 @@ def main():
     # position controller (low rate) is the analysis grid
     tn, dvn, vn, dpn, pn, dan, tan_ = arr(d['PSCN'], 'DVN', 'VN', 'DPN', 'PN', 'DAN', 'TAN')
     te, dve, ve, dpe, pe, dae, tae = arr(d['PSCE'], 'DVE', 'VE', 'DPE', 'PE', 'DAE', 'TAE')
-    th, hagl = arr(d['XKF5'], 'HAGL')
     tin, in_i, in_ff = arr(d['PIDN'], 'I', 'FF')
     tie, ie_i, ie_ff = arr(d['PIDE'], 'I', 'FF')
 
@@ -144,7 +179,7 @@ def main():
     dve_g = interp(g, te, dve); ve_g = interp(g, te, ve)
     dpe_g = interp(g, te, dpe); pe_g = interp(g, te, pe)
     dae_g = interp(g, te, dae); tae_g = interp(g, te, tae)
-    hagl_g = interp(g, th, hagl)
+    hagl_g, hagl_src, aglkf_cov = hagl_on_grid(d, g, use_aglkf)
     in_i_g = interp(g, tin, in_i); in_ff_g = interp(g, tin, in_ff)
     ie_i_g = interp(g, tie, ie_i); ie_ff_g = interp(g, tie, ie_ff)
 
@@ -178,6 +213,8 @@ def main():
     print(f"  params: LOIT_ANG_MAX={ang_max_deg:.0f}deg pilot_acc_max={pilot_acc_max:.2f} m/s^2  "
           f"LOIT_SPEED_MS={loit_speed:.1f}  EK3_FLOW_MAX={flow_max:.1f}")
     print(f"  samples on grid: {len(g)}")
+    print(f"  cap height source: {hagl_src}" +
+          (f"  (AGL KF covers {aglkf_cov*100:.0f}% of grid)" if use_aglkf else ""))
     st("HAGL (m)", hagl_g)
     st("ekf gnd-speed cap (m/s)", ekf_lim)
     st("gnd_speed_limit used (m/s)", gnd_lim)
