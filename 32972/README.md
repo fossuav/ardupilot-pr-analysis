@@ -208,11 +208,21 @@ example as written will be copied onto baro-only airframes.
 32972/
   README.md                        <- this file
   review-response-2026-09-04.md    rebase, the 2026-09-03 review, findings 4 and 5
+  plots/
+    ab_ground_effect_takeoff.png   A: baseline DZ 4 vs this PR at DZ -5
+    ab_reset_suppression_bound.png B: baseline vs unbounded vs bounded suppression
+    make_plots.py                  regenerates both from data/ab-2026-09-04/
+  data/ab-2026-09-04/
+    A1_base_dz4.BIN                baseline binary (1c88a3bf62), DZ 4, GEFF 5
+    A2_branch_dzm5.BIN             branch binary, DZ -5, GEFF 5
+    B1_base.BIN                    baseline binary, GEFF 30
+    B2_nobound.BIN                 branch with the suppression bound compiled out
+    B3_branch.BIN                  branch as merged, GEFF 30
+    harness.py                     the throwaway autotest methods used
 ```
 
-No logs committed. Suggested additions: BINs from
-BaroGroundEffectAtTakeoff on master and on the branch under data/, and
-a plot of XKF1.PD against CTUN.BAlt through the glitch.
+All SITL (CMAC home), no real-flight logs. The flight-derived numbers in
+the sections above are from logs that are not committed.
 
 ## Reproduce
 

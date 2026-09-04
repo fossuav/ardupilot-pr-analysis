@@ -32,7 +32,7 @@ and pick up the full state of that PR's investigation.
 | [32471](32471/) | Hover Z-bias learning for vibration rectification (EKF3) | approved; independent VRF measurement, learning hazard, doc gap (partial) |
 | [32472](32472/) | Ground effect altitude and timeout parameters (Copter) | approved; two differences from the flown design recorded |
 | [32553](32553/) | Reset terrain offset from baro when ground effect clears (EKF3) | result needs #32472's HAGL check; reset drifts back; likely superseded by #33359 |
-| [32972](32972/) | Protect height fusion from baro ground effect at takeoff (EKF3) | 22-flight development record; rebased and answered the 2026-09-03 review; anchor ends at first throttle and can engage in mid-air |
+| [32972](32972/) | Protect height fusion from baro ground effect at takeoff (EKF3) | 22-flight development record; SITL A/B plots for both behaviour changes; anchor ends at first throttle and can engage in mid-air |
 | [33478](33478/) | Fuse AGL KF velocity as a velD observation (EKF3) | three flights, 36 s hands-off at 0.13 m with #33507 at 0.3; dropout gate missing |
 | [33484](33484/) | Recover velocity from a single-axis optical-flow lockout (EKF3) | Replay-tuned 500 ms, flown; near-ground flow floor on the same branch |
 | [33497](33497/) | FLOW_HF_RATEF for a half-rate HereFlow node | sensor-rate slope 0.52 -> 1.00; not reproducible in SITL |
