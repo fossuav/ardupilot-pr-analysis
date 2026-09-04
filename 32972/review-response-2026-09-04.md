@@ -2,7 +2,9 @@
 
 Covers the rebase onto the rewritten #32768, the automated review of
 2026-09-03, and three commits added in reply. All numbers here are SITL
-unless stated; no logs are committed.
+unless stated; the A/B logs behind the plots are in
+data/ab-2026-09-04/, the flight-derived numbers cited from README.md are
+from logs that are not committed.
 
 Branch went 0e2cb01baf -> 263f181a18, eight commits on 1c88a3bf62
 (#32768 head). `git range-diff` across the rebase reported `=` on all
@@ -207,6 +209,36 @@ the anchor released before 15 s in every run. The guard rests on the
 mechanism and on the release measurement above, not on a reproduced
 failure. A test would need the anchor held past 15 s, which needs a fall
 longer than SITL gave from 500 m.
+
+## Plots
+
+`plots/ab_ground_effect_takeoff.png` - the PR's core claim. Baseline
+binary at the default `EK3_GND_EFF_DZ` 4 against the branch at -5, same
+`SIM_BARO_GEFF_M` 5 spool-up dip of -3.6 m on the barometer. The baseline
+sags 0.85 m while still sitting on the ground and then lags the true
+altitude through the climb; the branch holds flat through the idle window
+and tracks the climb. The 0.85 m is the SITL analogue of the -1.2 m the
+flight notes measured on the ducted quad (log196), and the flat trace is
+the analogue of log198's 0.13 m.
+
+`plots/ab_reset_suppression_bound.png` - the suppression and its bound,
+three binaries on one axis, `SIM_BARO_GEFF_M` 30 so the baro fails 21.7 m
+low and never recovers. Baseline resets the height onto the failed baro at
+12 s. With the suppression but no bound the height never leaves zero, for
+as long as the vehicle stays armed. With the bound it holds until 22 s -
+10 s to `hgtTimeout`, the 5 s window, then the next timeout - and resets.
+That plot is the answer to the review's first point: the middle trace is
+what the reviewer was worried about, and the right-hand step is the bound.
+
+Both regenerate with `python3 plots/make_plots.py data/ab-2026-09-04 plots`.
+
+Method: baseline built from 1c88a3bf62 in a detached worktree per the
+`Tools/autotest/CLAUDE.md` recipe, binaries swapped into
+`build/sitl/bin/arducopter` between runs and checksummed before and after
+each to confirm nothing rebuilt over them, `logs/` moved aside after every
+run because the harness deletes it at start. Time re-zeroed at the ARM
+event. Height read from `XKF1.PD`, never from MAVLink altitude, for the
+reason in finding 4.
 
 ## Regression set
 
