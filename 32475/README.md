@@ -7,12 +7,17 @@ branches; no logs are committed. Vehicles are named by board.
 
 ## Status (one line)
 
-Open since 2026-06, awaiting review. Ten commits, six new parameters
-(THROW_DROP_AG, THROW_DROP_CNF, THROW_SRC_INI, THROW_SRC_SET, THROW_YAW_TYPE,
-THROW_YAW_DEG). Flown across roughly thirty drops on six airframes, from
-hand drops at 1 m to releases from a carrier aircraft. Two SITL tests are in
-the PR; five more that cover the spin, tumble, yaw and abort paths exist on
-the SmallFastDrone branch and are not yet in the PR (see Reproduce).
+Open since 2026-06, awaiting review. Six new parameters (THROW_DROP_AG,
+THROW_DROP_CNF, THROW_SRC_INI, THROW_SRC_SET, THROW_YAW_TYPE, THROW_YAW_DEG).
+Flown across roughly thirty drops on six airframes, from hand drops at 1 m to
+releases from a carrier aircraft.
+
+Self-reviewed 2026-09-04 (see `self-review-2026-09-04.md`): a carrier drop
+fell to the ground on the spool-up abort, THROW_ALT_DCSND made the vehicle
+climb back toward the release point, and THROW_SRC_INI stranded the EKF source
+set - all three measured in SITL and now fixed with regression tests. The
+history still needs a squash: six of eleven commits panic at boot on a
+duplicate parameter index.
 
 ## The problem
 
@@ -168,11 +173,15 @@ carrier at 1 g is always rejected, 1.9 g at 15 rad/s, 6 g at 30 rad/s.
 
 ```
 32475/
-  README.md          <- this file
+  README.md                    <- this file
+  self-review-2026-09-04.md    <- pre-submission review and the fixes it drove
+  data/
+    measurements.md            <- SITL harness results behind that review
+    harness.diff               <- the throwaway autotest harness used
 ```
 
-No logs committed: every measurement above is from a real drop. No SITL
-BINs yet; see Reproduce for what could be archived.
+No real-flight logs committed: every measurement in this file is from a real
+drop, and the SITL numbers live in `data/`.
 
 ## Reproduce
 
