@@ -269,33 +269,47 @@ The three remaining long blocks are the `@LoggerMessage` field metadata
 (required), the freefall helper header, and the throw-direction estimator
 header.
 
-## Left for the history rewrite
+## The history rewrite
 
-These cannot be fixed with new commits and need `/prepare-for-push` with
-rebase and amend.
+**9 of 11 original commits panicked at boot**, not the six first reported -
+that sweep started at the wrong commit. `ParametersG2::var_info2` carried a
+duplicate idx 21 (`SURFTRAK_GLDST` and `THROW_DROP_AG`) from `e5a2133385`,
+the very first commit, through `c405760717`; the last two of those also
+carried idx 64 and 65, past the 6-bit group level.
+`AP_Param::check_group_info()` calls `FATAL` -> `panic("Bad parameter table")`
+from `AP_Vehicle::setup()` on every boot. Only `4f2903810a` and `f1ed87b9c1`
+were clean, so bisect was broken across almost the whole branch and no
+fix-up fold could have repaired it - every commit needed rewriting anyway.
 
-- **Six of eleven commits panic at boot.** `ParametersG2::var_info2` carries a
-  duplicate idx 21 (`SURFTRAK_GLDST` and `THROW_DROP_AG`) in `910ef46774`,
-  `1a4e61a3d2`, `9cf42aee88`, `f1c46abff3`, `aa956d2e2e` and `c405760717`;
-  the last two also carry idx 64 and 65, past the 6-bit group level.
-  `AP_Param::check_group_info()` calls `FATAL` -> `panic("Bad parameter
-  table")`, from `AP_Vehicle::setup()` on every boot. Bisect is broken across
-  most of the branch.
+The series was rebuilt from the reviewed tree as eight commits grouped by
+feature, on `pr-throw-squashed`:
 
-- **The series develops the feature twice.** `aa956d2e2e` is a 714-line second
-  pass over all five earlier `Copter:` commits, and `c405760717` /
-  `4f2903810a` are fix-ups of it. `c405760717` re-adds an `AP_GROUPINFO` that
-  `aa956d2e2e` deleted - a regression introduced and repaired inside one PR.
-  Squash map: `c405760717` and `4f2903810a` into `aa956d2e2e`; `f1ed87b9c1`
-  into `f1c46abff3`; ideally `aa956d2e2e` into the four commits it revises.
+```
+Copter: improve throw mode drop detection and recovery
+Copter: upright a throw from any orientation
+Copter: add a recovery heading to throw mode
+Copter: allow throw without GPS and add next mode options
+Copter: switch EKF source sets around a throw
+Copter: add throw stage feedback
+Copter: allow mid-stick arming in throw mode with motors stopped
+autotest: add throw mode drop tests
+```
 
-- **`c405760717` carries a dead cherry-pick trailer** pointing at a commit
-  that exists only on `fossuav/SmallFastDrone-4.7.1-beta`. It resolves to
-  nothing for a reader and leaks a private branch name.
+Verified: the tree is byte-identical to the reviewed head
+(`git diff pr-throw-mode-improvements..pr-throw-squashed` is empty), every
+commit builds and passes the parameter-table check, the mechanical gate is
+clean, and all 11 throw autotests pass. Intermediate states keep the upstream
+one-shot stage messages until the feedback commit replaces them, so no commit
+deletes user-visible behaviour that a later one reinstates differently.
 
-- **`75be73908e`'s message has non-ASCII** (`±`, `°`) on three lines. The
-  mechanical gate missed this: its `BANNED_CHARS` covers quotes, dashes and
-  arrows but not those.
+Gone with the rewrite: the 714-line second pass over the five earlier
+commits, the `AP_GROUPINFO` deleted and re-added inside one PR, the dead
+cherry-pick trailer pointing at `fossuav/SmallFastDrone-4.7.1-beta`, and the
+non-ASCII (`+/-`, degree signs) in `75be73908e`'s message - which the
+mechanical gate had missed, because its `BANNED_CHARS` covers quotes, dashes
+and arrows but not those.
+
+Still to do:
 
 - **The PR description** does not follow `.github/PULL_REQUEST_TEMPLATE.md`
   (Summary / Classification & Testing / Description), still claims VALT, and
