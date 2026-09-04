@@ -6,6 +6,12 @@ numbers inline; no real-flight logs committed. SITL A/B logs and plots added
 2026-09-04. Partial: the fleet-wide VRFB history (the frozen-correction /
 ground-effect conflict) is not yet here.
 
+> **Read this before changing the code.** Three changes that look obviously right
+> from reading the source alone have been measured here and are worse. They are
+> listed under "Measured and rejected" below. A 2026-09-04 review pass reasoned
+> its way into two of them from the code and had to be reverted; the PR body now
+> carries the same list so a reviewer meets it without finding this file.
+
 ## Status (one line)
 
 Approved. This records how the vibration rectification bias was measured
@@ -154,7 +160,30 @@ bias before flight, where bit 2 gates only states 13-15. **Bit 2 is the
 surgical instrument; `OGNM_TEST_SF` is the blunt one.** Its description now
 says so.
 
-### cb5026417f dropped
+### Measured and rejected
+
+Three changes a code-only reading suggests, each measured worse. Do not
+reintroduce any of them without redoing the A/B in `data/ab-2026-09-04/`.
+
+| Change | Argument for it | Measured |
+|---|---|---|
+| Route the four covariance gates off `accelBiasLearningInhibited()` onto `inhibitDelVelBiasStates` (`cb5026417f`) | `ConstrainVariances` zeroes the accel-bias cross-covariances that `Kfusion` reads, so learning cannot restart after the inhibit clears | `=6` **0.713/0.476 m** with it, **0.448 m** without; `XKF2.AZ` range 0.46 vs 0.01 |
+| Freeze P during the inhibit instead (withhold only the process noise) | avoids both the collapse and the inflation | **0.905/0.882 m**, oscillation intact - worse than either |
+| Store the motors-on delta in `INS_ACC_VRFB_Z` instead of the total | the static bias is otherwise applied twice at arm | the stored value is a total across the whole fleet; changing it silently reinterprets every one. The arm-time double count is real and belongs to bit 2: `XKF2.AZ` at arm +0.130 clear vs 0.000 set |
+
+`logjk4`'s proposal to gate the frozen correction on ground effect is also
+measured worse - 0.644/0.656 m becomes 0.760 m - and targets the
+never-leaves-ground-effect regime, a different case. Lowering
+`EK3_OGNM_TEST_SF` instead of using bit 2 does not work either: 0/514 pre-arm
+samples can latch below SF 1.25, and the binding term is `GDR` (median 0.777,
+p90 1.055) not the accelerometer (`ALR` peak 0.012).
+
+**`cb5026417f` still exists on `pr-acro-bias-inhibit` (#32473)** as
+`361da5d064`, with a commit message that argues the collapse mechanism
+convincingly. If #32473 merges after this PR the measured-worse behaviour
+returns. See `../32473/README.md`.
+
+#### The detail on cb5026417f
 
 It routed four `CovariancePrediction` gates off `accelBiasLearningInhibited()`
 so the accel-bias covariance stays alive while bit 2 holds the inhibit. Written
@@ -220,10 +249,37 @@ the learning hover and assert the stored bias is not accepted; it does not
 exist yet. The thermal contamination itself has no SITL model (the SITL
 baro has no temperature term).
 
+## Review pass, 2026-09-04
+
+Landed on top of the measured work above, after a `/pr-review` of the stack:
+
+- The vehicle's accel-bias learning inhibit now reaches Replay. It was a plain
+  frontend bool, so a replayed acro segment learned bias the aircraft did not.
+  Added a DAL event pair following `setTerrainHgtStable`, plus the Replay
+  dispatch - an event rather than an RFRN bit because the flags byte is full.
+- The frozen correction is read from the DAL at the point of use rather than
+  pushed in from the vehicle. Only the boot-time load was DAL-visible before, so
+  a second arm in the same boot replayed with the wrong correction - which
+  `logtc5_2` flew. Landed as a three-commit forwarder dance because the removal
+  crosses AP_NavEKF3/AP_AHRS/Copter.
+- `INS_ACC*_VRFB_Z` is now `#if APM_BUILD_COPTER_OR_HELI`. The `{Copter}` tag was
+  documentation only, so the parameter shipped on Plane, Rover, Sub and Blimp as
+  a dead settable knob. Verified: the string is in `arducopter`, absent from
+  `arduplane`.
+- The parameter is written once on disarm instead of every 100 Hz learning step.
+  It made RISJ a per-frame replay message for nothing; EKF3 reads it once.
+- `AccelBiasMovingPlatform` grew the positive control this file's own numbers
+  imply - it now measures -0.990 m/s/s with bit 2 clear before asserting 0.000
+  with it set, so a broken stimulus fails instead of passing.
+- The four AHRS accessors no longer gate on `active_EKF_type()`, which could
+  swallow a one-shot write during a transient EKF3 fault.
+
+Two changes from that pass were reverted after reading this file: see "Measured
+and rejected".
+
 ## Branches and people
 
-- `pr-vrf-core` - the PR branch (local checkout one commit behind GitHub at
-  the time of writing). Depends on #32396.
-- Author: @andyp1per. Approved.
+- `pr-vrf-core` - the PR branch, `6fa6c26abb` as of 2026-09-04. Depends on #32396.
+- Author: @andyp1per. Approved, then reworked by the 2026-09-04 review pass.
 - Distinct from #34209 (XY bias in unaided flight) and #32473 (acro
-  inhibit).
+  inhibit), which still carries `cb5026417f`.
