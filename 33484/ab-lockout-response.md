@@ -209,3 +209,29 @@ which was misleading.
 With `EK3_FLOW_QMIN` set, H2b goes from 57 m on master and 76 m on the PR to
 10 m. That is the one column where the PR plus the quality gate is
 comfortably better than master.
+
+## Plots (`plots/lockout_recovery_ab.png`)
+
+Added 2026-09-04 for the PR, after the rule about before/after plots for a
+runtime behaviour change was missed on the first pass.
+
+Method differs from the arms above and is the stricter one. `EK3_OPTIONS`
+bit 3 gates the AGL KF as well as the recovery, so toggling it would compare
+two changes at once. The plot instead plays the same harness against two
+**binaries** - the merge-base plus only the two SITL scaffolding commits, so
+both arms have the `SIM_FLOW_OFS` injector and only the branch has the
+recovery - with `EK3_OPTIONS=8` in each. Distance is true position from
+`SIMSTATE`, not the EKF's own estimate.
+
+| fault | master | this PR |
+|-------|--------|---------|
+| one-axis accel bias (the target failure) | 87.5 m | 1.8 m |
+| one-axis flow sensor offset | 59.5 m | 80.0 m |
+
+Consistent with the arm table above (which gave 81.5-101.5 m and 1.7-2.4 m
+for the bias, 56.4 m and 76.6-78.0 m for the flow fault) despite the
+different isolation, which is the useful cross-check.
+
+Both panels are in the figure on a shared y axis. Publishing only the left
+one would misrepresent the change: the recovery re-anchors to the faulty
+measurement in the right-hand case and is worse than master there.
