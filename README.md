@@ -29,7 +29,7 @@ and pick up the full state of that PR's investigation.
 | [32475](32475/) | Throw mode improvements: drop detection, uprighting, yaw, source sets (Copter) | ~30 real drops on six airframes distilled; direction-finding yaw unvalidated |
 | [32401](32401/) | Pending arm on switch for in-air arming (Copter) | two field cases: retries unclearable failures, resets an EKF that was fine |
 | [32514](32514/) | Reset the EKF failsafe gate on a source-set change (Copter) | field before/after; gate re-latches correctly when position returns |
-| [32471](32471/) | Hover Z-bias learning for vibration rectification (EKF3) | approved; independent VRF measurement, learning hazard, doc gap (partial) |
+| [32471](32471/) | Hover Z-bias learning for vibration rectification (EKF3/Copter) | approved; SITL A/B 2026-09-04 shows 3x less height error against real VRF, and that bit 2 is about moving platforms not the motors-off bias; needed two new SIM knobs to measure |
 | [32472](32472/) | Ground effect altitude and timeout parameters (Copter) | approved; two differences from the flown design recorded |
 | [32553](32553/) | Reset terrain offset from baro when ground effect clears (EKF3) | result needs #32472's HAGL check; reset drifts back; likely superseded by #33359 |
 | [32972](32972/) | Protect height fusion from baro ground effect at takeoff (EKF3) | 22-flight development record; SITL A/B plots for both behaviour changes; anchor ends at first throttle and can engage in mid-air |
