@@ -83,6 +83,19 @@ altitude band below the floor on flow-only nav, inject a one-axis flow rate
 offset with `SIM_FLOW_OFS_X`. Peak EKF groundspeed 0.029-0.031 m/s with the
 floor set against 0.90-1.22 m/s without it.
 
+## Plot (`plots/flow_hgt_min_ab.png`)
+
+One binary, `FLOW_HGT_MIN` 3.0 against 0 - the floor is fully behind the
+parameter, so 0 is master's behaviour and no second build is needed.
+
+The figure plots EKF horizontal speed from `XKF1` over the whole 30 s window
+and peaks at 0.04 m/s against 2.50 m/s. The autotest numbers above
+(0.029-0.031 against 0.90-1.22 m/s) are the same runs measured differently:
+`wait_groundspeed` reports the first sample crossing its bound rather than
+the peak, so it reads lower on the diverging arm. Neither is wrong; quote the
+autotest bounds when talking about the test and the peaks when reading the
+plot.
+
 ## Known limit
 
 Zeroed flow does not pin velocity against a continuous divergence force - a
