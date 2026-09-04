@@ -43,31 +43,46 @@ that is still gaining downward speed is falling whatever the accelerometer
 magnitude says; one that is not is being supported, which is the false trigger
 the abort was for. `ThrowDropLongFall` covers it.
 
-### THROW_ALT_DCSND made the vehicle climb back up
+Severity, honestly: the recommended configurations in `../analysis` use
+`MOT_SPOOL_TIME = 0.05`, not the 2.0 the harness used, and Rosser1/log32/34
+measured body accel at 0.16-0.38 g during spool-up at 8-12 m/s descent - well
+inside the gate. The failure needs a long enough fall before
+THROTTLE_UNLIMITED that drag builds, which the recommended settings avoid. It
+is still reachable: `MOT_SPOOL_TIME` defaults to 0.5 and its range allows 2,
+`THROW_DROP_CNF` is recommended at 0.5-1.0 for carrier drops, and
+ThrowDoubleDrop already had `SIM_SHOVE_Z` softened from -11 to -10.5 with a
+comment blaming exactly this drag interaction. The fix only relaxes the abort,
+and only when the vertical velocity says the vehicle is still falling, so it
+cannot regress the validated configurations.
 
-The target became `drop_release_alt_m - THROW_ALT_DCSND` - a fixed height
-below the release point, not below where the vehicle actually recovered. By
-the time uprighting finishes the vehicle has usually fallen further than
-`THROW_ALT_DCSND` (default 1.0 m), so the position controller is handed a
-target above it.
+### THROW_ALT_DCSND climb-back - measured correctly, diagnosed wrongly
 
-Measured at the shipped default:
+The target is `drop_release_alt_m - THROW_ALT_DCSND`, a fixed height below the
+release point. Measured at the shipped default:
 
 ```
 release_alt=55.58  lowest_alt=52.97  settled_alt=54.32
 total_loss=1.25    climb_back=1.35
 ```
 
-It climbed 1.35 m back toward the release point. Two things in the PR say
-this should not happen: the parameter documentation ("Total altitude lost in a
-drop is: freefall distance + uprighting distance + this value. Typical total
-loss is 5-10m") and the `Throw_Uprighting` comment, which says commanding zero
-throttle "prevents the vehicle from climbing back toward the carrier after
-arrest".
+I read the 1.35 m climb-back as a defect and clamped the target to the current
+height. **That was wrong and has been reverted.** `../analysis/topics/
+throw_mode_drop.md` documents the climb-back as intentional, under "Target
+Altitude and Climb-Back": it is trajectory-planned, cannot overshoot, never
+exceeds the release altitude, and for hand drops (DCSND=0) recovering altitude
+is the point - it preserves ground clearance. It is explicitly contrasted with
+the old `cos_tilt` bounceback that `934bb8ad27` removed, where Rosser1/log43
+dropped 2.5 m and then climbed 7 m *above* release. Rosser2/log22 flew the
+intended behaviour: 3.13 m fall against a 3 m target, 0.28 m climb-back.
 
-Fixed by clamping the target to the current height, so `THROW_ALT_DCSND` is a
-floor on height lost rather than a value to climb back to. The documentation
-now says that.
+So the measurement was right and the interpretation was not. The number I
+measured is the feature working.
+
+What does survive is the **documentation**: the parameter said "Total altitude
+lost in a drop is: freefall distance + uprighting distance + this value.
+Typical total loss is 5-10m", which describes the upstream relative-to-current
+behaviour, not this one. That is what made the measured 1.25 m look wrong. The
+description now says what the code does, including the climb-back.
 
 ### The EKF source set was stranded
 
@@ -142,12 +157,21 @@ diff does not implement.
   reproducible in SITL, which has no held-and-spun state; the arithmetic is
   the evidence. The velocity-change confirmation now carries this.
 
-- **The comment's history is not this PR's history.** It said the ceiling
-  "Replaces a fixed 1.5g ceiling". `git log -S` over `16f9f66379..HEAD` finds
-  no commit in this PR that ever contained one. It also cited a private log
-  ("SFD1 log55") that no upstream reader can retrieve - and the numbers quoted
-  from it imply r = 0.017-0.048 m, against the 0.06 the code uses, so the
-  constant is not derived from the log the way the comment implies.
+- **The comment's history is real, but not reconstructible from the PR.** It
+  said the ceiling "Replaces a fixed 1.5g ceiling". No commit in
+  `16f9f66379..HEAD` ever contained one, which is why I first read this as
+  false. It is not: `../analysis` records the fixed 1.5g tier as `c06a7252`
+  and the physics ceiling that replaced it as `7ad2dc32`, both on the
+  SmallFastDrone branch, driven by marmotte5/log2-c3 and SFD1/log55. The
+  problem is narrower than I claimed - an upstream reviewer cannot verify any
+  of it from the diff, and the cited log is private. Keep the physics, drop
+  the branch archaeology and the log reference; that history belongs in the
+  PR description.
+
+  My related complaint that `r_max = 0.06` is "not derived from the log" also
+  misread it: `../analysis` treats 0.06 m as a design *envelope* covering
+  typical FC stacks, not a fit to log55 (which implies 0.017-0.048 m). An
+  envelope above the observed values is the right shape. Withdrawn.
 
 - **The `baro_ground_effect.cpp` change was a no-op.** `AP_GroundEffect`
   only latches `takeoff_expected` under `else if (land_complete)`, which is
@@ -163,25 +187,33 @@ diff does not implement.
 - **`THROW_NEXTMODE` omitted a value the code accepts.** ACRO is handled in
   the switch and used by `ThrowNextModeAcro`, but was missing from `@Values`.
 
-- **The PR description claims a mode that does not exist.** "THROW_NEXTMODE
-  accepts Stabilize, AltHold and Acro (and VALT where built)". There is no
-  VALT anywhere in the tree. An autotest comment cited it too, along with a
-  private log reference; both removed.
+- **The PR description cites a mode upstream does not have.** "THROW_NEXTMODE
+  accepts Stabilize, AltHold and Acro (and VALT where built)". VALT is real -
+  mode 29 on the SmallFastDrone branch, with three topic files in
+  `../analysis` - but it is not in the tree this PR targets, so the claim is
+  unverifiable for a reviewer. Same for the autotest comment citing
+  marmotte/log1, which is a genuine log. Both removed from the upstream test;
+  the PR description still needs the VALT clause dropped.
 
 ## Design problems fixed
 
-- **The yaw lock latched on a spin it could not hold.** `yaw_align_locked` was
-  set the first time `|yaw_err| <= 30 deg`, with no rate condition - a fast
-  spin sweeps that window every revolution, so the latch tripped within the
-  first turn and the ride and slew branches became unreachable for the rest of
-  the throw. The existing comment acknowledged the transient latch but only
-  suppressed the *message*, saying "locking behaviour itself is unchanged".
-  The latch now requires the spin to be below the ride threshold.
+- **The yaw lock latching mid-spin is deliberate.** `yaw_align_locked` is set
+  the first time `|yaw_err| <= 30 deg` with no rate condition, so a fast spin
+  latches it within the first revolution and the ride and slew branches become
+  unreachable. I gated the latch on spin rate; **that has been reverted.**
+  `../analysis/topics/throw_yaw_accuracy.md` records the same observation from
+  drop2/log1 #2 ("still spinning ~25 rad/s through the realign - yaw-lock
+  fired spuriously") and the decision: gate the *message*, not the lock,
+  because gating the lock coasts the spin in the zero-torque ride branch
+  instead of braking it onto the target, delaying the handoff to the timeout
+  without improving the heading. `throw_yaw_converged()` already gates the
+  handoff on the rate. Nine field spin-drops at 12-34 rad/s back the current
+  behaviour; I had no measurement against it.
 
-  Related and still true: the ride branch triggers above 120 deg/s while
-  `get_slew_yaw_max_rads()` caps commands at 60 deg/s by default, so the
-  commanded "ride" rate is clamped to at most half the spin. Left as-is, but
-  the comment no longer claims no torque is applied.
+  Still open and unresolved by either of us: the ride branch triggers above
+  120 deg/s while `get_slew_yaw_max_rads()` caps commands at 60 deg/s by
+  default, so a "ride" command is clamped to at most half the actual spin and
+  does apply torque. Either the threshold or the comment is wrong.
 
 - **`HORIZ_POS_ABS` is the wrong test for this PR's own target case.** It is
   `doingNormalGpsNav && filterHealthy`, false for an optical-flow vehicle with
@@ -189,10 +221,13 @@ diff does not implement.
   `copter.position_ok()`, which accepts a relative estimate and honours the
   EKF failsafe.
 
-- **The handoff could fire while still descending.** The drop path exits
+- **The handoff can fire while still descending.** The drop path exits
   HgtStabilise on a 3 s timeout with no height or velocity requirement, and
-  PosHold then handed off to the next mode. `throw_velocity_good()` is now
-  part of the handoff condition.
+  PosHold then hands off. I added `throw_velocity_good()` to the handoff
+  condition and **reverted it**: nothing bounded the wait, so on a vehicle
+  that cannot arrest it would hold the mode indefinitely, and PosHold keeps
+  running the height controller either way. Worth revisiting with a bound, but
+  not on an unmeasured hunch.
 
 - **2 Hz STATUSTEXT for the whole of every stage.** "Waiting for throw"
   repeated indefinitely while armed. Each call pushes into a queue that is 10
@@ -268,6 +303,44 @@ rebase and amend.
   That rename is forced by the 64-character label limit, but only because the
   new fields are `TYaw`/`YSrc`; `TYw`/`YSr` fits at exactly 64 and would leave
   the existing field alone.
+
+## What reading ../analysis changed
+
+The review above was done without the development record in
+`../analysis/topics/throw_mode_drop.md` and `throw_yaw_accuracy.md`. Reading
+them afterwards overturned four conclusions, all in the same direction: I had
+treated deliberate, flight-validated decisions as defects because the PR diff
+does not carry the reasoning behind them.
+
+| Finding | After reading |
+|---------|---------------|
+| THROW_ALT_DCSND climb-back | intended and validated; change reverted, doc still corrected |
+| Yaw lock latches mid-spin | considered and rejected with a stated reason; change reverted |
+| "Replaces a fixed 1.5g ceiling" is false history | real history on the feature branch; only unverifiable from the PR |
+| `r_max = 0.06` not derived from the log | it is an envelope, not a fit; withdrawn |
+| VALT does not exist | mode 29 on the feature branch; not in the upstream tree |
+| ThrowYawAbsolute's 180 deg target is degenerate | it is the regression case for the timeout sizing; restored |
+
+That is the cost of reviewing a long-lived feature branch by its diff alone.
+The reasoning exists, in detail, and none of it is in the commits - which is
+also the actionable point for the PR: a reviewer at the dev call will be in
+exactly the position I was.
+
+Two claims in `../analysis` are wrong and should be corrected at the source,
+because they are where the code comment and the parameter documentation got
+them from:
+
+- `throw_mode_drop.md`, drop detection: "The timer also cross-checks that the
+  vehicle has fallen the expected freefall distance for that time (d =
+  0.5*g*t^2), validating that freefall is genuine rather than sustained low-g
+  on a smooth-flying carrier." The implementation compared the same elapsed
+  time against itself and read no altitude at all. There was no cross-check
+  until this review added one.
+- `throw_mode_drop.md`, parameter table: "THROW_DROP_AG | Drop arrest
+  aggressiveness - hover throttle multiplier (1.0-4.0)". The tuning section a
+  few hundred lines earlier has it right - it scales the position
+  controller's vertical speed and acceleration limits - and the code agrees
+  with the tuning section.
 
 ## Not covered
 
