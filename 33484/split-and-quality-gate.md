@@ -62,6 +62,47 @@ fact, but "quality good enough to justify a velocity reset" is estimator
 policy, and normal fusion of a low-quality sample continues either way. That
 is unlike `VISO_QUAL_MIN`, which gates whether data is sent to the EKF at all.
 
+## Review findings that reshaped the recovery
+
+Self-review before submission, verified in source and cross-checked against an
+independent pass. These are why the code reads as it does.
+
+- **The unhealthy latch cleared itself.** It was OR'd into `flowFusionTimeout`
+  to force AID_NONE, but `readyToUseOptFlow()` only checks flow freshness, tilt
+  and gyro bias, so the filter re-entered AID_RELATIVE on the next step and the
+  entry block wiped the latch and both counters. `setAidingMode()` also ends
+  with an unconditional `ResetVelocity()`, which outside AID_ABSOLUTE zeroes
+  horizontal velocity - so the loop hard-zeroed velocity twice every ~2.5 s on
+  a flying vehicle. Fixed by gating `readyToUseOptFlow()` on the latch and
+  clearing it on the ground instead.
+- **The reset refreshed the timer it was meant to be backstopped by.**
+  `prevFlowFuseTime_ms = imuSampleTime_ms` on every reset meant the 5 s
+  AID_RELATIVE timeout could never expire. Removed; the healthy axis already
+  refreshes it.
+- **`ResetVelocityToFlow` was internally inconsistent under tilt.** It filled
+  the body-frame vertical from the current estimate, rotated to NED, then wrote
+  only x/y and kept the old NED z - two different quantities. The leftover
+  scaled as `sin^2(tilt) * v`: 0.12 m/s at 10 deg, 1.00 at 30, 2.00 at 45.
+  Replaced with a 2x2 solve for north and east holding the vertical state, so
+  zero flow at 30 deg pitch now gives 0.00 m/s where it gave 1.00.
+- **The rate gate was a signed compare.** `flowRadXY.x < _maxFlowRate` was
+  copied from the fusion path, where `flowTestRatio < 1.0` backstops it; in the
+  recovery nothing does, by construction. `writeOptFlowMeas` admits rates to
+  4.2 rad/s, so -4 rad/s passed a 2.5 limit and at 5 m range would inject about
+  20 m/s. Now `fabsF` on both axes.
+- **The recovery was unreachable on one lockout path.** `FuseOptFlow` returns
+  early at the ill-conditioned innovation-variance guards, before the recovery
+  block, so a persistent `bad_yflow` fired neither the 5 s timeout nor the
+  recovery. Those returns are now `break`.
+- **The reset covariance ignored the range uncertainty.** The reset velocity is
+  flow rate times range, so range error propagates linearly, but only flow-rate
+  noise was accounted for. `aglKfP[0][0]` now carries into it.
+
+Rejected on the evidence: a bounded update mirroring the `EK3_GLITCH_RAD<=0`
+GPS path. The correction is `(K/testRatio) * innov` and `testRatio` grows as
+`innov^2`, so it weakens as `1/innov` - worse as the error grows. Measured
+worst of every arm. See `ab-lockout-response.md`.
+
 ## Commits
 
 ```
