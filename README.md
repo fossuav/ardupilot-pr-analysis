@@ -38,7 +38,7 @@ and pick up the full state of that PR's investigation.
 | [33497](33497/) | FLOW_HF_RATEF for a half-rate HereFlow node | sensor-rate slope 0.52 -> 1.00; not reproducible in SITL |
 | [33498](33498/) | Inhibit Z gyro bias from optical flow without a yaw source (EKF3) | flight-validated; no SITL test yet |
 | [33507](33507/) | Accel-Z bias state in the AGL KF (EKF3) | bias state right, 0.05 default too stiff: 0.3 flown on two airframes |
-| [32270](32270/) | VALT velocity alt-hold mode (rebase + ground idle at mid-stick + ground-effect correction limit) | rebased 2026-08-29; autotest passes; needs a mavlink companion PR |
+| [32270](32270/) | VALT velocity alt-hold mode (rebase + ground idle at mid-stick + ground-effect correction limit) | self-reviewed 2026-09-04: missing avoidance call and an inherited terrain offset fixed, blend now has a SITL A/B; mode number 29 contested, PR prose not yet updated |
 | [34208](34208/) | Interpolate the rate target in the fast rate thread | SITL A/B + hardware; opened 2026-08-29 |
 | [34209](34209/) | EKF3: no XY accel bias learning in unaided flight | autotest fails on master / passes fixed; opened 2026-08-29 |
 | [34210](34210/) | Advanced land failsafe (LAND_FS_OPTIONS bit 0) | design reshaped twice by its SITL runaway test; opened 2026-08-29 |

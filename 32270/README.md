@@ -9,9 +9,14 @@ that stay private.
 
 Rebased onto master on 2026-08-29 (941 commits behind before) and extended with
 three commits: ground idle at mid-stick, its autotest, and a position
-correction limit in ground effect. Autotest passes. A maintainer's objection to
-the mode's existence stands unanswered by design; the PR is kept current as a
-record of the SmallFastDrone branch rather than argued.
+correction limit in ground effect. Self-reviewed 2026-09-04
+([write-up](self-review-2026-09-04.md)): @peterbarker's avoidance call was still
+missing and is now restored, an inherited terrain offset was defeating the
+mode's own zero-error premise, and `VALT_POS_EXPO` values at or below 1 are
+inert. Code fixed and squashed back into the commits that introduced the
+problems (old head 973cf77117, new head d6d572ad43, twelve commits, each
+builds); not pushed, and the PR body is not yet updated. A maintainer's
+objection to the mode's existence stands unanswered by design.
 
 ## What the mode is
 
@@ -127,6 +132,14 @@ with no bump. The flying was gentle, so this validates no-regression and
 the handoff, not a rescue; the backstop has not yet been seen doing real
 work.
 
+The same separation reproduces in SITL and is what the autotest now asserts
+on. One `ModeVAltHold` run holds the throttle stick full down for 5 s at each
+setting; the descent is identical (-10.47 m against -10.42 m) while the
+position error the backstop depends on is exactly zero with the hard cutoff
+and up to 0.10 m with the blend.
+
+![VALT_POS_EXPO 0 vs 3 at full stick](plots/A_valt_pos_expo_ab.png)
+
 ### Ground idle at mid-stick: the decision
 
 Three separable fixes were on the table: (A) stop the land-detector guard
@@ -225,12 +238,31 @@ pymavlink still names mode 29 `RATE_ACRO`, which is what MAVProxy prints.
   which also clamps the correction (it is where `init()` reads the limit).
 - A deliberate provoke-it flight for the expo backstop (sustained full-power
   climb, then full down) has not been flown.
+- Mode number 29 is contested: `pr-mode-rate-acro` assigns it to `RATE_ACRO`
+  and the pinned pymavlink already carries `29 : 'RATE_ACRO'`. Needs a decision
+  and a linked mavlink PR adding `COPTER_MODE_VALT`.
+- The PR body's ground-effect section says the snap "wandered 0.5-1.0 m per
+  20 s" as the reason to prefer the clamp; the duration-matched A/B above puts
+  the snap at 0.663 +/- 0.158 m against the clamp's 0.851 +/- 0.212 m and
+  concludes no detectable difference. The claim needs replacing with the
+  arguments that hold (log62's settle onto the floor, the event rates).
+- The PR body carries none of the numbers that answer @lthall, states none of
+  the three known limitations of the clamp, and does not mention the A/B
+  confound. Prose only; deliberately deferred on 2026-09-04.
+- The ground-effect correction limit still has no SITL coverage, and two
+  attempts at it were discarded rather than shipped - see the self-review.
 
 ## What is here
 
 ```
 32270/
-  README.md          <- this file
+  README.md                     <- this file
+  self-review-2026-09-04.md     pre-push review and the fixes it produced
+  plots/
+    A_valt_pos_expo_ab.png      VALT_POS_EXPO 0 vs 3 at full stick
+    make_plots.py               regenerates it from data/
+  data/
+    valt_expo_ab.BIN            SITL, one ModeVAltHold run carrying both arms
 ```
 
 ## Reproduce
@@ -238,8 +270,12 @@ pymavlink still names mode 29 `RATE_ACRO`, which is what MAVProxy prints.
 ```
 git checkout copter-valt-mode
 ./waf configure --board sitl && ./waf copter
-Tools/autotest/autotest.py --no-configure test.Copter.ModeVAltHold
+Tools/autotest/autotest.py --no-configure test.Copter.ModeVAltHold,ModeAltHold
+python3 plots/make_plots.py          # from this directory, regenerates the plot
 ```
+
+The blend measurement is printed by the test itself
+("VALT_POS_EXPO=N mean |DPD-PD| = ... m").
 
 Two SITL reproductions are possible and not built: the won't-come-down and
 the `VALT_POS_EXPO` backstop (the fusion-off phase of
@@ -253,5 +289,8 @@ at spool-up and -16 to -21 m at touchdown).
 
 - `copter-valt-mode` - the PR branch, force-pushed 2026-08-29 (previous head
   558a9a9e1a).
-- Reviewers: @peterbarker (avoidance calls in the VALT flying state, addressed
-  in code), @lthall (does not see the justification for the mode; not argued).
+- Reviewers: @peterbarker (avoidance calls in the VALT flying state - recorded
+  here as addressed from 2026-08-29, which was wrong: only the climb-rate call
+  was present and `copter.avoid.adjust_roll_pitch_rad()` was restored on
+  2026-09-04), @lthall (does not see the justification for the mode; not
+  argued, though the numbers to argue it exist - see the self-review).
