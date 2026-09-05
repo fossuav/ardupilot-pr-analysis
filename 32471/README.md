@@ -205,10 +205,65 @@ Second arm, 2026-09-04: applying the change also fails the shipped
 branch as shipped passes at 1.632 m. The VRF and platform arms agree, and a
 plain `test.Copter.AccelBiasMovingPlatform` run catches it without the harness.
 
-### Still open
+### Still open - but the third candidate measures better (2026-09-05)
 
-Bit 2 costs 0.448 m against `=2`'s 0.196 m even with `cb5026417f` gone. It
-protects the arm-time state and degrades the correction it is protecting.
+Bit 2 costs 0.467 m against `=2`'s 0.201 m even with `cb5026417f` gone (0.448
+against 0.196 as first measured). It protects the arm-time state and degrades
+the correction it is protecting.
+
+The mechanism, from tridge's 2026-09-05 review and confirmed against the
+source: while the vehicle inhibit is held, the block at
+`AP_NavEKF3_core.cpp:1189-1208` that saves and restores `dvelBiasAxisVarPrev`
+sits inside `if (!accelBiasLearningInhibited())` and is skipped entirely, while
+`ConstrainVariances` floors P[13..15] at `minSafeStateVar*10`. On release only
+`dvelBiasAxisInhibit[index]` gates the restore, and for Z on the ground, level
+and not moving, `is_bias_observable` is true, so that flag was never set and no
+restore fires. X and Y do recover. Process noise alone would take hours.
+
+His fix is distinct from both rejected alternatives: a bounded one-shot
+re-initialisation on the falling edge of the frontend inhibit, using the values
+`AP_NavEKF3_Control.cpp:166-170` already uses when the states are first
+activated.
+
+```cpp
+const bool vehicleInhibit = frontend->getInhibitAccelBiasLearning();
+if (prevVehicleInhibitAccelBias && !vehicleInhibit && !inhibitDelVelBiasStates) {
+    P[13][13] = sq(ACCEL_BIAS_LIM_SCALER * frontend->_accBiasLim * dtEkfAvg);
+    P[14][14] = P[13][13];
+    P[15][15] = P[13][13];
+}
+prevVehicleInhibitAccelBias = vehicleInhibit;
+```
+
+Measured with the harness on `d951df4f82` plus that change, single runs:
+
+| arm | shipped | with the re-init |
+|---|---|---|
+| `=2` VRF | 0.201 m, AZ range 0.02 | 0.203 m, AZ range 0.02 |
+| `=6` VRF | 0.467 m, AZ range 0.02 | **0.285 m**, AZ range 0.14 |
+| `=7` VRF | 0.471 m, AZ range 0.02 | **0.285 m**, AZ range 0.14 |
+| platform bit 2 clear, `XKF2.AZ` at arm | -0.9900 | -0.9900 |
+| platform bit 2 set, `XKF2.AZ` at arm | +0.0000 | +0.0000 |
+| platform bit 2 set, height error | 0.176 m | 0.164 m |
+
+It recovers 0.182 m of the 0.266 m penalty, is a no-op when bit 2 is clear, and
+leaves the platform protection - the entire point of bit 2 - bit-identical.
+
+**It converges rather than oscillating, which is what separates it from
+`cb5026417f`.** Sampling `XKF2.AZ` after arm: shipped `=6` is pinned at -0.010
+with a spread of 0.000 over the last 15 s, because the state cannot move at
+all. With the re-init it dips to -0.120 and returns, settling at a spread of
+0.010 - the same as `=3`, which has no inhibit. `cb5026417f` ranged 0.46 and
+oscillated over 1 m/s^2 while measuring worse.
+
+`AccelBiasMovingPlatform`, `VibrationRectificationBiasLearning`, `Replay` and
+the four EK3 accel-bias tests all pass with it applied. That test is the cheap
+check this file prescribes for any change in this area, and it is the one that
+fails `cb5026417f` at 3.9 m.
+
+Not committed to the branch. SITL only, single runs per arm, and the two
+previous attempts on this exact problem were both confident code arguments that
+measured worse - so it wants repeat runs and ideally a flight first.
 
 ## What is here
 
