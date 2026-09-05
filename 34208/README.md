@@ -1,9 +1,9 @@
 # PR #34208 - Interpolate the rate target in the fast rate thread
 
 Analysis archive for [ArduPilot/ardupilot#34208](https://github.com/ArduPilot/ardupilot/pull/34208).
-Branch `pr-rate-target-interp` (andyp1per fork), base `master`. The plots here
-are from SITL; the hardware numbers are cited inline only, no real-flight logs
-are committed to this public repo.
+Branch `pr-rate-target-interp` (andyp1per fork), base `master`, head
+`32829ea806` (2026-09-01). The plots here are from SITL; the hardware numbers
+are cited inline only, no real-flight logs are committed to this public repo.
 
 ## Status (one line)
 

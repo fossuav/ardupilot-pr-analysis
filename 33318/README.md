@@ -1,9 +1,10 @@
 # PR #33318 - AC_Loiter drag/feed-forward consistency fix
 
 Analysis archive for [ArduPilot/ardupilot#33318](https://github.com/ArduPilot/ardupilot/pull/33318).
-Branch `pr-loiter-brake-drag` (author andyp1per). Committed plots/data here are
-from SITL; the real-flight forensic numbers (logs 276/278) are cited inline only,
-no real-flight logs are committed to this public repo.
+Branch `pr-loiter-brake-drag` (author andyp1per), head `f8277625ff`
+(2026-07-27). Committed plots/data here are from SITL; the real-flight forensic
+numbers (logs 276/278) are cited inline only, no real-flight logs are committed
+to this public repo.
 
 ## Status (one line)
 

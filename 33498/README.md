@@ -1,10 +1,10 @@
 # PR #33498 - inhibit Z gyro bias from optical flow when there is no yaw source
 
 Analysis archive for [ArduPilot/ardupilot#33498](https://github.com/ArduPilot/ardupilot/pull/33498).
-Branch `pr-gyro-z-unobservable-without-yaw` (andyp1per fork), base `master`.
-All evidence is from real flights on a 4-inch optical-flow quad (MatekH743,
-ARK Flow, no compass in the flow source set); numbers are cited inline and no
-logs are committed.
+Branch `pr-gyro-z-unobservable-without-yaw` (andyp1per fork), base `master`,
+head `17f19f6202` (2026-09-02). All evidence is from real flights on a 4-inch
+optical-flow quad (MatekH743, ARK Flow, no compass in the flow source set);
+numbers are cited inline and no logs are committed.
 
 ## Status (one line)
 
