@@ -1,9 +1,9 @@
 # PR #33585 - Keep optical flow nav alive above the rangefinder range (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#33585](https://github.com/ArduPilot/ardupilot/pull/33585).
-Branch `pr-optflow-flat-ground` (andyp1per fork), head `18a2bbe7b4`, base
-`master`. Stacked on #33478 (`../33478/`), whose three commits are the first
-three on the branch.
+Branch `pr-optflow-flat-ground` (andyp1per fork), head `62a3fbeaba`
+(2026-09-05), base `master`. Stacked on #33478 (`../33478/`), whose three
+commits are the first three on the branch.
 
 ## Status (one line)
 
@@ -79,12 +79,76 @@ re-run:
 | term removed | leg that fails |
 |---|---|
 | `gndOffsetMeasured` (reverted to `gndHgtValidTime_ms != 0`) | "The assumption does not carry over from an earlier flight" |
-| `activeHgtSource != SourceZ::NONE` | "With no height source the assumption is refused" |
+| `activeHgtSource != SourceZ::NONE` | "With no height source and no terrain data the assumption is refused" |
+| `OptflowAssumeFlatGnd` from the `writeTerrainData` gate | "Terrain data is preferred and does not need bit 2" |
 
-Both confirmed on 2026-09-05. A leg asserting the bit 3 + bit 5 combination was
+All three confirmed on 2026-09-05. A leg asserting the bit 3 + bit 5
+combination was
 written and then removed: it could not have failed differently from the
 bit-5-only leg, because `flatGroundAssumed()` does not reference the AGL KF and
 both 5 s windows expire together. Its measurement is in the analysis topic.
+
+## Maintainer review 2026-09-05 (rmackay9) and the restored terrain gate
+
+rmackay9, who wrote bit 2 (`OptflowMayUseTerrainAlt`, #30718), asked why the
+vehicle would assume flat ground when it could use the terrain database, and
+suggested combining the two option bits into one "do your best" mode.
+
+He was right that the description should not have been telling users to set
+two bits. That was a dropped hunk, not a design: `NavEKF3::writeTerrainData()`
+forwarded terrain data to the cores only under bit 2, so with bit 5 alone
+`terrain_srtm_alt_valid` could never become true and the flat assumption was
+the only path even where the database had coverage. The SmallFastDrone branch
+widens that gate to either option; it was lost when the change was split for
+upstream. Restored in `a874302eee`, so bit 5 alone is now
+terrain-where-covered with flat ground as the fallback, and the "set bit 2 as
+well" line is gone.
+
+Why terrain does not simply replace the assumption, which is what he was
+asking: `AP_Terrain::update()` only calls `ahrs.writeTerrainAMSL()` when
+`ahrs.get_location()` succeeds. A GPS-denied vehicle never has terrain data
+written at all, whatever the option bits say, so indoors there is nothing to
+prefer. Derived from the source and confirmed by the autotest leg below.
+
+**Open, with him:** whether to merge the bits outright. Merging changes bit
+2's contract - today bit 2 over terrain without database coverage drops
+relative
+position and the vehicle failsafes; merged it would navigate on a terrain
+offset frozen at the takeoff point, which over rising ground scales the flow
+velocity in the direction that makes the vehicle drift rather than stop. Left
+as his call since it is his option. Asked in
+<https://github.com/ArduPilot/ardupilot/pull/33585#issuecomment-5552536715>.
+
+### A correction, and what it cost
+
+Predicted that widening the gate could not affect the autotest, on the grounds
+that `get_location()` fails without GPS. It does not: in `AID_RELATIVE` it
+works from the EKF origin plus the relative position, so terrain data does
+reach the cores. SITL has terrain data, and the terrain path then held
+`EKF_POS_HORIZ_REL` valid through the legs meant to prove the flat-ground path
+was refused - a green test measuring the wrong thing.
+
+Two consequences, both now in the test. `TERRAIN_ENABLE = 0` is set for the
+legs that test the flat-ground assumption, matching how the log308 Replay
+isolated it. And the terrain path, which this file previously had no way to
+cover, gets a leg of its own: with only bit 5 set and `EK3_SRC1_POSZ = None`,
+`flatGroundAssumed()` is false, so relative position staying valid can only
+come from terrain altitude reaching the core.
+
+### Which archived numbers this moved
+
+Checked before applying, per the repo rules.
+
+- The log308 Replay in `../../analysis/topics/dow_althold_ekf_failsafe.md` was
+  run with `TERRAIN_ENABLE=0`, so no terrain data was written to the DAL and
+  the widened gate cannot change it. Numbers stand as recorded.
+- The bit 3 + bit 5 flow-scale table in the same file was measured on
+  2026-09-04 on the branch **before** the gate was widened, with `EK3_OPTIONS
+  = 40` and terrain left at its default. The gate was still bit-2-only then,
+  so no terrain data reached the core and the table is of the flat-ground
+  path. On the current code the same configuration would take the terrain
+  path where there is coverage. The numbers are not restated here; they
+  belong to that code state.
 
 ## What is here
 
@@ -104,6 +168,11 @@ git checkout pr-optflow-flat-ground
 python3 .claude/skills/autotest/run_autotest.py test.Copter.EK3_OptflowAssumeFlatGnd
 ```
 
-For the negative checks, edit `flatGroundAssumed()` in
-`AP_NavEKF3_Control.cpp`, rebuild, and re-run: the test must fail, on the leg
-named above.
+For the negative checks, remove one guard term at a time - two live in
+`flatGroundAssumed()` in `AP_NavEKF3_Control.cpp`, the third is the
+`OptflowAssumeFlatGnd` clause in `NavEKF3::writeTerrainData()` - rebuild, and
+re-run. The test must fail, on the leg named in the table above.
+
+The test sets `TERRAIN_ENABLE = 0` itself for the flat-ground legs. Do not
+remove that: SITL has terrain data, and with it enabled those legs pass
+through the terrain path instead of the one they are testing.
