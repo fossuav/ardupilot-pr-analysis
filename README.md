@@ -7,6 +7,9 @@ orientation (read that first), the write-up, plots, and the SITL data needed to
 reproduce them. A fresh reader should be able to open `<pr-number>/README.md`
 and pick up the full state of that PR's investigation.
 
+The working rules for editing these records - the evidence cascade, and when
+code based on a real flight may be changed - are in [CLAUDE.md](CLAUDE.md).
+
 ## Conventions
 
 - One directory per PR, named by number (e.g. `32768/`).
