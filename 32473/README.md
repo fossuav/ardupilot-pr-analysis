@@ -6,14 +6,16 @@ contains all of #32471 as well. No logs of its own; the numbers below are from
 [#32471's SITL A/B](../32471/README.md) of 2026-09-04, which measures the same
 gates.
 
-> **Read this before changing the code.** This branch still carries a change
-> that #32471 measured and dropped. See "The commit that must not survive".
+> **Read this before changing the code.** This branch once carried a change
+> #32471 measured and dropped. It is gone as of 2026-09-05, but the argument for
+> it is good enough that it has come back twice, so the section recording why it
+> is wrong stays: see "The commit that must not survive".
 
 ## Status (one line)
 
-Open, review required. Three commits of its own on top of `pr-vrf-core`; one of
-them reinstates a change measured worse by 0.27 m, and the headline inhibit is
-ungated by any parameter.
+Open, review required. One commit of its own on top of `pr-vrf-core` as of
+2026-09-05 (`39c0642ed7`), touching only `ArduCopter/Attitude.cpp`. The headline
+inhibit is still ungated by any parameter, which is the live objection.
 
 ## The problem
 
@@ -21,7 +23,23 @@ Acro sustains rates and accelerations where the accel bias is poorly observable,
 so the EKF learning it there moves the bias the wrong way. The PR routes a
 vehicle-set inhibit into the accel-bias Kalman gains.
 
-## The commit that must not survive
+## The commit that must not survive (gone 2026-09-05, kept because it recurs)
+
+**Resolved.** `merge-base --is-ancestor 361da5d064 pr-acro-bias-inhibit` says
+no, and the four gates in the branch's own tree read
+`accelBiasLearningInhibited()`, which is the good state - `cb5026417f`'s entire
+effect is to make them `inhibitDelVelBiasStates`. The commit object still
+exists but no branch reaches it. This file claimed otherwise until 2026-09-05,
+which was worth catching: a reader acting on it would have gone looking for
+something that was not there.
+
+The rest of this section stays, because the argument for the change is strong
+enough to have been re-derived from the source twice. There is now also a
+better answer than a prohibition: `9b852c9464` on `pr-vrf-core` addresses the
+same covariance collapse by re-initialising P[13..15] once on the falling edge
+of the inhibit, measuring 0.467 m to 0.284 m where `cb5026417f` measures
+0.713/0.476 m and oscillates. Anyone reaching for `cb5026417f` wants that
+instead.
 
 `361da5d064` *"AP_NavEKF3: keep accel-bias covariance alive while learning is
 inhibited"* is `cb5026417f` under another name: it routes four
@@ -87,9 +105,33 @@ legs were tautologies because `selectHeightForFusion()` has already failed those
 over to baro before `FuseVelPosNED()` runs. Narrowed to the one case that is
 actually corrupt: the height observation, on baro, in ground effect.
 
+## Rebased onto the reworked #32471, 2026-09-05
+
+Replayed with `--onto pr-vrf-core cab18be57b`, which drops `cab18be57b`
+*"AP_NavEKF3: narrow the Z accel-bias inhibit to a baro in ground effect"*.
+That commit narrowed a gate #32471 no longer has: the gate was cherry-picked
+into `pr-vrf-core`, held behind the feature flag, then removed outright once
+present-against-removed measured 1 to 2 mm. Carrying it here would have
+reintroduced a gate measured inert.
+
+`1cb76ce055` replayed unchanged as `39c0642ed7` - only the blob hashes and line
+offsets differ. It touches `ArduCopter/Attitude.cpp` alone, and
+`update_accel_bias_inhibit()` was byte-identical on both sides.
+
+One interaction worth noting rather than a conflict: this commit makes the
+vehicle write the inhibit as a *level* every second, and #32471 now writes the
+DAL event only on change, so repeated identical writes cost nothing. The
+`arm()` call that clears the flag is left in place and is now redundant, since
+`update_accel_bias_inhibit()` writes false while armed and out of acro.
+
+`AccelBiasMovingPlatform`, `VibrationRectificationBiasLearning`, `Replay` and
+the four EK3 accel-bias tests pass on the rebased branch. The acro path itself
+is still untested, as below.
+
 ## Branches and people
 
-- `pr-acro-bias-inhibit` - depends on `pr-vrf-core` (#32471).
+- `pr-acro-bias-inhibit` - depends on `pr-vrf-core` (#32471), `39c0642ed7` as
+  of 2026-09-05.
 - Author: @andyp1per.
 - peterbarker, 2026-07-17: this revisits #20776, which was deliberately reduced
   to #20781. Answered in prose ("insufficient"), not in code.
