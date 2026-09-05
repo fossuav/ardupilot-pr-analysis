@@ -369,10 +369,10 @@ path is live by default on Plane, where `EK3_FLOW_USE` defaults to **2**. The
 fix shipped is the `flowDataToFuse` gate; the `{}` was reverted before the
 branch was pushed a second time.
 
-**Still open, and not this PR's bug:** line 107 reads the same uninitialised
-struct and is reachable by default on Plane. Fixing it properly means gating
-`EstimateTerrainOffset`'s flow branch on `flowDataToFuse`, which is a
-behaviour change deserving its own PR and its own measurement.
+**Split out as #34305 on 2026-09-05:** line 107 reads the same uninitialised
+struct. It turned out to need only a rangefinder, not a flow sensor, so any
+Plane with one fitted is exposed for most of every takeoff and landing. Fixed
+there by gating `cantFuseFlowData` on `flowDataToFuse`. See `../34305/`.
 
 **Also unexplained:** the report was of four crashed tests, but CI was green
 on all 30 checks at `7d8ec8f344` and neither analysis repo records an FPE, so
