@@ -1,9 +1,9 @@
 # PR #33359 - AGL KF for the optical-flow rangefinder height switch
 
 Analysis archive for [ArduPilot/ardupilot#33359](https://github.com/ArduPilot/ardupilot/pull/33359).
-Branch `pr-rng-aglkf-terrain` (andyp1per fork), base `master`. Real indoor flight
-logs are not committed here (public repo); the numbers below are from Replay on
-those logs.
+Branch `pr-rng-aglkf-terrain` (andyp1per fork), base `master`, head
+`bba45ab742` (2026-07-29). Real indoor flight logs are not committed here
+(public repo); the numbers below are from Replay on those logs.
 
 ## Status (one line)
 
@@ -147,3 +147,9 @@ git checkout pr-rng-aglkf-terrain   # andyp1per/master + the four commits
 ## Relation to #33318
 
 Independent of the AC_Loiter drag PR, but the same theme: route the clean AGL KF height into the consumers that were using drift-prone estimates. [#33318](../33318/) does it for the flow speed cap (`getEkfControlLimits`); this does it for the rangefinder height switch.
+
+## Relation to #32768 (found 2026-09-05)
+
+The third commit's `terrainStable = true` override is what lets the height switch engage while the vehicle is parked: Copter's own `terrain_hgt_stable` is false unless taking off or landing, so before this PR the on-ground switch could not fire. Combined with a fresh `lastAglRngFuseTime_ms` and `heightAboveGnd = aglKfH`, every term of `belowLowerSwHgt && trustTerrain && prevTnb.c.z >= 0.7f` holds at rest, and `activeHgtSource` is RANGEFINDER before the vehicle ever arms.
+
+That is correct for this PR's purpose and is not being changed here. It did, however, silently disable [#32768](../32768/)'s arm-time baro drift reset, which refused any height source but baro or GPS: `EKF_ALT_RESET` at arm went 1 -> 0 with `EK3_RNG_USE_HGT` alone (measured 2026-09-05, see `../32768/README.md`). The fix is on the #32768 side - allow the reset when the *configured* primary is baro or GPS and the vehicle is stationary - so nothing here moves. Recorded in both directories because either PR read alone looks complete.

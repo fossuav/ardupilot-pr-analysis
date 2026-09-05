@@ -1,8 +1,9 @@
 # PR #32768 - Clear baro temperature drift on arming (ArduCopter / EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#32768](https://github.com/ArduPilot/ardupilot/pull/32768).
-All committed data is SITL; real-flight numbers are cited inline and their
-logs are not committed.
+Branch `pr-baro-drift-minimum` (andyp1per fork), base `master`, head
+`9525e7d9ee` (2026-09-05). All committed data is SITL; real-flight numbers are
+cited inline and their logs are not committed.
 
 ## Status (one line)
 
@@ -18,6 +19,60 @@ tolerance gate (`HGT_RESET_ALT`, the Plane `HOME_RESET_ALT` changes, the
 Plane vehicle code is back at master; an EKF3 frontend inconsistency in the
 reported origin height was found and fixed; the heli test relaxation got its
 real mechanism. See `self-review-2026-08-29.md`.
+
+## The rangefinder height switch silently disabled the reset (2026-09-05)
+
+Found by cross-checking the whole SmallFastDrone stack against the flight
+analyses rather than by a failing test, because no test covered the
+combination. Each PR involved is correct alone.
+
+`EK3_RNG_USE_HGT > 0` hands the active height source to the rangefinder
+*while the vehicle is parked*, and `NavEKF3_core::resetHeightDatum()` refused
+any source but baro or GPS. The arm-time reset this PR exists for then never
+ran.
+
+The switch fires on the ground because `selectHeightForFusion()` treats the
+terrain as stable whenever the AGL KF is valid (#33359, `../33359/`),
+overriding Copter's own `terrainHgtStable`, which is otherwise false unless
+taking off or landing. With the AGL KF also supplying `heightAboveGnd` and a
+fresh `lastAglRngFuseTime_ms`, every term of the switch-on branch
+(`belowLowerSwHgt && trustTerrain && prevTnb.c.z >= 0.7f`) holds at rest.
+
+Measured, not inferred. `EKF_ALT_RESET` (EV id 60) is written only when
+`resetHeightDatum()` returns true, so it traces the reset directly. Analog
+rangefinder, `EK3_OPTIONS = 8`, arm from rest, same binary:
+
+| `EK3_RNG_USE_HGT` | EKF_ALT_RESET at arm |
+|---|---|
+| -1 (default) | 1 |
+| 70 | 0 |
+
+The consequence is latent rather than immediate. While the rangefinder holds
+the source the drift does not show: 30 s of accumulated drift left
+`relative_alt` at -0.01 m, against 8.65 m in the same probe at the default.
+It surfaces when the vehicle climbs past the switch ceiling and falls back to
+baro carrying drift that was never cleared, and the GPS re-anchor in
+`resetHeightDatum()` is skipped too, so the reported AMSL keeps it.
+
+`../../analysis/topics/ekf3_althold_baro_ge.md` records the accommodation that
+used to cover this - allow the reset when `onGroundNotMoving` even if
+`activeHgtSource` is RANGEFINDER through `EK3_RNG_USE_HGT` blending, provided
+the *configured* primary source is not the rangefinder. It did not survive into
+the submitted branch.
+
+Fix prepared on the SmallFastDrone branch on 2026-09-05, not yet pushed to this
+PR: allow the reset when the configured primary source is baro or GPS and
+`onGroundNotMoving`, keeping the refusal when the rangefinder is the configured
+primary (there the estimate really is rangefinder referenced and there is no
+baro drift to clear). At rest the zero the reset moves to is what the
+rangefinder reads anyway. With it, `EKF_ALT_RESET` is 1 in both rows above.
+
+Two commits, plus `autotest: cover the datum reset under the rangefinder height
+switch`, which fails without the EKF3 change with "No EKF_ALT_RESET at arm" and
+passes with it. The existing `BaroDriftClearedAtArm` runs at the
+`EK3_RNG_USE_HGT` default of -1, and the one Copter test that sets the switch
+(`EK3_AglKfVelForVelD`) sets it to -1 for an unrelated reason, which is why the
+gap went unseen.
 
 ## The problem
 
@@ -189,11 +244,15 @@ python3 plots/make_plots.py
 The SITL behaviours, in an ardupilot checkout:
 
 ```
-# arm-only branch (this PR, 11 commits at 320f53ce01) - these pass:
+# arm-only branch (this PR, 14 commits at 9525e7d9ee) - these pass:
 git checkout pr-baro-drift-minimum
 ./waf configure --board sitl && ./waf copter
 Tools/autotest/autotest.py --no-configure test.Copter.BaroDriftClearedAtArm,AmslAltPreservedOnRearmAtDifferentElevation,FarOrigin
 Tools/autotest/autotest.py --no-configure test.Copter.GPSViconSwitching
+Tools/autotest/autotest.py --no-configure test.Copter.HeightDatumKeptOnMidairRearm,BaroDriftClearedAfterMidairDisarm
+
+# the rangefinder height switch finding above; fails before the 2026-09-05 fix:
+Tools/autotest/autotest.py --no-configure test.Copter.BaroDriftClearedWithRangefinderHeightSwitch
 
 # periodic-reset branch - reproduces the problems (run GPSViconSwitching a few times):
 git checkout pr-baro-drift-minimum-periodic-reset
@@ -204,8 +263,9 @@ Tools/autotest/autotest.py --no-configure test.Copter.RudderDisarmMidair   # fai
 ## Branches and people
 
 - `pr-baro-drift-minimum` - the PR #32768 branch (arm-only). Rewritten to the
-  11-commit series on 2026-08-29; the PR on GitHub shows the old 37 commits
-  until it is force-pushed.
+  11-commit series on 2026-08-29 and force-pushed; 14 commits at `9525e7d9ee`
+  as of 2026-09-05, the last three being the mid-air disarm tests, the
+  `EKF_ALT_RESET` logging fix and the test recovery-height fix.
 - `pr-baro-drift-minimum-periodic-reset` - PR #33338 (height-only periodic experiment).
 - Reviewers: @tridge (suggested mimicking Plane's periodic reset), @rmackay9,
   Paul Riseborough (EKF author; "less is more", datum reset should not touch
