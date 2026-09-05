@@ -117,6 +117,17 @@ b5493936b2  AP_NavEKF3: recover velocity from a single-axis optical flow lockout
 9d8e218d67  SITL: add SIM_FLOW_OFS optical flow rate offset for fault injection
 ```
 
+The last two are the same patch as two commits on #34292's branch, under
+different SHAs, so a rebase drops them by patch-id rather than by identity:
+
+| patch | here | on #34292 |
+|---|---|---|
+| `SITL: add SIM_FLOW_OFS ...` | `9d8e218d67` | `25c7364cb5` |
+| `AP_OpticalFlow: apply SIM_FLOW_OFS ...` | `2e02161d1a` | `d70cb7a058` |
+
+Whichever of the two PRs merges second needs them dropped. The reciprocal
+note is in `../34292/README.md` under "Relationship to #33484".
+
 ## Autotest note
 
 `EK3_FlowAxisLockoutRecovery` provokes the lockout with `SIM_FLOW_OFS_X`
