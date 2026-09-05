@@ -1,7 +1,8 @@
 # PR #33478 - Fuse the AGL KF velocity as a velD observation (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#33478](https://github.com/ArduPilot/ardupilot/pull/33478).
-Branch `pr-ekf3-aglkf-veld` (andyp1per fork), base `master`. No real-flight
+Branch `pr-ekf3-aglkf-veld` (andyp1per fork), head `2f1cc48977`
+(2026-09-05), base `master`. No real-flight
 logs are committed here; the flight numbers below are from three indoor
 flights on one 5-inch baro-only quad and Replay on a MatekH743 flow quad.
 Option bits are the upstream ones (`EK3_OPTIONS=24` = AglKfForOptflow bit 3
@@ -156,7 +157,7 @@ result on the airframe by a wide margin.
 (Medians from the per-fusion diagnostic logging on the SmallFastDrone
 branch, log35.)
 
-Reproduced in SITL on the upstream branch, 2026-09-05, and it needs no
+Reproduced in SITL on `2f1cc48977`, 2026-09-05, and it needs no
 diagnostic build: `XKV1.V06` and `XKV1.V09` are `P[6][6]` and `P[9][9]` at
 2 Hz already. Four legs, 40 s indoor flow hover each, `EK3_OPTIONS` bit 3
 alone against bits 3+4, at two accel process noises. Note the leg's own
@@ -229,7 +230,8 @@ found by reviewing the stack rather than the feature.
 
 ### Open, from the same review, not acted on
 
-All unmeasured. Recorded so they are not rediscovered, not so they are believed.
+All of the following are derived from the source, not measured. Recorded so
+they are not rediscovered, not so they are believed.
 
 - `haveGpsVelZ` tests source configuration plus message arrival, not whether GPS
   velZ is being fused. In `AID_RELATIVE` (flow nav, no GPS fusion) a merely
@@ -251,6 +253,54 @@ All unmeasured. Recorded so they are not rediscovered, not so they are believed.
 - Terrain slope: `_terrGradMax * |v_xy|` with defaults admits ~0.6 m/s of
   apparent climb at the 2 m/s speed gate over a 30% ramp, inside the innovation
   gate, absorbed by the Z accel bias state.
+
+### The autotest's own weaknesses
+
+Also derived from the source, not measured. `EK3_AglKfVelForVelD` passes on
+`2f1cc48977` (re-run 2026-09-05), but it proves less than it looks:
+
+- **The A/B arms are not matched.** `agl_kf_optflow = 1 << 3` and
+  `agl_kf_veld = 1 << 4` (`arducopter.py:2009-2010`), so the off leg runs bit
+  3 alone and the on legs run bit 4 alone. Bit 4 enables the AGL KF
+  automatically but does not make it supply the flow scale height, which bit
+  3 does. The two arms therefore differ in flow-scaling source as well as in
+  velD fusion, and the measured improvement cannot be attributed to the
+  fusion alone. The covariance A/B above avoids this by using 8 against 24.
+- **`EK3_AGL_VD_SPD` is never set.** Only the `-1` inheritance path runs
+  (`arducopter.py:2148` reads `EK3_RNG_USE_SPD`), so the parameter this PR
+  adds is not exercised directly and the documented "zero disables the
+  fusion" branch has no coverage at all.
+- **`window` is conditionally bound.** It is assigned only inside the
+  `bias_z` / `vertical` / `fast` branches of `fly_leg()`
+  (`arducopter.py:2075-2089`) and read unconditionally at `:2091`. All four
+  current call sites set one, so it works today; a call with no stimulus
+  raises `UnboundLocalError` after SITL has booted and flown.
+- **Nothing lands.** Every leg ends `disarm_vehicle(force=True)` in the air,
+  so the armed-on-deck path - where `inFlight` stays latched on a copter
+  until disarm - is never entered.
+- Fixed `delay_sim_time` calls where observables exist (`wait_climbrate`,
+  `wait_groundspeed`), against the `Tools/autotest/CLAUDE.md` convention.
+
+### Which archived numbers the 2026-09-05 changes moved
+
+Checked before the changes were applied, per the repo rules. None of the
+numbers above move, and the reason is the same in each case: every run that
+produced them had no GPS velocity-down source, which is exactly the condition
+under which the new aliasing guard is inert.
+
+- The three flights (log35/38/41) and the Replay table both ran with
+  `EK3_SRC1_VELZ = 0`, so `fuse_gps_vz` is false and the `velDIsAglKfVel`
+  exclusion added to the bad IMU aliasing check cannot change the result.
+  Those numbers describe code without the guard, and stand as recorded.
+- The covariance A/B was run with the guard already in place, on flow-only
+  legs with no GPS velZ, so it is equally unaffected by it.
+- Moving `EK3_AGL_VD_SPD` from parameter index 12 to 15 changes no behaviour
+  and no number; a vehicle carrying a stored value at the old index simply
+  loses it and takes the default.
+
+What would falsify this: a run with `EK3_SRC1_VELZ = 3` and a GPS outage
+longer than one second while the AGL KF fusion is active. No such run exists
+here, which is also why the guard's own effect is unmeasured.
 
 ## What is here
 
