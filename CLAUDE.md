@@ -110,6 +110,36 @@ easiest to lose.
 - A PR whose README has this table should open with the "Read this before
   changing the code" banner pointing at it.
 
+## Update the record when the PR moves
+
+The record is only worth reading if it describes the branch as it is now, and
+a note that has gone stale reads exactly like one that is current. Update the
+PR's directory in the same session as the change, not "later", whenever:
+
+- commits are pushed, including a rebase or force-push that renumbers them;
+- a review arrives - maintainer or automated - and is answered, whether the
+  answer was a code change or a rebuttal;
+- CI changes what is known: a new failure, or a red gate going green;
+- the PR description is edited.
+
+At minimum refresh the head commit and the date. Then re-read the sections
+that describe mechanism, because a design that moved makes the prose wrong
+rather than merely old, and prose describing code that no longer exists is
+worse than no prose. #34292 carried a "How the value reaches the EKF" section
+naming the wrong DAL record for a day after the record changed.
+
+Numbers still follow "Editing the record": a measurement taken at an earlier
+head keeps its value and gains the commit it was taken on. Re-run and add; do
+not re-run and overwrite. If the test itself was rewritten, the new numbers
+are a different measurement, so say so rather than presenting them as a
+correction.
+
+**Record the review findings that were rejected, with the reason.** This is
+the same value as the "Measured and rejected" table. A reviewer's plausible
+suggestion comes back - from the next reviewer, or from a later automated
+pass - and next time the answer is already written down. Include findings from
+automated reviews that turned out to be wrong: unrebutted, they get repeated.
+
 ## Changing code can invalidate an archived number
 
 Before applying a change to a PR branch, check which archived runs it would

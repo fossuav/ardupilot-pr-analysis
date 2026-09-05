@@ -37,7 +37,7 @@ code based on a real flight may be changed - are in [CLAUDE.md](CLAUDE.md).
 | [32553](32553/) | Reset terrain offset from baro when ground effect clears (EKF3) | result needs #32472's HAGL check; reset drifts back; likely superseded by #33359 |
 | [32972](32972/) | Protect height fusion from baro ground effect at takeoff (EKF3) | 22-flight development record; SITL A/B plots for both behaviour changes; anchor ends at first throttle and can engage in mid-air |
 | [33478](33478/) | Fuse AGL KF velocity as a velD observation (EKF3) | three flights, 36 s hands-off at 0.13 m with #33507 at 0.3; SITL A/B confirms the 14x/10x covariance collapse, clip-cycle prediction refuted; param index 12 -> 15; its own autotest A/B arms are unmatched (bit 3 against bit 4) so that number is not attributable to the fusion alone |
-| [33484](33484/) | Recover velocity from a single-axis optical-flow lockout (EKF3) | Replay-tuned 500 ms, flown; near-ground flow floor on the same branch |
+| [33484](33484/) | Recover velocity from a single-axis optical-flow lockout (EKF3) | Replay-tuned 500 ms, flown; the near-ground flow floor split out to #34292 on 2026-09-04, and two `SIM_FLOW_OFS` commits are the same patch on both branches |
 | [33585](33585/) | Keep optical flow nav alive above the rangefinder range (EKF3) | Replay-validated on log308; guard rewritten twice after review, three terms each with a failing-without-it autotest leg; terrain gate restored after rmackay9 review, merging the option bits open with him; stacked on #33478 |
 | [33497](33497/) | FLOW_HF_RATEF for a half-rate HereFlow node | sensor-rate slope 0.52 -> 1.00; not reproducible in SITL |
 | [33498](33498/) | Inhibit Z gyro bias from optical flow without a yaw source (EKF3) | flight-validated; no SITL test yet |
@@ -46,3 +46,4 @@ code based on a real flight may be changed - are in [CLAUDE.md](CLAUDE.md).
 | [34208](34208/) | Interpolate the rate target in the fast rate thread | SITL A/B + hardware; opened 2026-08-29 |
 | [34209](34209/) | EKF3: no XY accel bias learning in unaided flight | autotest fails on master / passes fixed; opened 2026-08-29 |
 | [34210](34210/) | Advanced land failsafe (LAND_FS_OPTIONS bit 0) | design reshaped twice by its SITL runaway test; opened 2026-08-29 |
+| [34292](34292/) | Optical flow minimum focus height, FLOW_HGT_MIN (AP_OpticalFlow/EKF3) | split from #33484; two review rounds answered, replay record moved to its own ROFM message after a growth bug, and a SIGFPE this PR introduced fixed; the flown 0.1 m value may sit under the `RNGFNDx_GNDCLR` clamp - unresolved |
