@@ -205,7 +205,7 @@ Second arm, 2026-09-04: applying the change also fails the shipped
 branch as shipped passes at 1.632 m. The VRF and platform arms agree, and a
 plain `test.Copter.AccelBiasMovingPlatform` run catches it without the harness.
 
-### Still open - but the third candidate measures better (2026-09-05)
+### Bit 2's cost, mostly recovered (2026-09-05, shipped as `9b852c9464`)
 
 Bit 2 costs 0.467 m against `=2`'s 0.201 m even with `cb5026417f` gone (0.448
 against 0.196 as first measured). It protects the arm-time state and degrades
@@ -267,10 +267,15 @@ the four EK3 accel-bias tests all pass with it applied. That test is the cheap
 check this file prescribes for any change in this area, and it is the one that
 fails `cb5026417f` at 3.9 m.
 
-Not committed to the branch. SITL only, and the two previous attempts on this
-exact problem were both confident code arguments that measured worse - so a
-flight is still what would settle it. The repeat runs it also wanted have been
-done and are in the table above.
+Shipped as `9b852c9464` after the repeat runs above. SITL only: the two
+previous attempts on this exact problem were both confident code arguments that
+measured worse, so a flight is still what would settle it, and this entry
+should be revisited when one is available. What tipped it was that the shape
+moved as well as the number - a pinned state (spread 0.000) becoming one that
+settles where the uninhibited case settles (0.010) - and that the platform
+protection, which is the entire purpose of bit 2, is bit-identical either side.
+
+Bit 2 still costs 0.284 m against `=2`'s 0.201 m. Reduced, not resolved.
 
 ## What is here
 
@@ -503,7 +508,7 @@ commit. It was 18 commits wide before this round.
 
 ## Branches and people
 
-- `pr-vrf-core` - the PR branch, `d951df4f82` as of 2026-09-05. Depends on #32396.
+- `pr-vrf-core` - the PR branch, `9b852c9464` as of 2026-09-05. Depends on #32396.
 - Author: @andyp1per. Approved, then reworked by the 2026-09-04 review pass.
 - Distinct from #34209 (XY bias in unaided flight) and #32473 (acro
   inhibit), which still carries `cb5026417f`.
