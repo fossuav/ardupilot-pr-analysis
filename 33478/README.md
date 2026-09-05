@@ -14,9 +14,14 @@ logs as `XKF6` rather than `XKFA`).
 Design validated by Replay, an autotest and three flights; with the AGL KF
 bias process noise raised to 0.3 (#33507) it gave 36 s of hands-off VALT at
 0.13 m true altitude std on a baro-only indoor quad with no velZ source. Two
-defects found in flight are not yet in the PR: a rangefinder-freshness gate
-on the fusion, and a corrected comment on the zero-velocity fusion gate in
-master. Open: the fusion collapses P[posD] 11x and starves the barometer.
+defects found in flight were not in the PR when this was written: a
+rangefinder-freshness gate on the fusion, and a corrected comment on the
+zero-velocity fusion gate in master. The first has since landed
+(`aglKfRngCurrent`, 500 ms, `PosVelFusion.cpp:769`); the second has not - the
+comment at `PosVelFusion.cpp:723` still says "and takeoff_expected for
+armed-on-ground" while the gate is `onGroundNotMoving` alone. Open: the fusion
+collapses P[posD] 11x and starves the barometer - now confirmed at 10.3x by an
+independent SITL A/B, see below.
 
 ## The problem
 
@@ -149,7 +154,38 @@ result on the airframe by a wide margin.
 | on       | 0.0165 m^2     | 0.0009         | 0.0041                |
 
 (Medians from the per-fusion diagnostic logging on the SmallFastDrone
-branch, log35.) A confident velocity observation (`VAglStd` ~0.068 against
+branch, log35.)
+
+Reproduced in SITL on the upstream branch, 2026-09-05, and it needs no
+diagnostic build: `XKV1.V06` and `XKV1.V09` are `P[6][6]` and `P[9][9]` at
+2 Hz already. Four legs, 40 s indoor flow hover each, `EK3_OPTIONS` bit 3
+alone against bits 3+4, at two accel process noises. Note the leg's own
+`EK3_OPTIONS` cannot be read from the boot `PARM` record - `set_parameters`
+lands in the previous leg's log - so identify legs by `XKFA.VFuse`.
+
+| leg | EK3_ACC_P_NSE | P[6][6] | P[9][9] | baro gain P/(P+4) |
+|---|---|---|---|---|
+| fusion off | 0.35 | 1.200e-2 | 1.641e-1 | 0.0394 |
+| fusion on  | 0.35 | 8.571e-4 | 1.599e-2 | 0.0040 |
+| fusion off | 0.05 | 4.536e-3 | 1.248e-1 | 0.0303 |
+| fusion on  | 0.05 | 1.943e-4 | 1.205e-2 | 0.0030 |
+
+velD variance collapses 14x at the default process noise and 23x at 0.05;
+posD collapses 10.3x and 10.4x. That confirms the flight-derived 17x/11x
+above from an independent path, so the trade is real and is the size it was
+recorded as.
+
+The review of #33585 additionally predicted that at `EK3_ACC_P_NSE=0.05`
+`P[6][6]` would fall below `VEL_STATE_MIN_VARIANCE` (1e-4) and enter the
+`zeroStatesVarCov(6,6)` reset cycle, wiping the `P[6][15]` cross-covariance
+every 5 s. **Not reproduced**: the closest approach is 1.943e-4, 1.9x above
+the clip, and no sample in any leg reached it. The prediction was
+directionally right and about 3x out. A 1.9x margin on a quiet SITL airframe
+is not much, so a lower process noise or a quieter real airframe could still
+cross it; it is not a demonstrated failure and it is not a demonstrated
+safety margin either.
+
+A confident velocity observation (`VAglStd` ~0.068 against
 the `sq(0.05)` floor) shrinks P[velD] 17x and, through the cross-covariance,
 P[posD] 11x, so the barometer moves the position state 11x more weakly and
 absolute height is dead-reckoned from the fused velocity. Accepted in the
@@ -158,6 +194,63 @@ open item (inflate `P[6][6]` when no velZ source is active), and
 `EK3_ALT_M_NSE` 2.0 -> 1.0 (with P << R the baro gain is linear in 1/R, a
 clean 4x back, safer with the fusion on than without because the velocity
 anchor bounds the ground-sucking runaway).
+
+## Changes made 2026-09-05 (self-review of the stacked #33585)
+
+Branch head is now `2f1cc48977`. Nothing above is revised; these are additions
+found by reviewing the stack rather than the feature.
+
+- **`EK3_AGL_VD_SPD` moved from parameter index 12 to 15.** Index 12 has never
+  been used in EKF3's `var_info2` upstream, but #32471's branch carries
+  `// index 12 was ABIAS_HVR_Z, moved to INS_ACC_VRFB_Z` and retires it, and
+  anyone who flew that branch has a stored `EK3_ABIAS_HVR_Z` that would load
+  into the new parameter. 13 is #33484's `FLOW_QMIN`, 14 is #33507's
+  `AGL_ABIAS_P`, so 15.
+- **The bad IMU aliasing check no longer consumes the AGL KF observation.**
+  `fuse_gps_vz` at `PosVelFusion.cpp` is `useVelZSource(GPS) &&
+  gpsDataDelayed.have_vz`, and `gpsDataDelayed` keeps its last recalled value,
+  so it can still be set after the >1 s GPS silence that let the AGL KF claim
+  `velPosObs[2]`. `R_OBS[2]` has by then been replaced by the AGL KF variance
+  (~0.004), so the `sq(velDErr) > 9*R_OBS[2]` arm trips around 0.2 m/s instead
+  of ~1.5, and on a trip the remedy writes `stateStruct.velocity.z =
+  gpsDataDelayed.vel.z` - a pre-outage GPS velocity - for 10 s. Three
+  independent reviewers found this; it is a reachable code path, the trigger
+  being met in flight is unconfirmed.
+
+  The obvious one-line fix is wrong. `fuse_gps_vz` also drives `imax` in the
+  velocity consistency test, so narrowing it there drops velD out of that test
+  entirely, and `fusingAglKfVel` lives inside `#if EK3_FEATURE_OPTFLOW_AGL_KF`
+  so an unguarded use breaks the feature-off build. The exclusion is on the
+  aliasing `if` only, via a local that is false when the feature is compiled
+  out.
+- **Commit message corrected.** It claimed the gate uses "velTimeout, not a
+  bare source check"; the code comment says velTimeout is unsuitable and the
+  implementation uses a 1 s window on `lastTimeGpsReceived_ms`.
+
+### Open, from the same review, not acted on
+
+All unmeasured. Recorded so they are not rediscovered, not so they are believed.
+
+- `haveGpsVelZ` tests source configuration plus message arrival, not whether GPS
+  velZ is being fused. In `AID_RELATIVE` (flow nav, no GPS fusion) a merely
+  connected GPS blocks the fallback for the whole flight, which is the failure
+  this PR exists to fix. `readGpsData()` already computes `useGpsVertVel` for
+  exactly this question. Changing it alters the validated gate, so it wants a
+  re-run of the three flights or Replay first.
+- Both sides of the AGL KF innovation are floored at `rngOnGnd`, so at the floor
+  `hgtInnov` is identically zero: the fusion is a numerical no-op that still
+  refreshes `lastAglRngFuseTime_ms` and still takes the covariance update. Armed
+  on the deck after touchdown is the case (`inFlight` stays latched until
+  disarm).
+- The AGL KF hard reset sets `aglKfV = 0` with `aglKfValid` true and the range
+  timestamp refreshed, so the next step fuses "velD = 0" during a descent back
+  into range.
+- `aglKfRngGapMax_ms` (500 ms) is a validity window, but `R_OBS[2]` grows only by
+  `sq(accNoise*imuDt)` across it, so a 2-3 Hz rangefinder is presented with an R
+  several times too small.
+- Terrain slope: `_terrGradMax * |v_xy|` with defaults admits ~0.6 m/s of
+  apparent climb at the 2 m/s speed gate over a 30% ramp, inside the innovation
+  gate, absorbed by the Z accel bias state.
 
 ## What is here
 
