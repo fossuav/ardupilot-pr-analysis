@@ -20,8 +20,10 @@ Under review. tridge's automated pass has run twice (2026-09-04 and
 2026-09-05) and peterbarker requested changes on 2026-09-04. Both rounds are
 recorded under "Review" below, including the findings that were rejected.
 
-**One open question is unresolved and it bears on the flight evidence.** See
-"Open question: was the flown value inside the rangefinder floor?".
+A question raised on 2026-09-05 about whether the flown 0.1 m value sat under
+the EKF's rangefinder clamp was resolved the same day from log67: it did not,
+and the flight evidence stands. See "Open question: was the flown value inside
+the rangefinder floor?".
 
 ## What it does
 
@@ -148,13 +150,49 @@ records no rangefinder at all. The JK-4Inch's setting is not recorded in
 firmware vintage) from log67's parameter dump. Until then, quote the SITL
 evidence rather than the flight evidence for this PR.
 
+### Resolved 2026-09-05: the floor fired. The flight evidence stands.
+
+Read from `/mnt/d/support/bragg/JK-4Inch/log67.bin`:
+
+| parameter | value |
+|---|---|
+| `RNGFND1_GNDCLR` | **0.0** |
+| `RNGFND1_MIN` | 0.01 |
+| `RNGFND1_ORIENT` | 25 (down), so the EKF does consume it |
+| `RNGFND1_TYPE` | 24 (DroneCAN) |
+| `EK3_FLOW_MIN_H` | 0.1 |
+| `EK3_FLOW_USE` | 1 |
+| active source set | 2 (`Using EKF Source Set 2`), `EK3_SRC2_VELXY=5`, optical flow |
+
+`RNGFND1_GNDCLR = 0` gives `rngOnGnd = MAX(0, 0.05) = 0.05 m`, which is below
+the 0.1 m floor, so the clamp never defeated it. 856 of the log's 1168 `RFND`
+samples read below 0.10 m and 787 below 0.05 m; even the clamped ones enter
+the comparison at 0.05, still under 0.1. The gate fired on every sub-floor
+sample. `RNGFND1_MIN = 0.01` confirms the "valid to 1 cm" claim, and
+`EK3_SRC2_VELXY = 5` confirms flow was the velocity source at the time.
+
+**The criterion stated above was wrong, and this is the correction.** It is
+not "GNDCLR below about 0.075", which was reverse-engineered from the 0.054 m
+descent reading. The condition is simply
+
+    FLOW_HGT_MIN > MAX(RNGFNDx_GNDCLR, 0.05)
+
+because the clamp raises a low reading to `rngOnGnd`, not to `GNDCLR` itself.
+log67 clears it (0.1 > 0.05).
+
+The caveat in "Added 2026-09-05" is unaffected and still matters for everyone
+else: with the `RNGFNDx_GNDCLR` default of 0.10 m, `FLOW_HGT_MIN = 0.1` is a
+no-op, and the flown value only worked because that airframe had `GNDCLR`
+zeroed.
+
 ## Evidence
 
 Flight (as `EK3_FLOW_MIN_H`, 4-inch quad, log67, descent through the floor at
 rangefinder 0.115 -> 0.054 m): `FIX/FIY` +/-2000-6700 -> +/-200-500, `NI`
 pinned 255 -> 3-40, phantom `VN/VE` +/-0.5 -> +/-0.1 m/s, DesRoll/Pitch
 +/-14 -> +/-2 deg. Operator: "althold type behaviour close to the ground but
-no sudden lean". See the open question above before quoting this.
+no sudden lean". The rangefinder-clamp question raised against this on
+2026-09-05 was resolved the same day in the section above: the floor fired.
 
 SITL (`Copter.OpticalFlowFocusHeight`, three runs, **branch head 292ec09fef**,
 the RC-descent version of the test): hover in an asserted altitude band below
