@@ -46,4 +46,4 @@ code based on a real flight may be changed - are in [CLAUDE.md](CLAUDE.md).
 | [34208](34208/) | Interpolate the rate target in the fast rate thread | SITL A/B + hardware; opened 2026-08-29 |
 | [34209](34209/) | EKF3: no XY accel bias learning in unaided flight | autotest fails on master / passes fixed; opened 2026-08-29 |
 | [34210](34210/) | Advanced land failsafe (LAND_FS_OPTIONS bit 0) | design reshaped twice by its SITL runaway test; opened 2026-08-29 |
-| [34292](34292/) | Optical flow minimum focus height, FLOW_HGT_MIN (AP_OpticalFlow/EKF3) | split from #33484; two review rounds answered, replay record moved to its own ROFM message after a growth bug, and a SIGFPE this PR introduced fixed; the flown 0.1 m value may sit under the `RNGFNDx_GNDCLR` clamp - unresolved |
+| [34292](34292/) | Optical flow minimum focus height, FLOW_HGT_MIN (AP_OpticalFlow/EKF3) | split from #33484; two review rounds answered, replay record moved to its own ROFM message after a growth bug, and a SIGFPE this PR introduced fixed; the flown 0.1 m value was checked against the `RNGFNDx_GNDCLR` clamp and cleared it (log67 had GNDCLR=0) |
