@@ -1,9 +1,10 @@
 # PR #33585 - Keep optical flow nav alive above the rangefinder range (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#33585](https://github.com/ArduPilot/ardupilot/pull/33585).
-Branch `pr-optflow-flat-ground` (andyp1per fork), head `62a3fbeaba`
+Branch `pr-optflow-flat-ground` (andyp1per fork), head `f266fd0fd9`
 (2026-09-05), base `master`. Stacked on #33478 (`../33478/`), whose three
-commits are the first three on the branch.
+commits are the first three on the branch. Head was `62a3fbeaba` until the two
+autotest fixes of 2026-09-05 below.
 
 ## Status (one line)
 
@@ -87,6 +88,28 @@ combination was
 written and then removed: it could not have failed differently from the
 bit-5-only leg, because `flatGroundAssumed()` does not reference the AGL KF and
 both 5 s windows expire together. Its measurement is in the analysis topic.
+
+## Two test defects found by running it, not reading it (2026-09-05)
+
+Both found while re-running the whole SmallFastDrone suite after a refresh, and
+neither had been caught by any review or development pass on this PR. Pushed as
+`46653b7436` and `f266fd0fd9`.
+
+- **The test never had terrain data.** `EK3_OptflowAssumeFlatGnd` needs
+  `install_terrain_handlers_context()`; without it the run failed for missing
+  terrain rather than for the behaviour under test, which also invalidated an
+  earlier attempt to reproduce the failure on master. A test that fails for the
+  wrong reason reads as a red gate for the right one.
+- **It waited for the terrain offset to go stale while still on the ground.**
+  The "does not carry over" leg called `wait_terrain_offset_stale()` before
+  takeoff. On the ground the offset does not go stale, so the wait could only
+  time out; the leg's real subject is the in-flight rangefinder-ceiling case,
+  which `../../analysis/topics/dow_althold_ekf_failsafe.md` establishes and
+  which the wait was not testing.
+
+Neither touches EKF3 code, so no number in this record moves. Worth recording
+because the guard here has been rewritten twice against review and both defects
+were in the test that qualifies it, not in the guard.
 
 ## Maintainer review 2026-09-05 (rmackay9) and the restored terrain gate
 
