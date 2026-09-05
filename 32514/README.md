@@ -1,8 +1,9 @@
 # PR #32514 - Reset the EKF failsafe gate on a source-set change
 
 Analysis archive for [ArduPilot/ardupilot#32514](https://github.com/ArduPilot/ardupilot/pull/32514).
-Branch `ekf-check-source-reset` (andyp1per fork), base `master`. No logs
-committed; the field numbers are from real throws.
+Branch `ekf-check-source-reset` (andyp1per fork), base `master`, head
+`b936c14b09` (2026-06-27). No logs committed; the field numbers are from real
+throws.
 
 ## Status (one line)
 

@@ -1,9 +1,9 @@
 # PR #34210 - Advanced land failsafe (LAND_FS_OPTIONS bit 0)
 
 Analysis archive for [ArduPilot/ardupilot#34210](https://github.com/ArduPilot/ardupilot/pull/34210).
-Branch `pr-land-fs-options` (andyp1per fork), base `master`. Everything
-committed here is from SITL; the real-flight fly-away this answers is described
-generically only.
+Branch `pr-land-fs-options` (andyp1per fork), base `master`, head `7ffe67da33`
+(2026-09-03). Everything committed here is from SITL; the real-flight fly-away
+this answers is described generically only.
 
 ## Status (one line)
 

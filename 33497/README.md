@@ -1,9 +1,10 @@
 # PR #33497 - FLOW_HF_RATEF: correct a HereFlow node's output rate
 
 Analysis archive for [ArduPilot/ardupilot#33497](https://github.com/ArduPilot/ardupilot/pull/33497).
-Branch `pr-hflow-scale` (andyp1per fork), base `master`. Evidence is from
-real flights on a 4-inch optical-flow quad (MatekH743, ARK Flow over
-DroneCAN, downward rangefinder, GPS carried as truth); no logs are committed.
+Branch `pr-hflow-scale` (andyp1per fork), base `master`, head `2326138c6a`
+(2026-06-19). Evidence is from real flights on a 4-inch optical-flow quad
+(MatekH743, ARK Flow over DroneCAN, downward rangefinder, GPS carried as
+truth); no logs are committed.
 
 ## Status (one line)
 

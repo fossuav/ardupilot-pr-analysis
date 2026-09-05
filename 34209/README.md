@@ -1,8 +1,9 @@
 # PR #34209 - Do not learn XY accel bias in unaided flight (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#34209](https://github.com/ArduPilot/ardupilot/pull/34209).
-Branch `pr-ek3-noaid-xy-bias` (andyp1per fork), base `master`. Everything
-committed here is from SITL; the real-flight numbers are cited inline only.
+Branch `pr-ek3-noaid-xy-bias` (andyp1per fork), base `master`, head
+`27029f2ff5` (2026-09-04). Everything committed here is from SITL; the
+real-flight numbers are cited inline only.
 
 ## Status (one line)
 

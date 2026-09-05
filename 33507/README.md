@@ -1,10 +1,11 @@
 # PR #33507 - estimate the accel-Z bias inside the AGL KF (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#33507](https://github.com/ArduPilot/ardupilot/pull/33507).
-Branch `pr-agl-kf-zbias` (andyp1per fork), base `master`. Evidence is Replay
-on, and flights of, a 4-inch optical-flow quad (MatekH743, ARK Flow,
-downward rangefinder), flights of a 5-inch baro-only indoor quad, and Replay
-on a second flow-navigation airframe; numbers inline, no logs committed.
+Branch `pr-agl-kf-zbias` (andyp1per fork), base `master`, head `0c429893cf`
+(2026-07-27). Evidence is Replay on, and flights of, a 4-inch optical-flow quad
+(MatekH743, ARK Flow, downward rangefinder), flights of a 5-inch baro-only
+indoor quad, and Replay on a second flow-navigation airframe; numbers inline,
+no logs committed.
 Upstream logs the AGL KF as `XKFA`; the flights were on the SmallFastDrone
 branch where it is `XKF6`.
 
