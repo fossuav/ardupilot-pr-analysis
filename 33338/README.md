@@ -1,7 +1,10 @@
 # PR #33338 - Periodic height-only datum reset (prototype)
 
 Draft/prototype: [ArduPilot/ardupilot#33338](https://github.com/ArduPilot/ardupilot/pull/33338).
-Branch `pr-baro-drift-minimum-periodic-reset`.
+Branch `pr-baro-drift-minimum-periodic-reset`, head `74f2dd32f3`. Closed
+without merging on 2026-06-24, which is the outcome this record argues for:
+the experiment existed to show the periodic reset was worse than the arm-only
+design in #32768.
 
 This is the explored alternative to [#32768](https://github.com/ArduPilot/ardupilot/pull/32768).
 The full analysis, plots and SITL data live in [`../32768/`](../32768/) - this is

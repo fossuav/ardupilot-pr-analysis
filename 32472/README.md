@@ -1,8 +1,9 @@
 # PR #32472 - Ground effect altitude and timeout parameters (Copter / AP_GroundEffect)
 
 Analysis archive for [ArduPilot/ardupilot#32472](https://github.com/ArduPilot/ardupilot/pull/32472).
-Branch `pr-ground-effect`, base master. No logs committed; real-flight
-numbers are cited inline.
+Branch `pr-ground-effect`, base master, head `2f81d1bfc2`. Merged upstream
+2026-09-01, and folded into `SmallFastDrone-4.7-base` as a result. No logs
+committed; real-flight numbers are cited inline.
 
 ## Status (one line)
 
