@@ -117,6 +117,9 @@ value preloaded. Two runs each where shown:
 | 6 (use+inhibit) | 0.713 / 0.476 m | 0.46 |
 | 7 (all bits) | 0.711 / 0.476 m | 0.47 |
 
+(Measured 2026-09-04 on code that still carried the ground-effect Z-bias
+inhibit. Re-measured without it 2026-09-05, below.)
+
 `=2` and `=3` are indistinguishable, so the 0.196 m is the price of *applying*
 the correction, not of learning it. `=6` and `=7` are also indistinguishable,
 so the extra 0.5 m is bit 2 alone - learning first and then pinning does not
@@ -169,6 +172,7 @@ reintroduce any of them without redoing the A/B in `data/ab-2026-09-04/`.
 |---|---|---|
 | Route the four covariance gates off `accelBiasLearningInhibited()` onto `inhibitDelVelBiasStates` (`cb5026417f`) | `ConstrainVariances` zeroes the accel-bias cross-covariances that `Kfusion` reads, so learning cannot restart after the inhibit clears | `=6` **0.713/0.476 m** with it, **0.448 m** without; `XKF2.AZ` range 0.46 vs 0.01 |
 | Freeze P during the inhibit instead (withhold only the process noise) | avoids both the collapse and the inflation | **0.905/0.882 m**, oscillation intact - worse than either |
+| Inhibit Z accel-bias learning in ground effect | the AccZ offset there is not the hover value, and a downwash-corrupted baro drives the bias wrong | at `=2`, present vs removed: **0.203 / 0.201 m** with no simulated ground effect, **0.169 / 0.168 m** with `SIM_BARO_GEFF_M=1.0`. Removed 2026-09-05 |
 | Store the motors-on delta in `INS_ACC_VRFB_Z` instead of the total | the static bias is otherwise applied twice at arm | the stored value is a total across the whole fleet; changing it silently reinterprets every one. The arm-time double count is real and belongs to bit 2: `XKF2.AZ` at arm +0.130 clear vs 0.000 set |
 
 `logjk4`'s proposal to gate the frozen correction on ground effect is also
@@ -282,9 +286,141 @@ Landed on top of the measured work above, after a `/pr-review` of the stack:
 Two changes from that pass were reverted after reading this file: see "Measured
 and rejected".
 
+## Review round, 2026-09-05
+
+tridge's automated pass at head `84ddc625b8` raised five findings plus six
+smaller ones. Branch head after this round: `d951df4f82`, 27 commits, force
+pushed. Every finding was re-derived from source before acting on it.
+
+### Landed
+
+- **`ACC_ZBIAS_LEARN=1` grew the stored value by its own value every flight.**
+  `AP_AHRS::get_hover_z_bias_correction()` returned the stored parameter with
+  no check of the enable flag, while the EKF applies it only when enabled. The
+  learner adds it back to recover the total, so with bit 0 set and bit 1 clear
+  it added back a correction that was never applied: `s(n+1) = b_true + s(n)`,
+  reaching the 0.6 clamp in seven flights on the measured 0.089. Gated at the
+  accessor. **This cannot move any number in this file**: every configuration
+  ever measured or flown here is 0, 2, 3, 4, 6 or 7, and the fix is a no-op
+  whenever bit 1 is set. It also restores the "stores the total" invariant this
+  file defends, which until now held only when bit 1 happened to be set.
+- **`RISJ` mis-parsed every pre-existing log.** The PR had added
+  `accel_vrf_bias_z` ahead of `instance`. Replay copies the on-disk record into
+  the compiled struct, so an older 9-byte record is not truncated but
+  misaligned: the old instance byte lands in the low byte of the new float and
+  `instance` reads 0, so IMU 1 and 2 overwrite IMU 0. Appending after
+  `instance` does not work either - the struct is not packed, so a trailing
+  float pads `offsetof(_end)` to 16 against a 13-byte format string, which is
+  the "Log structures invalid" trap. Fixed by moving the value to its own
+  `RISK` message, following `97b5b0448a` which split `RISJ` out of `RISI` for
+  the same reason, and matching what #34292 did with `ROFM` beside `ROFH`.
+- **`updateMovementCheck()`** compared `raw - residual` once a correction was
+  applied. Reachable only between arm and liftoff, where the displacement is up
+  to 0.6 against an `accel_limit` of 1.0. A strict no-op for the platform
+  numbers in this file, which are measured disarmed.
+- Smaller: the accel-bias inhibit DAL event is written on change instead of at
+  1 Hz forever while disarmed; the hover bias is saved after `motors->armed(false)`;
+  `rot_ned_to_body` renamed to match what `rotation_matrix()` returns; the INS
+  header no longer pulled into everything that includes `AP_NavEKF3.h`.
+
+### The ground-effect Z-bias inhibit was removed
+
+It went through three states in one afternoon - narrowed to a baro height
+observation, then held behind the feature flag, then deleted - because each
+step made the next question answerable.
+
+The deciding measurement is the inhibit present against removed entirely, at
+`ACC_ZBIAS_LEARN=2`, worst |EKF height - truth| over 35 s:
+
+| | inhibit present | removed |
+|---|---|---|
+| `SIM_BARO_GEFF_M=0` | 0.203 m | 0.201 m |
+| `SIM_BARO_GEFF_M=1.0` | 0.169 m | 0.168 m |
+
+1-2 mm, with the baro under-reading by a full metre in ground effect. Once the
+correction is applied the bias state has little left to absorb. Its only
+measurable effect was on a vehicle *not* using the feature - 0.604 m against
+0.650 m - which is a default behaviour change for every EKF3 user, reached
+through `takeoff_expected` that Plane sets on the takeoff roll. That is a
+separable improvement for its own PR, and it is the one thing this PR now does
+*not* do: there is no behaviour change at default settings at all.
+
+### Re-measured without the gate, 2026-09-05
+
+Same probe as 2026-09-04, on `d951df4f82`. Single runs.
+
+| `ACC_ZBIAS_LEARN` | height error | `XKF2.AZ` range |
+|---|---|---|
+| 0 (off) | 0.653 m | 0.11 |
+| 2 (use) | **0.201 m** | 0.02 |
+| 3 (learn+use) | 0.206 m | 0.02 |
+| 6 (use+inhibit) | **0.467 m** | 0.02 |
+| 7 (all bits) | 0.471 m | 0.02 |
+
+With `SIM_BARO_GEFF_M=1.0`, `=0` is 0.650 m and `=2` is 0.168 m: the
+correction is worth the same whether or not the baro is corrupted near the
+ground.
+
+**This settles the stale `=6` row.** The 0.713/0.476 above was measured with
+`cb5026417f` applied; "Still open" quoted 0.448 without it. On current code
+`=6` is 0.467 m with an `XKF2.AZ` range of 0.02, confirming the post-drop
+value. The tension itself is unchanged: bit 2 costs 0.467 m against 0.201 m.
+
+### Corrections to this file and to claims made during the round
+
+- **The five BINs in `data/ab-2026-09-04/` contain no replay messages.** They
+  carry the `RISJ` *format* but zero `RISJ`/`RISI`/`RFRN` records, because that
+  harness ran without `LOG_REPLAY=1`. They are fine for the plots, which decode
+  by FMT through pymavlink, but they cannot be replayed and they are not
+  examples of the misparse above.
+- **SITL does model baro ground effect.** `SIM_BARO_GEFF_M`, added by
+  `cbe1af2800` and already on this PR's base, makes the baro under-read by up
+  to that many metres while the throttle is up, decaying to zero at 2 m AGL. It
+  defaults to 0, which is why the 2026-09-04 A/B never exercised it. An
+  in-session claim that SITL had no such model was wrong.
+- **The EXTNAV/BEACON regression is not a property of the blanket gate.** It
+  belonged to `learnZBias`, an SFD-branch design with a `switch` whose
+  `default: false` meant "inhibit for the whole flight" on those sources.
+  `git log --all -S learnZBias` finds nothing in the ArduPilot tree: it never
+  landed here. `cab18be57b`'s commit message describes that history, and it was
+  read during this round as describing what its own diff removes.
+
+### `RISK` does not hit the #34292 `IFCHANGED` trap
+
+`../34292/README.md` records that `AP_DAL::WriteLogMessage` returns early when
+`!logging_started` without setting the `_end` retry flag, so a record written
+only on change can be dropped forever - measured there as `ROFM=1` in one log
+and `ROFM=0` in the next log of the same power cycle. That fix is on #34292's
+branch, not on this base.
+
+`RISK` escapes it for the same reason `RISJ` does: it is written from
+`AP_DAL_InertialSensor::start_frame()` (`AP_DAL.cpp:93`), inside the
+`force_write` bracket set at `:46` and cleared at `:120`. That file is explicit
+that reasoning about `IFCHANGED` is what failed, so it was counted rather than
+argued. Two flights in one power cycle with a log download between them to
+force `stop_logging()`:
+
+```
+feature on   log 3: RISJ=3 RISK=3  {0:0.15, 1:0.15, 2:0.0}
+             log14: RISJ=3 RISK=3  {0:0.15, 1:0.15, 2:0.0}
+at default   log 3: RISJ=3 RISK=3  {0:0.0,  1:0.0,  2:0.0}
+             log11: RISJ=3 RISK=3  {0:0.0,  1:0.0,  2:0.0}
+```
+
+### History
+
+Squashed from 38 commits to 27, each fix folded into the commit that
+introduced the problem, content verified byte-identical across the rebase
+(`git diff` between the pre- and post-squash heads is empty). Every commit
+builds `arducopter`. Two commits do not build the `Replay` tool: adding a value
+to `AP_DAL::Event` breaks Replay's exhaustive switch immediately, and the
+handler cannot land until `NavEKF3::setInhibitAccelBiasLearning` exists, which
+needs the enum. Closing that window entirely would put two modules in one
+commit. It was 18 commits wide before this round.
+
 ## Branches and people
 
-- `pr-vrf-core` - the PR branch, `6fa6c26abb` as of 2026-09-04. Depends on #32396.
+- `pr-vrf-core` - the PR branch, `d951df4f82` as of 2026-09-05. Depends on #32396.
 - Author: @andyp1per. Approved, then reworked by the 2026-09-04 review pass.
 - Distinct from #34209 (XY bias in unaided flight) and #32473 (acro
   inhibit), which still carries `cb5026417f`.
