@@ -235,16 +235,22 @@ if (prevVehicleInhibitAccelBias && !vehicleInhibit && !inhibitDelVelBiasStates) 
 prevVehicleInhibitAccelBias = vehicleInhibit;
 ```
 
-Measured with the harness on `d951df4f82` plus that change, single runs:
+Measured with the harness on `d951df4f82` plus that change. Three runs per side
+on the arm that matters, so the separation can be read against the noise:
 
 | arm | shipped | with the re-init |
 |---|---|---|
-| `=2` VRF | 0.201 m, AZ range 0.02 | 0.203 m, AZ range 0.02 |
-| `=6` VRF | 0.467 m, AZ range 0.02 | **0.285 m**, AZ range 0.14 |
-| `=7` VRF | 0.471 m, AZ range 0.02 | **0.285 m**, AZ range 0.14 |
+| `=6` VRF | 0.467 / 0.473 / 0.472 m | **0.285 / 0.284 / 0.284 m** |
+| `=7` VRF | 0.471 m | 0.285 m |
+| `=2` VRF | 0.201 m | 0.203 / 0.208 m |
 | platform bit 2 clear, `XKF2.AZ` at arm | -0.9900 | -0.9900 |
 | platform bit 2 set, `XKF2.AZ` at arm | +0.0000 | +0.0000 |
-| platform bit 2 set, height error | 0.176 m | 0.164 m |
+| platform bit 2 set, height error | 0.176 / 0.176 m | 0.164 / 0.176 m |
+
+The `=6` separation is 0.187 m against a within-arm spread of 0.006 m, about
+thirty times the run-to-run noise. `=2` overlaps its own spread across the day
+(0.199 to 0.208), which is what a no-op looks like: with bit 2 clear the
+inhibit never engages, so the falling edge never fires.
 
 It recovers 0.182 m of the 0.266 m penalty, is a no-op when bit 2 is clear, and
 leaves the platform protection - the entire point of bit 2 - bit-identical.
@@ -261,9 +267,10 @@ the four EK3 accel-bias tests all pass with it applied. That test is the cheap
 check this file prescribes for any change in this area, and it is the one that
 fails `cb5026417f` at 3.9 m.
 
-Not committed to the branch. SITL only, single runs per arm, and the two
-previous attempts on this exact problem were both confident code arguments that
-measured worse - so it wants repeat runs and ideally a flight first.
+Not committed to the branch. SITL only, and the two previous attempts on this
+exact problem were both confident code arguments that measured worse - so a
+flight is still what would settle it. The repeat runs it also wanted have been
+done and are in the table above.
 
 ## What is here
 
