@@ -33,8 +33,9 @@ and pick up the full state of that PR's investigation.
 | [32472](32472/) | Ground effect altitude and timeout parameters (Copter) | approved; two differences from the flown design recorded |
 | [32553](32553/) | Reset terrain offset from baro when ground effect clears (EKF3) | result needs #32472's HAGL check; reset drifts back; likely superseded by #33359 |
 | [32972](32972/) | Protect height fusion from baro ground effect at takeoff (EKF3) | 22-flight development record; SITL A/B plots for both behaviour changes; anchor ends at first throttle and can engage in mid-air |
-| [33478](33478/) | Fuse AGL KF velocity as a velD observation (EKF3) | three flights, 36 s hands-off at 0.13 m with #33507 at 0.3; dropout gate missing |
+| [33478](33478/) | Fuse AGL KF velocity as a velD observation (EKF3) | three flights, 36 s hands-off at 0.13 m with #33507 at 0.3; SITL A/B confirms the 14x/10x covariance collapse, clip-cycle prediction refuted; param index 12 -> 15 |
 | [33484](33484/) | Recover velocity from a single-axis optical-flow lockout (EKF3) | Replay-tuned 500 ms, flown; near-ground flow floor on the same branch |
+| [33585](33585/) | Keep optical flow nav alive above the rangefinder range (EKF3) | Replay-validated on log308; authorisation guard rewritten twice after review, each term has a failing-without-it autotest leg; stacked on #33478 |
 | [33497](33497/) | FLOW_HF_RATEF for a half-rate HereFlow node | sensor-rate slope 0.52 -> 1.00; not reproducible in SITL |
 | [33498](33498/) | Inhibit Z gyro bias from optical flow without a yaw source (EKF3) | flight-validated; no SITL test yet |
 | [33507](33507/) | Accel-Z bias state in the AGL KF (EKF3) | bias state right, 0.05 default too stiff: 0.3 flown on two airframes |
