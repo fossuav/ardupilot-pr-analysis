@@ -221,13 +221,34 @@ protects the arm-time state and degrades the correction it is protecting.
     ab_platform_accel_bias.png    XKF2.AZ across arming, bit 2 clear vs set
     ab_summary_worst_error.png    worst height error by config
   data/ab-2026-09-04/
+    harness.py                    the throwaway autotest probes
+    install_harness.py            paste them into a checkout, and take them out
+    metrics.py                    read the numbers back out of the logs
     vrf_off.BIN                   ACC_ZBIAS_LEARN=0, SIM_ACC_VRF_Z=0.15
     vrf_use.BIN                   ACC_ZBIAS_LEARN=2, same
     vrf_use_inhibit.BIN           ACC_ZBIAS_LEARN=6, same
     plat_bit2_clear.BIN           ACC_ZBIAS_LEARN=0, SIM_PLAT_ACC_Z=-1.0
     plat_bit2_set.BIN             ACC_ZBIAS_LEARN=4, same
-    harness.py                    the throwaway autotest methods used
 ```
+
+The three scripts are the A/B instrument and are reusable for later runs, even
+though they live in the 2026-09-04 directory with the first data they produced.
+Run an arm with:
+
+```
+python3 32471/data/ab-2026-09-04/install_harness.py /path/to/ardupilot
+cd /path/to/ardupilot && ./waf copter
+VRF_LEARN=6 VRF_SIM=0.15 VRF_PRE=0.15 \
+    Tools/autotest/autotest.py --no-configure test.Copter.VRFArmTransient
+cp "$(ls -S logs/*.BIN | head -1)" /tmp/arm_6.BIN
+python3 32471/data/ab-2026-09-04/install_harness.py /path/to/ardupilot --revert
+python3 32471/data/ab-2026-09-04/metrics.py /tmp/arm_6.BIN
+```
+
+Each script's docstring carries the gotchas that cost time: the flight log is
+the largest BIN not the last, autotest wipes logs/ between steps, PARM must be
+read first-wins because context_pop logs its restores, and delay_sim_time needs
+a reason argument.
 
 SITL logs only. Real-flight numbers are quoted inline; those logs are not
 committed.
