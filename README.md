@@ -25,10 +25,10 @@ code based on a real flight may be changed - are in [CLAUDE.md](CLAUDE.md).
 
 | PR | Topic | State |
 |----|-------|-------|
-| [32768](32768/) | Clear baro temperature drift on arming (ArduCopter/EKF3) | arm-only design; periodic alternative rejected; self-reviewed 2026-08-29: tolerance gate removed, EKF3 reported-origin fix |
+| [32768](32768/) | Clear baro temperature drift on arming (ArduCopter/EKF3) | arm-only design; periodic alternative rejected; self-reviewed 2026-08-29: tolerance gate removed, EKF3 reported-origin fix; 2026-09-05 cross-check found EK3_RNG_USE_HGT disabled the reset outright (EKF_ALT_RESET 1 -> 0), fix and two-sided test prepared, not yet pushed |
 | [33338](33338/) | Periodic height-only datum reset (prototype) | experiment; reinforces arm-only (see 32768) |
 | [33318](33318/) | AC_Loiter drag/feed-forward consistency fix | SITL + vehicle confirmed; forensic agreement with reviewer root cause |
-| [33359](33359/) | AGL KF for the optical-flow rangefinder height switch | indoor alt-hold divergence; Replay-validated; flight-validated on log281; third and fourth commits need #33507 |
+| [33359](33359/) | AGL KF for the optical-flow rangefinder height switch | indoor alt-hold divergence; Replay-validated; flight-validated on log281; third and fourth commits need #33507; its terrain-stable override is what engages the switch on the ground and so disabled #32768's arm reset, fixed on that side |
 | [32475](32475/) | Throw mode improvements: drop detection, uprighting, yaw, source sets (Copter) | ~30 real drops on six airframes distilled; self-reviewed 2026-09-04 and pushed as 8 commits: drop abort and source-set leak fixed, altitude-target "fix" reverted as the design was right, 9 of 11 old commits panicked at boot; direction-finding yaw unvalidated |
 | [32401](32401/) | Pending arm on switch for in-air arming (Copter) | two field cases: retries unclearable failures, resets an EKF that was fine |
 | [32514](32514/) | Reset the EKF failsafe gate on a source-set change (Copter) | field before/after; gate re-latches correctly when position returns |
