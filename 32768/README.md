@@ -2,7 +2,7 @@
 
 Analysis archive for [ArduPilot/ardupilot#32768](https://github.com/ArduPilot/ardupilot/pull/32768).
 Branch `pr-baro-drift-minimum` (andyp1per fork), base `master`, head
-`33e4911d63` (2026-09-06). All committed data is SITL; real-flight numbers are
+`cfc824d0cc` (2026-09-06). All committed data is SITL; real-flight numbers are
 cited inline and their logs are not committed.
 
 ## Status (one line)
@@ -145,6 +145,18 @@ The review's suggested convention only removes `EK3_RNG_ON_GND`; it does not
 close the gap, because the vehicle sits about 0.54 m above its terrain state
 by the rangefinder's reckoning at that moment. Shipped as `89caba96a1`.
 
+Corrected the same day at `f2425eff3c`, from the self-review's own EKF3 pass:
+carrying the state is right only where it is tracking. With no rangefinder and
+no usable flow `EstimateTerrainOffset()` inhibits the ground state, so
+`terrainState` is only the floor a previous reset left, and carrying it puts
+the ground the cleared drift below a vehicle sitting on it - wrong in the
+direction master got right. `getHAGL()` refuses there (`gndOffsetValid` false)
+so no controller sees it, but `XKF5.HAGL`/`terrOffset` and
+`getHeightControlLimit()` do. The carry is now conditioned on
+`gndOffsetValid`, which is exactly "fused within 5 s, or the rangefinder is
+the source"; otherwise the `ResetHeight()` floor is applied. Rangefinder-case
+excursion unchanged at 0.000 m, `BaroDriftClearedAtArm` 0.004-0.024 m.
+
 The test asserted only that `EKF_ALT_RESET` reached the log, so it was green
 across all three rows. It now asserts the post-arm height as well.
 
@@ -191,6 +203,69 @@ From tridge's automated reviews at `1c88a3bf62`, `9525e7d9ee` and
   beacon/extnav height source, both non-default. Not touched because
   @tridge asked this PR to leave Plane alone, and the fix belongs with the
   `HOME_RESET_ALT` follow-up. Noted in the PR description.
+
+### Self-review findings answered without a code change (2026-09-06)
+
+From the `/pr-review` pass at `33e4911d63` (four Claude reviewers plus four
+independent Codex cold reads).
+
+- **"Only the primary core's answer is reported, but every core that accepts
+  recalibrates the shared baro, so a refusing primary gets a baro step of the
+  whole drift."** Refuted on the reachable configurations. Cores can only
+  disagree through a per-core `POSZ` (`EK3_SRC_OPTIONS`) or a per-core
+  `activeHgtSource` plus `onGroundNotMoving`; in both, the refusing core is by
+  construction not using baro as its height observation, so `calcFiltBaroOffset`
+  absorbs the shift rather than the state taking a step. A core with
+  `activeHgtSource == BARO` always passes the guard's first leg. Residual is a
+  lane switch inside the ~1 s convergence, which is what the previous round
+  recorded.
+- **"`resetHeightDatum()` is a no-op when the configured backend is
+  DCM/SIM/ExternalAHRS, and `AP_Baro`'s field-elevation path rezeroes the baro
+  anyway."** True, and deliberate. It is the same property the previous round
+  accepted when the loop was replaced by `configured_backend->resetHeightDatum()`:
+  a parallel non-configured estimator is no longer re-datumed when the shared
+  baro moves, and its `baroHgtOffset` re-tracks. The cost, stated plainly: under
+  `AHRS_EKF_TYPE` 0/10/11 the arm-time drift clearing does not run at all,
+  where on master EKF3 performed it. Not reverted, because reverting reopens
+  the EKF2-recalibrates-under-EKF3 issue that change fixed.
+- **"Refusing on `EK3_OGN_HGT_MASK` bit 2 is over-broad, because only the
+  `bit0 && bit2` and `bit1 && bit2` sites use it."** Refuted: two more sites use
+  bit 2 alone - `AP_NavEKF3_Measurements.cpp:721` references the GPS height
+  observation to `EKF_origin.alt` instead of `ekfGpsRefHgt`, and
+  `AP_NavEKF3_Outputs.cpp:394` stops reporting `ekfGpsRefHgt` as the origin
+  height. Both are exactly the references the reset moves, so the refusal is
+  right with bits 0/1 clear as well. It does mean `EK3_OGN_HGT_MASK=4` alone
+  has no drift handling at all; that is a consequence, not a defect.
+- **"The `||` in the sticky latch guards a case that cannot happen."** Refuted:
+  the reachable case is not a second call inside one disarm (that recursion is
+  stopped) but a second disarm after a mid-air re-arm, where `land_complete` is
+  still true from the first. `HeightDatumKeptOnMidairRearm` exercises exactly
+  that sequence.
+- **The latch is not set when the land detector itself triggers the disarm**
+  (`set_land_complete(true)` assigns before calling `arming.disarm()`), so a
+  false landing detection at altitude with `THR_BEHAVE_DISARM_ON_LAND_DETECT`
+  defeats it. True, and left. It is the land detector's opinion at the moment of
+  disarm, which is what every other consumer of `land_complete` in Copter uses,
+  including the GCS and rudder disarm gates immediately above. Not a regression:
+  master reset unconditionally.
+- **The latch can be set on a grounded vehicle** - arm in a manual-throttle
+  mode, raise the throttle without lifting off (`set_land_complete(false)`),
+  then disarm on an aux switch, which is not gated on landed state. True, and
+  left: the consequence is that the next arm skips the drift reset, which is
+  master's behaviour, and the land detector clears it after 1 s of stillness.
+  It does not self-heal on a platform that never goes still.
+- **`meaHgtAtTakeOff` and the stale `baroDataDelayed` are not refreshed**, so an
+  AID_NONE transition inside the buffer-refill window re-injects the cleared
+  drift through `stateStruct.position.z = -meaHgtAtTakeOff`. Pre-existing and
+  unmeasured; the window is a few hundred ms. Recorded, not fixed.
+- **`posResetD`/`posDResetCount` are not set by the datum move.** Pre-existing.
+  Every caller runs disarmed or on the ground, so no controller is mid-flight
+  when it happens; the residual is an unreported step across a later lane
+  switch between cores that disagreed.
+- **The heli `StabilizeTakeOff` bound at 1.0 m is a 10x loosening.** Left at the
+  `PosHoldTakeOff` precedent the previous review round accepted. Tightening it
+  towards the measured 0.08-0.12 m trades a review point for CI flakiness,
+  which is what produced the blockers this round had to clear.
 
 ## The problem
 
