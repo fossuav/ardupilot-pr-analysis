@@ -2,7 +2,7 @@
 
 Analysis archive for [ArduPilot/ardupilot#32768](https://github.com/ArduPilot/ardupilot/pull/32768).
 Branch `pr-baro-drift-minimum` (andyp1per fork), base `master`, head
-`d8a80b042e` (2026-09-06). All committed data is SITL; real-flight numbers are
+`ab41a91714` (2026-09-06). All committed data is SITL; real-flight numbers are
 cited inline and their logs are not committed.
 
 ## Status (one line)
@@ -302,6 +302,19 @@ inside the second measurement window and the bounce read as a velocity step,
 17.2 -> -5.8 m/s, with a pre-rearm height of 66 m where 240 m was intended.
 Raising the rate before the takeoff instead restores it: 241.8 m pre-rearm,
 17.0 -> 17.0 m/s, arrest at 148.9 m. Fixed at `d8a80b042e`.
+
+The branch was then squashed to 25 commits at `ab41a91714`: the self-review
+fixes folded into the commits that introduced them, the truncated
+`give HeightDatumKeptOnMidairRearm room to recover` message replaced, and the
+rangefinder commit reworded off the AGL KF claim. `autotest: correct the Copter
+baro drift registration and coverage` had to be split first, because its
+`max_err` half belongs to `autotest: add Copter mid-air disarm height datum
+tests` and its registration half to `autotest: cover the datum reset under the
+rangefinder height switch`; folding it whole would have left the earlier commit
+carrying the TypeError. `reset` is gated separately from `rebase` here, so the
+split used the branch-and-patch recipe rather than `edit` + `reset HEAD^`. Tree
+verified byte-identical to the pre-rebase head, and every commit in the range
+now builds its test list and is free of the `max_err` call.
 
 Left: the `assert_EV_count()` and peak-excursion helpers are open-coded in the
 rangefinder test (the event count is `>= 1` rather than exact because the
