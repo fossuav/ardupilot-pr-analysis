@@ -319,6 +319,32 @@ failure the autotest playbook describes; and `BaroDriftClearedAfterMidairDisarm`
 left `SIM_BARO_DRIFT`'s accumulated offset behind, since setting the rate back
 to zero does not undo it.
 
+### A review correction that was itself wrong (2026-09-06)
+
+Worth recording because it is the failure mode the root playbook warns about -
+a claim marked checked being inherited rather than re-derived.
+
+The 2026-09-06 review said the previous comment on `land_detector_count = 0`
+was wrong: "not what master did: the disarmed branch never touched
+`land_detector_count`, so `LDET` logged whatever the armed detector left - the
+trigger value after a landing." That was accepted and the comment rewritten to
+say the armed detector shares the counter and reads it as a landing countdown.
+
+Both the review's claim and the rewrite are wrong. `Copter::set_land_complete()`
+zeroes `land_detector_count` on every change of `land_complete`
+(`land_detector.cpp:231-237`), and the armed landing transition reaches
+`set_land_complete(true)` (`:174`), so the counter is zeroed at the landing, not
+left at the trigger. Every transition to `land_complete == false` also goes
+through that function, so the armed detector always starts from zero and can
+never observe what the disarmed branch left. On the base branch a disarmed
+vehicle logged `Count == 0`.
+
+So the original wording - "as a disarmed vehicle has always logged it, at zero"
+- was correct, and the round that "fixed" it replaced a right reason with a
+wrong one. Restored, with the mechanism named, at the head below.
+
+The line itself was never in question; only why it is there.
+
 ### BARO_ALT_OFFSET: the one-line fix is wrong, and the drift tests caught it (2026-09-06)
 
 Raised by review at `56ccb5405e` and reproduced there: with `BARO_ALT_OFFSET=5`
