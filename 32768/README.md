@@ -319,6 +319,36 @@ failure the autotest playbook describes; and `BaroDriftClearedAfterMidairDisarm`
 left `SIM_BARO_DRIFT`'s accumulated offset behind, since setting the rate back
 to zero does not undo it.
 
+### assert_origin_frame_consistent() was an algebraic identity (2026-09-06)
+
+The sixth assertion in this PR to certify nothing, and the cleanest example:
+it could not fail on any build, for any values, because all three published
+quantities it compares are built from the same two variables and the helper
+subtracts them so they cancel.
+
+With `EK3_OGN_HGT_MASK` bit 2 clear, writing `R` for `ekfGpsRefHgt`, `C` for
+`common_EKF_origin.alt` and `d` for `getPosD_local()`:
+
+- `GPS_GLOBAL_ORIGIN.altitude` = `C` (`AP_NavEKF3.cpp:1455`)
+- `LOCAL_POSITION_NED.z` = `getPosD()` = `d + (C - R)` (`AP_NavEKF3_Outputs.cpp:277-288`, core `getOriginLLH` at `:388-397` substituting `100*R`)
+- `GLOBAL_POSITION_INT.alt` = `R - d` (`getLLH`, `:305-316`)
+
+`err = C - (d + C - R) - (R - d) = 0` identically. So the helper, whose stated
+job was to catch the reset relabelling the origin frame, could not have caught
+that or anything else. The derived check built on its return values - origin
+altitude and local z unchanged across the re-arm - is inert for the same
+reason: nothing in either code path writes `common_EKF_origin`, and `getPosD()`
+is invariant across the reset by construction, which is precisely what
+`d644b92f9b` was written to achieve.
+
+Removed rather than repaired. What the cliff test actually rests on is the
+`EKF_ALT_RESET` count and the EKF2 follower check, both of which have been
+shown to fail by mutation.
+
+The pattern across all six: an assertion is worth what a revert makes it do,
+and nothing else. Reading the assertion tells you almost nothing - three of the
+six read as strong checks and two were tautologies.
+
 ### A review correction that was itself wrong (2026-09-06)
 
 Worth recording because it is the failure mode the root playbook warns about -
