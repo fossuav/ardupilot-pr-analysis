@@ -322,6 +322,20 @@ field-elevation path can also fire the reset, and that was not measured); the
 30 s `accumulate_baro_drift()` delay stays a fixed delay because the drift it
 builds is the point.
 
+## PR description (edited 2026-09-06 at `ab41a91714`)
+
+The body now carries the rangefinder clause and its real mechanism, the terrain
+state A/B, the watchdog seed and its lack of a test, the Plane
+`update_home()`/`update_calibration()` note @tridge's follow-up should pick up,
+and a "tried and rejected" list with the number that rejected each: the
+periodic reset, the `HOME_RESET_ALT`-style tolerance gate, the
+`position.z + rngOnGnd` terrain convention, and seeding the mid-air record on
+every boot.
+
+It also states which of the new tests actually fail on master - two of the six -
+and says plainly that the rest guard behaviour introduced elsewhere in this PR.
+That was previously only implied for the QuadPlane test.
+
 ## The problem
 
 The barometer drifts with temperature while a copter sits disarmed, so the
