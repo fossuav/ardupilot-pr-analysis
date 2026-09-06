@@ -2,7 +2,7 @@
 
 Analysis archive for [ArduPilot/ardupilot#32768](https://github.com/ArduPilot/ardupilot/pull/32768).
 Branch `pr-baro-drift-minimum` (andyp1per fork), base `master`, head
-`f0fdc5f4fe` (2026-09-06). All committed data is SITL; real-flight numbers are
+`64dd291b3f` (2026-09-06). All committed data is SITL; real-flight numbers are
 cited inline and their logs are not committed.
 
 ## Status (one line)
@@ -247,6 +247,77 @@ moves the core's `EKF_origin.alt` while `NavEKF2::getOriginLLH()` publishes the
 frontend's `common_EKF_origin`. That is EKF2 bookkeeping and predates this PR;
 the same review comment says so in its own NOTE section. Asserting it here
 would have made the test fail on correct code.
+
+### The other half of the narrowing: a backend with no datum was reading as a refusal (2026-09-06)
+
+Found by the self-review, independently by a Claude pass and a Codex cold pass.
+The same shape as the 89 m bug, on the opposite side.
+
+`AP_AHRS::resetHeightDatum()` gates the follow loop on the configured backend's
+return. DCM, SIM and external AHRS do not override
+`AP_AHRS_Backend::resetHeightDatum()` and inherit its `return false`, which the
+loop could not tell from a refusal - so with `AHRS_EKF_TYPE` 0, 10 or 11 a
+running EKF3 was never told the barometer had moved. Before this series the
+unconditional loop reset it. Plane reaches this every 5 s while disarmed through
+`update_home()`, and recalibrates the barometer itself either way.
+
+Measured before fixing, `AHRS_EKF_TYPE=10` with 7 m of drift accumulated while
+disarmed, then selecting EKF3 after the arm:
+
+| build | EKF3 reported AMSL | GPS |
+|---|---|---|
+| gated on `ret` alone | 591.5 m | 584.1 m |
+| with `has_height_datum()` | 584.0 m | 584.1 m |
+
+Fixed at `49d857c5f3` by asking the configured backend whether it owns a datum
+at all: one that does not has no refusal to honour, so it no longer holds the
+others off. The 2026-09-02 case is unchanged - a backend that owns a datum and
+refuses still suppresses the rest.
+
+### Reviewer conflict resolved: AP_Baro water barometers (2026-09-06)
+
+One pass called `sensors[i].altitude = _alt_offset_active` in
+`update_calibration()` wrong for `BARO_TYPE_WATER`, because `update()` computes
+water altitude with a different formula and ArduSub calls `update_calibration()`
+whenever the primary reads above the water. An earlier round had checked the
+same line and called it right for both types.
+
+The earlier round is correct. `update_calibration()` sets
+`ground_pressure = get_sealevel_pressure(get_pressure(i) + p_correction, _field_elevation_active)`,
+and `get_sealevel_pressure(P, 0)` returns `P` by construction
+(`AP_Baro_atmosphere.cpp:335` solves for the p0 whose altitude difference is the
+given altitude). `AP_Baro::init()` force-zeroes `_field_elevation` on every boot
+(`AP_Baro.cpp:615-617`), so on a Sub the water formula evaluates
+`(ground_pressure - corrected_pressure)/9800/sg = 0` and
+`sensors[i].altitude = _alt_offset_active` - exactly what the next `update()`
+computes. The two only diverge with a water barometer and a deliberately
+non-zero `BARO_FIELD_ELV`, which is not a configuration that makes sense.
+
+### Autotest assertions that could not fail (2026-09-06)
+
+Third instance in this PR, so the pattern is worth the entry rather than the
+incident. Found by the self-review's autotest pass, which was asked to state per
+assertion what would have to be reverted for it to fail.
+
+- The recorded-origin subtest of `BaroDriftClearedAtArm` asserted that
+  `GPS_GLOBAL_ORIGIN.altitude` had not moved. Nothing in this series moves
+  `common_EKF_origin.alt`, which is what that message reports, so it held with
+  the whole change reverted. Its other assertion read the raw barometer through
+  `get_relative_position_D_home()`'s no-home fallback rather than the estimate -
+  the trap already recorded here. Replaced at `64dd291b3f` with the reported
+  AMSL not moving across the arm, which is what the no-GPS carry path exists to
+  guarantee.
+- The height bound in `HeightDatumKeptOnMidairRearm` cannot catch a datum reset
+  at all: `getPosD()` moves `ekfGpsRefHgt` by exactly the height the reset
+  zeroes, so the reported down position is invariant by construction. The
+  velocity assertion is the one with teeth. Comment corrected rather than the
+  bound removed.
+
+Two test-hygiene defects went with them: `peak_relative_alt_excursion()` polled
+a 5 Hz stream on the default one second of wallclock, which is the host-stall
+failure the autotest playbook describes; and `BaroDriftClearedAfterMidairDisarm`
+left `SIM_BARO_DRIFT`'s accumulated offset behind, since setting the rate back
+to zero does not undo it.
 
 ### Not adding a rangefinder gate to the latch clearing (2026-09-06)
 
