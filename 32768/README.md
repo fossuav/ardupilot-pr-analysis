@@ -319,6 +319,44 @@ failure the autotest playbook describes; and `BaroDriftClearedAfterMidairDisarm`
 left `SIM_BARO_DRIFT`'s accumulated offset behind, since setting the rate back
 to zero does not undo it.
 
+### BARO_ALT_OFFSET: the one-line fix is wrong, and the drift tests caught it (2026-09-06)
+
+Raised by review at `56ccb5405e` and reproduced there: with `BARO_ALT_OFFSET=5`
+the arm-time reset leaves the estimate settling at 5.1 m. The mechanism is
+sound - `update_calibration()` leaves the barometer reading
+`_alt_offset_active`, not zero, so `hgtMea = baroDataDelayed.hgt -
+baroHgtOffset` equals the offset once `baroHgtOffset` is zeroed. The faulty
+assumption predates the PR; what the PR changes is that the reset now runs on
+essentially every arm rather than only the no-GPS branch.
+
+The obvious fix is one line: set `baroHgtOffset` to what the barometer reads
+after recalibration instead of to zero. It looks right, and a probe agreed -
+arm, disarm, set `BARO_ALT_OFFSET=5`, settle, re-arm without moving:
+
+| build | peak post-arm excursion |
+|---|---|
+| `baroHgtOffset = 0` | 3.534 m |
+| `baroHgtOffset = dal.baro().get_altitude(selected_baro)` | 0.011 m |
+
+**It is wrong anyway.** `AP_DAL_Baro::get_altitude()` returns
+`_RBRI[sensor_id].altitude`, the value cached at the last `start_frame()`
+(`AP_DAL_Baro.cpp:14-29`), and `resetHeightDatum()` runs outside the EKF frame,
+so the read returns the *pre*-calibration altitude - which still contains the
+drift the reset exists to remove. The probe passed only because the vehicle was
+already at its datum there, making the two readings equal.
+
+The drift cases said so immediately, on the same build the probe passed:
+`AmslAltPreservedOnRearmAtDifferentElevation` failed at 165.3 m against a GPS
+altitude of 76.3 m, and `BaroDriftClearedAfterMidairDisarm` at a 1.454 m
+excursion against its 0.1 m bound. A clean code argument, a passing probe, and
+still wrong in the direction the PR is about.
+
+Correcting it properly needs `_alt_offset_active` through the DAL, and the DAL
+rule here is that a struct is never grown - it takes a new message. That is not
+a minimal change, so it is out of scope: the comment at
+`AP_NavEKF3_PosVelFusion.cpp` now states the assumption and its limit instead of
+claiming the post-reset baro reads zero, and the PR says so.
+
 ### Not adding a rangefinder gate to the latch clearing (2026-09-06)
 
 Raised now by three independent passes: the disarmed clearing branch tests
