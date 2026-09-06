@@ -60,8 +60,8 @@ used to cover this - allow the reset when `onGroundNotMoving` even if
 the *configured* primary source is not the rangefinder. It did not survive into
 the submitted branch.
 
-Fix prepared on the SmallFastDrone branch on 2026-09-05, not yet pushed to this
-PR: allow the reset when the configured primary source is baro or GPS and
+Fix prepared on the SmallFastDrone branch on 2026-09-05, pushed to this PR on
+2026-09-06 as `3e4ab4715f`: allow the reset when the configured primary source is baro or GPS and
 `onGroundNotMoving`, keeping the refusal when the rangefinder is the configured
 primary (there the estimate really is rangefinder referenced and there is no
 baro drift to clear). At rest the zero the reset moves to is what the
