@@ -2,7 +2,7 @@
 
 Analysis archive for [ArduPilot/ardupilot#32768](https://github.com/ArduPilot/ardupilot/pull/32768).
 Branch `pr-baro-drift-minimum` (andyp1per fork), base `master`, head
-`0f03c2631e` (2026-09-06). All committed data is SITL; real-flight numbers are
+`5c27cc67e6` (2026-09-06). All committed data is SITL; real-flight numbers are
 cited inline and their logs are not committed.
 
 ## Status (one line)
@@ -206,6 +206,58 @@ the test passes for the wrong reason; the test now waits on the
 `AHRS: EKF2 active` statustext instead. And baro drift alone does not
 discriminate: EKF2 re-converges to within 1.4 m in five seconds because its
 own origin never moved. Only an elevation change leaves the two disagreeing.
+
+### The cross-backend test passed with the regression put back (2026-09-06)
+
+Caught by tridge's review at `0f03c2631e`, by mutation rather than by reading,
+and it is the second test in this PR to certify nothing. Worth recording as a
+pattern, not just an incident.
+
+`AmslAltPreservedOnRearmAtDifferentElevation` asserted the reported AMSL
+immediately after selecting EKF2. A backend that was never re-datumed passes
+there: its height observation jumps by the 89 m the barometer moved, the
+innovation gate **rejects** it, and the filter coasts on the correct height
+until height fusion times out after `hgtRetryTimeMode0_ms` (10 s,
+`AP_NavEKF2.h:393`) and `ResetHeight()` adopts the displaced datum. So the
+assertion reads a correct number either way, and whether it lands inside that
+window depends on how long the preceding disarm and backend switch happened to
+take. My own probe at the time did catch it - sampling out to t=38 s - which is
+exactly why a single passing observation is not evidence that a test
+discriminates.
+
+**The general shape: an assertion placed inside a window where an estimator is
+rejecting a bad measurement reads the right answer for the wrong reason.** The
+sibling trap already recorded here is `relative_alt` falling back to the raw
+baro when the EKF vertical position is unhealthy. Both are cases where the test
+measures something other than what it names.
+
+Fixed at `2d43b4c09c` by settling 15 s past the timeout. Verified by mutation
+in both directions, on the same binary except for the one line:
+
+| build | result |
+|---|---|
+| `if (ret && ...)` mutated to `if (false && ...)` | FAIL, AMSL 165.3 m against GPS 76.3 m |
+| unmodified | PASS, 76.3 m against 76.3 m |
+
+**The review's additional suggestion was measured and dropped.** It asked for
+`assert_origin_frame_consistent()` at the same point. That fails on EKF2 -
+origin alt 165.3, local z 0.0, AMSL 76.3, an 89.07 m mismatch - whether the
+backend followed the datum or not, because `NavEKF2_core::resetHeightDatum()`
+moves the core's `EKF_origin.alt` while `NavEKF2::getOriginLLH()` publishes the
+frontend's `common_EKF_origin`. That is EKF2 bookkeeping and predates this PR;
+the same review comment says so in its own NOTE section. Asserting it here
+would have made the test fail on correct code.
+
+### A follower that refuses keeps the old datum (2026-09-06)
+
+Recorded, not fixed. `AP_AHRS.cpp` discards the follower's return, so a backend
+with its own reason to refuse is left running against a barometer that moved.
+Reproduced by the review with EKF2 configured and EKF3 running at
+`EK3_OGN_HGT_MASK=4`: 165.3 m against GPS 76.2 m. It needs two backends with
+divergent height-source configuration to reach, and the refusal it rests on is
+the right behaviour for that backend - at the merge base EKF3 would have reset
+and corrupted its origin-referenced height instead. A comment in
+`AP_AHRS::resetHeightDatum()` records the limitation.
 
 ### Second squash pass: 25 commits to 20 (2026-09-06)
 
