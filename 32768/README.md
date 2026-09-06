@@ -2,7 +2,7 @@
 
 Analysis archive for [ArduPilot/ardupilot#32768](https://github.com/ArduPilot/ardupilot/pull/32768).
 Branch `pr-baro-drift-minimum` (andyp1per fork), base `master`, head
-`8960850d97` (2026-09-06). All committed data is SITL; real-flight numbers are
+`0f03c2631e` (2026-09-06). All committed data is SITL; real-flight numbers are
 cited inline and their logs are not committed.
 
 ## Status (one line)
@@ -206,6 +206,35 @@ the test passes for the wrong reason; the test now waits on the
 `AHRS: EKF2 active` statustext instead. And baro drift alone does not
 discriminate: EKF2 re-converges to within 1.4 m in five seconds because its
 own origin never moved. Only an elevation change leaves the two disagreeing.
+
+### Second squash pass: 25 commits to 20 (2026-09-06)
+
+The review asked for commit granularity, on the grounds that a later commit
+repairing an earlier one leaves a knowingly broken range for bisect. Grouped on
+that rule rather than flattening every subsystem to one commit:
+
+- `AP_AHRS: reset and report only the configured backend` absorbed the fix for
+  the 89 m defect it introduced, and moved ahead of the Copter block. It had to:
+  it is what changes the return type to `bool`, and the Copter logging change
+  folded below uses that return.
+- The Copter arm-block commits (log-on-result, `arming_altitude_m`, the terrain
+  recapture, the helper) folded into `Copter: clear baro drift at arm time`.
+  `Copter: treat a watchdog-armed boot as a mid-air disarm` stays separate: it is
+  a distinct mechanism, not a repair.
+- `AP_NavEKF3: move the terrain state with the height datum` folded into the
+  rangefinder clause that made it reachable, which is what the review asked for.
+- The two test-hardening commits were split four ways by hunk and folded into
+  the tests they harden, so no test lands in a knowingly weaker state first.
+
+Not done, and said so in the reply: flattening all seven `autotest:` commits
+into one. That produces a single commit carrying five tests and two bound
+relaxations, which is worse against the "atomic commits" rule, not better.
+
+Two conflicts came up in the replay, both from folding a later test change into
+an earlier commit whose file does not yet contain the surrounding tests; both
+resolved by keeping only the hunk that belongs to that commit. Tree verified
+byte-identical to the pre-rebase head, the test list resolves at all 20 commits,
+and the three reordered or squashed intermediates build copter and blimp.
 
 ### Correction: KalaupapaCliffs is 165.25 m, not 200 m (2026-09-06)
 
