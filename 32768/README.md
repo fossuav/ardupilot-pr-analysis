@@ -2,7 +2,7 @@
 
 Analysis archive for [ArduPilot/ardupilot#32768](https://github.com/ArduPilot/ardupilot/pull/32768).
 Branch `pr-baro-drift-minimum` (andyp1per fork), base `master`, head
-`cfc824d0cc` (2026-09-06). All committed data is SITL; real-flight numbers are
+`d8a80b042e` (2026-09-06). All committed data is SITL; real-flight numbers are
 cited inline and their logs are not committed.
 
 ## Status (one line)
@@ -266,6 +266,48 @@ independent Codex cold reads).
   `PosHoldTakeOff` precedent the previous review round accepted. Tightening it
   towards the measured 0.08-0.12 m trades a review point for CI flakiness,
   which is what produced the blockers this round had to clear.
+
+### What each new test actually discriminates (2026-09-06)
+
+From the self-review's autotest pass, traced against `c9286e3096`. Three of
+the assertions only guard behaviour introduced earlier in the same PR, and one
+produces identical output on master. Say so in the PR body rather than letting
+a reviewer discover it.
+
+| test | fails against master? |
+|---|---|
+| `BaroDriftClearedAtArm` subtest 1 (GPS healthy) | yes - AMSL sits ~9 m off GPS |
+| subtest 2 (dead receiver) | no - guards the 3D-fix clause added in this PR |
+| subtest 3 (recorded origin, no GPS) | no - and its `peak` check reads the raw baro through `get_relative_position_D_home()`'s fallback, not the estimate |
+| `BaroDriftClearedWithRangefinderHeightSwitch` | yes - no `EKF_ALT_RESET`, or 0.648 m of post-arm movement |
+| `AmslAltPreservedOnRearmAtDifferentElevation` | no - guards the origin-frame handling added in this PR |
+| `HeightDatumKeptOnMidairRearm` | yes, against the PR without its own guard: EKF3's `onGround` is the armed flag inverted, so the reset would fire mid-air |
+| `BaroDriftClearedAfterMidairDisarm` | yes, against the PR without the land detector clearing the latch |
+| QuadPlane `AmslAltPreservedAfterUpdateHome...` | no - master produces the identical AMSL, `getPosD` and `getOriginLLH`; a regression guard, as its own commit message says |
+
+Hardened at `4a79aab29c` rather than left: the rangefinder test now asserts its
+own precondition (the drift must be invisible in the reported height, which is
+true only while the rangefinder holds the source), the return-leg descent wait
+went 60 s -> 150 s because `fly_guided_move_to()` waits on horizontal distance
+only, the QuadPlane disarm wait 600 s -> 900 s against a measured 434 s, and the
+20 Hz `LOCAL_POSITION_NED` stream is raised with the context form so it does not
+leak into the rest of the run. `Tools/autotest/CLAUDE.md` recommended the
+leaking form; corrected there too.
+
+One of those hardening changes was itself wrong and the re-run caught it.
+`context_set_message_rate_hz()` measures the existing rate for ten seconds
+before setting the new one; called where `set_message_rate_hz()` had been, just
+after the mid-air disarm, that is 170 m of fall. The vehicle reached the ground
+inside the second measurement window and the bounce read as a velocity step,
+17.2 -> -5.8 m/s, with a pre-rearm height of 66 m where 240 m was intended.
+Raising the rate before the takeoff instead restores it: 241.8 m pre-rearm,
+17.0 -> 17.0 m/s, arrest at 148.9 m. Fixed at `d8a80b042e`.
+
+Left: the `assert_EV_count()` and peak-excursion helpers are open-coded in the
+rangefinder test (the event count is `>= 1` rather than exact because the
+field-elevation path can also fire the reset, and that was not measured); the
+30 s `accumulate_baro_drift()` delay stays a fixed delay because the drift it
+builds is the point.
 
 ## The problem
 
