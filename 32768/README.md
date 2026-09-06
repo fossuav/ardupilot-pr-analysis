@@ -2,7 +2,7 @@
 
 Analysis archive for [ArduPilot/ardupilot#32768](https://github.com/ArduPilot/ardupilot/pull/32768).
 Branch `pr-baro-drift-minimum` (andyp1per fork), base `master`, head
-`5c27cc67e6` (2026-09-06). All committed data is SITL; real-flight numbers are
+`f0fdc5f4fe` (2026-09-06). All committed data is SITL; real-flight numbers are
 cited inline and their logs are not committed.
 
 ## Status (one line)
@@ -247,6 +247,35 @@ moves the core's `EKF_origin.alt` while `NavEKF2::getOriginLLH()` publishes the
 frontend's `common_EKF_origin`. That is EKF2 bookkeeping and predates this PR;
 the same review comment says so in its own NOTE section. Asserting it here
 would have made the test fail on correct code.
+
+### Not adding a rangefinder gate to the latch clearing (2026-09-06)
+
+Raised now by three independent passes: the disarmed clearing branch tests
+only filtered accel under 1 m/s/s and vertical speed under 1 m/s, so a descent
+slower than 1 m/s with the transient settled - a parachute, an autorotation,
+a vehicle caught on a tether - clears `disarmed_in_air` while still airborne,
+and a re-arm before touchdown then resets the datum in flight. That is the
+dangerous direction, unlike the other latch residual.
+
+The close is available and cheap. The armed detector already carries exactly
+the guard, permissive when there is no rangefinder, at `land_detector.cpp:153`:
+
+```cpp
+bool rangefinder_check = (!rangefinder_alt_ok() || rangefinder_state.alt_m_filt.get() < LAND_RANGEFINDER_MIN_ALT_M);
+```
+
+`read_rangefinder` is a 20 Hz SCHED_TASK, so the value is live while disarmed,
+and a vehicle without a rangefinder is unaffected. `WoW_check` is the same
+shape.
+
+Not done, deliberately. The maintainer-facing review has seen this twice and
+both times recorded it as an accepted residual rather than an open issue - the
+2026-09-06 round lists only the `land_detector_count` coupling under smaller
+things, not the clearing criteria. Adding a behavioural change the reviewer has
+not asked for, at this stage, needs its own rangefinder-configured test to be
+honest about, and the case needs a mid-air disarm followed by a sub-1 m/s
+descent and a deliberate re-arm before touchdown. Recorded here so the option
+and its cost are on file rather than rediscovered.
 
 ### A follower that refuses keeps the old datum (2026-09-06)
 
