@@ -2,7 +2,7 @@
 
 Analysis archive for [ArduPilot/ardupilot#32768](https://github.com/ArduPilot/ardupilot/pull/32768).
 Branch `pr-baro-drift-minimum` (andyp1per fork), base `master`, head
-`ab41a91714` (2026-09-06). All committed data is SITL; real-flight numbers are
+`8960850d97` (2026-09-06). All committed data is SITL; real-flight numbers are
 cited inline and their logs are not committed.
 
 ## Status (one line)
@@ -169,6 +169,53 @@ rangefinder height source outright, so the constraint always runs there.
 |---|---|---|
 | `terrainState = stateStruct.position.z + rngOnGnd` in `resetHeightDatum()` | matches `ResetHeight()`, which is the established convention for the same state; suggested in review at `06860d0425` | 0.529 m post-arm excursion against 0.648 m unchanged and 0.000 m carrying the state across. Rejected 2026-09-06 |
 | seed `disarmed_in_air = true` on every boot, rather than only a watchdog-armed one | closes the booted-in-air hole without depending on the watchdog flag | not measured; rejected on inspection because a vehicle arming on a moving platform never satisfies the accel-stationary test, so the drift reset this PR exists for would never run there |
+
+### Resetting only the configured backend was half a fix (2026-09-06)
+
+Raised by tridge's automated review at `ab41a91714`, and it is a defect this
+review process introduced: the same review suggested the change on 2026-09-02
+and approved it on 2026-09-03.
+
+`71493fda94` replaced the loop over every compiled backend with
+`configured_backend->resetHeightDatum()`. That fixed a real problem - with
+`EK2_ENABLE=1` and `EK3_OGN_HGT_MASK` bit 2, EKF3 could refuse while EKF2
+recalibrated the shared barometer underneath it - but it removed the wrong
+half. Deciding *whether* to reset belongs to the configured backend; *following*
+the barometer once it has moved applies to every running backend.
+
+Reproduced before fixing, with `EK2_ENABLE=1` and `AHRS_EKF_TYPE=3`, by running
+`AmslAltPreservedOnRearmAtDifferentElevation` and then setting
+`AHRS_EKF_TYPE=2`. Sampled every 2 s after the parameter write:
+
+```
+t=0   amsl=76.28  gps=76.28     <- still EKF3
+t=5   amsl=76.28  gps=76.28
+t=7   amsl=165.34 gps=76.28     <- EKF2 selected, holding the pre-reset datum
+t=38  amsl=165.34 gps=76.28     <- does not converge
+```
+
+89.06 m, which is exactly the cliff-to-sea drop, and it does not self-heal:
+EKF2 has no way to notice its datum moved. With the fix at `30e560d59e` the
+same probe reports 76.3 m. The refusal semantics are unchanged - nothing else
+is reset unless the configured backend performed the reset - so the 2026-09-02
+issue stays closed.
+
+Two things worth keeping from the reproduction. The backend switch takes about
+six seconds to take effect, so a five-second settle reads the old backend and
+the test passes for the wrong reason; the test now waits on the
+`AHRS: EKF2 active` statustext instead. And baro drift alone does not
+discriminate: EKF2 re-converges to within 1.4 m in five seconds because its
+own origin never moved. Only an elevation change leaves the two disagreeing.
+
+### Correction: KalaupapaCliffs is 165.25 m, not 200 m (2026-09-06)
+
+Derived from the source, not measured, and wrong. A review pass decoded the
+SRTM tile (`N21W157.hgt.zip`) and read 202 m at the home coordinates, and that
+number was used to "correct" a test comment that already said 165 m.
+`Tools/autotest/locations.txt:93` sets the SITL home altitude to **165.25 m**,
+and the test logs `Cliff-top AMSL: 165.3 m`. The terrain tile's height at a
+coordinate is not the SITL home altitude; locations.txt is. Fixed at
+`8960850d97`.
 
 ### Review findings answered without a code change (2026-09-06)
 
