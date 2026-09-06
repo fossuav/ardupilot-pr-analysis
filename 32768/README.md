@@ -2,7 +2,7 @@
 
 Analysis archive for [ArduPilot/ardupilot#32768](https://github.com/ArduPilot/ardupilot/pull/32768).
 Branch `pr-baro-drift-minimum` (andyp1per fork), base `master`, head
-`9525e7d9ee` (2026-09-05). All committed data is SITL; real-flight numbers are
+`33e4911d63` (2026-09-06). All committed data is SITL; real-flight numbers are
 cited inline and their logs are not committed.
 
 ## Status (one line)
@@ -73,6 +73,124 @@ passes with it. The existing `BaroDriftClearedAtArm` runs at the
 `EK3_RNG_USE_HGT` default of -1, and the one Copter test that sets the switch
 (`EK3_AglKfVelForVelD`) sets it to -1 for an unrelated reason, which is why the
 gap went unseen.
+
+### Superseded 2026-09-06 by measurement at `33e4911d63`: the AGL KF is not what engages the switch
+
+The finding above is right that the rangefinder holds the height source at
+arm and that the reset was refused. The *mechanism* named for it is wrong on
+this branch, and the numbers in the table above were taken on the
+SmallFastDrone stack, which carries #33359.
+
+`aglKf` appears nowhere in `AP_NavEKF3_PosVelFusion.cpp` on `master`, so the
+"terrain stable whenever the AGL KF is valid" override is not present here.
+The switch engages anyway, for a different and older reason:
+
+- `NavEKF3_core::InitialiseVariables()` sets `terrainHgtStable = true`
+  (`AP_NavEKF3_core.cpp:360`).
+- Copter computes it as `is_taking_off() || is_landing()`, so false while
+  parked (`ArduCopter/baro_ground_effect.cpp:38`), at 50 Hz from
+  `throttle_loop()`.
+- `AP_AHRS::set_terrain_hgt_stable()` forwards only on a change of its own
+  cached `terrainHgtStableState` (`AP_AHRS.cpp:1976-1991`), and
+  `NavEKF3::setTerrainHgtStable()` drops the call entirely while `core` is
+  still null (`AP_NavEKF3.cpp:1806`). The first `false` lands before the
+  cores exist; after that AHRS believes it has already sent it.
+
+So each core keeps `terrainHgtStable == true` for the whole flight and
+`trustTerrain` is satisfied on the ground. Measured at `06860d0425` with a
+throwaway `GCS_SEND_TEXT` in `resetHeightDatum()` and in
+`NavEKF3_core::setTerrainHgtStable()`, running
+`BaroDriftClearedWithRangefinderHeightSwitch`:
+
+```
+DIAG0 act=2 trnStab=1 hvel=1 terr=0.25 pz=-0.29
+```
+
+`act=2` is `SourceZ::RANGEFINDER`; `trnStab=1` with Copter asking for false.
+`setTerrainHgtStable()` was never called once in the whole run.
+
+The conclusion does not move: the clause is needed on this branch, and the
+test discriminates. Re-measured at `06860d0425` with `EK3_OPTIONS` removed
+(it was there for the AGL KF and is irrelevant): without the EKF3 clause the
+test fails with "No EKF_ALT_RESET at arm", with it the reset is logged.
+
+The real-flight caveat further down this file - "Copter asserts
+terrain_hgt_stable only during takeoff and landing, so on the ground it is
+often still baro" - is the belief this measurement overturns. It is left in
+place because it is what the flight was read against.
+
+### The reset left the terrain state behind (2026-09-06)
+
+Found by tridge's automated review at `06860d0425` and confirmed by
+measurement. Letting the reset run with `activeHgtSource == RANGEFINDER`
+exposed a pre-existing shortcut at the end of `resetHeightDatum()`:
+`terrainState = 0`, with the floor in `ConstrainStates()` expected to put it
+back. That floor is inside `if (!inhibitGndState)`
+(`AP_NavEKF3_core.cpp:2093`) and `EstimateTerrainOffset()` sets
+`inhibitGndState = true` whenever the rangefinder is the height source
+(`AP_NavEKF3_OptFlowFusion.cpp:96`), so nothing restored it and rangefinder
+fusion saw the whole standing range as innovation.
+
+Peak reported height excursion over the 2 s after arming,
+`BaroDriftClearedWithRangefinderHeightSwitch`, `EK3_RNG_USE_HGT=70`, one run
+each at `06860d0425` plus the noted change:
+
+| `terrainState` after the reset | post-arm excursion |
+|---|---|
+| `0` (as submitted, and as master) | 0.648 m |
+| `stateStruct.position.z + rngOnGnd` (the `ResetHeight()` convention, suggested in review) | 0.529 m |
+| `+= oldHgt` (carry it across the datum move) | 0.000 m |
+
+The review's suggested convention only removes `EK3_RNG_ON_GND`; it does not
+close the gap, because the vehicle sits about 0.54 m above its terrain state
+by the rangefinder's reckoning at that moment. Shipped as `89caba96a1`.
+
+The test asserted only that `EKF_ALT_RESET` reached the log, so it was green
+across all three rows. It now asserts the post-arm height as well.
+
+EKF2 keeps `terrainState = 0`: its `resetHeightDatum()` still refuses a
+rangefinder height source outright, so the constraint always runs there.
+
+### Measured and rejected
+
+| Change | Argument for | Measured |
+|---|---|---|
+| `terrainState = stateStruct.position.z + rngOnGnd` in `resetHeightDatum()` | matches `ResetHeight()`, which is the established convention for the same state; suggested in review at `06860d0425` | 0.529 m post-arm excursion against 0.648 m unchanged and 0.000 m carrying the state across. Rejected 2026-09-06 |
+| seed `disarmed_in_air = true` on every boot, rather than only a watchdog-armed one | closes the booted-in-air hole without depending on the watchdog flag | not measured; rejected on inspection because a vehicle arming on a moving platform never satisfies the accel-stationary test, so the drift reset this PR exists for would never run there |
+
+### Review findings answered without a code change (2026-09-06)
+
+From tridge's automated reviews at `1c88a3bf62`, `9525e7d9ee` and
+`06860d0425`. Recorded so the next pass does not re-raise them unanswered.
+
+- **"`BaroDriftClearedWithRangefinderHeightSwitch` is green by construction
+  and covers none of the new clause."** Wrong, and measured: without the
+  EKF3 clause the test fails with "No EKF_ALT_RESET at arm". The reasoning
+  behind the finding was right - the AGL KF override it cites is not on this
+  branch - but `terrainHgtStable` is stuck true for the older reason above,
+  so the switch engages anyway. The finding did lead to the terrain-state
+  bug, which is real.
+- **`storedGPS` is not flushed alongside `storedBaro`.** Left alone.
+  `storedGPS` carries NE position and velocity as well as height, so
+  flushing it to correct a height reference would discard horizontal
+  observations. Master shifts the same reference by the same amount
+  (`EKF_origin.alt` there, `ekfGpsRefHgt` here), so this is unchanged from
+  master rather than something the PR introduces. A shift of the queued
+  heights, rather than a flush, would be the scoped fix; separate PR.
+- **An EKF3 core that refuses still has the baro moved under it by a core
+  that accepts.** Left alone. `baroHgtOffset` re-tracks over about 1 s and
+  the exposure is a lane switch inside that window.
+- **`getOriginLLH()` now also requires the primary core to have an origin.**
+  Intended. The reported origin should belong to the frame `getPosD()` is
+  expressed in; the change only delays a "not ready yet".
+- **Plane's `update_home()` calls `barometer.update_calibration()`
+  unconditionally, ahead of the new refusals.** Real, and not fixed here.
+  `ArduPlane/commands.cpp:151-152`. Copter reaches the calibration only
+  through `resetHeightDatum()`, so a refusal there also holds the baro
+  still; Plane does not. Reachable only with `EK3_OGN_HGT_MASK` bit 2 or a
+  beacon/extnav height source, both non-default. Not touched because
+  @tridge asked this PR to leave Plane alone, and the fix belongs with the
+  `HOME_RESET_ALT` follow-up. Noted in the PR description.
 
 ## The problem
 
@@ -251,7 +369,9 @@ Tools/autotest/autotest.py --no-configure test.Copter.BaroDriftClearedAtArm,Amsl
 Tools/autotest/autotest.py --no-configure test.Copter.GPSViconSwitching
 Tools/autotest/autotest.py --no-configure test.Copter.HeightDatumKeptOnMidairRearm,BaroDriftClearedAfterMidairDisarm
 
-# the rangefinder height switch finding above; fails before the 2026-09-05 fix:
+# the rangefinder height switch finding above; fails before the 2026-09-05 fix
+# with "No EKF_ALT_RESET at arm", and before 89caba96a1 with a 0.648 m post-arm
+# height excursion:
 Tools/autotest/autotest.py --no-configure test.Copter.BaroDriftClearedWithRangefinderHeightSwitch
 
 # periodic-reset branch - reproduces the problems (run GPSViconSwitching a few times):
