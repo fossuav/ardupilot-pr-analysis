@@ -319,6 +319,71 @@ failure the autotest playbook describes; and `BaroDriftClearedAfterMidairDisarm`
 left `SIM_BARO_DRIFT`'s accumulated offset behind, since setting the rate back
 to zero does not undo it.
 
+### BARO_ALT_OFFSET, second attempt: the deferred fix works (2026-09-06)
+
+Superseding the earlier entry that recorded this as out of scope. The one-line
+fix there was wrong for the reason given, but the conclusion drawn from it -
+that a correct fix needs a new DAL message - was too strong, and the comment
+left in the code said so. It does not: the value is unavailable *in that
+frame*, not unavailable.
+
+`baroHgtOffset` is what `hgtMea` subtracts from the baro reading. Zeroing it
+assumes the recalibrated baro reads zero; it reads `_alt_offset_active`. The
+correct value is the steady state `calcFiltBaroOffset()` converges to,
+`baroDataDelayed.hgt + position.z`, and that is readable one frame later -
+`storedBaro` has just been flushed, so nothing fuses baro height in between.
+So set a flag in the reset and take the offset from the first sample after it.
+
+Measured, `BARO_ALT_OFFSET=5`, peak reported height excursion over the 15 s
+after a second arm with the vehicle stationary:
+
+| build | peak |
+|---|---|
+| `baroHgtOffset = 0` | 5.126 m |
+| deferred to the first post-reset sample | 0.050 m |
+
+The 5.126 m matches the review's independently measured 5.116 m by a different
+route. Covered by `BaroDriftClearedWithAltOffset`, which fails at 5.126 m with
+the deferral removed. The drift tests stay green, which is what killed the
+first attempt.
+
+### The EKF3 meaHgtAtTakeOff line was dead (2026-09-06)
+
+Added for symmetry with the EKF2 fix and justified in its commit message with
+"it reappears through setAidingMode(), which assigns position.z =
+-meaHgtAtTakeOff when aiding is lost". Wrong: `setAidingMode()` assigns
+`meaHgtAtTakeOff = baroDataDelayed.hgt` at `AP_NavEKF3_Control.cpp:430` and
+reads it at `:432`, so the value the reset wrote is overwritten before its only
+use. Every other EKF3 reference is the declaration and the self-referential
+refilter at `PosVelFusion.cpp:1384`. The line is removed.
+
+EKF2 is different and the fix there is real: two genuine floors,
+`MAX(..., meaHgtAtTakeOff)` at `AP_NavEKF2_Measurements.cpp:699` and
+`AP_NavEKF2_PosVelFusion.cpp:1126`, measured at 3.634 m against 0.149 m.
+
+Worth naming the error: a fix was applied to a second backend for symmetry, and
+its justification was written from the shape of the EKF2 mechanism rather than
+from reading the EKF3 call sites.
+
+### Refuted: EKF2 does not need the OGN_HGT_MASK bit-2 refusal (2026-09-06)
+
+The review asked why `EK2_OGN_HGT_MASK` bit 2 got no guard when
+`EK3_OGN_HGT_MASK` bit 2 did, both commits being titled "restrict when the
+height datum reset is performed". Because the two filters reference height
+differently, and this archive already recorded the reason.
+
+EKF3 refuses because `d644b92f9b` stopped it moving `EKF_origin.alt`, and in
+bit-2 mode that is exactly what the height observation is referenced to
+(`AP_NavEKF3_Measurements.cpp:726`), so state and observation would diverge.
+EKF2 still moves `EKF_origin.alt`, sets `ekfGpsRefHgt = 0.01*EKF_origin.alt`
+with it, and references its bit-2 observation to `EKF_origin.alt` as well
+(`AP_NavEKF2_Measurements.cpp:648`), so the observation shifts by exactly the
+amount `position.z` was zeroed by. Reported AMSL is `ekfGpsRefHgt - position.z`
+either side and is preserved; `getPosD()` goes from `-oldHgt` to 0, which is
+what a datum reset is for.
+
+Guarding EKF2 there would refuse a reset that is self-consistent.
+
 ### assert_origin_frame_consistent() was an algebraic identity (2026-09-06)
 
 The sixth assertion in this PR to certify nothing, and the cleanest example:
