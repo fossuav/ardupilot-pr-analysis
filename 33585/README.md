@@ -84,6 +84,7 @@ re-run:
 | `activeHgtSource != SourceZ::NONE` | "With no height source and no terrain data the assumption is refused" |
 | `OptflowAssumeFlatGnd` from the `writeTerrainData` gate | "Terrain data is preferred and does not need bit 2" (leg replaced 2026-09-07, below) |
 | the height check on the terrain term (`flowScaleHgtUsable()`) | "With no height source terrain data does not authorise it either" |
+| the option itself, end to end | "The failsafe it prevents: LOITER survives the ceiling" - bit clear goes to LAND on the way up, bit set holds at 21 m |
 
 All three confirmed on 2026-09-05. A leg asserting the bit 3 + bit 5
 combination was
@@ -323,6 +324,58 @@ cross-PR bookkeeping dropped.
 this record already corrected, and the bit-3/bit-5 table in the topic was measured
 before `writeTerrainData()` was widened - the body cites it without that
 condition.
+
+## Second review round, 2026-09-07
+
+Re-ran the pipeline at `0d996214f9`. Three reviewers plus a partial Codex pass (its
+account hit a usage limit mid-pool; only the autotest verification finished, which
+confirmed five of six claims and adjusted the sixth). The round found more than the
+first, because the first round's fix had moved the problem rather than closed it.
+
+**The height check was at the reporting layer only.** `optflow_gnd_offset` was
+gated, but `FuseOptFlow` still took `terrain_srtm_alt - pd` as the flow scale height
+with no check, so the EKF went on fusing flow on a height the status flags had just
+judged unusable. The same gate now sits on the fusion path.
+
+**A height source switch orphans the frozen offset.** `ResetPositionD()`
+(`AP_NavEKF3_PosVelFusion.cpp:260`) moves `stateStruct.position.z` and leaves
+`terrainState` behind, and it is called on any in-flight source change (`:1561`) -
+including the `EK3_RNG_USE_HGT` switch, which happens at the ceiling, exactly where
+this option takes over. `ResetHeight()` does handle the terrain state, so the two
+reset paths disagreed. The state is now carried with the datum, conditioned on the
+offset being meaningful.
+
+That condition comes from `../32768/`, not from reasoning: it measured carrying the
+state across a datum move at 0.000 m post-arm excursion against 0.648 m for master,
+and then measured that carrying it *unconditionally* is worse than not, because with
+nothing fusing into it the state is only the floor a previous reset left. The
+condition here (`gndOffsetValid || gndOffsetMeasured`) is that rule plus the case
+this PR creates, where the offset is deliberately stale but was measured this flight.
+
+**The measurement I could not get.** Two SITL probes aimed at the datum step both
+failed to isolate it - the first because `SIM_BARO_DRIFT` made ALT_HOLD chase the
+drifting estimate (`wait_altitude(relative=True)` reported 12-16 m at a true 4.6 m),
+the second because the open-loop STABILIZE climb overshot the range finder's height
+band, so no in-flight switch carried an accumulated disagreement. The two runs came
+out within 0.02 m of each other: **no measured difference**. The defect is certain
+from the source - `terrainState` and `position.z` are D coordinates in one datum and
+only one of them moves - and the fix's shape is backed by #32768, but the magnitude
+in flight is unmeasured here and the PR text must not imply otherwise.
+
+**Two legs added.** A bit-2 control leg, which is both the positive witness that
+terrain data is reaching the core (a cleared flag is also what no terrain looks like,
+and counting served TERRAIN_REQUESTs cannot tell them apart because SITL reads the
+tile from `terrain/*.DAT`) and the first coverage bit 2 has ever had in the tree. And
+a LOITER pair, which is the only leg that sees what the option is for: `ekf_check`
+takes no action in a mode that does not require position, so every earlier leg
+asserted the flag without the user-visible half. With the bit clear the vehicle goes
+to LAND during the climb, before the ceiling; with it set it holds at 21 m.
+
+Every negative assertion now carries `EKF_ATTITUDE` and `EKF_CONST_POS_MODE`
+witnesses, since both `EKF_POS_HORIZ_REL` and `EKF_POS_VERT_AGL` are ANDed with
+`filterHealthy` and a cleared flag otherwise proves nothing. Codex noted the residual
+gap: `EKF_CONST_POS_MODE` witnesses the aiding mode, not `flowDataValid`, so the
+optical flow sensor's own health is checked alongside it - as close as MAVLink gets.
 
 ## What is here
 
