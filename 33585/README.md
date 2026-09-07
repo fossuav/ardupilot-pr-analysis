@@ -252,6 +252,22 @@ asserts the flag is still set, which only `flatGroundAssumed()` can do, before
 landing. `EKF_CONST_POS_MODE` is checked clear at the negative assertion so that
 losing flow aiding cannot be what satisfies it.
 
+## The self-correcting argument is refuted (2026-09-07)
+
+The design rationale in `../../analysis/topics/dow_althold_ekf_failsafe.md` held that
+a wrong flat-ground assumption is self-correcting - "the innovations grow, fusion
+stops, and the flag drops". It is not. SITL A/B with `RNGFND1_SCALING` doubled, so
+the terrain estimator places the ground twice as far below the vehicle: a scale
+height 1.99x too large gives a reported speed 2.14x too large, the flow innovation
+ratio peaks at 0.13 of its rejection threshold, and `horiz_pos_rel` stays valid
+throughout. The above-range leg, where `flatGroundAssumed()` is the only term
+holding the flag, biases speed ~20% on a datum 5.7 m too deep. Control run with the
+scaling correct: height ratio 1.00, speed ratio 1.00.
+
+That matters for the terrain-forwarding finding below: there is no backstop behind
+the authorisation. Whatever reaches `heightAboveGndEst` is believed. Full table,
+harness and both logs: `data/`, superseded section in the topic.
+
 ## What is here
 
 ```
