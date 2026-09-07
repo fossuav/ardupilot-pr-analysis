@@ -1,8 +1,8 @@
 # PR #33585 - Keep optical flow nav alive above the rangefinder range (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#33585](https://github.com/ArduPilot/ardupilot/pull/33585).
-Branch `pr-optflow-flat-ground` (andyp1per fork), head `0d996214f9`
-(2026-09-07, two commits after the review fold; PR still at `f266fd0fd9`), base
+Branch `pr-optflow-flat-ground` (andyp1per fork), head `23dfeccb54`
+(2026-09-07, two commits after two review folds; PR still at `f266fd0fd9`), base
 `master`. Stacked on #33478 (`../33478/`), whose three
 commits are the first three on the branch. Head was `62a3fbeaba` until the two
 autotest fixes of 2026-09-05 below.
@@ -376,6 +376,23 @@ witnesses, since both `EKF_POS_HORIZ_REL` and `EKF_POS_VERT_AGL` are ANDed with
 `filterHealthy` and a cleared flag otherwise proves nothing. Codex noted the residual
 gap: `EKF_CONST_POS_MODE` witnesses the aiding mode, not `flowDataValid`, so the
 optical flow sensor's own health is checked alongside it - as close as MAVLink gets.
+
+### A fold that had to be undone
+
+The round-two fixes were staged with `git add libraries/AP_NavEKF3/`, which swept
+the untracked `CLAUDE.md` and `CLAUDE.md.bak` playbooks into the EKF commit - 1,864
+lines of them. The mechanical gate's `stray-file` check caught it; a `git rm
+--cached` fixup folded the addition away so the files never appear in the PR's
+history, and the working copies were checksummed before and after. The rebase also
+refused to start until the untracked copies were moved aside, because the commit it
+was replaying adds those same paths. The root playbook already warns against
+directory-scoped `git add`; this is what it warns about.
+
+**The current head has not been through a review pass.** Rounds one and two ran at
+`e630acb0be` and `0d996214f9`; everything since is fixes and folds. `pr_review.py
+state` records `23dfeccb54` only so a re-run can diff against it - a third round is
+outstanding, and the Codex EKF verification is worth re-running when that account's
+limit resets.
 
 ## What is here
 
