@@ -837,13 +837,37 @@ Measured and rejected this round:
 | the "we are not in the air" comment is now false | upstream context line, not in the diff |
 | eleven autotest assertions do not discriminate | already recorded per test above and disclosed in the PR body; each test retains a discriminating assertion |
 
-Left recorded rather than fixed: `storedGPS` is not flushed or shifted
-although `ekfGpsRefHgt` moves under it, so 1-2 buffered samples carry the
-old reference (reachable at `EK3_SRC1_POSZ=3`, which the guard now
-permits, and through `correctEkfOriginHeight()` under `OGN_HGT_MASK` 1/2).
-The mechanism is pre-existing - the base moved `ekfGpsRefHgt` too - but the
-PR fires it on every arm. Flushing `storedGPS` would drop buffered
-horizontal GPS as well, which is not a change to make late in a round.
+**Two of this round's findings were already settled, and I re-triaged them
+from scratch.** `storedGPS` not being flushed was recorded and reasoned
+through earlier in this file (a flush would discard queued horizontal
+observations; master shifts the same reference; a shift of the queued
+heights is the scoped fix, separate PR) - and I wrote it up again as if it
+were new. `getOriginLLH()` requiring the primary core's origin was recorded
+earlier as *intended*, and this round I changed it. That one turns out
+compatible rather than reversed: `public_origin` is a reference to
+`common_EKF_origin` (`AP_NavEKF3_core.cpp:14`), so answering from the
+common origin still reports the frame `getPosD()` is expressed in, which
+was the stated intent, while restoring the `true` that the lagging-core
+case used to get. `FarOrigin`, the test that caught the earlier version of
+this change, passes.
+
+A review round spent re-deciding settled questions is the cost of not
+reading the record first, so: grep this file for the symbol before
+triaging a finding, and if it is already here, answer with the entry
+instead of re-deriving it.
+
+**The pattern behind the churn.** Six commits have touched
+`resetHeightDatum()`, each moving a *different* piece of datum-referenced
+state: `EKF_origin.alt`, the guard, the on-ground references, the
+rangefinder allowance, `baroHgtOffset`, `lastKnownPositionD`. None
+re-litigates an earlier one - but the set is being discovered one review
+round at a time, which is why every round yields another. What is still
+not moved is known and enumerable: `storedGPS` queued heights,
+`ekfOriginHgtVar`, the beacon `posDownOffsetMax/Min`, and
+`posResetD`/`posDResetCount`. All four are pre-existing, none is introduced
+here, and the PR only changes how often the reset runs. Closing the set
+means stating it in the PR body rather than fixing them: a reviewer who
+then spots `storedGPS` sees it scoped instead of filing it.
 
 ## Real-flight context (2026-08-29)
 
