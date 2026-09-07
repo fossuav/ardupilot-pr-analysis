@@ -2,8 +2,10 @@
 
 Analysis archive for [ArduPilot/ardupilot#32768](https://github.com/ArduPilot/ardupilot/pull/32768).
 Branch `pr-baro-drift-minimum` (andyp1per fork), base `master`, head
-`3457a96e91` (2026-09-06). All committed data is SITL; real-flight numbers are
-cited inline and their logs are not committed.
+`d085579474`, 25 commits (2026-09-07, dev-call review APPROVED contingent on
+`sitltest-copter-tests2b` and `sitltest-quadplane` reporting green). All
+committed data is SITL; real-flight numbers are cited inline and their logs
+are not committed.
 
 ## Status (one line)
 
@@ -709,7 +711,7 @@ field-elevation path can also fire the reset, and that was not measured); the
 30 s `accumulate_baro_drift()` delay stays a fixed delay because the drift it
 builds is the point.
 
-## PR description (edited 2026-09-06 at `ab41a91714`)
+## PR description (last edited 2026-09-07 at `2b77b08835`)
 
 The body now carries the rangefinder clause and its real mechanism, the terrain
 state A/B, the watchdog seed and its lack of a test, the Plane
@@ -722,6 +724,14 @@ every boot.
 It also states which of the new tests actually fail on master - two of the six -
 and says plainly that the rest guard behaviour introduced elsewhere in this PR.
 That was previously only implied for the QuadPlane test.
+
+Added 2026-09-07: a table of every piece of state referenced to the height
+datum and what the reset does with it, including the four deliberately left
+alone (`storedGPS` queued heights, `ekfOriginHgtVar`, the beacon
+`posDownOffsetMax/Min`, `posResetD`/`posDResetCount`) with the reason each is
+out of scope. This is the section that retired the `storedGPS` finding: the
+reviewer withdrew it citing the table by name. Reviewers cannot see this
+archive, so a decision recorded only here gets re-found every round.
 
 ## The problem
 
@@ -868,6 +878,84 @@ not moved is known and enumerable: `storedGPS` queued heights,
 here, and the PR only changes how often the reset runs. Closing the set
 means stating it in the PR body rather than fixing them: a reviewer who
 then spots `storedGPS` sees it scoped instead of filing it.
+
+### Review round six: approved, and what the fold nearly shipped (2026-09-07)
+
+Head `d085579474`, 25 commits. The dev-call review moved REQUEST CHANGES ->
+COMMENT -> APPROVE across two rounds, the approval contingent on
+`sitltest-copter-tests2b` and `sitltest-quadplane` reporting green - neither
+had run at that head, so every empirical claim in the review is from local
+runs, not CI.
+
+What closed the last blocker, both proven by mutation by the reviewer rather
+than by reading:
+
+- The deferred `baroHgtOffset`: 0.053 m at head, 5.129 m with
+  `baroHgtOffset = 0.0f` put back.
+- The EKF2 comment. It had called a standing error a "takeoff transient".
+  Nothing decays it: `calcFiltBaroOffset()` is gated on
+  `activeHgtSource != HGT_SOURCE_BARO` (`AP_NavEKF2_PosVelFusion.cpp:1057`),
+  so with baro as the source `baroHgtOffset` never leaves the zero the reset
+  sets, and `hgtMea` keeps subtracting it. Measured 4.861 m still standing
+  15 s after the arm with `BARO_ALT_OFFSET=5`, against 0.053 m for EKF3.
+  EKF2 is still not fixed - the ground effect floors need a value at the
+  reset and `HAL_NAVEKF2_AVAILABLE` is 0 by default - but the comment now
+  says the error persists.
+- `BaroDriftClearedWithAltOffset` gained the precondition the other two got:
+  pre-arm 4.97 m required over 4.0. The mutant (offset 5 -> 0) now fails with
+  "Expected >4 m", where the old test passed vacuously at ~0 m excursion.
+  Deterministic: `copter.parm` sets `SIM_BARO_RND 0`, and 10 consecutive runs
+  were bit-identical.
+
+**The closed-set table paid for itself.** `storedGPS` was withdrawn by name -
+"your 'deliberately not moved' table is right that a flush would discard good
+horizontal observations to fix a height reference, and master carries the same
+exposure". A finding that had cost two rounds was retired by the PR
+description instead of by another investigation. So was the EKF2 frontend
+origin question, closed against a comment already in the tests. Putting the
+known-and-not-fixed list where reviewers can read it is what stopped the
+discovery loop.
+
+### The fold broke a commit and only range-diff saw it (2026-09-07)
+
+Folding the round-five fixes hit two conflicts in `AP_AHRS.cpp`, and the
+resolution pulled `return ret;` into the commit that publishes the location -
+where `resetHeightDatum()` is still `void` and `ret` does not exist. **That
+commit did not compile.**
+
+The content diff against the pre-squash backup was **empty**, correctly: the
+final tree was right. That is the whole point. A flat diff cannot see a hunk
+that landed in the wrong commit, because the sum is unchanged; it is blind to
+exactly the failure a fold has. `git range-diff <base> <backup> <branch>`
+showed it in one line - the later commit had *lost* the hunk it used to own.
+
+So the protocol, now in the playbook (aap 1.7.0) and used for both folds:
+
+1. `git branch pre-squash/<branch>-<stamp>` and keep `git log --oneline`
+   before touching history. The old SHAs are what review comments and CI runs
+   cite, and the backup survives a reflog expiry or a second rebase.
+2. `git diff <backup> <branch>` - content, must be empty.
+3. `git range-diff <base> <backup> <branch>` - distribution. Every commit
+   should read `=` except the intended targets (`!`) and the folded fixes
+   (`<`).
+4. Build **every** commit. This is what caught it; the tree being right is
+   not evidence that the history is.
+
+The second fold, done under the protocol, was clean: two targets `!`, two
+fixes `<`, 23 commits `=`, all 25 building.
+
+### Open and deliberately not acted on, with numbers (2026-09-07)
+
+Recorded so round seven answers from here instead of re-deriving:
+
+| item | why not |
+|---|---|
+| `AP_NavEKF3.cpp:1454-1460` tail unreachable after restoring the `common_origin_valid` early return | `validOrigin` is set in one place which sets `common_origin_valid` eleven lines later, so reaching the tail implies the core has no origin and the function already returned. Harmless; removing it would reopen a path litigated twice |
+| `AP_AHRS.cpp:1815` overwrites `state.location` with a default `Location` on `_get_location()` failure | the only consumer returns `state.location_ok` alongside it, so a caller checking the flag is safe. Hygiene |
+| single-sample seed against the slewing `BARO_ALT_OFFSET` | `AP_Baro` slews `_alt_offset_active` with a 0.02 LPF at 10 Hz, so a reset 20 s into a 5 m slew captures 4.97 and leaves 0.03-0.09 m standing until the slew finishes. Reviewer's own verdict: probably not worth code |
+| heli `StabilizeTakeOff` 1 m bound | measured need is 0.08-0.12 m and the reviewer suggests ~0.3 m would still catch a real premature lift. The 1 m matches the sibling `PosHoldTakeOff:486` upstream; tightening trades a review point for CI flakiness, which is what produced this round's blockers |
+| per-core divergence under `EK3_SRC_OPTIONS` SRC_PER_CORE | one core can accept the reset while another refuses, and the shared barometer has already moved. Needs a non-default option plus divergent per-core Z sources; the frontend comment already anticipates a refusing secondary core |
+| `ArduPlane/commands.cpp:151-152` recalibrates before resetting | the new EKF3 refusals can leave Plane un-re-datumed under a moved barometer. Pre-existing ordering, no measured user-visible effect, and the AP_AHRS comment names it |
 
 ## Real-flight context (2026-08-29)
 
