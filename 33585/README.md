@@ -1,8 +1,9 @@
 # PR #33585 - Keep optical flow nav alive above the rangefinder range (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#33585](https://github.com/ArduPilot/ardupilot/pull/33585).
-Branch `pr-optflow-flat-ground` (andyp1per fork), head `f266fd0fd9`
-(2026-09-05), base `master`. Stacked on #33478 (`../33478/`), whose three
+Branch `pr-optflow-flat-ground` (andyp1per fork), head `0d996214f9`
+(2026-09-07, two commits after the review fold; PR still at `f266fd0fd9`), base
+`master`. Stacked on #33478 (`../33478/`), whose three
 commits are the first three on the branch. Head was `62a3fbeaba` until the two
 autotest fixes of 2026-09-05 below.
 
@@ -81,7 +82,8 @@ re-run:
 |---|---|
 | `gndOffsetMeasured` (reverted to `gndHgtValidTime_ms != 0`) | "The assumption does not carry over from an earlier flight" |
 | `activeHgtSource != SourceZ::NONE` | "With no height source and no terrain data the assumption is refused" |
-| `OptflowAssumeFlatGnd` from the `writeTerrainData` gate | "Terrain data is preferred and does not need bit 2" |
+| `OptflowAssumeFlatGnd` from the `writeTerrainData` gate | "Terrain data is preferred and does not need bit 2" (leg replaced 2026-09-07, below) |
+| the height check on the terrain term (`flowScaleHgtUsable()`) | "With no height source terrain data does not authorise it either" |
 
 All three confirmed on 2026-09-05. A leg asserting the bit 3 + bit 5
 combination was
@@ -267,6 +269,60 @@ scaling correct: height ratio 1.00, speed ratio 1.00.
 That matters for the terrain-forwarding finding below: there is no backstop behind
 the authorisation. Whatever reaches `heightAboveGndEst` is believed. Full table,
 harness and both logs: `data/`, superseded section in the topic.
+
+## Review fold, 2026-09-07
+
+`/pr-review` at `e630acb0be`, single-sourced (Codex unavailable on this account:
+its default model 404s). The mechanical gate was clean; the findings that
+mattered came from the PR thread, which tridge's 2026-09-06 pass had left at
+REQUEST CHANGES with four open items.
+
+**The blocker, fixed.** `optflow_gnd_offset` is a plain OR, so once this PR
+forwarded terrain data for bit 5 the `terrain_srtm_alt_valid` term satisfied it
+with none of `flatGroundAssumed()`'s checks - measured by tridge at a flow scale
+height of 0.10 m against a true 20.26 m AGL, flag valid throughout. The height
+test is now a helper, `flowScaleHgtUsable()`, and the terrain term carries it
+where the data arrives for bit 5:
+
+```cpp
+const bool terrainAltUsable = terrain_srtm_alt_valid &&
+                              (option_is_enabled(OptflowMayUseTerrainAlt) || flowScaleHgtUsable());
+```
+
+Bit 2 is untouched, and with a working height source the change is a no-op. Note
+his numbers prove the missing authorisation, not the sign bug in the same
+expression: with `EK3_SRC1_POSZ=None` the vertical state is pinned near zero, so
+`terrain_srtm_alt - pd` and `(-pd) - terrain_srtm_alt` both clamp to `rngOnGnd`.
+The sign is separately wrong (error = 2x `terrain_srtm_alt`, hence invisible at
+CMAC where the origin sits on the terrain) and it is master's, not this PR's.
+
+**The leg that covered the forwarding inverted.** "Terrain data is preferred and
+does not need bit 2" asserted `horiz_pos_rel` *valid* with no height source -
+exactly the state the fix now refuses - so it is replaced by its negative, which
+fails without the new gate.
+
+**What is now uncovered, deliberately.** After the fix no leg can isolate the
+bit-5 terrain forwarding on a GPS-denied vehicle: terrain writes need
+`get_location()`, which needs `horiz_pos_rel`, which needs the range finder or
+the assumption itself, and `gndOffsetMeasured` latches from the on-ground reading
+inside the same 5 s window that terrain validity expires in. Every configuration
+that separates the two also fails the height check. The forwarding's remaining
+effect is on the flow scale height above the range, which no log field exposes.
+Recorded rather than papered over with a leg that would pass for another reason.
+
+Also fixed in the fold: the `@Description` claimed the option does not raise the
+optical flow altitude limit, which is false wherever terrain data is available
+(`getHeightControlLimit()` returns no limit on `terrain_srtm_alt_valid`); the
+carry-over leg's `EKF_CONST_POS_MODE` guard was vacuous, since that flag is ANDed
+with `filterHealthy` just as `horiz_pos_rel` is, and now needs `EKF_ATTITUDE` as
+the health witness; "landing" scopes nothing, disarming does; and the commit
+series is two commits, the three autotest ones folded into one with the
+cross-PR bookkeeping dropped.
+
+**Still open, prose only:** the PR body carries the `get_location()` inference
+this record already corrected, and the bit-3/bit-5 table in the topic was measured
+before `writeTerrainData()` was widened - the body cites it without that
+condition.
 
 ## What is here
 
