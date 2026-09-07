@@ -138,6 +138,45 @@ Subtest 3's separation is real but narrower than subtest 1's, and it grows
 with climb length rather than sitting at zero, because GPS and the IMU keep
 pulling the estimate along even while the range observation is constant.
 
+## Post-squash review round (2026-09-07)
+
+Two defects found in the review responses themselves, both in code already
+called verified once:
+
+- **The height term was sign-inverted for ArduSub.** `(posDownAtTakeoff -
+  position.z) > 1.5f` tests "moved up"; a Sub moves away from the surface by
+  increasing depth, and `detectFlight()` twenty lines above already carries an
+  `APM_BUILD_ArduSub` branch for exactly this. Sub takes the non fly-forward
+  path and sets `likely_flying` from the armed flag, so the gyro term was the
+  only survivor there. Fixed.
+- **The autotest's climb bound was a fraction of the climb achieved.** A
+  vehicle flying a lagging estimate over-throttles, so a broken build widened
+  its own allowance; the margin was scale-invariant at 1.39x against ~0.6m of
+  run-to-run spread. Now bounded by the climb commanded.
+
+**The GPS-denied objection, measured.** A reviewer argued the circularity
+refutation was confounded, because `EK3_SRC1_VELZ` defaults to GPS
+(`AP_NavEKF_Source.cpp:53`) and GPS velD was moving the height state
+throughout. The prediction was that with the range finder as the only vertical
+observation the state would freeze and all three release terms would be dead.
+Measured in the indoor config (optical flow for XY, range finder for Z, no GPS
+- `configure_EKFs_to_use_optical_flow_instead_of_GPS()` already sets
+`EK3_SRC1_VELZ=0`): the estimate tracked, 10.3m flown against 10.2m estimated.
+The IMU keeps driving `position.z` against a constant height observation, so
+it lags harder without velD but does not freeze. The strong form is not
+reproduced; the direction was right, and the config is now a permanent leg.
+
+Also corrected from the earlier record: `find_instance()`
+(`AP_RangeFinder.cpp:750-760`) returns the first downward backend **whose
+status is Good**, falling back to the first downward backend. So with one Good
+and one out-of-range sensor, `rngOnGnd` is taken from the *Good* sensor and
+written as the other one's measurement, then corrected with the wrong body
+offset. Defect 1 below is worse than first recorded.
+
+Sampling note for anyone repeating these runs: Copter streams
+`LOCAL_POSITION_NED` at 5Hz, which lags the truth sample by most of a metre in
+a 2.5m/s climb. At 20Hz the same leg moved from 6.4/5.9 to 6.4/6.5.
+
 ## Open defects, in the original two commits
 
 1. **Dual range finder.** The loop writes the shared `rangeDataNew` and
