@@ -173,67 +173,84 @@ Checked before applying, per the repo rules.
   path where there is coverage. The numbers are not restated here; they
   belong to that code state.
 
-## Stacked with #32232 the leg fails, and neither guard alone is at fault (2026-09-07)
+## Stacked with #32232 the leg failed, and the leg was the thing at fault (2026-09-07)
 
 On a tree carrying both this PR and #32232 (ground clearance fusion,
 `rishabsingh3003:ek3_gnd_clear`, head `a628150687`) the "does not carry over"
-leg fails. A handoff attributed that to `gndOffsetMeasured` re-latching inside
+leg failed. A handoff attributed that to `gndOffsetMeasured` re-latching inside
 the 5 s freshness window on a pre-takeoff measurement, and concluded #32232
-needed no change. The first half is right about this PR's guard; the second is
-wrong, and wrong in the way that matters - with #32232 as published the flag is
-held up by `gndOffsetValid`, so no change to this PR could have made the leg
-pass.
+needed no change.
 
-`XKF4.SS` decodes it. Through the second flight of the leg, range finder
-killed, bit 6 (`terrain_alt`, i.e. `gndOffsetValid`) never clears, so
-`horiz_pos_rel` is satisfied through `optflow_gnd_offset` whatever
-`flatGroundAssumed()` returns. Bit 10 (`takeoff_detected`) never sets either,
-and that is the mechanism: #32232 substitutes `rngOnGnd` for a range finder
-reading `OutOfRangeLow` while `!takeOffDetected`, and with the sensor dead
-`detectTakeoff()` is left with only its gyro criterion, which a SITL climb does
-not reach. The substitution runs the whole flight. Details and the terrain
-state it corrupts are in `../32232/`.
-
-Four builds, one leg, everything else held (Copter SITL, `EK3_IMU_MASK=1`):
+First measurement, on the leg as it then stood (it killed the range finder with
+`RNGFND1_MIN` above `RNGFND1_MAX`), Copter SITL, `EK3_IMU_MASK=1`:
 
 | #32232 substitution | this PR's guard | leg |
 |---|---|---|
-| as published (`!takeOffDetected`) | as before | fails - `terrain_alt` set all flight |
-| as published | fixed, below | fails - same reason |
-| bounded with `!inFlight` | as before | fails - `terrain_alt` clears at 48.7 s, `horiz_pos_rel` stays set: this PR's guard alone |
-| bounded with `!inFlight` | fixed | passes |
+| as published (`!takeOffDetected`) | as committed | fails - `terrain_alt` set all flight |
+| as published | `inFlight && takeOffDetected` | fails - same reason |
+| bounded with `!inFlight` | as committed | fails - `terrain_alt` clears at 48.7 s, `horiz_pos_rel` stays set |
+| bounded with `!inFlight` | `inFlight && takeOffDetected` | passes |
 
-Both guards are too weak and neither fix is sufficient on its own. What this
-PR owns is the third row. `gndOffsetMeasured` was authorised by freshness
-alone, and a range finder sitting on the ground - reading its real ground
-clearance on master, or the substituted one under #32232 - holds the offset
-fresh right up to the moment `inFlight` latches, so the assumption is
-authorised by a measurement taken before the vehicle left the ground.
-`b0488c3ac2` requires the offset to have been updated while the vehicle is
-airborne (`inFlight && takeOffDetected`). That is a hole on master too: a
-range finder that dies at takeoff leaves a fresh ground-level offset behind and
-would authorise the assumption for a flight that never saw the terrain it flew
-over.
+The first two rows refuted the handoff: with #32232 as published the flag is
+held up by `gndOffsetValid`, not by `flatGroundAssumed()`, so no change to this
+PR could have made the leg pass. `XKF4.SS` bit 6 never clears in the second
+flight and bit 10 (`takeoff_detected`) never sets, because #32232 substitutes
+`rngOnGnd` for a range finder reading `OutOfRangeLow` while `!takeOffDetected`,
+and with the sensor dead `detectTakeoff()` has only its gyro criterion left,
+which a SITL climb does not reach. That is a real defect in #32232 and it is
+recorded in `../32232/`.
 
-`takeOffDetected` is in the term because the range buffer is delayed. Samples
-pushed just before the transition are fused after it, so `inFlight` on its own
-credits them; the two flags do not flip in the same window.
+### The correction: the leg could not tell the two cases apart
 
-### The leg's precondition, and what it was really proving
+`RNGFND1_MIN` above `RNGFND1_MAX` does not deny the EKF range data, it makes
+every reading `OutOfRangeLow` - which is still data on any build that
+substitutes a ground clearance for a short reading. So the leg could not
+distinguish "this flight measured no terrain offset" from "this flight measured
+its own ground clearance", and rows three and four above are not about carrying
+anything over from an earlier flight at all: they are about whether the guard
+swallows a substituted ground-clearance reading taken during *this* flight.
 
-The leg took off, landed, killed the range finder, took off again and asserted
-the flag was clear. It never asserted there was an authorised assumption to
-carry over: the first flight's only check is at 4 m, where `gndOffsetValid` is
-true and satisfies `horiz_pos_rel` on its own. The leg would have passed just
-as well on a build that never authorises the assumption at all.
+`kill_rangefinder()` now points the sensor away from `ROTATION_PITCH_270`
+instead, which `readRangeFinder()` skips outright whatever the backend reports.
+With that, the whole test passes on this branch alone **and** on the stack with
+#32232 as published, unmodified (both measured 2026-09-07). The interaction was
+a test artefact; #32232's own defect stands, but this test no longer sees it and
+that PR needs its own coverage.
 
-`dd557b0019` kills the range finder in the air instead, waits for the terrain
-offset to go stale and asserts the flag is still set - which only
-`flatGroundAssumed()` can do - before landing. The second flight then has no
-terrain measurement of its own on either stack, so the leg no longer depends on
-whether the on-ground reading is real or substituted. It also checks
-`EKF_CONST_POS_MODE` is clear at the negative assertion, so losing flow aiding
-cannot be what satisfies it (measured clear on the passing run).
+### The guard change that was tried and withdrawn
+
+`gndOffsetMeasured` was briefly changed to require the terrain offset to have
+been updated while `inFlight && takeOffDetected`. Withdrawn for two reasons,
+either sufficient:
+
+- `libraries/AP_NavEKF3/CLAUDE.md` already records both flags as unreliable.
+  The fly-forward branch of `detectFlight()` sets `inFlight` only from GPS
+  ground speed, so on a GPS-denied fly-forward vehicle it never sets;
+  `takeOffDetected` is written only from `writeOptFlowMeas()`.
+- It is unqualifiable on master. A leg was written to fail without it - arm,
+  kill the range finder on the ground, climb - and it passed either way. On a
+  copter the only window in which the two guards differ is the sub-second one
+  between the last ground-clearance reading and the vehicle climbing above its
+  ground clearance, which no autotest can hit reliably.
+
+### What did land
+
+`!inFlight` -> `onGround` for the flight scoping, which is the portable term the
+playbook names ("the one term that means the same thing on every vehicle") and
+is identical on Copter, where `onGround` is `!motorsArmed` and `inFlight` latches
+until disarm. On a GPS-denied fly-forward vehicle the old form could never
+authorise the assumption at all. Negative check re-run on the new leg: with the
+scoping removed entirely the carry-over leg fails, so the term is still
+qualified.
+
+And the leg now asserts its own precondition. It took off, landed, killed the
+range finder, took off again and asserted the flag was clear - but never
+established there was an authorised assumption to carry over, its only positive
+check being at 4 m where `gndOffsetValid` satisfies `horiz_pos_rel` on its own.
+It now kills the range finder in the air, waits for the offset to go stale and
+asserts the flag is still set, which only `flatGroundAssumed()` can do, before
+landing. `EKF_CONST_POS_MODE` is checked clear at the negative assertion so that
+losing flow aiding cannot be what satisfies it.
 
 ## What is here
 

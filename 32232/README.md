@@ -61,35 +61,48 @@ This is the trap `libraries/AP_NavEKF3/CLAUDE.md` already records for
 constant. Here it reduces to constant false in exactly the case the
 substitution is riskiest - no working range finder.
 
-## Suggested fix
+## The scope needs a term that does not depend on the sensor
 
-Add the flight-state term the scope actually needs:
+Whatever bounds the substitution must not be derived from the range finder
+being substituted, and must not be `inFlight`:
+`libraries/AP_NavEKF3/CLAUDE.md` records that the fly-forward branch of
+`detectFlight()` sets `inFlight` only from GPS ground speed, so on a GPS-denied
+plane it never sets and an `!inFlight` bound would leave the substitution
+running for that whole flight - the same bug, on the vehicle class least able to
+notice.
 
-```c
-} else if (!inFlight && !takeOffDetected && sensor->status() == AP_DAL_RangeFinder::Status::OutOfRangeLow) {
-```
+`onGround` is the portable term (the playbook's "the one term that means the
+same thing on every vehicle"), and it is what the first commit of this PR used
+before the second commit widened the scope to takeoff detection. Reverting to it
+costs the armed-but-not-yet-airborne window that the second commit was written
+to get. Keeping that window needs a bound the vehicle can always evaluate - the
+height flown since the last on-ground sample (`posDownAtTakeoff`, maintained for
+every vehicle type in `detectFlight()`, and already used this way in
+`AP_NavEKF3_MagFusion.cpp`) is one.
 
-`inFlight` latches on a 1.5 m climb (or 5 s of `time_flying`) and does not
-depend on the sensor being substituted, so it bounds the substitution even when
-takeoff detection cannot fire. Measured with this term added, same leg: the
-terrain offset stops being restamped at the `inFlight` latch, `TOfs` freezes at
--0.25 m (the drag accumulated over the 1.5 m climb) and `terrain_alt` clears
-5 s later, as it does on master.
-
-`onGround` alone - reverting to the first commit - would also bound it, at the
-cost of the pre-takeoff window the second commit was added to get.
+Measured with `!inFlight` added as the bound, before that objection was raised:
+the terrain offset stops being restamped at the `inFlight` latch, `TOfs` freezes
+at -0.25 m (the drag accumulated over the 1.5 m climb) and `terrain_alt` clears
+5 s later, as it does on master. That confirms bounding the substitution fixes
+the symptom; it does not endorse `inFlight` as the bound.
 
 Untested alternative, noted so it is not re-proposed as new: gating on
 `rngValidMeaTime_ms` freshness instead. It does not help, because the
 substitution is itself what keeps that timestamp fresh.
 
-## What this costs #33585
+## What this costs #33585 - nothing, once its test stopped depending on this
 
-#33585's `gndOffsetMeasured` guard is independently too weak, so the two
-compound and its autotest leg "The assumption does not carry over from an
-earlier flight" fails on the stack until both are fixed. The four-way
-measurement is in `../33585/`, under the 2026-09-07 heading. Neither PR alone
-fails that leg.
+#33585's autotest killed the range finder by putting `RNGFND1_MIN` above
+`RNGFND1_MAX`, which under this PR is not a dead sensor but a substituted
+ground clearance, so its "does not carry over from an earlier flight" leg
+failed on the stack. That leg now denies the EKF range data by orientation
+instead, and the whole test passes with this PR applied unmodified (measured
+2026-09-07, `../33585/`).
+
+The consequence to be aware of: nothing in our test suite now exercises the
+defect above. It needs coverage on this PR's own side - a flight where the
+range finder reads short throughout and the terrain offset is checked against
+truth would do it.
 
 ## Reproduce
 
