@@ -784,6 +784,67 @@ bound. The frontend now always reports the public origin height. The heli
 `StabilizeTakeOff` offset (0.08-0.12 m) is `AP_Baro::update_calibration()`
 re-zeroing from a single noisy sample, not rotor wash (Plot E).
 
+### Review round five: what the deferred offset cost (2026-09-07)
+
+The `baroHgtOffsetNeedsInit` commit shipped `baroHgtOffset =
+baroDataDelayed.hgt + stateStruct.position.z`, and two independent passes
+found the same defect in it. The reset *defines* the height as zero, so the
+`position.z` term can only carry in whatever moved the state during the
+50-150 ms deferral window - and every mover there works from the pre-reset
+baro, because `storedBaro.reset()` flushes the buffer while
+`baroDataDelayed` keeps its stale sample: `setAidingMode()` entering
+AID_NONE (`Control.cpp:430-432`), `ResetHeight()`, `ResetPositionD()`.
+
+With baro as the active source `calcFiltBaroOffset()` never runs, so the
+wrong value is frozen for the flight and the vehicle reports the old drift
+as its on-ground height. The previous head self-healed here because
+`baroHgtOffset = 0` left an innovation for the filter to pull back. Taking
+the offset from the sample alone is the fix. Measured: 0.053 m post-arm
+with it, 5.130 m with the deferral mutated out, so the assertion still
+discriminates.
+
+**The stray-file near miss.** The same commit had swept
+`libraries/AP_NavEKF3/CLAUDE.md` and `CLAUDE.md.bak` into the tree - 1850
+lines - and the branch was one grant away from pushing them. Three passes
+caught it; the mechanical gate did not, because it listed the added files
+and only raised a size note. A `stray-file` check now runs in the gate
+(agent playbooks, `.bak`/`.log`/`.orig`, `.claude/`), and `.git/info/exclude`
+carries the patterns locally. Both files are back to untracked.
+
+**A fix the tests refused.** `lastKnownPositionD` is reported against
+`EKF_origin.alt` while every other altitude path uses `ekfGpsRefHgt`; since
+`d644b92f9b` stopped moving the origin, two passes called that a
+regression. Switching the reference alone moved reported AMSL by 9.03 m
+across the arm and `BaroDriftClearedAtArm` subtest 3 caught it: the state
+is only refreshed on entry to AID_NONE, so a vehicle already in AID_NONE
+keeps a pre-reset value, and that value was continuous precisely because
+it was paired with the frozen origin. Moving it with the datum
+(`lastKnownPositionD += oldHgt`) makes both pairings correct. The code
+argument was right about the defect and wrong about the fix, and only the
+run said so.
+
+`getOriginLLH()` had also lost the branch that answers from
+`common_EKF_origin`, so a valid common origin reported no origin while the
+primary core lagged during alignment. Restored; `FarOrigin`, the test that
+caught the earlier version of this change, still passes.
+
+Measured and rejected this round:
+
+| claim | why not |
+|---|---|
+| heli `StabilizeTakeOff` 0.1 -> 1 m weakens a real check | `PosHoldTakeOff:486` already carries `max_relalt = 1` upstream for the same check; the 0.08-0.12 m offset is `update_calibration()` re-zeroing from one noisy sample (Plot E) |
+| the sticky `disarmed_in_air` latch skips a valid ground reset | true for a re-arm inside the ~1 s the disarmed land detector needs; consequence is master's behaviour, and clearing it on a landed disarm re-creates the documented bug the stickiness exists for |
+| the "we are not in the air" comment is now false | upstream context line, not in the diff |
+| eleven autotest assertions do not discriminate | already recorded per test above and disclosed in the PR body; each test retains a discriminating assertion |
+
+Left recorded rather than fixed: `storedGPS` is not flushed or shifted
+although `ekfGpsRefHgt` moves under it, so 1-2 buffered samples carry the
+old reference (reachable at `EK3_SRC1_POSZ=3`, which the guard now
+permits, and through `correctEkfOriginHeight()` under `OGN_HGT_MASK` 1/2).
+The mechanism is pre-existing - the base moved `ekfGpsRefHgt` too - but the
+PR fires it on every arm. Flushing `storedGPS` would drop buffered
+horizontal GPS as well, which is not a change to make late in a round.
+
 ## Real-flight context (2026-08-29)
 
 Numbers from the private flight notes; none of these logs are committed.
