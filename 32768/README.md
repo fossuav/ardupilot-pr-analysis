@@ -582,8 +582,14 @@ From tridge's automated reviews at `1c88a3bf62`, `9525e7d9ee` and
   that accepts.** Left alone. `baroHgtOffset` re-tracks over about 1 s and
   the exposure is a lane switch inside that window.
 - **`getOriginLLH()` now also requires the primary core to have an origin.**
-  Intended. The reported origin should belong to the frame `getPosD()` is
-  expressed in; the change only delays a "not ready yet".
+  Intended at the time, and **superseded on 2026-09-07** - see review round
+  six below. The reasoning here was right about the frame and wrong about the
+  cost: a lagging primary core turns a valid common origin into no origin at
+  all, which is more than delaying a "not ready yet". Master's
+  `if (common_origin_valid)` early return is restored, and because
+  `public_origin` is a reference to `common_EKF_origin` that branch still
+  reports the frame `getPosD()` is expressed in, so the original intent
+  survives. Do not re-derive this a third time.
 - **Plane's `update_home()` calls `barometer.update_calibration()`
   unconditionally, ahead of the new refusals.** Real, and not fixed here.
   `ArduPlane/commands.cpp:151-152`. Copter reaches the calibration only
