@@ -173,6 +173,68 @@ Checked before applying, per the repo rules.
   path where there is coverage. The numbers are not restated here; they
   belong to that code state.
 
+## Stacked with #32232 the leg fails, and neither guard alone is at fault (2026-09-07)
+
+On a tree carrying both this PR and #32232 (ground clearance fusion,
+`rishabsingh3003:ek3_gnd_clear`, head `a628150687`) the "does not carry over"
+leg fails. A handoff attributed that to `gndOffsetMeasured` re-latching inside
+the 5 s freshness window on a pre-takeoff measurement, and concluded #32232
+needed no change. The first half is right about this PR's guard; the second is
+wrong, and wrong in the way that matters - with #32232 as published the flag is
+held up by `gndOffsetValid`, so no change to this PR could have made the leg
+pass.
+
+`XKF4.SS` decodes it. Through the second flight of the leg, range finder
+killed, bit 6 (`terrain_alt`, i.e. `gndOffsetValid`) never clears, so
+`horiz_pos_rel` is satisfied through `optflow_gnd_offset` whatever
+`flatGroundAssumed()` returns. Bit 10 (`takeoff_detected`) never sets either,
+and that is the mechanism: #32232 substitutes `rngOnGnd` for a range finder
+reading `OutOfRangeLow` while `!takeOffDetected`, and with the sensor dead
+`detectTakeoff()` is left with only its gyro criterion, which a SITL climb does
+not reach. The substitution runs the whole flight. Details and the terrain
+state it corrupts are in `../32232/`.
+
+Four builds, one leg, everything else held (Copter SITL, `EK3_IMU_MASK=1`):
+
+| #32232 substitution | this PR's guard | leg |
+|---|---|---|
+| as published (`!takeOffDetected`) | as before | fails - `terrain_alt` set all flight |
+| as published | fixed, below | fails - same reason |
+| bounded with `!inFlight` | as before | fails - `terrain_alt` clears at 48.7 s, `horiz_pos_rel` stays set: this PR's guard alone |
+| bounded with `!inFlight` | fixed | passes |
+
+Both guards are too weak and neither fix is sufficient on its own. What this
+PR owns is the third row. `gndOffsetMeasured` was authorised by freshness
+alone, and a range finder sitting on the ground - reading its real ground
+clearance on master, or the substituted one under #32232 - holds the offset
+fresh right up to the moment `inFlight` latches, so the assumption is
+authorised by a measurement taken before the vehicle left the ground.
+`b0488c3ac2` requires the offset to have been updated while the vehicle is
+airborne (`inFlight && takeOffDetected`). That is a hole on master too: a
+range finder that dies at takeoff leaves a fresh ground-level offset behind and
+would authorise the assumption for a flight that never saw the terrain it flew
+over.
+
+`takeOffDetected` is in the term because the range buffer is delayed. Samples
+pushed just before the transition are fused after it, so `inFlight` on its own
+credits them; the two flags do not flip in the same window.
+
+### The leg's precondition, and what it was really proving
+
+The leg took off, landed, killed the range finder, took off again and asserted
+the flag was clear. It never asserted there was an authorised assumption to
+carry over: the first flight's only check is at 4 m, where `gndOffsetValid` is
+true and satisfies `horiz_pos_rel` on its own. The leg would have passed just
+as well on a build that never authorises the assumption at all.
+
+`dd557b0019` kills the range finder in the air instead, waits for the terrain
+offset to go stale and asserts the flag is still set - which only
+`flatGroundAssumed()` can do - before landing. The second flight then has no
+terrain measurement of its own on either stack, so the leg no longer depends on
+whether the on-ground reading is real or substituted. It also checks
+`EKF_CONST_POS_MODE` is clear at the negative assertion, so losing flow aiding
+cannot be what satisfies it (measured clear on the passing run).
+
 ## What is here
 
 ```
