@@ -1,16 +1,17 @@
 # PR #32232 - Range finder ground clearance fusion (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#32232](https://github.com/ArduPilot/ardupilot/pull/32232).
-Branch `ek3_gnd_clear` (rishabsingh3003 fork). PR head at the time of this
-work was `a628150687`; the local branch carried nine further commits
-answering review. Commits 1-2 are rmackay9's and rishabsingh3003's and were
-not rewritten. All numbers below are SITL; no real-flight logs.
+Branch `ek3_gnd_clear` (rishabsingh3003 fork). Head `28cbfe4adf` (pushed
+2026-09-07); the review work started from `a628150687`. Seven commits sit on
+top of rmackay9's and rishabsingh3003's, neither of which was rewritten. All
+numbers below are SITL; no hardware and no real-flight logs.
 
 ## Status (one line)
 
-Review comments from IamPete1 and tridge answered, an autotest added and
-A/B'd, and four defects found that are in the original two commits rather
-than in the review responses.
+Review comments from IamPete1 and tridge answered and replied to on the PR,
+an autotest added and A/B'd five ways, the PR body rewritten to the repo
+template with the known-issues list below, and four defects recorded that are
+in the original two commits rather than in the review responses.
 
 ## What the PR actually does
 
@@ -176,6 +177,39 @@ offset. Defect 1 below is worse than first recorded.
 Sampling note for anyone repeating these runs: Copter streams
 `LOCAL_POSITION_NED` at 5Hz, which lags the truth sample by most of a metre in
 a 2.5m/s climb. At 20Hz the same leg moved from 6.4/5.9 to 6.4/6.5.
+
+## Final state (2026-09-07)
+
+Squashed twice, each time verified with an empty `git diff` against a
+pre-squash branch plus a `git range-diff` to confirm no fixup landed in a
+neighbouring commit (the flat diff stays empty when it does, so the range-diff
+is the check that matters). Final history, `a628150687..28cbfe4adf`:
+
+    1fd080eb62  scope the range measurement to the sensor loop
+    4b9e0bd25f  run the takeoff detector once per filter update
+    e2d3fd727c  state the range term's data requirement
+    318fc4bc0e  name the movement detector for what it measures
+    bf646cdf78  bound the movement detector by height flown
+    14334135e7  AP_NavEKF: say what bit 10 of the filter status now means
+    28cbfe4adf  autotest: cover the range finder on-ground assumption
+
+The Sub sign fix and the autotest tightening were folded into `bf646cdf78` and
+`28cbfe4adf` respectively, so they no longer exist as separate commits.
+
+Final leg numbers on the squashed branch: -0.01 m armed and stationary;
+6.3/6.5 m coming into range; 6.4/6.5 m never in range; terrain offset 0.0 m;
+10.3/10.5 m indoor. The indoor leg measures a 10 m climb rather than 6 m
+because the lag without a vertical velocity source is roughly fixed in metres,
+so a longer climb buys margin without weakening the assertion - at 6 m it was
+1.1 m of error against a 1.5 m bound, which is inside the observed run-to-run
+spread.
+
+Three commit messages were corrected during review for claiming more than was
+measured: a fall-through that could not happen, a freshness gate that changes
+nothing, and "the estimate lags rather than freezes" stated as a general
+property when it had only been measured with GPS aiding present. All three
+were self-inflicted and all three were caught by running something rather than
+by re-reading the code.
 
 ## Open defects, in the original two commits
 
