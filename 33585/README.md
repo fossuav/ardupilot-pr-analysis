@@ -394,6 +394,64 @@ state` records `23dfeccb54` only so a re-run can diff against it - a third round
 outstanding, and the Codex EKF verification is worth re-running when that account's
 limit resets.
 
+## Third review round, 2026-09-08 - two of my own fixes withdrawn
+
+Three reviewers plus a full Codex cold pass (its quota had reset, so all three
+tasks completed this time). Verdict REQUEST CHANGES, and most of what it found was
+in the round-one and round-two fixes rather than in the original change.
+
+**The `ResetPositionD` terrain carry is withdrawn.** Four independent lines against
+it, one of them decisive and verified here: when the height source switches *to* the
+range finder, `hgtMea = MAX(rng*c.z, rngOnGnd) - terrainState`
+(`AP_NavEKF3_PosVelFusion.cpp:1501-1508`), so `ResetPositionD(-hgtMea)` re-anchors
+`position.z` *within* the datum - the reset exists to make `terrainState -
+position.z == rng`. Carrying `terrainState` destroys that identity and injects a
+non-zero first innovation. Beyond that it fired on every vehicle with
+`EK3_RNG_USE_HGT > 0` or `POSZ=2` with no flow sensor at all, reaching `getHAGL()`,
+the control limits and the switch hysteresis; it was a *partial* datum fix
+(`posDownAtTakeoff`, `posDownAtLastMagReset` and the beacon offsets stay behind);
+and two probes failed to measure it. The defect it addressed is real and stands
+recorded for a PR of its own, which will need to tell a datum move from a re-anchor
+and handle `ResetHeight()` as well.
+
+**The `FuseOptFlow` height gate is withdrawn too**, which reverses round two's
+must-fix 1. The argument for it was that gating the report while the fusion used the
+same height was half a fix. The argument against, from the cold read and confirmed
+here: when `flowScaleHgtUsable()` is false the fallback at `OptFlowFusion.cpp:320`
+is `terrainState - pd`, differenced against the *same* pinned state, so the gate
+swaps one meaningless height for another - while silently changing bit 2, whose flag
+path the same commit deliberately exempts. It protected nothing and broke a promise.
+
+With both out, the EKF commit ships no behaviour change to a vehicle with
+`EK3_OPTIONS = 0`, which is what the deferred split was for on the estimator side.
+What remains of that question is only whether bit 5 should forward terrain data at
+all.
+
+**Autotest.** The flow-liveness witness added in round two was inert twice over: it
+sampled a fresh `SYS_STATUS` *after* the helper had already force-disarmed, and
+`AP_OpticalFlow_SITL` publishes every cycle regardless of AGL, so it could not fail.
+The replacement is `EKF_VELOCITY_HORIZ` from the same captured flags word - in this
+configuration `someHorizRefData` reduces to `doingFlowNav`, because `AID_RELATIVE`
+sets `posTimeout`/`velTimeout` and neither airspeed nor drag fusion runs, so that
+one bit witnesses live flow aiding and filter health at the instant asserted. The
+LOITER leg now pins which failsafe fired (`wait_statustext("EKF variance: position
+lost")`) instead of accepting any arrival in LAND. The bit-2 positive leg runs
+before the negative terrain leg, because a cold tile cache is the CI case and the
+cold-cache outcome must not be the passing outcome.
+
+**A comment of mine that was wrong about this machine.** I had written that counting
+served `TERRAIN_REQUEST`s cannot witness terrain because SITL reads the tile from
+`terrain/*.DAT`. That directory is gitignored - the files here are artifacts of
+earlier local runs. On CI the cache is cold and the requests do go over MAVLink,
+rate-limited to one per 2 s, which the test does not wait for. The comment is
+corrected; the timing dependency is still untested.
+
+Still open: the commit messages describe both withdrawn changes and need rewriting
+before any push; `gndOffsetMeasured` can be authorised by a measurement up to 5 s
+before arming, which also weakens the mid-air re-arm protection the text advertises;
+the option is inert with the range finder as height source, documented nowhere; and
+`status.flags.dead_reckoning` still reads bare `gndOffsetValid`.
+
 ## What is here
 
 ```
