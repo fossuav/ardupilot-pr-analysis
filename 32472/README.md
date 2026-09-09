@@ -96,6 +96,28 @@ Three decisions, each with flight evidence:
   release the takeoff window early or defeat `near_ground` at touchdown.
   Not observed in this PR's tests; a rangefinder-freshness check at
   `getHAGL()` would close it.
+
+  **Observed 2026-09-09, by a different route (log7, SFD-O4).** Not the
+  AGL KF ramping on the deck, and the failure is the opposite sign: the
+  rangefinder went out of range **high** for 101 s continuous
+  (`RNGFND1_MAX=15` on a vehicle that flies well above it), the AGL KF
+  went invalid on its 5 s timeout, and `ahrs.get_hagl()` returned false
+  outright. `near_ground` then came from the drift fallback, and the
+  vehicle was 21.8 m from its takeoff point - 1.8 m past
+  `AP_GROUNDEFFECT_TAKEOFF_DRIFT_NE_MAX_M` - so `near_ground` was
+  asserted unconditionally **at 17.9 m**, in a stationary hover, for 51 s
+  (`XKF4.SS` bit 12; 20.8% of the whole armed flight). `slow_horizontal`
+  came free from hovering and `slow_descent` from `CTUN.DCRt` dithering
+  to -0.0 m/s, since `descent_demanded` has no deadband.
+
+  The cost is on the EKF side and is measured: with `EK3_GND_EFF_DZ=-8`
+  the flow-only lane's baro was deweighted to R = 64 m^2 and its
+  innovation pinned at -0.5000, and its altitude ran away 5.6 m in 38 s
+  against a flat baro. See `../32972/` finding 6, and `logs/log7_sfdo4.md`
+  in the private analysis repo. The rangefinder-freshness check named
+  above would not have caught this one; the drift fallback asserting
+  proximity rather than merely distrusting `height_m` is the part that
+  did it.
 - Real amplitudes for `SIM_BARO_GEFF_M`: -9 to -11 m at spool-up, -16 to
   -21 m at touchdown (200-300 Pa in under a second), 2.4-3.8 m steps in the
   estimate. The SITL runs in the PR thread used 1 and 5 m.
