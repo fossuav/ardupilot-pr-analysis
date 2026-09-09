@@ -13,7 +13,11 @@ SmallFastDrone branch, where the same option is bit 4 and the message is
 **Superseded in part on 2026-09-04 - see `split-and-quality-gate.md`.** The
 floor is now its own PR (#34292) and the branch has gained `EK3_FLOW_QMIN`.
 Everything below about the mechanism, the flights and the Replay tuning
-still stands.
+still stands. First outdoor acro flight 2026-09-09: three resets, two
+of them re-anchoring to a velocity a fifth of truth, all at the moment the
+vehicle came back above the flow tilt gate. Two fixes proposed and not
+written; the Replay sweep that tuned the threshold is also what settles
+them.
 
 Mechanism confirmed in code and in three flights, recovery Replay-tuned to a
 500 ms threshold and flight-validated; the branch also carries the follow-on
@@ -148,6 +152,101 @@ stationary vehicle, so it is out of scope.
 thousands, no "stopped aiding" message, and one of `VN`/`VE` ramping linearly.
 Until the fix is in, engage Loiter only from a settled hover: both clean holds
 entered below 0.2 m/s; every flyaway was an acro-to-Loiter switch at speed.
+
+### Flight-tested in acro 2026-09-09: the recovery misfires at the tilt gate
+
+First outdoor acro flight of the recovery (log7, not committed). Outdoor
+BF_X quad, `EK3_SRC_OPTIONS=8` so a flow-only core ran beside a GPS core on
+the same sensors, 1927 m of ACRO path at 14.0 m/s median and 20.6 m/s p95.
+`EK3_FLOW_QMIN=0`, so the quality gate from `split-and-quality-gate.md` was
+disabled and every lockout re-anchored.
+
+`XKF7.FVC` reached **3** on the flow core, while only two statustexts were
+emitted. Two of the three re-anchored to a badly wrong velocity:
+
+| # | t (s) | cos(tilt) | flow core abs V before -> after | raw GPS |
+|---|---|---|---|---|
+| 1 | 217.376 | 0.732 (43 deg) | 13.98 -> **6.58** | 12.28 |
+| 2 | 241.076 | 0.749 (42 deg) | 14.67 -> **2.87** | 12.71 |
+| 3 | 241.576 | 0.792 (38 deg) | 4.31 -> 14.77 | 14.61 |
+
+Steps of 8.6 and 12.5 m/s in one 100 ms sample; reset 3 was reset 2's
+cleanup half a second later. Harmless on this flight only because the flow
+core was never primary. On a flow-only vehicle each is a large velocity
+step into the position controller at speed.
+
+**It is not the 500 ms threshold.** All three fired in the first samples
+after `cos(tilt)` climbed back through `DCM33FlowMin` (0.71). That gate
+stops flow fusion and AGL KF range fusion together, so it both creates the
+single-axis staleness the lockout detects and leaves `aglKfH` coasting at
+the moment `ResetVelocityToFlow` needs it as a scale factor. Measured on
+this flight:
+
+- 28.6% of the ACRO segment sat below the gate - 15 runs over 0.5 s,
+  longest 4.0 s - against 0.0% and 2.3% in the two LOITER segments. No
+  indoor log in this record could have shown this.
+- Through those windows the AGL KF coasts systematically low, because
+  `aglKfV` holds a 1-2 m/s phantom descent and integrates it. Error
+  against the tilt-corrected rangefinder: 0.22 m RMS below 18 deg of
+  tilt, 0.40 m at 18-32 deg, 0.61 m at 32-45 deg, **2.18 m at 45-53 deg**,
+  2.65 m beyond. Worst single sample -6.40 m.
+- At reset 2, `aglKfH` was 2.20 m against a true vertical AGL of 6.23 m.
+
+*Derived from the source*: `ResetVelocityToFlow` inverts the LOS model, so
+the recovered velocity is linear in `range = heightAboveGndEst /
+prevTnb.c.z`, and with bit 3 set `heightAboveGndEst` is `aglKfH`. A height
+at a third of truth scales the re-anchor by the same third, which is the
+direction and roughly the magnitude observed.
+
+This is the same class as "What the recovery cannot fix: a wrong height"
+above, and it revises the conclusion drawn there. That finding put a
+5x-wrong flow-scaling height down to the vertical stack and called it not
+this PR's problem. It is still the vertical stack's fault that the height
+is wrong, but the reset consumes that height without checking it, and here
+it consumed one whose staleness was already knowable from
+`lastAglRngFuseTime_ms`. The fix below is cheap and belongs on this side.
+
+### Proposed fix 1 (not written): gate the reset on range freshness
+
+The reset requires `aglKfValid`, which survives 5 s without a range
+fusion - long enough for the height to coast metres low. #33478 computes
+`aglKfRngCurrent` (500 ms since the last fusion) for its velD gate;
+master does not carry the `aglKfRngGapMax_ms` constant, but it does carry
+`lastAglRngFuseTime_ms` and `aglKfValid`, so this branch can define its
+own freshness window without stacking on #33478.
+
+All three of these resets had been without range for longer than 500 ms,
+so the gate would have suppressed all three. The open question is whether
+it also suppresses the recoveries logs A/B/C wanted. That is answerable
+without flying: rerun the existing Replay sweep with the gate in, on all
+three logs, and read the excursion/reset table the same way. If the
+indoor peaks stay near their 500 ms values the gate is free.
+
+Consider pairing it with a blended rather than stepped re-anchor. 12.5 m/s
+in one 100 ms sample is not a correction a position controller can absorb,
+and the position-snap experiment already in this record shows that big
+instantaneous corrections on this path make hold quality worse, not
+better.
+
+### Proposed fix 2 (not written): make the reset count visible
+
+`flowVelResetWindowCount == 1` gates the statustext to once per
+`FLOW_RESET_WINDOW_MS` (10 s) while `FLOW_RESET_MAX_IN_WINDOW` allows 5,
+so up to four resets per window are silent. On this flight that read as
+"two resets" when there were three, and the missing one was the
+interesting half of a pair. `XKF7.FVC` has the truth but nobody reads it
+live. Either put the count in the message or emit on every reset and let
+the existing `flow aiding unhealthy` message carry the churn warning.
+
+### Validation route for both
+
+log7 carries `LOG_REPLAY=1`, so the acro half replays; logs A/B/C give the
+indoor half. Both are the existing sweep harness, not new work. A SITL
+test for the tilt-gate case would need a manoeuvre that crosses
+`DCM33FlowMin` with flow enabled, which `SIM_FLOW_OFS` does not currently
+provide - worth checking whether it can before assuming an autotest is
+possible here.
+
 
 ## What is here
 
