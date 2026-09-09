@@ -123,9 +123,12 @@ say, so it needs SITL.
   flow lane is no longer pinned and the 5.6 m does not accrue. This tests
   the consequence, not the gate: Replay re-feeds the recorded
   `takeoff_expected`/`touchdown_expected` through the DAL (`RFRN`), so a
-  vehicle-side fix does not appear in it. Confirm that before relying on
-  the result - if the flags come from the DAL, Replay can only validate an
-  EKF-side change, and the gate fix has to be shown in SITL.
+  vehicle-side fix does not appear in it. **Confirmed 2026-09-09**:
+  `log_RFRN` carries `takeoff_expected` and `touchdown_expected` as bits
+  (`AP_DAL/LogStructure.h:98-99`) and `AP_DAL::get_touchdown_expected()`
+  reads them straight back, so Replay re-feeds the flags the flight
+  recorded. Replay can therefore show what the floor cost, and can never
+  show the gate fix working. The gate half is SITL only.
 - **SITL A/B**: hover at 20 m more than 20 m from the takeoff point with
   no rangefinder in range, and log `XKF4.SS` bit 12. Before: set. After:
   clear. Then repeat with a real descent to confirm the gate still arms

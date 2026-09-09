@@ -94,10 +94,13 @@ optical flow.
 
 ## Validation
 
-- **Replay** the 2026-09-09 flight and show `getHAGL()` becomes true
-  through the 101 s window. Estimator-path only and the input is the real
-  flight, so this is the strongest available evidence for the change
-  itself.
+- **Not Replay, despite appearances.** `getHAGL()` has no consumer inside
+  the EKF; every caller is vehicle code, which Replay does not run. Its
+  inputs do come through the DAL (`RTER` carries the terrain altitude), so
+  a Replay of the 2026-09-09 flight would compute the corrected value
+  internally, but nothing in the replayed output reports it. Only an
+  instrumented Replay build would show it, which is a debugging aid rather
+  than evidence. Use SITL.
 - **SITL A/B**: flow vehicle above rangefinder range with terrain data
   served, `EK3_OPTIONS` bit 2 set. Before: `get_hagl()` false. After:
   true, and the returned height tracks the terrain model. `../33585/`
