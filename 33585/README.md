@@ -590,6 +590,51 @@ finder or the reset delta is zero and the leg passes either way. Two earlier pro
 were confounded and measured no difference. `SIM_BARO_DRIFT` is the lever that has
 not been tried.
 
+### The test found the fix did not fire in its own motivating case (2026-09-09)
+
+Writing EK3_TerrainStateFollowsDatumReset took three attempts, and each failure was
+information rather than a flaky test.
+
+1. A hover then climb with EK3_RNG_USE_HGT never switched height source at all. The
+switch also needs terrainHgtStable, and Copter::update_ekf_terrain_height_stable()
+only reports that while flightmode->is_taking_off() or is_landing(), where
+is_taking_off() is a commanded takeoff rather than a stick climb. The only reset that
+route reached was on the way down, into the range finder, which is the excluded case -
+and the test flagged it as a failure, because height above ground is meant to snap onto
+the range there.
+
+2. Switching by EK3_SRC1_POSZ=2 and killing the range finder produced a reset of 0.09 m.
+calcFiltBaroOffset() (AP_NavEKF3_Measurements.cpp:806) tracks the baro against the
+current height source at 10% per sample whenever the baro is not the source, so the
+fallback is seamless by design and a SIM_BARO_DRIFT ramp is absorbed entirely. Only a
+step outruns it, so SIM_BARO_GLITCH is the lever - the two earlier probes recorded as
+"confounded" were measuring a mechanism that works.
+
+3. With an 8 m glitch the reset was 5.48 m and the carry did not fire. XKF4.SS bit 6
+shows gndOffsetValid going false at 52.24 s, one sample before the reset at 52.34 s, and
+XKF5.TOfs never moves while HAGL steps 3.03 to 8.51 m on a vehicle sitting still at
+2.95 m. The cause is the bit-5 dead zone again: EstimateTerrainOffset() is inhibited
+while the range finder is the height source, so gndHgtValidTime_ms is stale and
+gndOffsetValid is held up by the activeHgtSource == RANGEFINDER term alone - which is
+exactly the term that disappears in the cycle the source changes. gndOffsetMeasured is
+false for the same reason. The carry was inert in the configuration the commit cites as
+its motivation.
+
+The round-seven EKF reviewer looked straight at this and cleared it, writing that "on a
+RANGEFINDER->BARO switch the stale gndOffsetValid is true from the previous cycle's
+rangefinder source, which is the value you want". That is wrong, and only the log shows
+it: SelectFlowFusion() does run after SelectVelPosFusion() in the cycle, but the source
+has already changed by then, so the value the reset reads on the next cycle is the
+recomputed false one. An ordering argument that reads as airtight went the other way
+when measured.
+
+Fixed by recording prevHgtSource after ResetPositionD() rather than before, and
+accepting prevHgtSource == RANGEFINDER as a reason to carry. gndOffsetMeasured is
+deliberately untouched, so bit 5 still requires an offset it measured itself and its
+documented dead zone stands. Measured on the same flight profile: datum 5.48 m with
+height above ground moving 5.48 m before the fix, datum 5.97 m with height above ground
+moving 0.00 m after.
+
 ## What is here
 
 ```
