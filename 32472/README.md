@@ -110,6 +110,18 @@ Three decisions, each with flight evidence:
   came free from hovering and `slow_descent` from `CTUN.DCRt` dithering
   to -0.0 m/s, since `descent_demanded` has no deadband.
 
+  Corrected the same day, before any fix was written: `CTUN.DCRt` is the
+  wrong field. It logs `get_vel_target_U_ms()`; `AP_GroundEffect` reads
+  `get_vel_desired_U_ms()`, which is `-PSCD.DVD`. `CTUN.DCRt` was
+  negative in only 24.1% of samples over the latch and would not have
+  held the term. `-PSCD.DVD` was negative in **100.00% of 508 samples**,
+  p50 -0.0000, max -0.0000, longest continuous run 50.8 s, matching the
+  99.8% of XKF4 samples with bit 12 set. The term is not dither crossing
+  zero: in a hover the desired vertical velocity settles to a small
+  persistently negative residual and never reaches zero. A 0.05 m/s
+  deadband removes 98.4% of it, against a real approach on the same
+  flight at -0.504 m/s p50.
+
   The cost is on the EKF side and is measured: with `EK3_GND_EFF_DZ=-8`
   the flow-only lane's baro was deweighted to R = 64 m^2 and its
   innovation pinned at -0.5000, and its altitude ran away 5.6 m in 38 s
