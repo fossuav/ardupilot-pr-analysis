@@ -547,6 +547,43 @@ have tripped both. They are left alone and the commit message now says why: ther
 a flight behind the terrain state and none behind those, and they reach mag and land
 detection rather than flow scaling.
 
+**What the Codex cold pass added.** It confirmed both defects found here
+independently, naming the local fixups as the corrections - useful, because it was
+reading the committed snapshots and reached the same two conclusions from a cold
+start. Three findings were new:
+
+- The terrain height is not per-core. AP_AHRS subtracts the one public origin
+(AP_AHRS.cpp:1998) and hands the same figure to every core, which then
+differences it against its own position.z. Lanes aligned against different
+receivers under EK3_AFFINITY can hold different origin altitudes, so the figure
+is only right for a core whose origin matches the public one. The message
+disclosed an origin caveat but framed it as ekfGpsRefHgt drift alone; it now
+names the mechanism.
+
+- canDeadReckon (AP_NavEKF3_Measurements.cpp:660) is gndOffsetValid ||
+flatGroundAssumed(), while the status expression is gndOffsetValid ||
+terrainAltUsable() || flatGroundAssumed(). The commit message claimed it gained
+"the same condition". It did not - the terrain leg is missing, which with bit 0
+set means a vehicle that can dead reckon on terrain still admits the first
+reacquired GPS fix without the alignment checks. Left as code, because adding
+the term would change what bit 2 does with bit 0, and round three withdrew a
+fix for exactly that. The mismatch is upstream's and predates this PR; the
+message now says so.
+
+- The glitch case is a regression, not just an unhandled case. Where a range
+finder glitch drives position.z away and the baro fallback corrects it, master
+leaves terrainState alone and the height above ground comes out right, where
+this carries the glitch into the ground and stays wrong until the 5 s re-
+anchor. The message called that "the case this does not handle"; it now says
+plainly that it is worse than master there, bounded at 5 s, and traded against
+a datum case that has a flight behind it and no such bound.
+
+Codex also raised the 32-bit millisecond wrap against the zero-timestamp trap.
+Unsigned subtraction handles the wrap correctly for a vehicle that has ever
+received terrain; the failure is only for one that never has, where
+terrain_srtm_alt_ms stays 0 and imuSampleTime_ms wraps back under 5000. The !=
+0 guard covers both that and the boot window.
+
 **Still not covered by a test.** Reaching the carry needs a height source change,
 which needs `EK3_RNG_USE_HGT` set, and needs the baro to disagree with the range
 finder or the reset delta is zero and the leg passes either way. Two earlier probes
