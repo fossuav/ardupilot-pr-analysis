@@ -1,7 +1,7 @@
 # NEW PR (not opened) - EKF3: serve the terrain-database AGL from getHAGL()
 
-Prospective PR against master. Nothing implemented and no PR opened as of
-2026-09-09.
+Prospective PR against master. Implemented on branch 2026-09-09, no PR
+opened yet. See "Implemented" below.
 
 Target: master `371990d846` (2026-09-05). `EK3_OPTIONS` bit 2
 (`OptflowMayUseTerrainAlt`) and the whole SRTM path are already upstream,
@@ -60,8 +60,7 @@ and never reaches the drift fallback at all.
 
 ## The proposed change
 
-Not written. Add the SRTM branch between the two that exist, mirroring
-what `FuseOptFlow` already does:
+Written 2026-09-09, see "Implemented" below. The shape proposed was:
 
 ```cpp
 #if EK3_FEATURE_OPTFLOW_SRTM
@@ -110,6 +109,59 @@ optical flow.
 - **Autotest**: assert on the height, not on a downstream flag, and
   demonstrate it failing on unfixed code.
 
+## Implemented 2026-09-09
+
+`SmallFastDrone-4.7.1-beta` commit `b003fc6c4d`, on base `fd37f6f5fa`.
+Both "things to get right" above hold: the branch sits after the AGL KF
+and behind `!gndOffsetValid`, and it never consults `flatGroundAssumed()`
+- confirmed by reading `flatGndAssumed`, which is a local in
+`AP_NavEKF3_Control.cpp:856` and writes nothing that reaches here.
+
+**One deviation from the proposed code, and it is the wart this file
+already named.** The branch does not test `terrain_srtm_alt_valid`. That
+flag is assigned only inside `FuseOptFlow`, which `SelectFlowFusion` calls
+only when `flowDataToFuse && tiltOK`, so it freezes at its last value
+whenever the flow tilt gate closes and is never set at all without a flow
+sensor. `getHAGL()` has no flow-active gate of its own, unlike its sibling
+`getHeightControlLimit()` which reads the same flag but only inside a
+`useVelXYSource(OPTFLOW) && AID_RELATIVE && flowDataValid` guard. The
+branch therefore ages the data against `terrain_srtm_alt_ms`, which
+`writeTerrainData()` maintains independently of flow, using a named
+`TERRAIN_SRTM_ALT_TIMEOUT_MS` (5000) that replaced the bare literal at the
+`FuseOptFlow` site rather than adding a second one.
+
+The blast radius is still bounded, but by a better thing. `terrain_srtm_alt`
+only reaches the cores when `EK3_OPTIONS` bit 2 or bit 5 is set
+(`AP_NavEKF3.cpp:1832`), so without either the timestamp stays 0, the
+freshness test fails and the branch is a no-op. It is now opt-in on the
+option bits rather than on whether flow happens to be fusing at that
+instant. *Derived from the source, not measured.*
+
+### SITL result
+
+`EK3_GetHaglTerrainAlt` in `Tools/autotest/arducopter.py`. Flow vehicle,
+`EK3_IMU_MASK=1`, `RNGFND1_MAX=8`, `TERRAIN_ENABLE=1`,
+`EK3_OPTIONS = 1<<2` only - deliberately *not* the AGL KF bit, so the
+terrain branch is what is under test rather than `aglKfValid`. It asserts
+on `OPTICAL_FLOW.ground_distance`, which is `get_hagl()` passed straight
+through at `GCS_Common.cpp:2948` and sent as zero when it returns false,
+so this is the height itself and not a downstream flag.
+
+Heeding `../33585/`: the test waits for `TERRAIN_REPORT` to show
+`loaded > 0` and `pending == 0` before asserting anything, so a harness
+that served no tiles fails as "terrain tiles were never delivered" rather
+than as a wrong EKF answer.
+
+Measured 2026-09-09, hovering above the rangefinder range:
+
+| | `OPTICAL_FLOW.ground_distance` | relative altitude |
+|---|---|---|
+| base `fd37f6f5fa` | 0.000 m | 21.099 m |
+| with `b003fc6c4d` | 20.698 m | 21.187 m |
+
+Fails on the base commit with "getHAGL served no height above the
+rangefinder range".
+
 ## Alternative placement considered
 
 Folding this into #33585, which is open, already touches the same
@@ -125,6 +177,9 @@ be changed without touching the bit 5 path.
 new-ekf3-hagl-terrain-alt/
   README.md    <- this file
 ```
+
+The code is on `SmallFastDrone-4.7.1-beta` (`b003fc6c4d`) with its
+autotest in `Tools/autotest/arducopter.py`.
 
 ## Related
 
