@@ -1,11 +1,11 @@
 # PR #33585 - Keep optical flow nav alive above the rangefinder range (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#33585](https://github.com/ArduPilot/ardupilot/pull/33585).
-Branch `pr-optflow-flat-ground` (andyp1per fork), head `23dfeccb54`
-(2026-09-07, two commits after two review folds; PR still at `f266fd0fd9`), base
-`master`. Stacked on #33478 (`../33478/`), whose three
-commits are the first three on the branch. Head was `62a3fbeaba` until the two
-autotest fixes of 2026-09-05 below.
+Branch `pr-optflow-flat-ground` (andyp1per fork), four commits as of
+2026-09-09 (`535cfca48f`, `e98741fbb2`, `9afa402696`, `4d9c92035b`) plus
+round seven's unfolded fixups; PR still at `f266fd0fd9`. Base `master`.
+Stacked on #33478 (`../33478/`), whose three commits are the first three on
+the branch.
 
 ## Status (one line)
 
@@ -451,6 +451,107 @@ before any push; `gndOffsetMeasured` can be authorised by a measurement up to 5 
 before arming, which also weakens the mid-air re-arm protection the text advertises;
 the option is inert with the range finder as height source, documented nowhere; and
 `status.flags.dead_reckoning` still reads bare `gndOffsetValid`.
+
+## Rounds five and six, 2026-09-08 - two more of my own fixes withdrawn
+
+**The SRTM fail-low guard is withdrawn.** Round five added a guard so that where
+`(-pd) - terrain_srtm_alt` came out below `rngOnGnd` the terrain estimator's height
+would be kept instead. Round six killed it on two counts. The premise was false: the
+old expression could go negative too, wherever the ground sits further below the
+origin than the vehicle sits above it, so the collapse to `rngOnGnd` is pre-existing
+and the sign fix only moves which geometry triggers it. And the guard fell through
+to a `terrainState` that the enclosing `if (!gndOffsetValid && ...)` has already
+declared stale. The commit message kept describing the guard for two more rounds -
+see below.
+
+**The statustext claim flipped three times.** Round four said ekf_check's text was
+suppressed and could not discriminate; round five adopted it as a witness; round six
+measured the actual margin and found a passing run cleared the 30 s boot throttle by
+only about 8 s. The LOITER leg now samples the flag and the altitude while the cause
+is still true, rather than waiting for a text that may or may not be sent.
+
+## Seventh review round, 2026-09-09
+
+Three reviewers plus a Codex cold pass. The must-fix was in a commit message, not in
+code, and it was the one round six had already been told about.
+
+**`535cfca48f` still described the withdrawn guard.** Its third paragraph claimed the
+corrected expression "can also go negative, which the old one could not", and that a
+disagreeing database height "no longer collapses the scale height to the on-ground
+range". Neither is true of the diff: the `MAX(..., rngOnGnd)` is untouched and the
+old expression could go negative as well. Rewritten to say the collapse is
+pre-existing and not closed, and that falling back to `terrainState` is the obvious
+repair and does not work.
+
+**The carry commit was wrong about its own flight.** Cross-checking against
+`analysis/logs/logm2_log4.md` rather than against memory: the message said the core
+"recovered only when the terrain estimator's 5 second re-anchor fired". The re-anchor
+did fire, at 114.9 s, and it repaired the terrain state - `RI` back to 0.00 - but not
+the core, whose velocity had already diverged. That core dead reckoned to 20.66 m/s
+and 331 m from a vehicle hovering indoors until an aiding reset at 147.8 s put the
+altitude demand 3 m above it at 0.77 throttle. The message now says so. The reset
+itself is now named: with `EK3_RNG_USE_HGT=10` the height source left the range
+finder shortly after takeoff, and the switch to a drifted baro is what moved
+`position.z`. `activeHgtSource` holds the *new* source at the reset site
+(`AP_NavEKF3_PosVelFusion.cpp:1569-1572` assigns `prevHgtSource` before the call), so
+that flight's switch does fire the carry and a switch *into* the range finder is
+excluded - which is the round-three objection the reinstated commit was built to
+answer.
+
+**A real code defect: the altitude limit did not carry the option's height check.**
+`getHeightControlLimit()` returned "no limit" on bare `terrain_srtm_alt_valid`
+(`AP_NavEKF3_Outputs.cpp:98`). Before this PR that could only be bit 2, but the bit-5
+commit forwards terrain data as well, so setting bit 5 with `EK3_SRC1_POSZ=0` and
+terrain coverage removed the `AC_Avoid` altitude cap in exactly the configuration
+where `flatGroundAssumed()` and `terrainAltUsable` both refuse to hold the flag: the
+vehicle climbs higher than it would have without the option, then fails safe anyway.
+The predicate `updateFilterStatus()` already computed is now a member,
+`terrainAltUsable()`, used in both places. Bit 2 short circuits first, so it is
+byte-identical.
+
+Alongside it, `terrain_srtm_alt_ms` is never initialised and nothing guarded it, so
+`terrain_srtm_alt_valid` read true for the first 5 s after boot with
+`terrain_srtm_alt` still zero - the same zero-timestamp trap that `gndHgtValidTime_ms`
+was explicitly guarded against one expression away. Guarded now.
+
+**The option is inert with the range finder as the height source, and now says so.**
+`EstimateTerrainOffset()` sets `inhibitGndState` and returns without touching
+`gndHgtValidTime_ms` whenever `activeHgtSource == RANGEFINDER`
+(`AP_NavEKF3_OptFlowFusion.cpp:111`), so `gndOffsetMeasured` never latches under
+`EK3_SRC1_POSZ=2` - the indoor rangefinder-primary configuration the option exists
+for. Round three listed this as "documented nowhere"; it is now in the `@Description`.
+Making the latch cover that case is a design change with no measurement behind it and
+is not in this round.
+
+**The speedup fix from round six was wrong, and measurement is what said so.**
+Round six slowed the simulation to 10x for the open-loop climb, on the theory that
+`get_altitude` sampling was too coarse for a 6 m window. Measured across the run: 1.36
+m per sample at speedup 100, 1.49 m at speedup 10. Slowing the sim made it slightly
+*worse*, because `poll_message` blocks on the next `SYSTEM_TIME` and so samples once
+per *simulated* second whatever the speedup. The step between samples is the climb
+rate. Replaced with rc3 1560 against a 4-7 m window, which also keeps the leg inside
+the 8 m range where the offset is actually measured.
+
+**The failsafe leg has an un-throttled witness after all.** `"EKF Failsafe: changed
+to %s Mode"` (`ArduCopter/ekf_check.cpp:215`) is sent whenever the failsafe acts and
+is not subject to the 30 s "EKF variance" throttle. The leg now waits on it with
+`check_context`, which ties the mode change to this failsafe rather than to any other
+arrival in LAND.
+
+**The set that is knowingly not fixed.** Round three had already enumerated it:
+`ResetPositionD()` also leaves `posDownAtTakeoff` and `posDownAtLastMagReset` behind,
+and both are differenced against `position.z` - at 1.5 m for the takeoff and landing
+detector (`AP_NavEKF3_VehicleStatus.cpp:389,399`) and 0.5 m for the mag reset
+hysteresis (`AP_NavEKF3_MagFusion.cpp:76`). The 3.6 m move in the flight above would
+have tripped both. They are left alone and the commit message now says why: there is
+a flight behind the terrain state and none behind those, and they reach mag and land
+detection rather than flow scaling.
+
+**Still not covered by a test.** Reaching the carry needs a height source change,
+which needs `EK3_RNG_USE_HGT` set, and needs the baro to disagree with the range
+finder or the reset delta is zero and the leg passes either way. Two earlier probes
+were confounded and measured no difference. `SIM_BARO_DRIFT` is the lever that has
+not been tried.
 
 ## What is here
 
