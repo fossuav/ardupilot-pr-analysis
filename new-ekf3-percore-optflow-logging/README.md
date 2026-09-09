@@ -1,7 +1,7 @@
 # NEW PR (not opened) - EKF3: log XKF5 and XKFA for every core
 
-Prospective PR against master. Nothing implemented and no PR opened as of
-2026-09-09.
+Prospective PR against master. Implemented on branch 2026-09-09, no PR
+opened yet. See "Implemented" below.
 
 Target: master `371990d846` (2026-09-05). Both the primary-only guard and
 the `XKFA` message are upstream, so this is a gap in merged code.
@@ -94,12 +94,47 @@ Not a behaviour change, so the cascade barely applies - but the claim
 - No autotest proposed. A test that asserts a message exists is the kind
   of test `../32972/` records as discriminating nothing.
 
+## Implemented 2026-09-09
+
+Option 1 above, the unconditional version. `SmallFastDrone-4.7.1-beta`
+commit `e825b34855`, on base `fd37f6f5fa`. The guard is gone from
+`Log_Write_XKF5`; `Log_Write_Beacon`, `Log_Write_BodyOdom` and
+`Log_Write_State_Variances` keep theirs as argued above.
+
+The "no autotest proposed" position above is withdrawn. It was aimed at a
+test that asserts a message exists, which discriminates nothing; a test
+that also requires the two cores to *differ* does discriminate, and that
+is what was written. `EK3_PerCoreOptflowLogging` in
+`Tools/autotest/arducopter.py` flies the `EKF3SRCPerCore` configuration
+(GPS on core 0, VICON on core 1 via `EK3_SRC_OPTIONS=8`) with
+`EK3_OPTIONS` bit 3 set so `XKFA` is written at all, glitches VICON to
+force the lanes apart, and then requires both messages to carry `C=0` and
+`C=1` and their `HAGL`/`HAgl` series not to be a prefix of one another.
+
+Measured on that test, 2026-09-09, at the commits above:
+
+| | `XKF5` cores | `XKFA` cores |
+|---|---|---|
+| base `fd37f6f5fa` | `[0]` | `[0]` |
+| with `e825b34855` | `[0, 1]` | `[0, 1]` |
+
+The test fails on the base commit with "XKF5 was not logged for both
+cores (saw [0])", so it discriminates.
+
+**Still outstanding:** the dataflash rate before and after on the same
+SITL run. The bandwidth argument above is still an estimate, and the
+fallback to option 2 has not been costed. Do that before opening the PR,
+because it is the one objection a reviewer is likely to raise.
+
 ## What is here
 
 ```
 new-ekf3-percore-optflow-logging/
   README.md    <- this file
 ```
+
+The code is on `SmallFastDrone-4.7.1-beta` (`e825b34855`) with its
+autotest in `Tools/autotest/arducopter.py`.
 
 ## Related
 

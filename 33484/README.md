@@ -15,9 +15,10 @@ floor is now its own PR (#34292) and the branch has gained `EK3_FLOW_QMIN`.
 Everything below about the mechanism, the flights and the Replay tuning
 still stands. First outdoor acro flight 2026-09-09: three resets, two
 of them re-anchoring to a velocity a fifth of truth, all at the moment the
-vehicle came back above the flow tilt gate. Two fixes proposed and not
-written; the Replay sweep that tuned the threshold is also what settles
-them.
+vehicle came back above the flow tilt gate. Both fixes written
+2026-09-09, and the Replay sweep that tuned the threshold is what settled
+them: the range-freshness gate suppresses all three outdoor misfires and
+none of the indoor recoveries.
 
 Mechanism confirmed in code and in three flights, recovery Replay-tuned to a
 500 ms threshold and flight-validated; the branch also carries the follow-on
@@ -206,7 +207,7 @@ is wrong, but the reset consumes that height without checking it, and here
 it consumed one whose staleness was already knowable from
 `lastAglRngFuseTime_ms`. The fix below is cheap and belongs on this side.
 
-### Proposed fix 1 (not written): gate the reset on range freshness
+### Proposed fix 1 (written 2026-09-09): gate the reset on range freshness
 
 The reset requires `aglKfValid`, which survives 5 s without a range
 fusion - long enough for the height to coast metres low. #33478 computes
@@ -228,7 +229,7 @@ and the position-snap experiment already in this record shows that big
 instantaneous corrections on this path make hold quality worse, not
 better.
 
-### Proposed fix 2 (not written): make the reset count visible
+### Proposed fix 2 (written 2026-09-09): make the reset count visible
 
 `flowVelResetWindowCount == 1` gates the statustext to once per
 `FLOW_RESET_WINDOW_MS` (10 s) while `FLOW_RESET_MAX_IN_WINDOW` allows 5,
@@ -237,6 +238,79 @@ so up to four resets per window are silent. On this flight that read as
 interesting half of a pair. `XKF7.FVC` has the truth but nobody reads it
 live. Either put the count in the message or emit on every reset and let
 the existing `flow aiding unhealthy` message carry the churn warning.
+
+### Both fixes written 2026-09-09, and the open question is answered
+
+`SmallFastDrone-4.7.1-beta` over base `fd37f6f5fa`:
+
+| fix | commit |
+|---|---|
+| 1 range freshness | `23299c535c` |
+| 2 reset count visible | `ad8cc7fbf3` |
+
+Fix 2 took the "emit on every reset" option rather than the count-in-the-
+message-once option, and carries the running `flowVelResetCount` so the
+statustext lines up with `XKF7.FVC`. The window still bounds the traffic:
+`flowVelResetUnhealthy` sets at `FLOW_RESET_MAX_IN_WINDOW`, feeds
+`flowFusionTimeout` in `AP_NavEKF3_Control.cpp:326`, drops the filter out
+of `AID_RELATIVE`, and the reset path is gated on `AID_RELATIVE`, so five
+messages per window is the ceiling. *Derived from the source, not
+measured.*
+
+Fix 1 defines its own `FLOW_RESET_RANGE_MAX_AGE_MS` (500) locally rather
+than using this branch's `aglKfRngGapMax_ms` member, so it ports to this
+PR without stacking on #33478, as argued above.
+
+#### The Replay sweep, rerun with the gate in
+
+This is the measurement the section above asked for, and it is decisive:
+**the gate is free.** Run 2026-09-09 at the commits above, gate present
+vs the same tree with `23299c535c` reverted, everything else identical.
+
+| log | resets, no gate | resets, with gate | peak excursion, either way |
+|---|---|---|---|
+| log7 (outdoor acro) | 3 | **0** | - |
+| A | 10 | 10 | 2.8 m |
+| B | 14 | 14 | 19.5 m |
+| C | 5 | 5 | 28.6 m |
+
+All three outdoor misfires are suppressed and not one indoor recovery is.
+The indoor excursions are identical to the metre either way, which is the
+stronger half of the result: the gate does not merely leave the reset
+count alone, it leaves the trajectory alone.
+
+The mechanism is the obvious one once measured. Indoors the rangefinder
+is in range and the AGL KF keeps fusing it, so the range is always fresher
+than 500 ms at the moment the lockout fires. Outdoors on log7 the
+rangefinder was above its range and the tilt gate had stopped range
+fusion, which is the same event that created the lockout.
+
+**These excursion numbers are a different measurement from the threshold
+sweep table earlier in this file, not a correction to it.** That table was
+taken on the tuning branch at its own head; this one is base `fd37f6f5fa`
+plus the six 2026-09-09 fixes, which include a `getHAGL` change and three
+ground-effect changes. Read each table internally, not across.
+
+Two notes on method, because both cost time:
+
+- Replay logs its re-run cores at `C+100`; `C<100` in the output BIN is
+  the original flight passed through. Reading `XKF1` without filtering
+  reproduces the flight's own peak excursion exactly and looks like a
+  result. `Tools/Replay/check_replay.py` is where that convention is
+  written down.
+- `XKF7`'s format record is lost to a reader desync in these logs, so the
+  reset counts above are counted from the statustexts Replay emits. That
+  is sound here only because the source logs were checked and carry none
+  of their own: log C has 44 `MSG` records and not one is reset-related.
+
+#### Still outstanding
+
+- The blended re-anchor. Not attempted; still the right next question,
+  and still a separate commit if it is done.
+- Whether `SIM_FLOW_OFS` can drive a `DCM33FlowMin` crossing, which is
+  what an autotest for the tilt-gate case would need. Not investigated.
+  The existing `EK3_FlowAxisLockoutRecovery` passes with the gate in, so
+  the recovery itself is still covered; what is uncovered is the misfire.
 
 ### Validation route for both
 
