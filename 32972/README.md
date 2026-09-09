@@ -13,7 +13,9 @@ indoor flights (Mar 2026) and run since on two more airframes; two SITL
 autotests on the branch; rebased onto the 11-commit #32768 rewrite and
 pushed 2026-09-04 (263f181a18), which cleared all twelve red CI checks;
 the pre-liftoff anchor ends earlier than the PR body says (finding 1) and
-can also engage in mid-air (finding 5).
+can also engage in mid-air (finding 5); a 2026-09-09 flight adds a second
+real-flight case of the innovation floor blocking a correction, this time
+in level cruise (finding 6).
 
 The 2026-09-04 automated review and the three commits answering it are in
 [review-response-2026-09-04.md](review-response-2026-09-04.md); findings 4
@@ -189,6 +191,73 @@ example as written will be copied onto baro-only airframes.
   through the window (SmallFastDrone bug, fixed there; master never had
   the term), so it is not a clean measurement. Inconclusive; the trade
   is real.
+
+## Key finding 6: the floor blocks a correction in cruise when the gate latches for a reason unrelated to ground effect (log7, 2026-09-09)
+
+Finding 3 records the floor holding `XKF3.IPD` at exactly -0.5000 through
+a re-takeoff on a 5-inch baro-only quad, so the baro could not correct a
++3.6 m error. This is a second real-flight instance of the same
+mechanism, in level cruise, and it isolates the cost cleanly because the
+flight ran two source configurations on one airframe at once.
+
+SFD-O4, a SmallFastDronev1 BF_X quad on 4.7.1 (`797f6854`), flown with
+`EK3_SRC_OPTIONS=8` (SRC_PER_CORE): core 0 on SRC1 (GPS, POSZ baro,
+VELZ GPS) and core 1 on SRC2 (flow, POSZ baro, **VELZ None**). Same IMU,
+same baro, same rangefinder, same instant. `EK3_GND_EFF_DZ=-8`,
+`EK3_ALT_M_NSE=1.0`, `GNDEFF_ALT=0.5`.
+
+In a stationary hover at 17.9 m above the takeoff altitude,
+`touchdown_expected` was set for **51 s continuously** (116.73-167.73 s;
+20.8% of the whole armed flight). Over that window:
+
+| | core 0 (GPS) | core 1 (flow) |
+|---|---|---|
+| altitude 121 s -> 160 s | 17.63 -> 17.63 m | 18.06 -> **23.27 m** |
+| `XKF3.IPD` | -0.4 to +0.2, moving | **-0.500, pinned** |
+| baro over the window | flat, 17.55-18.12 m | same baro |
+
+5.6 m of runaway in 38 s against a flat barometer that was the lane's own
+height source. Core 0 never engaged the floor because GPS velZ held its
+altitude, so its innovation never reached -0.5. Core 1 had nothing else:
+`gndEffectExpected` deweighted its only height observation to
+`sq(8) = 64 m^2` (PosVelFusion.cpp:1724) and floored its innovation at
+-0.5 m (line 1296) at the same time.
+
+The trigger is on the vehicle side, in #32472, and its archive entry
+already anticipated this class of failure - see the note added there. In
+short: the rangefinder was out of range high for 101 s continuous, the
+AGL KF went invalid, `ahrs.get_hagl()` returned false, `AP_GroundEffect`
+fell back to its position branch, and 21.8 m of horizontal drift past
+`AP_GROUNDEFFECT_TAKEOFF_DRIFT_NE_MAX_M` = 20 m forces `near_ground`
+true at any height.
+
+What this does and does not argue:
+
+- It does **not** argue the floor is wrong. Everything in "The conclusion
+  and why" stands: log192, log193/194 and log205 each killed an
+  alternative, and log205 in particular shows a bi-directional clamp
+  driving the terrain offset to 131 m. The floor's asymmetry is what
+  keeps that loop slow.
+- It **does** argue that the floor's safety rests entirely on the gate
+  being right, and that the gate can be wrong by a wide margin without
+  anything in the EKF noticing. A vehicle with a second vertical
+  observation absorbs that; a flow-only vehicle, which is the
+  configuration this feature set exists for, does not.
+- Options, none tested: bound the floor's engagement by how long it has
+  been continuously active with a same-signed innovation; or require the
+  gate's `near_ground` to rest on an actual height rather than a drift
+  fallback (the #32472 side, and the cheaper fix); or exempt a lane with
+  no other vertical observation. The first two are preferable because
+  they do not add per-lane behaviour.
+- **log7 carries `LOG_REPLAY=1`.** Any of these can be run against the
+  flight's own sensor stream, which is tier 1b, rather than argued.
+
+Full flight note in the private analysis repo (`logs/log7_sfdo4.md`).
+Public-facing text should cite this as "flight tests show the
+ground-effect innovation floor can pin the height innovation at -0.5 m in
+cruise when the gate latches on a horizontal-drift fallback, costing 5.6 m
+on a lane with no vertical velocity source" and give no more.
+
 
 ## Also measured
 
