@@ -1,9 +1,13 @@
 # PR #34361 - EKF3: serve the terrain-database AGL from getHAGL()
 
 Analysis archive for [ArduPilot/ardupilot#34361](https://github.com/ArduPilot/ardupilot/pull/34361).
-Branch `ekf3-hagl-terrain-alt` (andyp1per fork), two commits, head
-`87ba449393`, base master `4891432f35`. Opened 2026-09-10. Stacked on
-#34360, `../34360/`, which corrects the same convention in `FuseOptFlow`.
+Branch `ekf3-hagl-terrain-alt` (andyp1per fork), two commits of its own,
+head `3b7ba40c0a`. Opened 2026-09-10 and **actually stacked on #34360**
+since 2026-09-10, not merely claiming to be: it was based on plain master
+and `git merge-tree` showed it conflicting with #34360 in both
+`AP_NavEKF3_OptFlowFusion.cpp` and `arducopter.py`. Rebased onto it, and
+its own commit now touches only `getHAGL` - the timeout constant and the
+`FuseOptFlow` line moved to #34360, which owns that expression.
 
 Target: master `371990d846` (2026-09-05). `EK3_OPTIONS` bit 2
 (`OptflowMayUseTerrainAlt`) and the whole SRTM path are already upstream,
