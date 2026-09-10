@@ -1,12 +1,17 @@
 # PR #34292 - optical flow minimum focus height (FLOW_HGT_MIN)
 
 Analysis archive for [ArduPilot/ardupilot#34292](https://github.com/ArduPilot/ardupilot/pull/34292).
-Branch `pr-flow-hgt-min-tridge` (andyp1per fork), base `master`, head
-`87131f91a7` (2026-09-10, local; the pushed PR head is still `946708d630`).
-The 2026-09-10 numbers below were taken at `126cf753c7`, which a reword of two
-commit messages renumbered to `87131f91a7` - identical tree, verified empty
-`git diff` and a 6-for-6 `range-diff`. The local `pr-flow-hgt-min` is stale:
-it never saw the force-push that produced the `946708d630` series. The head was
+Branch `pr-flow-hgt-min-tridge-v2` (andyp1per fork), base `master`, head
+`78a33d089d` (2026-09-10, local and unpushed; the pushed PR head is
+`5def1557bd`).
+
+**Two sessions worked this branch on 2026-09-10 and each force-pushed over
+the other's base.** The tridge round below was built on `946708d630`,
+rebuilt after a reword at `87131f91a7`, and rebuilt again onto `5def1557bd`
+once the commit fold landed. Every rebuild was verified as an identical tree,
+so the measurements keep their values; only the SHAs moved. The local
+`pr-flow-hgt-min` is older still and never saw any of it. Check
+`git fetch origin pr-flow-hgt-min` before trusting a head named here. The head was
 `292ec09fef` when this record was opened; four review rounds have moved it
 since, and the sections below say what changed. The tip was `84ec31a99d`
 until a rebase renumbered it to `76d3538247`, then a rebase onto current
