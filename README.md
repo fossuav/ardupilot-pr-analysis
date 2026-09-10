@@ -10,6 +10,11 @@ and pick up the full state of that PR's investigation.
 The working rules for editing these records - the evidence cascade, and when
 code based on a real flight may be changed - are in [CLAUDE.md](CLAUDE.md).
 
+Which real flight each EKF change must be replayed against, and which of them
+have no flight that can show the defect at all, is
+[REPLAY_LOGS.md](REPLAY_LOGS.md). `find_log.py` resolves a log name to a path
+on whatever machine you are on.
+
 ## Conventions
 
 - One directory per PR, named by number (e.g. `32768/`).
