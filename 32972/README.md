@@ -223,6 +223,21 @@ altitude, so its innovation never reached -0.5. Core 1 had nothing else:
 `sq(8) = 64 m^2` (PosVelFusion.cpp:1724) and floored its innovation at
 -0.5 m (line 1296) at the same time.
 
+**The vehicle side of this is fixed, the EKF side is not measured
+(2026-09-10).** Why the gate was open at all is
+`../new-groundeffect-touchdown-gate/` - a descent test with no deadband
+and a drift rule that asserts ground proximity when it means "I do not
+know" - and why `get_hagl()` returned nothing to stop it is
+[#34361](https://github.com/ArduPilot/ardupilot/pull/34361). Both are
+written, with SITL showing the gate no longer opens in that hover.
+
+What this finding still owes is its own half: a Replay of log7 through the
+fixed EKF showing `XKF3.IPD` on the flow lane is no longer pinned and the
+5.6 m does not accrue. That has not been run. Until it is, the floor's
+behaviour in cruise is described here but not demonstrated fixed, and
+nothing above should be read as saying the EKF-side response was changed -
+it was not.
+
 The trigger is on the vehicle side, in #32472, and its archive entry
 already anticipated this class of failure - see the note added there. In
 short: the rangefinder was out of range high for 101 s continuous, the
