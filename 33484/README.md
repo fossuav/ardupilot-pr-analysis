@@ -29,8 +29,8 @@ which one was rejected.
 Mechanism confirmed in code and in three flights, recovery Replay-tuned to a
 500 ms threshold and flight-validated; the branch also carries the follow-on
 near-ground flow floor (`EK3_FLOW_MIN_H`), flight-validated on a second
-airframe. The PR description on GitHub still says 1 s and does not mention
-the floor, the reset-churn demotion or the `XKF7`/`SIM_FLOW_OFS` additions.
+airframe. The PR description was rewritten 2026-09-10 to say 500 ms and to cover
+`EK3_FLOW_QMIN`, the freshness gate, `XKF7` and the SITL fault injection.
 
 ## The problem
 
