@@ -232,6 +232,38 @@ Derived, UNCONFIRMED by test.
   6 is the deweighting against the floor, on the flight's own sensor stream.
   Until then M3 is quantified from code arithmetic only.
 
+## SITL check 2026-09-10: M4 is real but latent, not an active failure
+
+Ran `BaroGroundEffectAtTakeoff` on the PR's own tree (head 263f181a18). It
+passes: 0.990 m peak excursion with the default dead zone, 0.040 m armed at
+idle in ground effect.
+
+The question M4 turns on is whether `GLOBAL_POSITION_INT.relative_alt` is
+reading the EKF estimate or the raw-baro fallback, which
+`AP_AHRS::get_relative_position_D_home()` substitutes whenever
+`status.flags.vert_pos` is false. From the run's own log, `XKF4` core 0:
+
+| | |
+|---|---|
+| samples | 867 over 110 s |
+| `vert_pos` false | 12 samples, t = 3.5 to 5.7 s |
+| first arm | t = 43.7 s |
+| `vert_pos` false after first arm | **0** |
+
+So the flag drops only during EKF initialisation at boot and is true for the
+whole of both measured phases. **The test currently measures what it claims
+to measure**, and the earlier reading here - that it measures the wrong
+signal - overstates it.
+
+What survives is the fail-open shape, and it is still worth fixing. If a
+regression ever did drive the EKF unhealthy - which is precisely the
+ground-effect failure mode this PR exists to prevent - `relative_alt` would
+silently become raw baro, and phase A's `if peak < 0.3: raise` would still
+pass, because raw baro shows around 3.6 m of ground effect. The assertion
+cannot fail in the direction it is guarding. Switching to
+`self.ekf_position_D_m()`, which the sibling test already uses, costs
+nothing and removes the trap. Downgrade M4 from must-fix to should-fix.
+
 ## The problem
 
 BF_X indoor quad (DPS310, EK3_RNG_USE_HGT -1): motor spool-up drops the
