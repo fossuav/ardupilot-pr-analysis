@@ -658,7 +658,7 @@ so both builds fly the same trajectory:
 the innovation as 1000x in an int16 and the old expression drives it past
 the wrap - and are withdrawn. The ratio saturates its own cap and is the
 sound statement. Numbers re-taken at 60 m over the traverse window; see
-`../new-ekf3-srtm-flow-scale-sign/`.)
+`../34360/`.)
 
 **This corrects one thing recorded above.** The 2026-09-07 fold said the
 forwarding's remaining effect "is on the flow scale height above the range,
@@ -667,8 +667,9 @@ scale height, but `XKF5.NI` carries the consistency ratio it drives, and it
 discriminates 3 against 255. The new PR's `EK3_OptflowTerrainScaleHeight`
 autotest reads exactly that, so the path is coverable after all.
 
-Extracted to `../new-ekf3-srtm-flow-scale-sign/` (branch
-`ekf3-srtm-flow-scale-sign`, base master `4891432f35`). This record already
+Extracted to #34360, `../34360/` (branch `ekf3-srtm-flow-scale-sign`, base
+master `4891432f35`), opened 2026-09-10 and cross-referenced on this PR at
+<https://github.com/ArduPilot/ardupilot/pull/33585#issuecomment-5615951633>. This record already
 said the defect "is master's, not this PR's"; acting on that shortens this PR
 by one commit and gets the fix to bit-2 users without waiting on seven rounds
 of unrelated review. Rebase this branch onto it once it is open, and drop
