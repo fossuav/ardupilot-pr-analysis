@@ -1,8 +1,12 @@
 # PR #34292 - optical flow minimum focus height (FLOW_HGT_MIN)
 
 Analysis archive for [ArduPilot/ardupilot#34292](https://github.com/ArduPilot/ardupilot/pull/34292).
-Branch `pr-flow-hgt-min` (andyp1per fork), base `master`, head `126cf753c7`
-(2026-09-10, local; the pushed PR head is `946708d630`). The head was
+Branch `pr-flow-hgt-min-tridge` (andyp1per fork), base `master`, head
+`87131f91a7` (2026-09-10, local; the pushed PR head is still `946708d630`).
+The 2026-09-10 numbers below were taken at `126cf753c7`, which a reword of two
+commit messages renumbered to `87131f91a7` - identical tree, verified empty
+`git diff` and a 6-for-6 `range-diff`. The local `pr-flow-hgt-min` is stale:
+it never saw the force-push that produced the `946708d630` series. The head was
 `292ec09fef` when this record was opened; four review rounds have moved it
 since, and the sections below say what changed. The tip was `84ec31a99d`
 until a rebase renumbered it to `76d3538247`, then a rebase onto current
