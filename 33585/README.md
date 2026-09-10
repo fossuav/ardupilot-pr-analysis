@@ -651,8 +651,14 @@ so both builds fly the same trajectory:
 
 | | old expression | corrected |
 |---|---|---|
-| peak flow innovation | 31.833 rad/s | 0.148 rad/s |
-| peak `XKF5.NI` (ratio x100, capped 255) | 255 | 3 |
+| peak `XKF5.NI` (ratio x100, capped 255) | 255 | 0 |
+
+(An earlier version of this entry also quoted peak flow innovations of
+31.833 against 0.148 rad/s. Those are int16 aliasing artefacts - XKF5 logs
+the innovation as 1000x in an int16 and the old expression drives it past
+the wrap - and are withdrawn. The ratio saturates its own cap and is the
+sound statement. Numbers re-taken at 60 m over the traverse window; see
+`../new-ekf3-srtm-flow-scale-sign/`.)
 
 **This corrects one thing recorded above.** The 2026-09-07 fold said the
 forwarding's remaining effect "is on the flow scale height above the range,

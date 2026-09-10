@@ -65,11 +65,77 @@ same trajectory - only the scale height differs.
 255 is the logged ceiling, so the true ratio is at least 2.55: flow at that
 geometry is rejected outright.
 
+### Superseded 2026-09-10 by a review of the measurement itself
+
+Two things above are wrong and are left in place because the numbers were
+really taken and the errors are worth not repeating.
+
+**The innovation figures are int16 aliasing artefacts.** `XKF5` logs
+`flowInnov` as `(int16_t)(1000 * innov)`, so anything past +/-32.767 rad/s
+wraps. The geometry described - about 10 m/s over a range clamped to
+`rngOnGnd` = 0.1 m - predicts roughly 100 rad/s, and 97.369 aliases onto
++31.833. The consistency ratio is the robust statement and it is unaffected:
+it saturates its own 255 cap. Do not quote the innovation from this path.
+
+**The run was at 40 m and the window was the whole log.** Both were changed
+after measuring the terrain properly, below.
+
 **A correction to `../33585/`, which recorded that the forwarding's effect
 "is on the flow scale height above the range, which no log field exposes".**
 No field carries the scale height itself, but `XKF5.NI` carries the
 consistency ratio it drives, and that discriminates 3 against 255. The
 autotest below reads it.
+
+## The terrain at KalaupapaCliffs is not a simple drop (2026-09-10)
+
+Sampled through the vehicle's own `TERRAIN_REPORT` at 25 m spacing, which is
+what the code reads, rather than from an offline tile reader:
+
+| north (m) | 0 | 25 | 50 | 75 | 100 | 150 | 200 | 300 | 400 |
+|---|---|---|---|---|---|---|---|---|---|
+| terrain AMSL | 165.4 | 175.6 | **185.8** | 179.1 | 159.7 | 120.7 | 76.1 | 14.2 | 5.0 |
+
+Home is 165.25 m. There is a ridge peaking at 185.8 m about 50 m north
+before the ground falls away. A first pass sampled only 0 and 100 m, read
+165.4 and 159.7, and concluded the profile fell monotonically - the sample
+spacing aliased the ridge out. At the original 40 m test altitude the margin
+over it is 19.5 m, which is thin and would put the range finder back in
+range if it were any lower. The run is now at 60 m.
+
+An independent review put the ridge at 202 m and home terrain at 184 m,
+from an offline reader. Those magnitudes are about 16-20 m high against what
+the flight code itself reports, but the shape was right and the concern was
+real. Prefer the in-flight numbers; the offline reader disagrees with
+AP_Terrain's own grid.
+
+## The signal lives in the traverse, not the hover (2026-09-10)
+
+The scale height reaches the innovation only through vehicle velocity:
+`losPred = relVelSensor / range`. Over a stationary hold `relVelSensor` is
+near zero, so the innovation is near zero whatever the range is. Measured
+over a 15 s hold at the end of the leg, both the correct and the inverted
+build read a ratio of 0. The original whole-log maximum only worked because
+the traverse happened to be inside it.
+
+## What this test cannot show (2026-09-10)
+
+With `EK3_OPTIONS` cleared the SRTM branch is skipped and `terrainState -
+pd` supplies the scale height. Frozen at the takeoff reading, that is about
+60 m against a true 220 m - 3.7x low - and it measures a ratio of **3**,
+well inside the gate.
+
+| configuration | traverse peak ratio |
+|---|---|
+| sign inverted | 255 |
+| bit 2 cleared, feature unused | 3 |
+| bit 2 set, sign correct | 0 |
+
+So the test discriminates the sign decisively and does **not** prove the
+database rather than the terrain offset state supplied the height. A
+suggested negative leg - assert the ratio saturates with the option cleared
+- is refuted by that 3: it would fail. Recorded rather than papered over
+with a leg that would pass for another reason, the same way `../33585/`
+handled its uncoverable forwarding case.
 
 ## What did not change, and why
 
