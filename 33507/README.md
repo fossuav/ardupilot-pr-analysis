@@ -198,6 +198,47 @@ holds the default lower.
   comments it does not otherwise touch - out of scope under the surgical
   modification rule, and it missed one.
 
+## Fixed and pushed 2026-09-10: head 0c429893cf -> 2532ac916e
+
+One code change, the rest comments and messages.
+
+- `@Units` was `m/s/s`; the state is m/s/s so its process noise is m/s/s/s,
+  which is what `EK3_ABIAS_P_NSE` already declares. Fixed in the parameter
+  doc and the member comment. `param_parse.py --vehicle ArduCopter` runs
+  clean and emits `m/s/s/s`.
+- Parameter index 14 (downstream numbering) moved to **12**, the first free
+  index upstream. Verified no collision in `var_info2`.
+- Code: `Qbias` now uses `constrain_ftype(..., 0.0f, 1.0f)`, mirroring what
+  the main filter applies to `_accelBiasProcessNoise`. `@Range` is not
+  enforced at runtime, so before this a value of 100 drove `P[2][2]` to its
+  cap in about a second. Builds clean (`./waf copter`).
+- The first commit message said XKF6 (the fork's name); upstream it is
+  **XKFA**. It also claimed a "frozen hover correction" is removed before
+  `velDotNED.z` - that does not exist on the base - and called the estimate
+  "independent of the main filter". All three corrected: the message now
+  says what the state actually is, the residual left after
+  `learnInactiveBiases()` and `correctDeltaVelocity()` have removed the main
+  filter's own estimate every IMU frame.
+- Stale "2-state" wording fixed in four places, including the `EK3_OPTIONS`
+  bit 3 `@Description`, which reaches the wiki. Fixed the pre-existing
+  en-dash on that same line while editing it.
+- `Qbias = sq(EK3_ABIAS_P_NSE * imuDt)` in the header block now names
+  `EK3_AGL_ABIAS_P`; the observation model comment now reads `H = [1, 0, 0]`;
+  the decay comment no longer claims the hard reset finds v near zero, since
+  the bias state sustains `b_az*tau` against it.
+- The parameter description no longer claims a higher value "cannot learn a
+  bad bias". Stale or absent range data cannot drive it; a sloping or
+  reflective surface can, and faster at higher values.
+- Removed the duplicated `land_and_disarm()` in the autotest.
+- The commit message now states that 0.1-0.3 was flown and 0.3
+  flight-validated, and that the step-injection autotest does not pin the
+  default.
+
+Still open, and deliberately not changed: the **default remains 0.05**, and
+the two design findings above (the decay gated on a per-sample flag, and the
+fact that the under-tracking evidence does not isolate the bias state) need
+measurement before either the default or the decay is touched.
+
 ## The problem
 
 The 2-state AGL KF integrates `velDotNED.z`, which still carries the active

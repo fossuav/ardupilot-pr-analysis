@@ -125,6 +125,34 @@ by the main filter from baro height while the switch is off. The +0.48/+0.51
   threshold, bounding it at 500 ms / ~0.2 m. Worth saying, since the concern
   is on the record.
 
+## Fixed and pushed 2026-09-10: head bba45ab742 -> 640cd4a5fc
+
+Comment and commit-message only - `git diff bba45ab742 640cd4a5fc` touches
+nothing but comments, so the Replay and log281 validation still stands.
+
+- The two em-dashes are gone; the branch adds no non-ASCII at all now.
+- The "independent of baro" claim is corrected in all three places it
+  appeared (two code comments and the first commit message) to say what is
+  actually true: the AGL KF does not carry baro error *directly*, and baro
+  reaches it through the accel bias the main filter learns.
+- First commit said `EK3_OPTIONS` bit 4; now bit 3.
+- Second commit's subject was 75 chars, now 67; all four subjects are under
+  72 and no body line exceeds 75 columns.
+- The second commit no longer claims the speed gate still applies in the
+  `!filterStatus.flags.horiz_vel` branch, because it does not. The gap is
+  named in the message instead - the code is unchanged.
+- The 6-line freshness comment is down to 3.
+- Commit 4's two false claims are corrected: its observation noise does not
+  deweight on staleness (the floor applies for the whole 5 s validity
+  lifetime), and what it drops is the *tilt*-dependent gradient term. It now
+  also states the #33507 dependency and quantifies the lag.
+- The two `(cherry picked from ...)` trailers, whose hashes are not
+  upstream, are removed.
+
+Still open, and deliberately not changed: whether to drop commit 4 pending
+#33507, and the missing speed gate in the no-horiz_vel branch. Both are
+behaviour decisions, not mechanical fixes.
+
 ## The problem
 
 `EK3_SRC*_POSZ` is baro (normal), with `EK3_RNG_USE_HGT` set so the rangefinder is used for height below a threshold. Two things stop that switch helping indoors:
