@@ -284,6 +284,35 @@ and `BaroGroundEffectResetSuppression` both still pass.
 Still outstanding and needing a rebase: the three unfolded fixups, which do
 not squash mechanically (2 conflicts, 1 conflict, clean).
 
+## Rebase 2026-09-10: 26 commits -> 22, head cba8f121ac, on current master
+
+The three fixups are folded and `2371087c61`'s fly-forward gate is
+dissolved into the two commits that first use the flags, so no
+intermediate commit ships the fixed-wing failure that commit existed to
+prevent. Its four hunks went where they belong: the `!assume_zero_sideslip`
+on `baroInGndEffect` to the ResetHeight suppression, and the parameter-doc
+qualifier, the `!fusingGndEffectHgtRef` innovation-floor skip and the
+`!assume_zero_sideslip` on the anchor to the hold commit.
+
+`f282f9df7a` turned out to straddle two commits, which is why it would not
+autosquash: two hunks belong with the suppression, but the other three add
+`gndEffectHgtResetSuppressStart_ms` beside `posDownGndEffectRef` and
+`fusingGndEffectHgtRef`, both introduced by the *later* anchor commit. The
+dependency is positional, not logical, so all five went into the
+suppression commit at valid positions for that point in history and the
+anchor commit's members land beside them afterwards.
+
+Verification: `git diff 263f181a18 <restructured>` was **empty** before the
+master rebase, so the split provably changed no content, and the same check
+against the old head e6a198cf8b after adding the test commit was empty too.
+Each of the three restructured EKF commits builds on its own. On master,
+`BaroGroundEffectAtTakeoff` (0.980 / 0.029), `BaroGroundEffectResetSuppression`
+and `BaroDriftClearedAtArm` all pass.
+
+The three target commit messages now describe what their fixups added - the
+suppression bound, the reference-innovation release, and the second test -
+which was the other half of that finding.
+
 ## The problem
 
 BF_X indoor quad (DPS310, EK3_RNG_USE_HGT -1): motor spool-up drops the
