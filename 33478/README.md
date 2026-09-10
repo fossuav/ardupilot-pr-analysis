@@ -194,6 +194,64 @@ leg asserting bit 4 alone brings the KF up.
   resolve log35/38/41 to fingerprints in `REPLAY_INDEX.md` before the table
   is cited to a maintainer.
 
+## SITL A/B 2026-09-10: M1 confirmed, M3's cause was wrong
+
+Two runs on the PR's own tree (head 2f1cc48977), Copter SITL.
+
+### A/B 1: the fallback is inert on the shipped EK3_SRC1_VELZ. CONFIRMED.
+
+Flow copter, `EK3_OPTIONS=24` (bits 3|4), `EK3_SRC1_POSXY=0` so it navigates
+in AID_RELATIVE, baro for POSZ, single lane, rangefinder fitted. The only
+difference between arms is the velZ source and whether a GPS is present:
+
+| arm | EK3_SRC1_VELZ | SIM_GPS1_ENABLE | max GPS fix | XKFA.Valid | XKFA.VFuse |
+|---|---|---|---|---|---|
+| A | 0 (none) | 0 | - | 911/917 | **794/917 (86.6%)** |
+| B | **3 (the default)** | 1 | 6 (3D) | 903/909 | **0/909 (0.0%)** |
+
+Arm B never fuses, for the entire flight, with the AGL KF up and valid the
+whole time. That is the shipped default `EK3_SRC1_VELZ` plus a GPS that
+holds a fix and is never fused for velZ, which is the ordinary indoor and
+urban flow case. Nothing in the log says why: `Valid` reads 1 and `VFuse`
+reads 0.
+
+Worth noting why the PR's own test cannot see this:
+`configure_EKFs_to_use_optical_flow_instead_of_GPS()` sets
+`EK3_SRC1_VELZ = 0`. Every leg of the shipped autotest calls that helper, so
+the test configures around the defect it needs to catch.
+
+### A/B 2: the headline number. M3's symptom is real, its cause was not.
+
+Four arms, identical stimulus (`SIM_ACC1_BIAS_Z = 0.4`), same setup as the
+PR's own test, varying only the option bits and the measurement window:
+
+| arm | EK3_OPTIONS | hold / settle | max velD err | mean | fused |
+|---|---|---|---|---|---|
+| bit 3 only | 8 | 14 / 4 | **3.470** | 2.701 | no |
+| bit 4 only | 16 | 14 / 4 | 1.139 | 0.973 | yes |
+| bits 3\|4 | 24 | 14 / 4 | **1.154** | 0.964 | yes |
+| bits 3\|4 | 24 | **45 / 35** | **0.172** | 0.122 | yes |
+
+**The option-bit mismatch is immaterial.** Bit 4 alone (1.139) and bits 3|4
+(1.154) are the same number. The earlier reading here - that the arms differ
+in flow-scaling source and that this is why the result is not attributable -
+is **wrong** and should not be repeated to a maintainer.
+
+**The real mismatch is the measurement window.** The shipped test runs its
+off leg with `bias_hold=14, settle=4` and its on leg with `bias_hold=45,
+settle=35`. The last two rows above are the same firmware and the same
+configuration, differing only in the window: 1.154 measured from 4 s in,
+0.172 measured from 35 s in. So "3.47 without, 0.17 with" compares the off
+leg's *transient* against the on leg's *settled* value, and the 20x is
+mostly the window.
+
+**The fusion does work.** Matched timing gives 3.47 -> 1.15, a 3x reduction
+in peak velD error, with the fusion confirmed engaged. That is the number
+the commit message should quote. The settled 0.17 can be quoted alongside it
+provided it is labelled as settled - the off leg has no settled counterpart,
+because with the fusion off the vehicle flies itself down, which is why the
+shipped test made that leg short in the first place.
+
 ## The problem
 
 With `EK3_SRC1_VELZ=0`, the rangefinder excluded from height
