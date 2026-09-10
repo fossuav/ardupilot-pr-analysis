@@ -635,6 +635,42 @@ documented dead zone stands. Measured on the same flight profile: datum 5.48 m w
 height above ground moving 5.48 m before the fix, datum 5.97 m with height above ground
 moving 0.00 m after.
 
+## The sign fix is measured, and extracted to its own PR (2026-09-10)
+
+`535cfca48f` closed with "Not measured", and named what was wanted: "the
+flight with terrain enabled over sloping ground that the flat-ground work has
+been asking for". That measurement exists now, and the fix is moving out of
+this PR.
+
+Reaching the branch needs `gndOffsetValid` false with terrain still valid,
+which the earlier probe could not get because the terrain offset stayed valid
+for its whole leg. Putting the rangefinder out of range with terrain coverage
+present does it. SITL at `--home KalaupapaCliffs`, `RNGFND1_MAX=8`, bit 2 set,
+holding 40 m above an origin the ground falls to 160 m below, GPS navigating
+so both builds fly the same trajectory:
+
+| | old expression | corrected |
+|---|---|---|
+| peak flow innovation | 31.833 rad/s | 0.148 rad/s |
+| peak `XKF5.NI` (ratio x100, capped 255) | 255 | 3 |
+
+**This corrects one thing recorded above.** The 2026-09-07 fold said the
+forwarding's remaining effect "is on the flow scale height above the range,
+which no log field exposes", and left it uncovered. No field carries the
+scale height, but `XKF5.NI` carries the consistency ratio it drives, and it
+discriminates 3 against 255. The new PR's `EK3_OptflowTerrainScaleHeight`
+autotest reads exactly that, so the path is coverable after all.
+
+Extracted to `../new-ekf3-srtm-flow-scale-sign/` (branch
+`ekf3-srtm-flow-scale-sign`, base master `4891432f35`). This record already
+said the defect "is master's, not this PR's"; acting on that shortens this PR
+by one commit and gets the fix to bit-2 users without waiting on seven rounds
+of unrelated review. Rebase this branch onto it once it is open, and drop
+`535cfca48f` here.
+
+Round six's withdrawal of the fail-low guard stands and is carried into the
+new PR's record, so it is not re-argued there.
+
 ## What is here
 
 ```
