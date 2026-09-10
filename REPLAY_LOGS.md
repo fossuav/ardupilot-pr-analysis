@@ -37,10 +37,10 @@ that PR, not what could be.
 | PR | log | what it exposes | replay status |
 |---|---|---|---|
 | [33359](33359/) | log280 | indoor alt-hold divergence at the rangefinder height-source switch (std 1.14 / max 5.40 m) | validated pre-submission, and still valid after the 2026-09-10 head move to 640cd4a5fc (comments only); corrected 2026-09-10 - this row named log281, which is the flight flown *with* the fix, so replaying it would compare a fixed core against a fixed core |
-| [33478](33478/) | log35, log38, log41 | velD fusion on a baro-only vehicle with no velZ source | **re-run needed** at head e17a1c28bf (2026-09-10): the haveGpsVelZ predicate changed, so the fallback now engages in configurations it previously sat out. The existing table was taken before that and against a head 3 months old; the three logs also still lack fingerprints |
+| [33478](33478/) | log35, log38, log41 | velD fusion on a baro-only vehicle with no velZ source | logs **resolved and fingerprinted 2026-09-10** under `support/bragg/TD-Matek-5Inch/`, all replayable. Re-run still owed, and subject to the same XKFA limit: `XKFA.VFuse` cannot be observed on these logs, so the fusion has to be judged from XKF1.VD instead |
 | [33484](33484/) | log A, log B, log C | the single-axis flow lockout the recovery is for | 500 ms threshold tuned on these; re-run 2026-09-10 as a before/after over the review fixes, `bfb41f69a1` vs `c3db493b9a` (amended to `853f3f2177`, comment only) - B loses one reset to the unhealthy latch gate, A and C unchanged |
 | [33484](33484/) | log7 | the recovery misfiring at the flow tilt gate | re-run 2026-09-10 on the PR's own tree: the gate suppresses **nothing** there, 2 resets either way. The 3 -> 0 is on the beta branch with #33359 and #33478 stacked. Re-run again at `c3db493b9a` (now `853f3f2177`): still 2 resets, but now **3 deferrals reported** where the tree was previously silent |
-| [33507](33507/) | log311, log66 | accel-Z bias, PD drift over the hover | **re-run needed** at head b1e8ecbcd8 (2026-09-10): the decay gate fix changes what the bias state converges to, and the sweep that chose 0.1-0.3 was measured with the defect present. SITL says 0.05 now tracks better than 0.3 did before it |
+| [33507](33507/) | log311, log66 | accel-Z bias, PD drift over the hover | logs **resolved 2026-09-10** (see the private index); re-run **attempted and blocked** - Replay cannot emit XKFA when replaying these logs, so the bias state is unobservable. PD drift, the available proxy, does not separate: -0.0029 to +0.0005 m/s across pre-fix/fixed and Q 0.05/0.30 |
 | [33585](33585/) | log308 | AltHold demotion at the rangefinder ceiling | validated pre-submission at an earlier head; force-pushed to `a4d8966c85` 2026-09-10 and **not re-run since** |
 | [32972](32972/) | log7 | finding 6, the height floor blocking a correction in cruise | **owed** - not run |
 | [34292](34292/) | log67 | the near-ground flow floor | partial; the record notes replay does not reproduce the disarm path. Head 337cf08df6 withholds the zeroed sample from the terrain estimator, which is inert on Copter (EK3_FLOW_USE=1) so log67 is unaffected, but a Plane log would be needed to exercise it |
@@ -133,3 +133,38 @@ ever wanted back before gc reclaims them:
 
 Both were hazards rather than backups: publishing by that branch name
 without checking would have sent the wrong tree to the remote.
+
+
+## Replay cannot show the AGL KF on these logs (found 2026-09-10)
+
+Replaying any of these flights against the upstream branches produces **no
+XKFA at all**, so the AGL KF's own states - height, velocity, bias, and the
+`VFuse` flag #33478 is judged by - are invisible in the output.
+
+The cause is not the option bit and not the feature flag. Both were ruled
+out:
+
+- A control run proves `--parm` reaches the replayed EKF:
+  `--parm EK3_ALT_M_NSE=50` moves the replayed core's `XKF4.SH` from 0.0777
+  to 0.0170 while core 0 stays at 0.1437.
+- A compile probe on `EK3_FEATURE_OPTFLOW_AGL_KF` reports enabled, and
+  `AGL_ABIAS_P` is present in the Replay binary. (A `strings` check for
+  "XKFA" returns nothing, but that is a false negative - the format name is
+  not stored as a standalone string. Do not use `strings` for this.)
+- `Log_Write_XKF5` runs for the replayed core (790 messages at C=100), and
+  the XKFA block sits in the same function immediately after it.
+
+What actually happens is that **Replay inherits the input log's format
+table**. These logs were recorded on the fork, where the AGL KF is XKF6 at
+message id 49; there is no XKFA slot to write into. Confirmed on two
+independent logs (log66 and log311): both carry identical fork FMT tables
+(`XKF0..XKF7, XKFD, XKFM, XKFR, XKFS`) and neither replay declares XKFA.
+
+Consequences worth carrying:
+
+- The Replay sweeps this archive cites for #33507 were necessarily taken on
+  the **fork** build, where the message is XKF6. They are not reproducible
+  against the upstream branch, and a maintainer following the record will
+  get an empty result.
+- Any future AGL KF replay evidence needs either a log recorded by firmware
+  that already declares XKFA, or a metric that survives in XKF1/XKF5.

@@ -353,6 +353,42 @@ Outstanding: the third commit's message still argues the default from the
 flight values and should be rewritten around this result. That needs an
 amend.
 
+## Replay re-run 2026-09-10: blocked, and the sweep here is not reproducible upstream
+
+The re-run this record owed cannot be done against the upstream branch.
+Replaying log66 or log311 emits **no XKFA**, because Replay inherits the
+input log's format table and these flights were recorded on the fork, where
+the AGL KF is XKF6. The bias state is therefore unobservable in replay. Full
+elimination of the other candidate causes is in `REPLAY_LOGS.md`; the short
+version is that `--parm` does reach the replayed EKF (a control moved the
+replayed core's `XKF4.SH` from 0.0777 to 0.0170), the feature is compiled
+in, and `Log_Write_XKF5` runs for the replayed core in the same function.
+
+**This means the process-noise sweep cited above was taken on the fork
+build.** It is not reproducible from this record as written, and a
+maintainer who tries will get nothing.
+
+The one proxy available in the replay output is PD drift, which is the
+metric this record uses for log66. It does not separate:
+
+| arm | PD drift rate | total over the window |
+|---|---|---|
+| pre-fix, Q=0.05 | -0.0029 m/s | +0.111 m |
+| pre-fix, Q=0.30 | -0.0000 m/s | +0.151 m |
+| decay fixed, Q=0.05 | +0.0005 m/s | +0.182 m |
+| decay fixed, Q=0.30 | -0.0029 m/s | +0.148 m |
+
+All four are the same to within the spread, against a PD range of ~8.7 m
+over the flight. Caveat before this is read as contradicting the "0.2
+recovers the full 60% PD-drift reduction" finding: the replay ran with
+`EK3_OPTIONS=8`, so the AGL KF only drives optical flow scaling, and its
+influence on PD is indirect. It is also possible the original number was
+measured over a different window. What can be said is that the reduction
+does **not** reproduce with this metric on this configuration, so the
+finding needs re-deriving rather than being cited again.
+
+The SITL A/B above remains the evidence for the decay fix and the default.
+
 ## The problem
 
 The 2-state AGL KF integrates `velDotNED.z`, which still carries the active
