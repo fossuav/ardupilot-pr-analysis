@@ -1,7 +1,9 @@
-# NEW PR (not opened) - EKF3: serve the terrain-database AGL from getHAGL()
+# PR #34361 - EKF3: serve the terrain-database AGL from getHAGL()
 
-Prospective PR against master. Implemented on branch 2026-09-09, no PR
-opened yet. See "Implemented" below.
+Analysis archive for [ArduPilot/ardupilot#34361](https://github.com/ArduPilot/ardupilot/pull/34361).
+Branch `ekf3-hagl-terrain-alt` (andyp1per fork), two commits, head
+`87ba449393`, base master `4891432f35`. Opened 2026-09-10. Stacked on
+#34360, `../34360/`, which corrects the same convention in `FuseOptFlow`.
 
 Target: master `371990d846` (2026-09-05). `EK3_OPTIONS` bit 2
 (`OptflowMayUseTerrainAlt`) and the whole SRTM path are already upstream,
@@ -174,12 +176,27 @@ be changed without touching the bit 5 path.
 ## What is here
 
 ```
-new-ekf3-hagl-terrain-alt/
+34361/
   README.md    <- this file
 ```
 
-The code is on `SmallFastDrone-4.7.1-beta` (`b003fc6c4d`) with its
-autotest in `Tools/autotest/arducopter.py`.
+Written on `SmallFastDrone-4.7.1-beta` (`b003fc6c4d`) and ported to master
+as `ekf3-hagl-terrain-alt` for the PR.
+
+### The test moved to 60 m after the terrain was measured (2026-09-10)
+
+The SITL numbers above were taken at 40 m above home. Sampling the terrain
+at 25 m spacing afterwards found a ridge peaking at 185.8 m AMSL about 50 m
+north of a 165.25 m home, so that leg had 19.5 m of margin over it rather
+than the tens of metres assumed - a first sampling at 0 and 100 m had
+aliased the ridge out entirely. The test now flies at 60 m, where the margin
+is about 40 m and the range finder cannot come back into range mid-leg.
+Re-run there, getHAGL reads 59.98, 149.10 and 220.33 m against a database
+truth of 59.98, 149.09 and 220.32 m, and still reads 0.00 on unfixed code.
+The 40 m numbers stand as taken; they are a different run, not a correction.
+
+See `../34360/` for the full profile, and for why an offline tile reader
+disagreed with what AP_Terrain itself reports.
 
 ## Related
 
