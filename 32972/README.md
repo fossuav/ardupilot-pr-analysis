@@ -264,6 +264,26 @@ cannot fail in the direction it is guarding. Switching to
 `self.ekf_position_D_m()`, which the sibling test already uses, costs
 nothing and removes the trap. Downgrade M4 from must-fix to should-fix.
 
+## Fix 2026-09-10 (head e6a198cf8b): the takeoff test now reads the EKF
+
+`BaroGroundEffectAtTakeoff` reads `LOCAL_POSITION_NED` via a new
+`peak_ekf_alt_excursion()`, as `BaroGroundEffectResetSuppression` already
+did. The numbers barely move - 0.990 -> 0.991 m and 0.040 -> 0.027 m - which
+is the point: the flag is only false during EKF startup, so this closes the
+trap rather than fixing a wrong result, exactly as the SITL check above
+predicted.
+
+One thing the change turned up: `assert_baro_drift_cleared_at_arm()` is
+called twice, and its second call runs the **no-GPS** arm reset, where the
+reported height falling back to the recalibrated baro is the behaviour under
+test and `LOCAL_POSITION_NED` is not published at all. A blanket switch to
+the EKF signal broke it. Both helpers are kept, with the reason on each, and
+only the two ground-effect call sites use the EKF one. `BaroDriftClearedAtArm`
+and `BaroGroundEffectResetSuppression` both still pass.
+
+Still outstanding and needing a rebase: the three unfolded fixups, which do
+not squash mechanically (2 conflicts, 1 conflict, clean).
+
 ## The problem
 
 BF_X indoor quad (DPS310, EK3_RNG_USE_HGT -1): motor spool-up drops the
