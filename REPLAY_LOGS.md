@@ -39,9 +39,9 @@ that PR, not what could be.
 | [33359](33359/) | log281 | indoor alt-hold divergence at the rangefinder height-source switch | validated pre-submission |
 | [33478](33478/) | log35, log38, log41 | velD fusion on a baro-only vehicle with no velZ source | validated, table in the record |
 | [33484](33484/) | log A, log B, log C | the single-axis flow lockout the recovery is for | 500 ms threshold tuned on these |
-| [33484](33484/) | log7 | the recovery misfiring at the flow tilt gate | re-run 2026-09-10, gate suppresses all three |
+| [33484](33484/) | log7 | the recovery misfiring at the flow tilt gate | re-run 2026-09-10 on the PR's own tree: the gate suppresses **nothing** there, 2 resets either way. The 3 -> 0 is on the beta branch with #33359 and #33478 stacked |
 | [33507](33507/) | log311, log66 | accel-Z bias, PD drift over the hover | sweep in the record |
-| [33585](33585/) | log308 | AltHold demotion at the rangefinder ceiling | validated pre-submission |
+| [33585](33585/) | log308 | AltHold demotion at the rangefinder ceiling | validated pre-submission at an earlier head; force-pushed to `a4d8966c85` 2026-09-10 and **not re-run since** |
 | [32972](32972/) | log7 | finding 6, the height floor blocking a correction in cruise | **owed** - not run |
 | [34292](34292/) | log67 | the near-ground flow floor | partial; the record notes replay does not reproduce the disarm path |
 | [34361](34361/) | log7 | getHAGL reporting nothing while the filter flies on a database AGL | **not applicable** - see below |
@@ -92,6 +92,21 @@ guess which to run:
 
 The first flight stays named in the PR's own record - it is what the finding
 was made on - but this file names what to check against *now*.
+
+### Sweep of 2026-09-10
+
+Reconciled every EKF PR's head against what its record claims. One real
+divergence: **#33585 was force-pushed to `a4d8966c85`** and now carries eight
+commits including #33478's three, so its "validated pre-submission" replay
+status refers to a head that no longer exists.
+
+The same sweep found the stack converging: **#34360, #34361 and #33585 all
+modify the same four lines** of the SRTM block in `FuseOptFlow`, each
+differently. `git merge-tree` confirms #34360 conflicts with both. #33585
+also still carries its own copy of the sign fix, which #34360 now duplicates,
+and a `terrain_srtm_alt_ms != 0` guard on `terrain_srtm_alt_valid` that
+neither #34360 nor #34361 has - a master defect of the same class as the
+sign, currently fixed only inside the option-bit PR.
 
 Three things put a row out of date, and all three should be caught in the
 same session that causes them:
