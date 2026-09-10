@@ -71,7 +71,7 @@ Three decisions, each with flight evidence:
    covered. The body defers "tightening the EKF's response to
    touchdown_expected"; log210 is what that follow-up is for, on
    baro-only airframes specifically. The gate's own defects, found in
-   flight on 2026-09-09, are `../new-groundeffect-touchdown-gate/`. For rangefinder airframes the HAGL
+   flight on 2026-09-09, are `../34362/`. For rangefinder airframes the HAGL
    check makes a re-enable safe (log206) and the AGL-KF switch (#33359)
    removes most of the need.
 

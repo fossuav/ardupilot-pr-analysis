@@ -225,7 +225,7 @@ altitude, so its innovation never reached -0.5. Core 1 had nothing else:
 
 **The vehicle side of this is fixed, the EKF side is not measured
 (2026-09-10).** Why the gate was open at all is
-`../new-groundeffect-touchdown-gate/` - a descent test with no deadband
+`../34362/` - a descent test with no deadband
 and a drift rule that asserts ground proximity when it means "I do not
 know" - and why `get_hagl()` returned nothing to stop it is
 [#34361](https://github.com/ArduPilot/ardupilot/pull/34361). Both are

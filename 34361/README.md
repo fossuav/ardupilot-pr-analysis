@@ -54,7 +54,7 @@ takeoff-relative height when `get_hagl()` fails and from there to a
 horizontal-drift rule that asserts ground proximity unconditionally. That
 latched `touchdown_expected` for 51 s in a 17.9 m hover and cost 5.6 m of
 altitude on a lane with no vertical velocity source. Full chain in
-`../new-groundeffect-touchdown-gate/` and `../32972/` finding 6.
+`../34362/` and `../32972/` finding 6.
 
 The ground-effect side needs fixing on its own merits. This is the
 cheaper root fix: with it, that flight takes the `height_is_agl` branch
@@ -200,7 +200,7 @@ disagreed with what AP_Terrain itself reports.
 
 ## Related
 
-- `../new-groundeffect-touchdown-gate/` - the consumer that exposed it.
+- `../34362/` - the consumer that exposed it.
 - `../32972/` finding 6 - the measured cost.
 - `../33585/` - bit 5 and the flat-ground path this must not serve.
 - `../34360/` - the same convention in `FuseOptFlow`, opened 2026-09-10.

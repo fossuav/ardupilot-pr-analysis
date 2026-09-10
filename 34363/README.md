@@ -1,7 +1,8 @@
-# NEW PR (not opened) - EKF3: log XKF5 and XKFA for every core
+# PR #34363 - EKF3: log XKF5 and XKFA for every core
 
-Prospective PR against master. Implemented on branch 2026-09-09, no PR
-opened yet. See "Implemented" below.
+Analysis archive for [ArduPilot/ardupilot#34363](https://github.com/ArduPilot/ardupilot/pull/34363).
+Branch `ekf3-percore-optflow-logging` (andyp1per fork), two commits, head
+`38f4f2d1ee`, base master `5b6115d65d`. Opened 2026-09-10.
 
 Target: master `371990d846` (2026-09-05). Both the primary-only guard and
 the `XKFA` message are upstream, so this is a gap in merged code.
@@ -167,7 +168,7 @@ unfixed code path.
 ## What is here
 
 ```
-new-ekf3-percore-optflow-logging/
+34363/
   README.md    <- this file
 ```
 
