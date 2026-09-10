@@ -2,8 +2,9 @@
 
 Analysis archive for [ArduPilot/ardupilot#33484](https://github.com/ArduPilot/ardupilot/pull/33484).
 Branch `pr-vel-flow-axis-gate` (andyp1per fork), base `master`, head
-`c3db493b9a` (15 commits) since the 2026-09-10 automated review was
-answered. Real-flight
+`853f3f2177` (15 commits) since the 2026-09-10 automated review was
+answered. Every number below taken at `c3db493b9a`, which `853f3f2177`
+amends by one comment in the autotest and nothing else. Real-flight
 numbers are cited inline; no real-flight logs are committed here. Option bits
 and log message names below are the upstream ones (AglKfForOptflow is
 `EK3_OPTIONS` bit 3, the AGL KF logs as `XKFA`); the flights were flown on the
@@ -372,7 +373,7 @@ tridge's automated pass at head `bfb41f69a1`
 (<https://github.com/ArduPilot/ardupilot/pull/33484#issuecomment-5617566098>)
 went to REQUEST CHANGES and retracted its own earlier clearance of the
 unhealthy latch. Four findings; three produced code, at `7e7a8dfca1`,
-`ccf347a03d`, `a37d21b29e` and `c3db493b9a`.
+`ccf347a03d`, `a37d21b29e` and `c3db493b9a` (now `853f3f2177`).
 
 **The latch did not gate the reset.** Confirmed, and this record had
 reached the same place independently - see "Withdrawn 2026-09-10" above,
