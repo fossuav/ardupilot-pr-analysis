@@ -2,8 +2,8 @@
 
 Analysis archive for [ArduPilot/ardupilot#33484](https://github.com/ArduPilot/ardupilot/pull/33484).
 Branch `pr-vel-flow-axis-gate` (andyp1per fork), base `master`, head
-`bfb41f69a1` (11 commits) since the two flight-test fixes were pushed
-2026-09-10. Real-flight
+`c3db493b9a` (15 commits) since the 2026-09-10 automated review was
+answered. Real-flight
 numbers are cited inline; no real-flight logs are committed here. Option bits
 and log message names below are the upstream ones (AglKfForOptflow is
 `EK3_OPTIONS` bit 3, the AGL KF logs as `XKFA`); the flights were flown on the
@@ -21,6 +21,10 @@ vehicle came back above the flow tilt gate. Both fixes written
 2026-09-09, and the Replay sweep that tuned the threshold is what settled
 them: the range-freshness gate suppresses all three outdoor misfires and
 none of the indoor recoveries.
+
+Reviewed 2026-09-10 (automated, tridge) and answered in four commits; see
+"Automated review 2026-09-10" below for what each finding produced and
+which one was rejected.
 
 Mechanism confirmed in code and in three flights, recovery Replay-tuned to a
 500 ms threshold and flight-validated; the branch also carries the follow-on
@@ -361,6 +365,170 @@ test for the tilt-gate case would need a manoeuvre that crosses
 provide - worth checking whether it can before assuming an autotest is
 possible here.
 
+
+### Automated review 2026-09-10, and what it changed
+
+tridge's automated pass at head `bfb41f69a1`
+(<https://github.com/ArduPilot/ardupilot/pull/33484#issuecomment-5617566098>)
+went to REQUEST CHANGES and retracted its own earlier clearance of the
+unhealthy latch. Four findings; three produced code, at `7e7a8dfca1`,
+`ccf347a03d`, `a37d21b29e` and `c3db493b9a`.
+
+**The latch did not gate the reset.** Confirmed, and this record had
+reached the same place independently - see "Withdrawn 2026-09-10" above,
+written before the review arrived. `flowVelResetUnhealthy` only forced
+`flowFusionTimeout`, and leaving `AID_RELATIVE` also needs
+`bodyOdmFusionTimeout` (`AP_NavEKF3_Control.cpp:318`), so a vehicle fusing
+body odometry alongside flow stayed in `AID_RELATIVE` and kept
+re-anchoring to flow the filter had just called untrustworthy. The reset
+condition never tested the latch, and `readyToUseOptFlow()` gates entry to
+flow aiding, not its continuation. Fixed in `7e7a8dfca1`. *Derived from
+the source, not measured*: the case needs body odometry alongside flow,
+which none of the flights in this record had.
+
+**The staleness guard was untested.** Confirmed. The review reverted
+`bfb41f69a1` under mutation and the suite still passed, with a control
+(forcing `ResetVelocityToFlow` to return false) that did fail. Reproduced
+here from the test's own setup: all three subtests flew with the range
+finder in range throughout, so no leg ever entered the 500 ms to 5 s
+window the commit exists to close.
+
+Closed in `c3db493b9a`. The leg that works is not the obvious one: a fault
+injected while the range is fresh is recovered by one reset, and that
+reset re-anchors velocity to the faulty flow, so `XKF5.NI` drops to zero
+and the lockout genuinely ends - leaving nothing to defer by the time the
+range goes stale. Measured on the failing run: reset at t=31.6 s, range
+stale from 31.54 s, `NI` zero from 31.64 s onward. The range finder has to
+go out of range *first*, with the fault injected into the window.
+
+Mutation result at `c3db493b9a`, run locally:
+
+| tree | `EK3_FlowAxisLockoutRecovery` |
+|---|---|
+| as committed | PASS |
+| `rangeCurrent` forced true | FAIL, "Failed to receive text: recovery deferred" |
+
+One trap worth recording: the first mutation attempt reported PASS because
+it left `FLOW_RESET_RANGE_MAX_AGE_MS` unused, `-Werror` failed the build,
+and `./waf copter | tail -2` returned the exit status of `tail`. A
+mutation run has to check that the mutant actually built.
+
+**A stale range also suppressed the low-quality latch.** Confirmed: the
+guard sat in the outer condition, above both branches, so a genuine
+lockout with a stale range gave no recovery, no latch and no message.
+
+The suggested fix - hoist the quality branch above the guard - is the
+arrangement this record already rejected on 2026-09-10, and it is
+**rejected again for the same reason**. With a fresh range the reset
+refreshes `flowFuseTimeAxis_ms` and the lockout predicate goes false, so
+the quality branch is evaluated once per episode. With a stale range
+nothing refreshes those timers, the predicate stays true for the whole
+stale window, and the quality branch would be re-evaluated on every sample
+in it - roughly 45 samples at 10 Hz against 1. A single transient poor
+sample would then latch `flowVelResetUnhealthy` for the rest of the
+flight.
+
+`ccf347a03d` separates the reporting from the latching instead: the
+staleness test gets its own branch, above the quality branch, and emits
+"flow recovery deferred, range stale" rate limited to 10 s. The
+diagnosis is back, the latch exposure is unchanged, and the message says
+why nothing happened rather than what the sample quality was.
+
+The message text was deliberately made disjoint from the reset's. The
+first attempt read "flow vel reset deferred", which contains "flow vel
+reset" as a substring - the autotest's own no-reset assertion matched it,
+and so would anyone grepping a flight log.
+
+**The reset covariance ignored the inverse tilt rotation.** Confirmed, and
+worse than the review reported. Propagated independently here rather than
+taking the review's table: for a pitch-only tilt the true variance on the
+tilted axis is 0.99x the value set at level, 1.37x at 30 deg and **2.12x**
+at the `DCM33FlowMin` limit of 0.71 - the review's 1.74x is a different
+tilt axis. `P[4][5]` is zero for pitch-only and non-zero for combined roll
+and pitch, as reported. *Derived, not measured*, with flow noise
+0.25 rad/s, range 5 m, `aglKfP[0][0]` 0.25 and `P[6][6]` 0.25.
+
+`a37d21b29e` propagates the full `M^-1 Sigma M^-T` with the shared range
+and vertical velocity errors, so `Sigma` is not diagonal either. The
+closed form written into the code was checked against a numerical
+`M^-1 Sigma M^-T` over 2000 random tilts: worst deviation 2.3e-12.
+
+It also fixes something the review did not flag. `range` is
+`aglKfH / prevTnb.c.z` (`AP_NavEKF3_OptFlowFusion.cpp:326`) and `c.z` is
+the determinant, so the AGL KF height variance needed `1/det^2` on the way
+in and did not have it.
+
+Reachability, which narrows what this is worth: `UpdateAglKf` gates range
+fusion on the same `prevTnb.c.z < DCM33FlowMin` at `:951`, so with the
+freshness guard in, a reset can only fire within 500 ms of a range fusion,
+and the high-tilt end of the table is only reachable transiently after a
+crossing back up through the gate.
+
+### Cross-PR: the freshness guard and the rangefinder ceiling
+
+`lastAglRngFuseTime_ms` advances only when a range sample is actually
+fused into the AGL KF (`:963`, `:1019`), and `UpdateAglKf` returns early
+when there is no `rangeDataToFuse` at all (`:942`). Above the range
+finder's maximum range it therefore stops advancing, and 500 ms later this
+recovery is disabled - which is exactly the regime #33585 exists to keep
+flying in. Both behaviours are defensible alone; together a vehicle using
+that option to stay airborne above the range finder has no lockout
+recovery while it is up there. Raised by the review, not yet decided, and
+it wants deciding across the two PRs rather than emerging.
+
+### The Replay sweep at the reviewed head (2026-09-10)
+
+The three code changes above all touch the filter, so they were replayed
+rather than argued. Before is `bfb41f69a1` in a separate checkout, after is
+`c3db493b9a` in the working tree, both built as `tool/Replay` from their own
+tree and confirmed to differ by md5; `EK3_OPTIONS=24` sets `AglKfForOptflow`
+on this master-based tree, as the earlier sweeps did.
+
+| log | resets before | resets after | unhealthy | deferred after | peak before (m) | peak after (m) |
+|---|---|---|---|---|---|---|
+| A | 9 | 9 | 0 | 0 | n/a | 3.4 |
+| B | 17 | **16** | 1 | 0 | 2.56 | 3.2 |
+| C | 5 | 5 | 1 | 0 | 28.64 | 28.6 |
+| log7 | 2 | 2 | 0 | **3** | 113.15 | 113.1 |
+
+Two things in that table are the point.
+
+**log7 reports three deferrals where it previously reported nothing.** The
+freshness guard was already in the before tree, so those three stale-range
+lockouts were skipped silently on this tree as well. That is the case the
+review called the worst reporting case, and it is not hypothetical: this
+flight has three of them. `ccf347a03d` is what makes them visible.
+
+**log B loses exactly one reset**, 17 to 16, and it is the one log in the
+set that latches `flowVelResetUnhealthy`. That is the reset the latch should
+have blocked and did not, so `7e7a8dfca1` is measured here rather than only
+derived - though with one log and one event, "consistent with" is as far as
+it goes. Its peak excursion grows 2.56 to 3.2 m, which is the price of
+stopping one reset earlier and handing the vehicle back; against 55 m with
+the recovery off and 246 m flown, it is not a regression worth trading the
+latch for.
+
+C and log7 are unchanged to 0.1 m, so the covariance change is not moving
+the trajectory on this evidence. That is the reassuring half: it corrects an
+over-confidence that the near-level indoor case barely exercises.
+
+**These numbers are a different measurement from either table above, not a
+correction to them.** Both earlier tables were taken on
+`SmallFastDrone-4.7.1-beta`; this one is the PR's own master-based tree.
+Read each internally. log A's before peak is missing because the log reader
+aborted on that run's output BIN - see the method note in
+`../../analysis/topics/optflow_horizontal_velocity_lockout.md`.
+
+Reproduce:
+
+```sh
+export AP_LOG_ROOTS=<log-root>:<support-root>
+python3 .claude/skills/log-analyze/replay_sweep.py --topdir <before-checkout> \
+    --label before --out before.json --param EK3_OPTIONS=24 <logs...>
+python3 .claude/skills/log-analyze/replay_sweep.py \
+    --label after --out after.json --param EK3_OPTIONS=24 <logs...>
+python3 .claude/skills/log-analyze/replay_sweep.py --compare before.json after.json
+```
 
 ## What is here
 
