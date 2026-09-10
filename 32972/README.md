@@ -21,6 +21,217 @@ The 2026-09-04 automated review and the three commits answering it are in
 [review-response-2026-09-04.md](review-response-2026-09-04.md); findings 4
 and 5 below live there in full.
 
+## Review 2026-09-10: the noise floor widens the gate it relies on, and one test measures the wrong signal
+
+Module discipline holds on all 25 commits, all five ground-effect commits
+and HEAD build `./waf copter` cleanly when built individually, `diff --check`
+is clean with no tabs and no non-ASCII in any diff or message,
+`dal.get_time_flying_ms()` is DAL-logged via RFRH so the anchor gate is
+replayable, `resetHeightDatum()` refreshes the reference after zeroing in
+the right order, and EKF2 needs no change (it hard-codes `gndMaxBaroErr =
+4.0f` so it has no equivalent DZ=0 bug). The estimator logic is sound. Four
+things block merge.
+
+**M1. The three fixups do not squash mechanically.** Simulating `rebase
+--autosquash` with per-file 3-way merges: `f282f9df7a` onto `90a7b58f40`
+gives **2 conflicts**, `263f181a18` onto `66e976c661` gives **1**, and
+`c9fb73f0ec` onto `8ebd7f71e6` is clean. Both conflicts come from
+`!assume_zero_sideslip()`, which `2371087c61` introduces *later* but which
+appears as fixup context. Worse, `f282f9df7a`'s second hunk puts
+`gndEffectHgtResetSuppressStart_ms = 0;` inside a block that `66e976c661`
+creates and that does not exist at the fixup's target commit. A careless
+resolution silently drops the suppression-window reset - so the window is
+cleared once per boot instead of once per ground-effect episode, and a
+failed baro is masked once per flight rather than once per episode - or
+leaves an intermediate commit that does not compile.
+
+**M2. Squashing must also rewrite the three target commit messages.** None
+mentions what its fixup adds: `90a7b58f40` says nothing about the 5 s
+suppression bound, `66e976c661` nothing about the 5 m reference-innovation
+guard (the whole mid-air re-arm defence), `8ebd7f71e6` nothing about
+`BaroGroundEffectResetSuppression`, an entire second test.
+
+**M3. The negative-DZ noise floor also widens the innovation gate and the
+bad-IMU detector, and nothing says so.** `R_OBS[5] = posDownObsNoise` and
+`R_OBS_DATA_CHECKS[i] = R_OBS[i]`, so the floored R feeds both the Kalman
+gain and every consistency check:
+
+- `hgtTimeout` needs a raw innovation of `5*sqrt(P+R)` - about 20 m at the
+  default DZ=+4 / ALT_M_NSE=2, and **about 40 m at the recommended DZ=-8**.
+  Real ground-effect errors are 4-11 m, this record's own range. So on a
+  vehicle configured as this PR recommends, the ResetHeight suppression
+  added by `90a7b58f40` **cannot fire from ground effect at all** - and the
+  PR body claims the suppression protects that case.
+- The accel-aliasing detector uses `sq(hgtErr) > R_gain * R_OBS[5]`, so its
+  threshold moves from ~12 m to ~24 m at DZ=-8 - and `!badIMUdata` is the
+  suppression's only escape hatch.
+- Nothing in EKF health notices a deweighted-and-floored lane:
+  `hgtTestRatio` stays under 1 by construction and `status.flags.vert_pos`
+  stays true. That is precisely the mechanism behind finding 6 below.
+
+Ask: leave `R_OBS_DATA_CHECKS[5]` at the un-floored value so the gate and
+the aliasing detector still see the real error, and/or bound the floor by
+continuous engagement time. Do **not** gate the floor on `time_flying_ms ==
+0` - log196 measured -1.2 m in exactly the post-liftoff regime that would
+remove, so that obvious alternative is already dead.
+
+**M4. `BaroGroundEffectAtTakeoff` measures `GLOBAL_POSITION_INT.relative_alt`.**
+`peak_relative_alt_excursion()` reads it, and the final check uses
+`get_altitude(relative=True)` from the same source.
+`AP_AHRS::get_relative_position_D_home()` substitutes
+`-AP::baro().get_altitude()` whenever `status.flags.vert_pos` is false. This
+is the trap recorded in `Tools/autotest/CLAUDE.md` ("A green test is not
+coverage", third Copter trap) **naming this PR**, and it is why
+`BaroGroundEffectResetSuppression` was rewritten onto `LOCAL_POSITION_NED.z`.
+Today the EKF stays healthy in this test so it does read the estimate
+(UNCONFIRMED whether it could go unhealthy), but the phase-A assertion `if
+peak < 0.3: raise` is **fail-open** under the fallback: reading the raw baro
+gives ~3.6 m and passes whether the code works or not. Use
+`self.ekf_position_D_m()`, the helper the sibling test already has.
+
+### The two behaviour changes, as traced
+
+The **innovation floor** is reachable whenever `takeoff_expected ||
+touchdown_expected`, `activeHgtSource == BARO`, `!fusingGndEffectHgtRef` -
+no armed check, no altitude check, no `assume_zero_sideslip()` check, so a
+fixed-wing takeoff roll reaches it too. The error it can introduce is **not
+bounded by the mechanism**: it caps each downward correction at `K*0.5 m`,
+so an estimate that has run high recovers at a rate set only by `K` for as
+long as the gate is latched. It is applied *after* the consistency test, so
+it does not blind the gate - that part is fine.
+
+The **observation deweighting** is new in this PR and gated additionally on
+`is_negative(_baroGndEffectDeadZone)`. At DZ=-8 / ALT_M_NSE=2 that is R 16
+-> 64 m^2, so the maximum recovery rate from a floored innovation falls ~4x.
+
+**Flags set far from the ground remain fully reachable on this base:**
+`AP_GroundEffect.cpp` forces `near_ground` true at any altitude once
+horizontal drift from launch exceeds 20 m with no HAGL, so
+`touchdown_expected` can latch in cruise (finding 6: 51 s at 17.9 m). The
+anchor is defended against this; **the floor and the deweighting are not
+defended at all**, and the deweighting is what turns a latched gate from a
+nuisance into the 5.6 m measured. The PR should defend itself here rather
+than rely on the vehicle gate.
+
+**"Anchor ends at first throttle and can engage in mid-air" is still true of
+this diff.** The gate is `dal.get_time_flying_ms() == 0`, unchanged by any
+commit here. The 5 m guard does not prevent mid-air *engagement*; it
+releases after engagement. Because `posDownGndEffectRef` is refreshed every
+cycle while `!takeoff_expected`, a mid-air re-arm engages with an innovation
+near zero, and because the anchor fuses at R=1 the filter is actively
+dragged toward the reference - so the guard only trips for relative motion
+faster than roughly 2-3 m/s (steady-state innovation ~ v/(K*f_baro), K~0.05
+at R=1). That matches the one measurement here (release at innov 5.6 well
+under a second into a free fall). A *slow* mid-air divergence is not caught.
+Derived, UNCONFIRMED by test.
+
+### Should-fix
+
+- **Commit ordering ships the bug the last commit fixes.** `2371087c61`
+  retro-fits `!assume_zero_sideslip()` onto `90a7b58f40` and `66e976c661`,
+  so commits 1-4 are states in which a fixed-wing takeoff gets both the
+  ResetHeight suppression and the held-height anchor - the failure commit 5
+  exists to prevent - sitting in the middle of a bisect range that includes
+  an autotest commit. Fold the gate into the two commits that first use the
+  flags. That commit also carries an unrelated hunk (`!fusingGndEffectHgtRef`
+  on the innovation floor) that belongs with `66e976c661`; its message's
+  "Also skip..." is the tell.
+- **The DZ=0 clamp fix is a separate upstream bug and is undisclosed.** With
+  `gndMaxBaroErr = MAX(DZ, 0)` on master and DZ in [0, 0.5),
+  `constrain_value` is called with `low=0.0, high=-0.5`; it returns `low`
+  for `amt<0` and `high` otherwise, so any innovation below -0.5 m gets an
+  extra -0.5 m added, at the value the parameter documents as "no ground
+  effect". The fix is correct but is buried in the noise-floor commit while
+  the body mentions only the `fabsF()` change. It is a behaviour change for
+  existing DZ=0 users and is backportable on its own - split it out.
+- **`!badIMUdata` in the suppression reduces to a constant on the target
+  vehicles.** `badIMUdata` is assigned only inside `if (fuse_gps_vz &&
+  fuseVelVertData && POSZ != GPS)`. Without GPS vertical velocity - the
+  indoor flow/baro copters this PR exists for - it is permanently false, so
+  the commit message's "do not reset to it unless the IMU is also bad" is
+  protection that does not exist there. The EKF3 playbook has the review rule
+  for exactly this. Say so in the message or drop the clause.
+- **The suppression's own escape hatch cannot reach the baro while the
+  anchor is active.** `ResetHeight()` resets to `-hgtMea`, and `hgtMea` is
+  `-posDownGndEffectRef` when the anchor is on, so the `badIMUdata` path
+  resets the height to the held reference - to itself. A code property;
+  UNCONFIRMED as reachable, since the anchor keeps the innovation inside the
+  gate by construction. Worth a comment rather than code.
+- **`BaroGroundEffectResetSuppression` is calibrated within ~6% of not
+  firing.** `SIM_BARO_GEFF_M=30` gives ~21.7 m of error against a gate of
+  `5*sqrt(P+16)` ~ 20.3 m, and `XKF4.SH` settles at 1.06 as recorded here.
+  Any drift in `ALT_M_NSE` defaults, `P[9][9]` or the SITL on-ground AGL
+  flips it to a silent pass-by-timeout. Raise `SIM_BARO_GEFF_M` for real
+  margin. It also runs at the **default** DZ=+4, so it never exercises the
+  suppression in the negative-DZ configuration the PR is for - and per M3 it
+  could not.
+- **The parameter description still omits the measured hazard.** It
+  documents the negative mode but never says a negative value assumes a
+  rangefinder or other height/velocity anchor. Finding 2 measured -1.15 m of
+  on-ground drift on a baro-only quad at that setting and estimates
+  steady-state lag going ~1.0 m -> ~3.7 m on a 5-inch baro-only quad. Still
+  open, as this record says.
+- **PR body: template and house style.** The repo template is `### Summary` /
+  `### Classification & Testing` / `### Description`; the body uses its own
+  five headings and replaces the repo's checklist. Four bullets use the
+  `**Bold headline.** explanation` pattern the playbook forbids, and the body
+  contains em-dashes, a multiplication sign, an arrow and a tilde.
+
+### Corrections and notes
+
+- **Strike finding 1's parenthetical.** It says "the PR body says R =
+  0.1*|DZ|; the code is `sq(MAX(0.1*|DZ|, 1.0))`". Both halves are now
+  stale: the code is a flat `posDownObsNoise = sq(1.0f)` and the body says
+  "at a fixed 1 m observation noise". Note the flat 1.0 also overrides a
+  user's `EK3_ALT_M_NSE` in both directions - someone who set 0.5 gets a
+  *weaker* observation during the anchor.
+- `90a7b58f40` states a -4.3 m ground effect "caused a -3.65 m altitude jump
+  at takeoff" via `hgtTimeout` -> `ResetHeight`. At any plausible
+  `EK3_ALT_M_NSE` the ground-effect gate is 10-20 m wide, so a -4.3 m
+  innovation should not time out - and this record says log190 (reset
+  suppressed) still ramped -3.9 m, "so the reset was a contributor, not the
+  cause". UNCONFIRMED, log189 was not available. Either supply the gate
+  arithmetic or soften the sentence; a maintainer who does the arithmetic
+  will ask.
+- If `takeoff_expected` is false while `land_complete` is true, the
+  reference is not refreshed, `hgtMea` equals the current state, the
+  innovation is identically zero, `lastHgtPassTime_ms` is refreshed forever
+  and `hgtTimeout` can never fire while the filter dead-reckons. A code
+  property; no reachable Copter path was constructed (`AP_GroundEffect`
+  re-stamps `takeoff_time_ms` while `!throttle_up && land_complete`, so
+  `takeoff_expected` effectively latches with `land_complete` - except in
+  THROW, where `touchdown_expected` needs `D_is_active()`, not set pre-throw).
+  UNCONFIRMED. Cheap defence: refresh the reference on `!gndEffectExpected`.
+- The anchor re-engages without hysteresis: once the 5 m guard drops it the
+  reference is frozen by `takeoff_expected`, so if the state comes back
+  within 5 m it re-engages against the same stale reference. No harm
+  identified; one line of comment.
+- `ResetHeight` is not the only path that snaps height to a ground-effect
+  baro: the `AID_NONE` transition in `AP_NavEKF3_Control.cpp` does
+  `meaHgtAtTakeOff = baroDataDelayed.hgt; stateStruct.position.z =
+  -meaHgtAtTakeOff;`, overwriting the value deliberately frozen while
+  `takeoff_expected`, with the raw contaminated baro. Reachable on an indoor
+  flow copter that loses flow during spool-up. Pre-existing master
+  behaviour, not introduced here, but adjacent enough that a reviewer may
+  raise it against the PR's framing.
+- Neither new behaviour is observable in a log - no bit for
+  `fusingGndEffectHgtRef` or for the suppression window. Debugging both here
+  needed instrumented builds and a non-shipped XKHD message. A bit in XKFS
+  would cost nothing and would make finding-6-class problems visible in a
+  customer log.
+- Comment density on added EKF3 lines is 42.6% against 19.9% for
+  `AP_NavEKF3_PosVelFusion.cpp` as a whole, and three 4-5 line blocks
+  restate their commit messages. Trim to the non-obvious why.
+- Test discrimination as it stands: `BaroGroundEffectResetSuppression` was
+  A/B'd with the bound compiled out and fails, and `BaroGroundEffectAtTakeoff`
+  discriminates the `resetHeightDatum` reference refresh and the anchor's
+  release at liftoff. Nothing tests the noise floor commit, the clamp fix,
+  the fly-forward gate, or the 5 m guard.
+- **Owed evidence.** The Replay of log7 is still listed as owed and was not
+  run. M3 is exactly what it would settle - how much of the 5.6 m in finding
+  6 is the deweighting against the floor, on the flight's own sensor stream.
+  Until then M3 is quantified from code arithmetic only.
+
 ## The problem
 
 BF_X indoor quad (DPS310, EK3_RNG_USE_HGT -1): motor spool-up drops the
