@@ -2,8 +2,13 @@
 
 Analysis archive for [ArduPilot/ardupilot#34360](https://github.com/ArduPilot/ardupilot/pull/34360).
 Extracted from #33585. Branch `ekf3-srtm-flow-scale-sign` (andyp1per fork),
-two commits, head `03cabe04c8`, base master `4891432f35`. Opened
-2026-09-10.
+three commits, head `affdf29bf1`, base master `4891432f35`. Opened
+2026-09-10. It now carries a second master defect in the same expression:
+`terrain_srtm_alt_ms` is never-written-zero for the first five seconds of
+uptime, so the age test passes against a terrain altitude the core has not
+received. That guard previously existed only inside #33585; moving it here
+makes this the complete "the SRTM path on master is wrong" PR and lets
+#33585 drop it.
 
 ## Status (one line)
 
