@@ -63,7 +63,7 @@ Recorded so nobody looks for one. "No log" here is a conclusion, not a gap.
 | [32473](32473/) | gates the same terms as #32471 and borrows its SITL A/B |
 | [33338](33338/) | closed experiment |
 | [33497](33497/) | needs a DroneCAN flow node, which SITL does not have |
-| [new-ekf3-percore-optflow-logging](new-ekf3-percore-optflow-logging/) | logging only, no estimator behaviour |
+| [34363](34363/) | logging only, no estimator behaviour |
 
 Two entries above say "not applicable" rather than "no log", because a log
 does exist and Replay still cannot answer:
@@ -72,7 +72,7 @@ does exist and Replay still cannot answer:
   caller is vehicle code, which Replay does not run, so a Replay computes the
   corrected height and reports nothing. log7 is still the flight that exposed
   it; SITL is what validates it.
-- **[new-groundeffect-touchdown-gate](new-groundeffect-touchdown-gate/)** -
+- **[34362](34362/)** -
   Replay re-feeds the `takeoff_expected` and `touchdown_expected` bits the
   flight recorded, through `log_RFRN`, so a vehicle-side gate fix cannot
   appear in it. It can show what the EKF-side floor cost, which is #32972's

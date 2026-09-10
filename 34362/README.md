@@ -1,8 +1,9 @@
-# NEW PR (not opened) - AP_GroundEffect: stop touchdown_expected latching in cruise
+# PR #34362 - AP_GroundEffect: stop touchdown_expected latching in cruise
 
-Prospective PR against master. Implemented on branch 2026-09-09, no PR
-opened yet; this directory carried the design and its evidence before the
-code was written, and now carries the measurements too.
+Analysis archive for [ArduPilot/ardupilot#34362](https://github.com/ArduPilot/ardupilot/pull/34362).
+Branch `groundeffect-touchdown-gate` (andyp1per fork), five commits, head
+`c0935b991f`, base master `363235939d`. Opened 2026-09-10. This directory
+carried the design and its evidence before the code was written.
 
 Target: master `371990d846` (2026-09-05). The code is #32472, merged
 upstream 2026-09-01, so this is a follow-up to a merged PR rather than a
@@ -261,7 +262,7 @@ Both demonstrated failing on base `fd37f6f5fa` with the tests present,
 ## What is here
 
 ```
-new-groundeffect-touchdown-gate/
+34362/
   README.md    <- this file
 ```
 
