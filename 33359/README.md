@@ -9,6 +9,122 @@ Branch `pr-rng-aglkf-terrain` (andyp1per fork), base `master`, head
 
 Indoor optical-flow altitude hold diverges by metres because the EKF's rangefinder height-source switch (a) keys off the baro-corrupted main-filter altitude and (b) only engages during takeoff/landing - so cruise/hover rides garbage baro. This routes the switch through the IMU-aided AGL KF, which already exists in master for flow velocity scaling. Replay-validated on two indoor flights and flight-validated on the vehicle (log281).
 
+## Review 2026-09-10: four must-fixes, and commit 4 should be dropped
+
+Upstream drift is a non-issue: `git merge-tree` against master is clean and
+no upstream commit has touched `AP_NavEKF3_PosVelFusion.cpp` or
+`AP_NavEKF3_OptFlowFusion.cpp` since the base. Everything the PR relies on
+(`aglKfH/aglKfV/aglKfP/aglKfValid`, `EK3_FEATURE_OPTFLOW_AGL_KF`,
+`Option::AglKfForOptflow`) is on master via 306d55abad. No DAL surface
+change, so Replay exercises the change faithfully. Defaults are untouched:
+`EK3_RNG_USE_HGT` is -1 and the option bit is off.
+
+**1. `5f8baac0fc` says "EK3_OPTIONS bit 4"; upstream it is bit 3.** The fork
+numbers it 4 and the cherry-pick carried that across. A user who follows the
+commit message sets `EK3_OPTIONS=16`, gets nothing, and concludes the
+feature is broken.
+
+**2. The PR widens what bit 3 does and updates no documentation.** The
+`@Bitmask` still describes bit 3 as height-above-ground for flow velocity
+*scaling*. After this PR the same bit also redirects the `EK3_RNG_USE_HGT`
+threshold, overrides the vehicle's terrain-stability veto, replaces the
+switch's freshness gate, and makes `aglKfH` the height observation. Someone
+who set bit 3 on 4.7 for flow scaling would find their primary altitude
+source changed on upgrade. Either take a second option bit or rewrite the
+parameter documentation.
+
+**3. Commit 4 ships without the prerequisite this record already names.**
+"Necessary, not sufficient: the fourth commit needs #33507" is a tier-1
+finding here (logs 56/57/58), and #33507 is not in this branch - `aglKfP` is
+still `[2][2]`. Simulating the shipped filter at default gains gives steady
+`aglKfP[0][0]` = 0.0069 m2 (std 0.083 m, against the measured `HAglStd`
+~0.11 m), `Kh` = 0.0276, a 1.8 s position time constant, and a height lag of
+0.32 m per 0.05 m/s2 of residual vertical accel. The flight measured +0.33 m
+on log56. The offset commit 4 injects is predictable from the gains.
+Recommendation: drop commit 4 from this PR, or state the dependency and hold
+it. Commits 1-3 stand on their own and carry the Replay and log281 evidence.
+
+**4. `terrainStable = true` makes RANGEFINDER the height source before
+arming, which disables Copter's arm-time height-datum reset.** While
+`onGround`, `readRangeFinder()` synthesises `rngOnGnd` samples, so every term
+of `belowLowerSwHgt && trustTerrain && prevTnb.c.z >= 0.7f` holds at rest and
+the source switches pre-arm. `resetHeightDatum()` refuses when the source is
+RANGEFINDER, but `AP_Arming_Copter.cpp` logs `EKF_ALT_RESET` and zeroes
+`arming_altitude_m` regardless. Before this PR the switch could not fire
+pre-arm because Copter's `terrain_hgt_stable` is `is_taking_off() ||
+is_landing()`. This record puts the fix on the #32768 side, but #32768 is not
+upstream, so on master this is an undisclosed regression: boot-to-arm baro
+drift offsets altitude-above-arming-point for the whole flight and the log
+claims a reset that did not happen.
+
+### Correction to this record: the AGL KF is not baro-independent
+
+The "Evidence (Replay)" section says the AGL KF "fuses IMU + rangefinder
+only, so it is baro-independent and breaks the feedback loop". It breaks the
+*dominant* loop - the direct `position.z` term, which is what the Replay
+numbers demonstrate - but there is a second-order baro path:
+`UpdateAglKf` integrates `-velDotNED.z`, which comes from `delVelCorrected`,
+from which `correctDeltaVelocity` subtracts `inactiveBias[].accel_bias`,
+which `learnInactiveBiases()` copies from `stateStruct.accel_bias` - learned
+by the main filter from baro height while the switch is off. The +0.48/+0.51
+`AZ` on logs 56/57 recorded below is that path. The same wording is in the
+`5f8baac0fc` message and in the code comment.
+
+### Also worth fixing before submission
+
+- Commit 4's observation noise `MAX(aglKfP[0][0], sq(_rngNoise))` always
+  returns the floor: 0.0069 m2 against 0.25 m2, 36x below. The commit
+  message's "so it deweights when the rangefinder goes stale" does not
+  happen - with no range fusion `aglKfP[0][0]` reaches only 0.066 m2 after
+  the full 5 s `aglKfValid` lifetime. The only route above the floor is six
+  consecutive innovation rejections (~0.3 s). And the deleted term
+  `sq(rng*terrGradMax)*(1-cz^2)` is terrain gradient over the *tilt* beam
+  offset, which has no analogue in `Qhgt` (gradient over distance
+  travelled). Net: at tilt this fuses at full rangefinder weight where
+  master deweights.
+- In the `!filterStatus.flags.horiz_vel` branch, forcing `terrainStable`
+  true makes `trustTerrain` unconditionally true, so the speed gate is
+  removed entirely - contradicting `607d1211b9`'s "the existing speed gate
+  still confines rangefinder height to slow flight". A copter
+  dead-reckoning after GPS loss at 5 m/s over a slope takes the rangefinder
+  as its height source with no speed gate.
+- `aglKfValid` means only "the rangefinder was fused within 5 s". It is a
+  weaker terrain-flatness signal than the variance gate the "Why the speed
+  gate is kept" section below already rejected, on a log where terrain
+  varied 1.2 m in-gate. That argument applies here a fortiori and the
+  counter belongs in the PR description.
+- `bba45ab742` carries two `(cherry picked from ...)` trailers whose hashes
+  are not upstream; five commit body lines run 76-80 columns; the em-dashes
+  at `AP_NavEKF3_PosVelFusion.cpp:1268-1269` are the only non-ASCII this PR
+  adds (the one at :792 is pre-existing).
+- `1d77bc7f08` attaches a 6-line rationale comment, duplicating its own
+  commit message verbatim, to a 3-line change.
+- `5f8baac0fc`'s "+/-5 cm during takeoff ground effect" is attributed to
+  commit 1 alone, but log59 shows commits 1+2 never engaged the switch -
+  which is why commit 3 exists. Name log281 and the firmware, or move the
+  claim to the description where the whole stack is in view.
+- No automated coverage: both `EK3_RNG_USE_HGT` and
+  `test_rangefinder_switchover` run with `EK3_OPTIONS` at 0. `UpdateAglKf`
+  needs no flow sensor, so a test is cheap - `EK3_OPTIONS=8` plus
+  `EK3_RNG_USE_HGT=70`, assert non-zero terrain variance in a steady hover
+  where master reports zero.
+- `frontend->option_is_enabled(...) && aglKfValid` is triplicated in
+  `selectHeightForFusion()`; one `const bool useAglKf` keeps them in step.
+- Ordering: `selectHeightForFusion()` runs before `UpdateAglKf()` in the
+  same cycle, so on the step a new range sample arrives `hgtMea = aglKfH` is
+  the pre-fusion state - another ~50 ms on top of the 1.8 s time constant.
+- `EstimateTerrainOffset` is inhibited once the source is RANGEFINDER, so
+  `terrainState` freezes at the switch instant and the flight's altitude
+  datum becomes whatever baro said then. The innovation at switch-on is ~0
+  by construction: this stops drift, it does not correct accumulated error.
+  On master that instant is takeoff or landing; after commit 3 it can be any
+  hover moment, or pre-arm - which is probably why log281's numbers are so
+  good, and is worth stating.
+- The #33478 touchdown ramp cannot reach this switch: the branch is gated on
+  `rangeFinderDataIsFresh` (500 ms) and `lostRngHgt` forces baro at the same
+  threshold, bounding it at 500 ms / ~0.2 m. Worth saying, since the concern
+  is on the record.
+
 ## The problem
 
 `EK3_SRC*_POSZ` is baro (normal), with `EK3_RNG_USE_HGT` set so the rangefinder is used for height below a threshold. Two things stop that switch helping indoors:

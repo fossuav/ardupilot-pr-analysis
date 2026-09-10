@@ -24,6 +24,176 @@ armed-on-ground" while the gate is `onGroundNotMoving` alone. Open: the fusion
 collapses P[posD] 11x and starves the barometer - now confirmed at 10.3x by an
 independent SITL A/B, see below.
 
+## Review 2026-09-10: inert on default parameters, and the covariance trade is undisclosed
+
+Upstream drift is clean and rebasing is free: `merge-tree` against master
+(5b6115d65d) produces a zero-conflict tree, only 20 of 1351 commits touch
+`AP_NavEKF3/` and none touch `UpdateAglKf()`, the velocity selection, the
+`R_OBS`/innovation/`fuseData[]` blocks, or any symbol the PR reads.
+`AP_NavEKF3_OptFlowFusion.cpp` has no upstream changes at all. Parameter
+index 15 is still free and `EK3_OPTIONS` bit 4 is still free. Two near
+misses, both harmless: `getPosVelYawSourceSet()` was removed and XKFS moved
+to per-core source sets, but `useVelZSource(source, core_index)` is
+unchanged and already core-aware, which is the form the PR uses; and the
+reset-timestamp-to-counter changes are in the same file but different hunks.
+
+Of the two defects this record flagged, the rangefinder-freshness gate has
+landed (`aglKfRngCurrent`, `aglKfRngGapMax_ms = 500`, keying both the decay
+and the velD gate) and the corrected comment has **not** - it still reads
+"and takeoff_expected for armed-on-ground" against a gate that is
+`onGroundNotMoving` alone. That comment is also still wrong on master.
+
+**M1. The gate blocks the fallback in exactly the configuration the feature
+targets.** `EK3_SRC1_VELZ` defaults to 3 (GPS), and GPS velZ is only fused
+inside `gpsDataToFuse && PV_AidingMode == AID_ABSOLUTE && posxy_source ==
+GPS`. A flow-navigating copter is `AID_RELATIVE`, so GPS velZ is never
+fused - yet `haveGpsVelZ` stays true all flight as long as the GPS holds a
+3D fix. Flow copter, `SRC1_POSXY/VELXY=5`, `SRC1_POSZ=1`, `SRC1_VELZ` left
+at default, GPS with a fix through a window: set `EK3_OPTIONS` bit 4 and
+nothing happens for the whole flight, silently, with `XKFA.VFuse` at 0 and
+no log field saying why. Correction to the phrasing used here: a merely
+*connected* GPS does not block it - `lastTimeGpsReceived_ms` is stamped
+after the `FIX_3D` early return, so a fixless GPS stops advancing it and the
+fallback engages after 1 s. The blocking case is a GPS with a 3D fix that is
+not being fused for velZ, which is the normal indoor and urban flow case.
+`useGpsVertVel` (suggested here) is closer but still not the predicate; the
+fusion condition is `AID_ABSOLUTE && posxy_source == GPS &&
+useVelZSource(GPS) && useGpsVertVel`. Changing it alters the validated gate,
+so it needs the Replay re-run before it is believed.
+
+**M2. The observation is not independent of the state it corrects, and this
+is the mechanism behind the covariance collapse already measured here.**
+`aglKfV -= velDotNED.z * imuDt`, and `velDotNED` derives from
+`delVelCorrected` - the main filter's own accel-bias-corrected delta
+velocity. So `aglKfV` is the negated integral of the same acceleration the
+main filter integrates, plus the rangefinder corrections since; the only new
+information in the observation is the `Kv*hgtInnov` term. Fusing `-aglKfV`
+with `R = aglKfP[1][1]` hands the filter its own prediction back as an
+independent measurement, weighted by a *posterior* covariance rather than a
+measurement noise. The numbers in this record are the signature: `P[6][6]`
+down 14-23x, `P[9][9]` down 10.3-10.4x, baro gain over posD from
+0.039-0.044 to 0.003-0.004, with no commensurate improvement in actual velD
+error. This is **not** the rangefinder height counted twice - that is
+properly blocked by `activeHgtSource != RANGEFINDER`, and `terrainState`
+does not feed velD. What is counted twice is the IMU and accel-bias
+information. The "Open" item here proposing to inflate `P[6][6]` when no
+velZ source is active is a symptom-level patch on this mechanism. At
+minimum the commit message has to say that the change trades baro authority
+over absolute height for a velocity anchor, and by how much; right now it
+quotes only the velD improvement.
+
+**M3. The autotest's A/B arms are not matched, and the commit message quotes
+the mismatched number.** The off leg runs bit 3 alone; all three on legs run
+bit 4 alone. Bit 4 enables the AGL KF but does not make it supply the flow
+scale height - bit 3 does. So the two arms differ in flow-scaling source as
+well as in velD fusion, and the headline "peak velD error 3.47 m/s without,
+0.17 m/s with" comes from exactly those two legs. That number cannot be
+attributed to the fusion. Fix: off leg = bit 3, on leg = bits 3|4 (the
+covariance A/B here already does this, 8 against 24), plus a short separate
+leg asserting bit 4 alone brings the KF up.
+
+### Should-fix
+
+- **The load-levelling skip drops IMU samples out of the AGL KF
+  integrator.** `SelectFlowFusion()` returns early - and so skips
+  `UpdateAglKf()` - whenever `magFusePerformed && dtIMUavg < 0.005f`, armed
+  on any 400 or 300 Hz copter. `imuDataDelayed` is popped once per step, so
+  a skipped step's `delVelDT` is never integrated by either `aglKfH` or
+  `aglKfV`. The new comment states this as benign; it is the same class of
+  defect `b04875313b` fixed in the other direction, and it matters more now
+  the result is fused into velD. **Hypothesis worth testing:** finding 1
+  here ("AGL KF under-tracked real height change by 25-40%", slope
+  0.59-0.71) may be partly this - a ~25% dropped-step fraction predicts a
+  slope near 0.75 before the rangefinder correction pulls it back. Cheap
+  check: re-run the climb/descent A/B at `SCHED_LOOP_RATE=200` (guard
+  inactive) against 400. UNCONFIRMED - inferred from source, not measured.
+  Note #33507's review reaches the same code from the other side and
+  measures the effect as small there.
+- **The innovation gate is tight enough to reject the events the feature
+  exists to catch, with no recovery path.** With the fusion converged, the
+  measured `P[6][6]` ~ 8.6e-4 and `R` ~ 0.0046 give sigma ~ 0.074 m/s, so
+  `EK3_VEL_I_GATE=500` rejects past ~0.37 m/s - and the PR's own problem
+  statement cites a -1.1 m/s ground-contact clip, 3x outside. Unlike every
+  other observation in the function the AGL path has no escape: there is no
+  `velTimeout || badIMUdata` branch and no `ResetVelocity()`. Counter-
+  evidence, in fairness: the Replay table here shows the fusion recovering
+  on two real divergence logs (alt 55 m becoming 2-5 m), so the gate did
+  reopen there. Settle it by logging `XKFA.VFuse` alongside `XKF3.IVD`
+  through the clip event in one of those replays.
+- **The speed-gate hysteresis is thrown away by the else branch.**
+  `aglKfVelGateOpen` is reset false on every step the outer condition fails,
+  including for reasons unrelated to speed - one GPS message, one step of
+  `fuseVelVertData` from another source, a one-step `aglKfRngCurrent`
+  dropout. After any blip the vehicle must re-cross the un-hysteresised
+  threshold.
+- `velTestRatio` can be contaminated: the base test runs with `imax = 2`
+  whenever `AID_ABSOLUTE && fuse_gps_vz`, and `fuse_gps_vz` uses
+  `gpsDataDelayed.have_vz`, which keeps its last recalled value across an
+  outage. Reachable with extNav supplying horizontal velocity and position
+  while GPS is configured for velZ and silent - the terrain-relative
+  innovation then folds into `velTestRatio` and refreshes
+  `lastVelPassTime_ms`, both of which feed lane selection and the EKF
+  failsafe.
+- Parameter index 15 with 12, 13 and 14 unused and unexplained; upstream
+  `var_info2` has never had a 12. Either take 12 or add the `// index 12
+  reserved` comment the codebase uses elsewhere. `@Range: -1 10.0` with
+  `@Values: -1:...` does pass `param_parse.py`, so it is style not CI.
+  `@User` sits before `@Units`, unlike every neighbour. Reusing
+  `EK3_RNG_USE_SPD` (a height-source switching speed) as the default for a
+  velocity gate couples two unrelated tunings - defensible, since `R_OBS[2]`
+  grows with `_terrGradMax * |v_xy|`, but say so.
+- `filterStatus.flags.horiz_vel` gating a *vertical* observation is
+  undocumented. It resolves to `someHorizRefData && filterHealthy` and is
+  one step stale, both fine; and `healthy()` only fails on test ratios when
+  all three of vel/pos/hgt exceed 1, so a height-only runaway does not
+  disable the fallback. That reasoning belongs in the comment.
+- `aglKfRngGapMax_ms` does two jobs (AGL KF decay threshold and velD
+  freshness gate), so `b04875313b` changes behaviour of the already-merged
+  bit 3 path for existing users. The commit message's A/B does cover it, but
+  say explicitly that bit 3's flow scaling is affected.
+- Autotest gaps: `window` is bound only inside the three stimulus branches
+  and read unconditionally, so a call with no stimulus raises
+  `UnboundLocalError` after SITL has booted and flown; `EK3_AGL_VD_SPD` is
+  never set, so only the -1 inheritance path runs and the documented
+  "zero disables" branch has no coverage at all; every leg ends
+  `disarm_vehicle(force=True)` in the air, so the armed-on-deck path where
+  `inFlight` stays latched is never entered; the speed-gate leg has no
+  positive evidence that the speed gate rather than tilt closed the fusion
+  (assert `XKFA.Valid == 1` across the window to pin it); and it omits
+  `context_push()`/`context_pop()` unlike its immediate neighbours.
+  What actually fails on revert is only the option bit and
+  `b04875313b`'s decay fix - nothing fails if you revert the freshness gate,
+  the `velDIsAglKfVel` aliasing exclusion, the hysteresis, the `sq(0.05)` R
+  floor, or the parameter itself.
+
+### Notes
+
+- The hard reset sets `aglKfV = 0` with `aglKfValid` true and the timestamp
+  refreshed, so the next step can fuse "velD = 0" during a descent - listed
+  as open here. In practice it also sets `aglKfP[1][1] = 1.0`, so `R` is
+  1.0, `K` ~ 1e-3 and the observation is near-inert until the KF
+  reconverges. The `R = aglKfP[1][1]` choice genuinely mitigates this one;
+  recording it so it is not re-raised.
+- `hgtInnov` is identically zero when both sides are floored at `rngOnGnd`,
+  so on-deck fusion is a numerical no-op that still refreshes
+  `lastAglRngFuseTime_ms` and still takes the covariance update. The drift
+  is common-mode with the main filter, so the harm is the covariance
+  collapse of M2 rather than a state kick.
+- `XKF3.IVD` silently becomes a terrain-relative innovation whenever this
+  option fuses, with no flag inside XKF3; `XKFA.VFuse` covers it only within
+  a 250 ms window.
+- `static constexpr uint32_t aglKfRngGapMax_ms` is the only such member in
+  that header. It links under `-std=gnu++11` because it is never odr-used,
+  but a later use through a const reference would break the link.
+- Mechanics clean: `diff --check` empty, the only non-ASCII in the diff is
+  on a removed line (the PR replaces an en-dash in the existing OPTIONS
+  description - a good drive-by), three commits one module each with correct
+  prefixes, no Claude attribution, and the feature-off build is sound.
+- Process: rebase onto current master (verified free), and since the head
+  moved and #33585 was force-pushed to a4d8966c85, re-run the Replay and
+  resolve log35/38/41 to fingerprints in `REPLAY_INDEX.md` before the table
+  is cited to a maintainer.
+
 ## The problem
 
 With `EK3_SRC1_VELZ=0`, the rangefinder excluded from height

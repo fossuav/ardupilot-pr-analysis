@@ -27,6 +27,192 @@ the EKF's rangefinder clamp was resolved the same day from log67: it did not,
 and the flight evidence stands. See "Open question: was the flown value inside
 the rangefinder floor?".
 
+## Review 2026-09-10: the floor fuses a zero-velocity measurement, and nothing says so
+
+The reviewer built the branch and ran `test.Copter.OpticalFlowFocusHeight`:
+passes, all three subtests, peaks 0.028 / 1.078 / 0.972 m/s, consistent with
+the numbers below. Everything this record marks settled was re-verified
+against the current tree and holds - see "verified clean" at the end.
+
+**M1. The zeroed sample is fused as a full-confidence "zero ground motion"
+measurement.** Zeroing `flowRadXYcomp` does not mark the sample absent - it
+makes the observation "the LOS rate is zero", i.e. the vehicle is not moving
+over the ground. `R_LOS` is set from `EK3_FLOW_M_NSE` and is **not** inflated
+while the floor is active, and the fabricated zero passes through the
+ordinary `EK3_FLOW_I_GATE` test. Two consequences that appear in neither the
+description, the parameter doc, nor the code comment:
+
+- On a vehicle genuinely translating below the floor, NE velocity is
+  actively dragged to zero. `f66adf417c`'s own body concedes this and
+  answers it with a 5 m clamp - but 5 m is high enough for a copter in
+  flow-only Loiter to be doing several m/s underneath it. The clamp stops a
+  typo, not a plausible mis-set.
+- Fusion refreshes `prevFlowFuseTime_ms`, which feeds `flowFusionTimeout`,
+  `optFlowUsed`, `attAidLossCritical`, `haveRecentFlowVel` and
+  `doingFlowNav`. While the floor is active the EKF reports flow aiding
+  healthy on data it did not measure, and the 5 s timeout that would drop it
+  out of `AID_RELATIVE` cannot fire.
+
+That second point is the design's actual content: not "ignore the flow" but
+"substitute a zero-velocity pseudo-measurement and keep the aiding-health
+timers alive on it". That may be right for the near-ground case, but it has
+to be stated, with the answer to "what if it really is moving". Consider
+inflating `R_LOS` while the floor is active so the fabricated zero acts as a
+soft prior rather than a measurement.
+
+**M2. The zeroed sample also reaches the terrain estimator - and on Plane
+that is its only effect.** The new block runs *before*
+`EstimateTerrainOffset(ofDataDelayed)`, which fuses `flowRadXYcomp` into
+`terrainState`. Plane defaults `EK3_FLOW_USE=2`, so `fuse_optflow` is false
+and `FuseOptFlow` only computes variances - **the terrain estimator is the
+only live consumer of `FLOW_HGT_MIN` on Plane.** Failure: Plane with a
+downward rangefinder for landing, `EK3_SRC1_POSZ` baro, GPS in use,
+`AID_ABSOLUTE`, airspeed >5 m/s so `velHorizSq >= 25`. `cantFuseFlowData` is
+then false and the zeroed `flowRadXY` trivially passes the `_maxFlowRate`
+term, so on approach below `FLOW_HGT_MIN` the fabricated zero is fused. A
+zero LOS rate at non-zero ground speed can only be reconciled by a larger
+range, so `terrainState` is driven such that the aircraft appears *higher*
+than it is - wrong direction on a landing, and systematic rather than
+random. Arguably worse than the garbage it replaces. One-line fix consistent
+with the intent: when the floor fires, make the terrain estimator **skip**
+the flow (OR a flag into `cantFuseFlowData`), or zero only the copy handed
+to `FuseOptFlow`. "Do not fuse" is right for terrain; "assume zero motion"
+is only right for the nav path. Derived from source, not measured.
+
+**M3. The parameter doc contradicts the code at the boundary.** The doc says
+the value "only has effect above both RNGFNDx_MIN and RNGFNDx_GNDCLR". The
+clamp is `rngOnGnd = MAX(ground_clearance_orient(...), 0.05f)`, so the real
+condition is `FLOW_HGT_MIN > MAX(RNGFNDx_GNDCLR, 0.05)`. With `GNDCLR = 0`
+the doc implies anything above 0 works; it must exceed 0.05. That is exactly
+the flown airframe's configuration (`RNGFND1_GNDCLR = 0.0`, per the table
+below), so the one case with flight evidence is the case the doc gets wrong.
+
+### Should-fix
+
+- **The protection releases exactly where the flow is worst.**
+  `rngValidMeaTime_ms` is stamped only when the backend reports `Good`.
+  Below `RNGFNDx_MIN` the backend reports OutOfRangeLow, the timestamp goes
+  stale, and the 500 ms freshness term fails. With the shipped default
+  `RNGFND1_MIN = 0.20` and `FLOW_HGT_MIN = 0.30`, the floor fires from
+  0.30 m to 0.20 m and then releases for the last 20 cm - the part of the
+  descent where the sensor is furthest out of focus. The flown airframe had
+  `RNGFND1_MIN = 0.01`, so the flight evidence does not exercise this.
+  Either latch the zeroing while the last valid range was below the floor
+  and the vehicle has not since climbed above it, or say plainly in the doc
+  that the feature covers only the band `[RNGFNDx_MIN, FLOW_HGT_MIN]`.
+- **Nothing in CI exercises the new replay record with a non-zero value.**
+  `Copter.Replay`'s OpticalFlow bit runs `OpticalFlowLimits()`, which never
+  sets `FLOW_HGT_MIN`, so `_ROFM.minHeight` stays 0 and `check_replay`
+  compares the *disabled* behaviour. Both real bugs this branch hit - the
+  ROFH growth misparse and the ROFM dropped in a second log of one power
+  cycle - lived in exactly this path and were invisible to the committed
+  test. Setting `FLOW_HGT_MIN` in `test_replay_optical_flow_bit` is one line.
+- **Fold the fixups: three commits ship known-broken code and three
+  messages are stale at HEAD.** `e2253aa930` fails parameter-metadata CI
+  until `d4d6cd08dd`; `a3853219dc` grows `log_ROFH` and misparses every
+  older replay log until `b470551fbc`, ten commits later; `5d645e53e0`
+  reads uninitialised stack and SIGFPEs under SITL until `e7195ee2fd`,
+  eight later. A bisect landing in that range crashes. Stale at HEAD:
+  `a3853219dc`'s "sits in the replay record beside the sensor position"
+  (no longer true after `b470551fbc`) and `e2253aa930`/`5d645e53e0`'s "only
+  has effect above RNGFNDx_MIN" (corrected by `f66adf417c` to include
+  GNDCLR). Squashing gets this to ~6 commits and removes all three.
+- **No diagnostic for whether the floor fired.** `XKF5` carries `FIX/FIY`
+  (the terrain estimator's aux innovations) and `normInnov`; nothing
+  distinguishes "the sensor reported zero" from "the floor replaced the
+  sample". The flight analysis here had to infer it from `FIX/FIY`
+  magnitudes. A status bit or one XKF5 flag would make the feature
+  reviewable from a log, which matters more than usual for a change that
+  silently substitutes a measurement.
+- Autotest subtest 1's `wait_groundspeed(0, 0.5, minimum_duration=15,
+  timeout=25)` leaves 10 s of slack. It settled immediately in the run
+  above (first sample 0.06 m/s), but 40 s costs nothing on a loaded CI box.
+
+### Notes
+
+- The `#endif` on the new block has no trailing `// AP_RANGEFINDER_ENABLED`
+  where the same guard elsewhere in the library does.
+- The bare `500` literal matches an identical bare literal in
+  `AP_NavEKF3_PosVelFusion.cpp` - consistent, but this is now the second
+  copy and a shared named constant would be better.
+- The gate compares vertical height (`rng * prevTnb.c.z`) where a focus
+  limit is physically a slant distance. `tiltOK` bounds `c.z > 0.71`, so the
+  vertical form fires up to ~40% early - the conservative direction, and it
+  matches the parameter's wording. Worth one line in the doc.
+- The new comment is six lines over a seven-line block, denser than the
+  three-line comment immediately above it. Two of those lines were asked for
+  in review; keep the `terrainState` rationale and cut the rest.
+- `FLOW_HGT_MIN` reads as a limit on the vehicle rather than the sensor's
+  focus limit; `FLOW_FOCUS_MIN` would say what it is. Low confidence - it
+  does pair with `FLOW_HGT_OVR`.
+- `get_height_min()` silently clamps to 0..5. A GCS will accept 50 and the
+  vehicle will quietly use 5. Say so in the doc, or pre-arm on it.
+- After an in-flight `InitialiseVariables()` the freshness check can read
+  fresh on a stale range (`rngValidMeaTime_ms = imuSampleTime_ms` while
+  `storedRange.reset()` empties the buffer, and `takeOffDetected` is not
+  reset there). `rangeDataDelayed` keeps its last real value, so the
+  practical effect is at most 500 ms of gating on a slightly stale range.
+  UNCONFIRMED - which in-flight paths call `InitialiseVariables()` was not
+  traced.
+- `25c7364cb5` / `d70cb7a058` are the same patches as on #33484 under
+  different SHAs; whichever lands second drops them.
+
+### Verified clean on the current tree - do not re-raise
+
+- The ROFH growth bug is genuinely reverted, not moved: `struct log_ROFH`
+  and its `"ffffIffffB"` format string are byte-identical to the base, so
+  old logs replay exactly as before.
+- ROFM is correctly sized and formatted (`RLOG_SIZE` 7, one field, one-char
+  units and mult strings), and old logs without it replay with the feature
+  disabled because `_ROFM` lives in the zero-initialised DAL singleton.
+- Ordering is right: ROFM is written before the ROFH it applies to, so
+  `handle_message(log_ROFM)` lands first.
+- No double-logging on replay: both estimators get the same
+  `_ROFM.minHeight`, both DAL writes match, `IFCHANGED` suppresses the
+  second, and `AP_AHRS::writeOptFlowMeas` has exactly one caller.
+- The `_end = 1` fix is correct and correctly general - `_end` sits outside
+  the compared prefix and is cleared on a successful write; it fixes
+  RISJ/REPH/REVH/RWOH/RBOH/RSLL/RTER too. `force_write` genuinely cannot
+  cover this: it is set and cleared inside one `start_frame()` and
+  push-based writers call `end_frame()` first.
+- The SIGFPE is fixed: `flowDataToFuse` is the first term, so short-circuit
+  prevents any read of the untouched stack local. No new division is
+  introduced - the comparison is a multiply, and `prevTnb.c.z >
+  DCM33FlowMin` is enforced by `tiltOK` in the same condition, so the three
+  sibling divisions keep their existing guard. The `{}` fix would have been
+  wrong.
+- The #34305 sibling is not made worse: this PR only ever *writes*
+  `ofDataDelayed` under `flowDataToFuse`, so merging it alone does not close
+  that exposure either.
+- The `#if AP_RANGEFINDER_ENABLED` guard is in scope and load-bearing -
+  without it, `rngValidMeaTime_ms` stamped at init plus `rangeDataDelayed.rng
+  == 0` would fire the gate for the first 500 ms on a rangefinder-less build.
+- `takeOffDetected` is the right flag here despite the playbook's warning
+  that it is flow state rather than flight state: this code only runs when a
+  flow sensor is feeding samples, which is the only condition under which
+  the flag is written at all, and it makes the new block mutually exclusive
+  with the pre-takeoff block above it.
+- No index collisions: `FLOW` group index 8 is free with no legacy
+  conversion, `SIM` 37/38 are free. `param_parse.py --vehicle ArduCopter`
+  runs clean and emits the block correctly.
+- `flowCalSample` contamination is benign - the calibrator requires
+  `|flow_rate.x| >= AP_OPTICALFLOW_CAL_ROLLPITCH_MIN_RADS`, so zeroed
+  samples are dropped rather than skewing a scale factor.
+- Default 0 is right and does not contradict the flown 0.1; flake8, `diff
+  --check`, attribution, prefixes and body wrapping are all clean.
+
+### What the tests actually catch
+
+Subtest 1 (`FLOW_HGT_MIN=3.0`, floor above the vehicle) is the **only** one
+that fails on a revert of the EKF3 gate: 0.028 m/s against a 0.5 bound,
+where the other two arms show the phantom crossing 0.8 within seconds.
+Subtests 2 and 3 pass unchanged on master - 2 is the disabled control, 3
+catches a floor that fires at every height. Both are correct to keep, but
+neither is a revert detector, so this is one revert detector and two
+controls, not three tests. Uncovered: the entire DAL/Replay path with a
+non-zero value, the second-log-in-one-power-cycle case, and the Plane
+`EK3_FLOW_USE=2` terrain path of M2.
+
 ## What it does
 
 An optical flow sensor cannot focus close to the ground and what it returns

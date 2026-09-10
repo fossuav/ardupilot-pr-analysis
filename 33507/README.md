@@ -18,6 +18,186 @@ that passes the autotest under-tracks thermal drift on two airframes
 (0.1-0.3 flown; 0.3 flight-validated). The PR body and one code comment still
 describe Qbias in terms of `EK3_ABIAS_P_NSE`, which the third commit replaced.
 
+## Review 2026-09-10: the bias state absorbs climb rate, and this record's evidence for 0.3 does not isolate it
+
+The estimator algebra is sound - `F*P*F'` re-derived by hand term by term,
+the Joseph update is exact for `H = [1,0,0]` and reduces to the 2-state form
+when the bias terms vanish, symmetry is maintained on both triangles, and
+`[H; HF; HF^2]` has rank 3 so the bias is observable in principle (third
+order in dt, i.e. only from a height ramp over seconds). Simulated at Q=0.05
+in a static hover with a true 0.3 m/s2 accel error, `b` converges to 0.2997
+in 120 s with `BiasStd` 0.0084, in line with the flight numbers below. The
+881-commit lag is clean: `merge-tree` conflict-free and
+`AP_NavEKF3_OptFlowFusion.cpp` is byte-identical between base and master.
+
+Three things block it, and the first two are about this record as much as
+the PR.
+
+**1. `aglKfB` absorbs any sustained AGL rate at `w/tau`.** The tau = 2 s
+decay of `aglKfV` is gated on `!rangeDataToFuse`, which is a *per-sample*
+flag, not "the rangefinder is absent". With a healthy 10 Hz rangefinder on a
+400 Hz filter it is false on ~39 of 40 steps, so the decay runs continuously
+in normal flight. To hold `aglKfV = w` against it, the prediction must be
+driven by `b`, so `b` settles at `w/tau_eff`. Simulated on the shipped
+equations with **true accel bias exactly zero**, a constant 0.9 m/s climb
+drives `aglKfB` to +0.438 after 60 s at every Q from 0.05 to 0.30 - that is
+`0.9/2.051` to three figures, a property of the propagation, not the gains.
+Terrain does it too: 5 m/s over a 10% slope gives about -0.24 m/s2. The
+failure this creates is the one already noted here as "the re-acquisition
+transient after a long dropout": the 5 s timeout reset restores `h` and
+zeroes `v` but deliberately *preserves* `b`, so a preserved +0.44 re-drives
+`v` toward +0.9 m/s of spurious climb in a hover, with only `P[2][2] = 1.0`
+to relearn it. That is a modelling defect, not a tuning question. Fix by
+gating the decay on a real dropout, or by folding it into `F` so the
+covariance matches what the states do - either changes the answer to "what
+should the default be", so it has to be settled first.
+
+**2. The under-tracking evidence does not isolate the bias state.** Running
+this record's own metric - regress AGL-KF height change on true height
+change over 1-5 s baselines - against the shipped filter with **no true
+accel bias and no thermal drift at all** (hover, +/-1 m climbs, 0.04 m range
+noise) reproduces the flight signature:
+
+| EK3_AGL_ABIAS_P | slope 1 s | corr | slope 5 s | final b |
+|---|---|---|---|---|
+| 0.05 | 0.803 | 0.954 | 0.804 | -0.011 |
+| 0.30 | 0.967 | 0.982 | 0.967 | -0.010 |
+
+against the flown 0.59-0.71 at 0.05 and 0.83-0.94 at 0.3. `b` sits at -0.01
+in both - there is nothing for it to track. The mechanism is that Qbias
+propagates `P[0][2] -> P[0][1] -> P[0][0]`, so raising it raises the
+*height* gain: converged hover `hStd` 0.124 -> 0.156 m and `Kh` 0.058 ->
+0.084 across 0.05 -> 0.30, 45% harder pull toward the rangefinder. So "0.3
+measures better" is real; "because 0.05 under-tracks thermal drift" is not
+what that metric shows, and this record states it as settled. Discriminating
+test: hold Q at 0.05 and lower `EK3_RNG_M_NSE` (or raise `EK3_ACC_P_NSE`)
+until `Kh` matches the Q=0.3 case, then re-run the regression. If the slope
+recovers, the parameter is a proxy for the height gain and the fix belongs
+elsewhere.
+
+For balance, the bias state does do its job on a genuine drift. True accel
+error ramping 0 -> 0.35 m/s2 over 200 s in a hover:
+
+| Q | 0.05 | 0.10 | 0.20 | 0.30 | 0.50 |
+|---|---|---|---|---|---|
+| bias lag (m/s2) | 0.052 | 0.032 | 0.021 | 0.017 | 0.013 |
+| residual v (m/s) | -0.067 | -0.039 | -0.023 | -0.018 | -0.012 |
+
+A higher default helps the thermal case too. The point is only that the
+published evidence does not separate the two effects.
+
+**3. Shipping 0.05 is not defensible as the diff stands.** The whole feature
+is behind `EK3_OPTIONS` bit 3 and `EK3_OPTIONS` defaults to 0, so this
+parameter cannot affect a vehicle that has not opted in - and the people who
+opt in are the ones this record says 0.05 fails (1.3 m drift against 0.3 m,
+0.2 recovering the full 60% PD-drift reduction on log66, log311 monotonic to
+0.3). Nothing in the PR pins 0.05 either: its autotest requires only
+`bias_after - bias_before >= 0.1` against a 0.7 m/s2 injection, 14%
+tracking, which cannot distinguish 0.05 from 0.3. The overshoot constraint
+cited here belongs to #33478 - neither `EK3_AglKfVelForVelD` nor
+`_aglKfVelMaxSpd` exists in this tree. Either ship 0.2-0.3, or ship 0.05 and
+say in the commit message and the parameter doc what was flown and what
+holds the default lower.
+
+### Corrections to the commit messages and comments
+
+- `8373f1da1b` says "XKF6 now logs the bias estimate" - upstream it is
+  **XKFA**. Downstream name leaked into an upstream commit message.
+- The same commit says "only the inactive-lane and frozen hover corrections
+  are removed before it". `git grep accelBiasHoverZ` on the base returns
+  nothing: **the frozen hover-Z correction does not exist upstream.** This is
+  exactly the failure the EKF3 playbook warns about.
+- That sentence also understates what *is* removed. `learnInactiveBiases()`
+  assigns `inactiveBias[active].accel_bias = stateStruct.accel_bias` on
+  every IMU frame, so `velDotNED.z` already has the main filter's own
+  accel-Z bias estimate removed. `aglKfB` is the **residual error in state
+  15**, not an independent estimate - which contradicts "independent of the
+  main filter" in the commit message and in two code comments.
+- `@Units: m/s/s` is wrong. `Qbias = sq(P * imuDt)` with `aglKfB` in m/s2
+  makes `P` m/s3, the same as `EK3_ABIAS_P_NSE`, which is documented
+  `@Units: m/s/s/s`. Same error on the member comment.
+- Parameter index 14 is downstream numbering (13 is `FLOW_QMIN` and 15 is
+  `AGL_VD_SPD` on the fork). Upstream `var_info2` uses 2-11, so 12 is free
+  and should be taken - as with #33478's index 15, the gap is invisible to a
+  maintainer.
+- Stale comments: the `EK3_OPTIONS` `@Description` for bit 3 still says
+  "2-state" (this one reaches the wiki), as do three headers; the `Qbias`
+  block still names `EK3_ABIAS_P_NSE`; ":790 so the hard reset finds v near
+  zero" is no longer true given finding 1; and the observation model comment
+  still reads `H = [1, 0]`.
+- The parameter doc's "only updates from clean rangefinder measurements, so
+  a higher value here cannot learn a bad bias" overstates it. The only
+  cleanliness test is a 5-sigma innovation gate against the filter's own
+  variance. Stale data cannot move it; *wrong* data - a slope, a reflective
+  floor, something moving under the vehicle - moves it faster at higher Q.
+
+### Robustness items
+
+- **Covariance loses positive-definiteness ~0.7 s before the validity
+  timeout.** The three diagonals are clamped (100, 100, 25) while
+  `P[0][1]`, `P[0][2]`, `P[1][2]` grow unbounded. Simulated from the
+  post-reset covariance with the rangefinder absent, `P00` caps at t = 4.0 s
+  and the smallest eigenvalue goes negative at **t = 4.26 s**, while
+  `aglKfValid` holds until 5 s. Inside that window `getHAGL()` and the flow
+  range scaling still consume the filter and a returning sample would be
+  fused through a non-PD `P`. From a converged hover the crossing is at 40 s,
+  so the exposure is specifically reset-then-dropout - an intermittent
+  rangefinder over grass or water. Pre-existing in the 2-state block, but
+  this PR extends the clamp pattern rather than fixing it and adds two more
+  unbounded off-diagonals. Clamp each off-diagonal to
+  `sqrt(P[i][i]*P[j][j])`, or rescale the row and column when a diagonal
+  clips.
+- `Qbias` is unconstrained where the main filter uses
+  `constrain_ftype(..., 0.0, 1.0)`. `@Range` is not enforced at runtime, so
+  `EK3_AGL_ABIAS_P = 100` drives `P[2][2]` to its cap in about a second.
+- `aglKfB` has no magnitude limit, where the main filter clamps to
+  `EK3_ACC_BIAS_LIM`. With finding 1 that is what lets a climb push it to
+  half a metre per second squared.
+- `aglKfValid` is never cleared on persistent innovation rejection - the
+  clear is only reachable inside the `!rangeDataToFuse` branch. A rangefinder
+  that keeps delivering rejected readings never invalidates the filter; the
+  5 s timeout instead hard-resets `h` to the rejected reading. The PR now
+  carries `aglKfB` through that path unchanged, so a bias learned on bad data
+  survives every reset for the rest of the flight.
+- Two paths step `velDotNED.z` by the full learned bias with no notification
+  to the AGL KF: `stateStruct.accel_bias.zero()` in `ConstrainVariances`
+  when the delta-velocity bias covariance falls below the safe minimum, and
+  the lane-switch copy in `AP_NavEKF3_Measurements.cpp`. After either,
+  `aglKfB` is wrong by the whole step and relearns at Q - tens of seconds at
+  0.05. This is what LupusTheCanine's "a shared AccZ bias?" is really asking
+  about, and it deserves a sentence in the PR body.
+- It is a closed loop, not one-way: `aglKfH` -> flow range scaling ->
+  `FuseOptFlow` -> main filter velocity -> state 15 -> `velDotNED` ->
+  `aglKfB`. Low gain, but the body should not call the AGL KF decoupled
+  without qualifying it.
+- `SelectFlowFusion()` returns early when `magFusePerformed && dtIMUavg <
+  0.005f`, so `UpdateAglKf()` and its `h += v*dt` are dropped on roughly 10%
+  of steps at 400 Hz despite the "every IMU step" comment. Modelled, it moved
+  the slope by only a few percent - well below the decay effect - but it
+  means the filter's internal clock runs slow, which a bias state absorbs.
+  UNCONFIRMED as a contributor.
+- `Qbias = sq(P * imuDt)` is loop-rate dependent, matching house convention
+  (`Qvel` and the main filter do the same) - but it means "0.3 was
+  flight-validated" is validated at one airframe's filter rate.
+
+### Autotest
+
+- The `>= 0.1` threshold on a 0.7 m/s2 injection accepts 14% tracking. The
+  simulation converges the bias fully within 30 s in a hover even at Q=0.05,
+  so the assertion could be `> 0.45` and would then constrain something.
+- It tests a **step**; the parameter exists for a **ramp**. A subtest that
+  ramps `SIM_ACC1_BIAS_Z` over ~120 s and checks tracking lag is the test
+  that would distinguish 0.05 from 0.3, and is the one this record says is
+  missing.
+- Nothing asserts `XKFA.Valid` stays 1 after the injection, or that the
+  vehicle stays inside rangefinder range while an instantaneous 7%-of-g step
+  disturbs the main filter's altitude in LOITER.
+- Two consecutive identical `land_and_disarm()` calls at the end. Harmless,
+  but it reads as an unrun edit.
+- The first commit ASCII-ises pre-existing `^2` and em-dash characters in
+  comments it does not otherwise touch - out of scope under the surgical
+  modification rule, and it missed one.
+
 ## The problem
 
 The 2-state AGL KF integrates `velDotNED.z`, which still carries the active
