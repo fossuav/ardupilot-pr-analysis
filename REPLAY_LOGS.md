@@ -37,13 +37,13 @@ that PR, not what could be.
 | PR | log | what it exposes | replay status |
 |---|---|---|---|
 | [33359](33359/) | log280 | indoor alt-hold divergence at the rangefinder height-source switch (std 1.14 / max 5.40 m) | validated pre-submission, and still valid after the 2026-09-10 head move to 640cd4a5fc (comments only); corrected 2026-09-10 - this row named log281, which is the flight flown *with* the fix, so replaying it would compare a fixed core against a fixed core |
-| [33478](33478/) | log35, log38, log41 | velD fusion on a baro-only vehicle with no velZ source | validated, table in the record |
+| [33478](33478/) | log35, log38, log41 | velD fusion on a baro-only vehicle with no velZ source | **re-run needed** at head e17a1c28bf (2026-09-10): the haveGpsVelZ predicate changed, so the fallback now engages in configurations it previously sat out. The existing table was taken before that and against a head 3 months old; the three logs also still lack fingerprints |
 | [33484](33484/) | log A, log B, log C | the single-axis flow lockout the recovery is for | 500 ms threshold tuned on these |
 | [33484](33484/) | log7 | the recovery misfiring at the flow tilt gate | re-run 2026-09-10 on the PR's own tree: the gate suppresses **nothing** there, 2 resets either way. The 3 -> 0 is on the beta branch with #33359 and #33478 stacked |
-| [33507](33507/) | log311, log66 | accel-Z bias, PD drift over the hover | sweep in the record |
+| [33507](33507/) | log311, log66 | accel-Z bias, PD drift over the hover | **re-run needed** at head b1e8ecbcd8 (2026-09-10): the decay gate fix changes what the bias state converges to, and the sweep that chose 0.1-0.3 was measured with the defect present. SITL says 0.05 now tracks better than 0.3 did before it |
 | [33585](33585/) | log308 | AltHold demotion at the rangefinder ceiling | validated pre-submission at an earlier head; force-pushed to `a4d8966c85` 2026-09-10 and **not re-run since** |
 | [32972](32972/) | log7 | finding 6, the height floor blocking a correction in cruise | **owed** - not run |
-| [34292](34292/) | log67 | the near-ground flow floor | partial; the record notes replay does not reproduce the disarm path |
+| [34292](34292/) | log67 | the near-ground flow floor | partial; the record notes replay does not reproduce the disarm path. Head 337cf08df6 withholds the zeroed sample from the terrain estimator, which is inert on Copter (EK3_FLOW_USE=1) so log67 is unaffected, but a Plane log would be needed to exercise it |
 | [34361](34361/) | log7 | getHAGL reporting nothing while the filter flies on a database AGL | **not applicable** - see below |
 | [32553](32553/) | log200-log206 | terrain offset after ground effect clears | not established |
 | [32768](32768/) | log3, log12, log21 | baro temperature drift across an arm | not established |
