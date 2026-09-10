@@ -313,6 +313,46 @@ gain in this evidence.**
   test with a non-zero `SIM_ACC1_BIAS_Z` ramp. These two runs say only that
   the *published* justification is the wrong one.
 
+## Fixes 2026-09-10 (head b1e8ecbcd8): the decay gate, and the default stays 0.05
+
+The decay defect is fixed by carrying **#33478's `b04875313b`** rather than a
+new commit - the same defect, the same fix, and the same
+`aglKfRngGapMax_ms` name. Note the two branches will not auto-dedupe: the
+patch-ids differ because the surrounding line is `aglKfV += (aglKfB -
+velDotNED.z)*imuDt` here and `aglKfV -= velDotNED.z*imuDt` there, so whichever
+rebases onto the other needs a manual resolution or a skip. The clean
+upstream answer is to split it into its own small PR that both depend on;
+that is a call, not something done here.
+
+Measured after the fix, same runs as before:
+
+| | before | after |
+|---|---|---|
+| aglKfB, 0.38 m/s climb, Q=0.05 | +0.155 | **+0.0002** |
+| aglKfB, 0.41 m/s descent, Q=0.05 | -0.155 | **-0.0001** |
+| aglKfB, climb, Q=0.30 | +0.169 | **+0.0001** |
+
+And it removes most of the under-tracking that the 0.3 default was argued
+from - the three-arm run again, before and after:
+
+| arm | slope 1 s before | after | HAglStd before | after |
+|---|---|---|---|---|
+| A Q=0.05 RNG=0.5 | 0.747 | **0.964** | 0.117 | 0.117 |
+| B Q=0.30 RNG=0.5 | 0.907 | 1.086 | 0.142 | 0.141 |
+| C Q=0.05 RNG=0.15 | 0.955 | 1.080 | 0.046 | 0.046 |
+
+Q=0.05 after the fix (0.964) beats Q=0.30 before it (0.907), at the same
+reported uncertainty, and B and C now overshoot slightly - a mild sign that
+0.3 is too loose once the decay is gated properly. **So the default stays at
+0.05**, and the flights that appeared to need 0.3 were compensating for the
+decay, not for insufficient process noise. `OpticalFlowAGLKalmanFilter`
+still passes: a real injected 0.7 m/s2 bias moves the estimate -0.013 ->
+0.334.
+
+Outstanding: the third commit's message still argues the default from the
+flight values and should be rewritten around this result. That needs an
+amend.
+
 ## The problem
 
 The 2-state AGL KF integrates `velDotNED.z`, which still carries the active

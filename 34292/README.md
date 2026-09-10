@@ -244,6 +244,32 @@ Not tested here: the Plane `EK3_FLOW_USE=2` terrain path of M2, and whether
 `R_LOS` inflation while the floor is active would be enough to make the zero
 behave as a soft prior instead.
 
+## Fixes 2026-09-10 (head 337cf08df6): the terrain path and the parameter doc
+
+**M2 fixed.** A sample zeroed by the focus-height check is now withheld from
+`EstimateTerrainOffset`. The navigation states can use "no motion over the
+ground" as a prior; the terrain estimator cannot, because the only way it can
+reconcile a zero LOS rate at a non-zero ground speed is by growing the range,
+which puts the vehicle higher than it is on an approach. Range data still
+updates terrain as before. **Not measured**: this is the only path the check
+reaches on Plane (`EK3_FLOW_USE` defaults to 2 there), and Copter defaults to
+1, so no Copter test exercises it - reasoned from the fusion equations.
+`OpticalFlowFocusHeight` is unchanged by it, which is the available
+regression check.
+
+**M3 fixed.** The description said "above both RNGFNDx_MIN and
+RNGFNDx_GNDCLR"; the real bound is `MAX(RNGFNDx_GNDCLR, 0.05)`, so with
+GNDCLR at 0 - the flown configuration - the documented "anything above 0" was
+wrong by 5 cm.
+
+**M1 documented, not changed.** The parameter description now says the
+substitution asserts zero motion rather than discarding the sample, cites the
+measured 1.07 m/s against 5.19 m/s of truth, and says to set the value no
+higher than a real focus limit. Changing the nav-path fusion - inflating
+`R_LOS` so the zero acts as a soft prior - would weaken the phantom
+suppression the PR exists for, and there is no measurement here to price that
+trade. Left as a design call.
+
 ## What it does
 
 An optical flow sensor cannot focus close to the ground and what it returns

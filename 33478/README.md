@@ -252,6 +252,41 @@ provided it is labelled as settled - the off leg has no settled counterpart,
 because with the fusion off the vehicle flies itself down, which is why the
 shipped test made that leg short in the first place.
 
+## Fixes 2026-09-10 (head e17a1c28bf): M1 predicate, and an honest headline number
+
+**M1.** `haveGpsVelZ` now matches the condition the GPS block actually fuses
+under - `useVelZSource(GPS) && useGpsVertVel && AID_ABSOLUTE && posxy_source
+== GPS`, plus the existing freshness term. Three arms:
+
+| arm | EK3_SRC1_VELZ | POSXY | GPS | VFuse before | after |
+|---|---|---|---|---|---|
+| A flow nav, no velZ source | 0 | flow | off | 86.3% | 85.9% |
+| B flow nav, shipped default | 3 | flow | on, 3D fix | **0.0%** | **83.4%** |
+| C GPS nav, GPS velD fused | 3 | GPS | on, 3D fix | - | **0.0%** |
+
+Arm C is the regression guard and is the one that matters: with a real velZ
+source being fused the fallback still stands aside and leaves velPosObs[2]
+alone. Arm A is unchanged.
+
+**M3.** The test now carries a leg with the same hold and the same window as
+the off leg, so the only difference is the fusion:
+
+| leg | max velD error |
+|---|---|
+| fusion off (bit 3), hold 14 / settle 4 | 3.47 m/s |
+| fusion on (bits 3\|4), hold 14 / settle 4 | **1.15 m/s** |
+| fusion on (bit 4), hold 45 / settle 35 | 0.17 m/s |
+
+3.47 -> 1.15 is the number to quote; 0.17 is the settled error and is now
+labelled as such. The off leg cannot be matched the other way round, because
+with the fusion off the vehicle flies itself down.
+
+Also dropped the stale "and takeoff_expected for armed-on-ground" clause from
+the zero-velocity comment.
+
+Outstanding: the commit message of `20baa4786b` still leads with 3.47 ->
+0.17. That needs an amend.
+
 ## The problem
 
 With `EK3_SRC1_VELZ=0`, the rangefinder excluded from height
