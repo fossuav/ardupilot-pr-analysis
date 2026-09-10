@@ -118,3 +118,18 @@ same session that causes them:
 - **A log that gains or loses replay records.** A flight flown without
   `LOG_REPLAY` cannot be used, however good the data is, and that is worth
   recording rather than rediscovering.
+
+## Retired local branches (2026-09-10)
+
+Two stale local branches were deleted after their content was confirmed
+superseded by the pushed remotes. SHAs recorded here in case anything is
+ever wanted back before gc reclaims them:
+
+- `pr-rng-aglkf-terrain` at `66eb1ae2dc` (3 commits on a base 640 behind,
+  missing the PR's 4th commit) - superseded by `andyp1per/pr-rng-aglkf-terrain`
+  at `640cd4a5fc`.
+- `pr-ekf3-aglkf-veld` at `cad74d9359` (2 commits, pre-rebase) - superseded by
+  `andyp1per/pr-ekf3-aglkf-veld` at `e21558d163`.
+
+Both were hazards rather than backups: publishing by that branch name
+without checking would have sent the wrong tree to the remote.
