@@ -53,7 +53,7 @@ asserting proximity.
 101 s continuous (`RNGFND1_MAX=15` on a vehicle that flies well above it)
 and the AGL KF then timed out. Note that a terrain-database AGL was valid
 and in use for optical flow the entire time; `getHAGL()` simply does not
-serve it. That is a separate prospective PR, `../new-ekf3-hagl-terrain-alt/`,
+serve it. That is a separate prospective PR, `../34361/`,
 and it is the cheaper root fix - with it, this flight would have taken the
 `height_is_agl` branch and never reached the drift fallback.
 
@@ -231,7 +231,7 @@ That is the ground-effect protection a baro-only vehicle loses when it
 lands more than 20 m from where it lifted off. Anything with a
 rangefinder or terrain coverage takes the `height_is_agl` branch and
 never reaches the drift rule - which is why
-`../new-ekf3-hagl-terrain-alt/` is the root fix and was landed alongside.
+`../34361/` is the root fix and was landed alongside.
 
 ### Autotests
 
@@ -274,5 +274,5 @@ No logs or plots here yet. The code is on `SmallFastDrone-4.7.1-beta`
 - `../32472/` - the merged PR this follows up, and the bullet that
   anticipated this failure and marked it not observed.
 - `../32972/` finding 6 - the EKF-side cost, measured on the same flight.
-- `../new-ekf3-hagl-terrain-alt/` - the root fix for why `get_hagl()`
+- `../34361/` - the root fix for why `get_hagl()`
   failed here.

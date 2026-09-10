@@ -22,7 +22,7 @@ been through seven review rounds on unrelated ground. Three things follow:
 - #33585's own preferred path is the terrain database ("terrain-where-covered
   with flat ground as the fallback", after `a874302eee` widened
   `writeTerrainData()` to bit 2 or bit 5). That path runs on this expression.
-- `../new-ekf3-hagl-terrain-alt/` reached the same expression independently
+- `../34361/` reached the same expression independently
   and had to get the convention right to serve `getHAGL()`.
 - Anyone setting bit 2 on master today is affected, with no fix in sight
   until #33585 merges.
@@ -150,7 +150,7 @@ Both carried over from #33585's rounds five to seven; do not re-open them.
   was false, and it fell through to a `terrainState` the enclosing condition
   has already declared stale.
 - **`terrain_srtm_alt_ms` reading fresh at zero** is real and is fixed in
-  #33585, not here. `../new-ekf3-hagl-terrain-alt/` guards its own use.
+  #33585, not here. `../34361/` guards its own use.
 
 ## Validation
 
@@ -180,5 +180,5 @@ measurement added.
 
 - `../33585/` - where the defect was found and first fixed, and the rounds
   that settled what not to change.
-- `../new-ekf3-hagl-terrain-alt/` - the same convention in `getHAGL()`.
+- `../34361/` - the same convention in `getHAGL()`, opened 2026-09-10.
   Touches the adjacent line, so it stacks on this rather than racing it.
