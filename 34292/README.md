@@ -1,11 +1,12 @@
 # PR #34292 - optical flow minimum focus height (FLOW_HGT_MIN)
 
 Analysis archive for [ArduPilot/ardupilot#34292](https://github.com/ArduPilot/ardupilot/pull/34292).
-Branch `pr-flow-hgt-min` (andyp1per fork), base `master`, head `76d3538247`
-(2026-09-05). The head was `292ec09fef` when this record was opened; two
-review rounds have moved it since, and the sections below say what changed.
-The tip was `84ec31a99d` until a rebase renumbered it to `76d3538247`, same
-message and same content.
+Branch `pr-flow-hgt-min` (andyp1per fork), base `master`, head `126cf753c7`
+(2026-09-10, local; the pushed PR head is `946708d630`). The head was
+`292ec09fef` when this record was opened; four review rounds have moved it
+since, and the sections below say what changed. The tip was `84ec31a99d`
+until a rebase renumbered it to `76d3538247`, then a rebase onto current
+master renumbered the whole branch again to the `946708d630` series.
 
 Split out of #33484 on 2026-09-04 after rmackay9 reviewed the parameter there
 and asked for it to live in the flow library. The mechanism is unchanged from
@@ -19,8 +20,9 @@ Mechanism flight-validated on the 4-inch quad as `EK3_FLOW_MIN_H` (log67, see
 re-verified in SITL; the re-implementation itself has not been flown.
 
 Under review. tridge's automated pass has run twice (2026-09-04 and
-2026-09-05) and peterbarker requested changes on 2026-09-04. Both rounds are
-recorded under "Review" below, including the findings that were rejected.
+2026-09-05), tridge himself left four inline comments on 2026-09-09, and
+peterbarker requested changes on 2026-09-04. Every round is recorded under
+"Review" below, including the findings that were rejected.
 
 A question raised on 2026-09-05 about whether the flown 0.1 m value sat under
 the EKF's rangefinder clamp was resolved the same day from log67: it did not,
@@ -270,6 +272,140 @@ higher than a real focus limit. Changing the nav-path fusion - inflating
 suppression the PR exists for, and there is no measurement here to price that
 trade. Left as a design call.
 
+## Review 2026-09-09: tridge on the DAL message ID and the fabricated zero
+
+Four inline comments, all on head `76d3538247`.
+
+**The new DAL message ID must go at the end of `LOG_IDS_FROM_DAL`.** ROFM had
+been inserted after ROFH, which renumbers every `LOG_*_MSG` after it. The
+mechanism, traced from the source: Replay copies each `FMT` record from the
+input log into its output verbatim (`LogReader::handle_log_format_msg`) while
+its own startup writer emits a `FMT` for every structure in the binary
+(`LoggerMessageWriter_DFLogStart`, `Stage::FORMATS`), so a shifted ID leaves
+the replay output carrying two names for one type byte. Replay of the old log
+itself is unaffected either way, because dispatch is on the four-character
+name - which is why this does not show up as a parse failure. Moved to the end
+after RTER, with `LOG_STRUCTURE_FROM_DAL` kept in the same order.
+`test.Copter.Replay` passes.
+
+**"is zero right? if we're actually moving that seems like a bad idea"**,
+followed by "possibly just set flowDataToFuse = false?". This is M1 of the
+2026-09-10 review above, raised independently and answered the way that
+review declined to: the sample is now discarded rather than zeroed. See the
+A/B below for what that is worth, which is less than it sounds.
+
+**"what does flowDataValue do??"**, on the pre-existing `flowDataValid = true`
+in the carry-test block. It is freshness only - set from `flowValidMeaTime_ms`
+being under 1 s old, which `writeOptFlowMeas` stamps only for samples passing
+the quality and rate checks. Its three consumers are all reporting, not
+fusion: `doingFlowNav` in `updateFilterStatus`
+(`AP_NavEKF3_Control.cpp:771`), `getHeightControlLimit`
+(`AP_NavEKF3_Outputs.cpp:94`) and `getTerrainAltVariance` (`:587`). The
+pre-takeoff block forces it true because the driver reports quality 0 while
+the vehicle sits on the ground, so the status flags would otherwise drop while
+someone carries it around testing flow. The focus-height gate deliberately
+leaves it alone: samples really are still arriving below the focus height, and
+clearing it would take `doingFlowNav` down with it rather than letting the
+normal flow fusion timeout declare the loss.
+
+## SITL A/B 2026-09-10 (head 126cf753c7): discarding halves the collapse, and does not cure it
+
+Same shape as the A/B above and directly comparable: Copter SITL, flow-only
+nav with an analog rangefinder, ALT_HOLD at ~2.7 m with a pitch stick input so
+the stick and not the estimator decides the real motion. Truth is `SIM2`,
+estimate is `XKF1` core 0. Restricted to samples where truth exceeds 1 m/s and
+the rangefinder reads 2-4 m, which excludes the descent - both floor arms fail
+their `land_and_disarm`, because a vehicle with no usable flow cannot navigate
+home, and a raw "truth > 1 m/s" filter sweeps that in and reads 0.21/0.35.
+
+| arm | code | FLOW_HGT_MIN | truth mean | EKF mean | est/truth | const-pos |
+|---|---|---|---|---|---|---|
+| zero | `946708d630` | 5.0 | 5.33 m/s | 0.93 m/s | **0.17** | 0% |
+| discard | `126cf753c7` | 5.0 | 5.78 m/s | 2.21 m/s | **0.38** | 49% |
+| control | `126cf753c7` | 0 | 5.11 m/s | 5.08 m/s | **0.99** | 0% |
+
+The zero arm reproduces the 0.21 recorded on 2026-09-05 at head `76d3538247`
+under the wider filter, which is what says the two harnesses measure the same
+thing.
+
+Two results, and the second is the one that matters:
+
+- Discarding roughly doubles the tracked fraction, 0.17 to 0.38, and the
+  filter now says it has lost aiding for about half the window
+  (`XKF4.SS` bit 7, constant position mode) where zeroing never reports it at
+  all. That is M1's second bullet closing: fusion of the fabricated zero kept
+  `prevFlowFuseTime_ms` alive, so the 5 s timeout could not fire.
+- **It does not fix the velocity collapse.** `AID_NONE` fuses its own
+  synthetic zero velocity to constrain tilt errors
+  (`AP_NavEKF3_Control.cpp:419-421`), so a vehicle held below a mis-set floor
+  still believes it is doing 2.2 m/s while doing 5.8. The fabricated zero
+  comes back through the no-aiding path. Anyone reading "discarding fixes the
+  translating case" from the commit message alone would be wrong.
+
+The plot is worth more than the mean here, because the discard arm is not a
+flat under-read but a **5 s sawtooth**: the estimate dead reckons up toward
+truth, reaches about 2.7 m/s, and snaps back to zero. The cycle is
+`readyToUseOptFlow()` keying on sample *arrival*
+(`imuSampleTime_ms - flowMeaTime_ms < 200`, `AP_NavEKF3_Control.cpp:561`)
+rather than on anything being fused. Samples keep arriving below the focus
+height, so the filter re-enters `AID_RELATIVE` immediately after dropping out
+of it, `AP_NavEKF3_Control.cpp:448` resets `prevFlowFuseTime_ms` on that
+transition, and `velTimeout` zeroes the velocity. Five seconds later the flow
+fusion timeout fires again. The first dwell in `AID_NONE` is longer, about
+11 s, because gyro bias variance grows without aiding and `delAngBiasLearned`
+goes false until the no-aiding fusion pulls it back.
+
+So "discard" gives a cleanly reported loss of aiding only if the vehicle
+leaves the floor. Held under it, the filter oscillates. At a real focus limit
+the vehicle passes through in well under 5 s and none of this happens, which
+is the argument for the parameter's advice rather than for the mechanism.
+
+Caveat carried from the earlier run: 5 m is the clamp ceiling and a
+deliberate mis-set. At a real focus limit the vehicle is near the ground and
+slow, and it passes through in well under the 5 s timeout, so neither arm's
+number describes the intended configuration.
+
+Data in `data/ab-2026-09-10-discard/`, figure
+`plots/flow_hgt_min_discard_2026_09_10.png`, regenerated by
+`plots/make_plots_2026_09_10.py`. The harness is a throwaway test method in a
+scratch worktree; its failure to land is expected and not a finding.
+
+## Fixes 2026-09-10 round two (head 126cf753c7): tridge's round
+
+**M1 fixed, superseding "M1 documented, not changed" above.** The sample is
+discarded (`flowDataToFuse = false`) rather than zeroed, which is what tridge
+asked for. The earlier decision to document rather than change it is
+superseded by his review, not by new evidence; the measurement above says what
+it bought and what it did not.
+
+**The M2 fix from `946708d630` was incomplete, and is now redundant.**
+`flowBelowFocusHeight` only suppressed the flow-triggered call to
+`EstimateTerrainOffset`. That function is also entered on `rangeDataToFuse`
+alone - which is true on the Plane approach M2 describes - and it then fused
+the fabricated zero anyway. Discarding the sample removes the zero, and the
+flag goes with it; the `flowDataToFuse` flag is now passed into
+`EstimateTerrainOffset` so "no usable flow sample" is one of the reasons
+`cantFuseFlowData` is true. Derived from the source, not measured: no Copter
+test reaches it, since Copter defaults `EK3_FLOW_USE=1`.
+
+That parameter also stops the terrain estimator reading `ofDataDelayed` when
+`recall()` failed, which is the #34305 exposure. `inhibitGndState` is
+unaffected - the new term can only be true when `rangeDataToFuse` is, and that
+already forces the branch the other way.
+
+**The parameter description is rewritten again.** `6585d32dfd` had just
+finished documenting the zero-motion substitution and quoting 1.07 against
+5.19 m/s; none of that survives the change. It now says the flow is discarded
+and that a vehicle held below the floor loses flow aiding, which is the
+reason to keep the value at a real focus limit.
+
+**The replay coverage gap from the should-fix list is closed.**
+`test_replay_optical_flow_bit` now sets `FLOW_HGT_MIN=0.30`, so the ROFM record
+carries a non-zero value through the log and the parse. It does not make the
+gate fire - `OpticalFlowLimits` flies well above 0.30 m - so what it covers is
+the record surviving the round trip, and a misparse reading large is what
+`check_replay` would catch. Both bugs this branch hit lived in that path.
+
 ## What it does
 
 An optical flow sensor cannot focus close to the ground and what it returns
@@ -481,6 +617,11 @@ when reading the plot.
 
 `plots/flow_hgt_min_ab_2026_09_05.png` - head 84ec31a99d, all three arms,
 regenerated by `plots/make_plots.py` from `data/ab-2026-09-05/`.
+
+`plots/flow_hgt_min_discard_2026_09_10.png` - zeroing against discarding on a
+translating vehicle, regenerated by `plots/make_plots_2026_09_10.py` from
+`data/ab-2026-09-10-discard/`. This one does need two builds, since the arms
+differ by code and not only by parameter.
 
 The floor is fully behind the parameter, so `FLOW_HGT_MIN=0` is master's
 behaviour and no second build is needed for either figure.
