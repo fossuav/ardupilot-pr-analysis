@@ -186,3 +186,5 @@ autotest in `Tools/autotest/arducopter.py`.
 - `../new-groundeffect-touchdown-gate/` - the consumer that exposed it.
 - `../32972/` finding 6 - the measured cost.
 - `../33585/` - bit 5 and the flat-ground path this must not serve.
+- `../34360/` - the same convention in `FuseOptFlow`, opened 2026-09-10.
+  This touches the adjacent line, so it stacks on that rather than racing it.

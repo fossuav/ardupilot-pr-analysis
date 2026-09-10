@@ -1,8 +1,9 @@
-# NEW PR (not opened) - EKF3: fix the sign of the SRTM height used for flow scaling
+# PR #34360 - EKF3: fix the sign of the SRTM height used for flow scaling
 
-Prospective PR against master, extracted from #33585. Branch
-`ekf3-srtm-flow-scale-sign`, two commits, base master `4891432f35`
-(2026-09-10). Written and measured 2026-09-10, not yet opened.
+Analysis archive for [ArduPilot/ardupilot#34360](https://github.com/ArduPilot/ardupilot/pull/34360).
+Extracted from #33585. Branch `ekf3-srtm-flow-scale-sign` (andyp1per fork),
+two commits, head `03cabe04c8`, base master `4891432f35`. Opened
+2026-09-10.
 
 ## Status (one line)
 
@@ -167,7 +168,7 @@ Both carried over from #33585's rounds five to seven; do not re-open them.
 ## What is here
 
 ```
-new-ekf3-srtm-flow-scale-sign/
+34360/
   README.md    <- this file
 ```
 
