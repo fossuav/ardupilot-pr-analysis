@@ -465,6 +465,12 @@ freshness guard in, a reset can only fire within 500 ms of a range fusion,
 and the high-tilt end of the table is only reachable transiently after a
 crossing back up through the gate.
 
+The review was answered on the PR at
+<https://github.com/ArduPilot/ardupilot/pull/33484#issuecomment-5621151416>,
+posted 2026-09-10 after `853f3f2177` was pushed. It carries the sweep table
+above, including the caveat that the three commits were not isolated from
+each other in it.
+
 ### Cross-PR: the freshness guard and the rangefinder ceiling
 
 `lastAglRngFuseTime_ms` advances only when a range sample is actually
