@@ -678,6 +678,35 @@ of unrelated review. Rebase this branch onto it once it is open, and drop
 Round six's withdrawal of the fail-low guard stands and is carried into the
 new PR's record, so it is not re-argued there.
 
+### Rebased onto #34360 and the sign commit dropped (2026-09-10)
+
+Head `4fd131e6bf`, seven commits of its own on top of #34360. `535cfca48f`
+(pushed as `d32f4ea2cb`) is gone from this branch: #34360 carries it, and
+until this rebase both did, which `git merge-tree` confirmed would conflict.
+The `terrain_srtm_alt_ms != 0` guard that lived inside the bit-5 commit here
+has moved to #34360 as well, so that commit is one hunk smaller and this PR
+no longer fixes two master defects on its way past.
+
+The rebase moved the base forward **1348 upstream commits**, from
+`20622a3900` to #34360's `4891432f35`. Only one conflict, the SRTM block,
+resolved in favour of #34360's version.
+
+**Two of the three autotests then failed, and it was master's API, not the
+rebase.** `takeoff()` was renamed upstream between the two bases: `alt_min`
+and `max_err` became `altitude_min` and `altitude_max`, and the semantics
+differ - `max_err` is a tolerance, `altitude_max` a ceiling, with the old
+body doing `wait_altitude(alt_min-1, alt_min+max_err)` against master's
+`wait_altitude(altitude_min-1, altitude_max)`. Five call sites translated as
+`altitude_max = alt_min + max_err`, so `takeoff(4, max_err=2)` became
+`takeoff(4, altitude_max=6)`. This is the trap `PR_REVIEW_RULES.md` records,
+and this branch would have hit it the moment it rebased for merge whether or
+not #34360 existed.
+
+All three now pass: `EK3_OptflowAssumeFlatGnd`,
+`EK3_AglKfVelForVelD`, `EK3_TerrainStateFollowsDatumReset`. Note the first
+of those fails on the SmallFastDrone beta branch for the flat-ground
+carry-over reason recorded above, and passes here on master.
+
 ## What is here
 
 ```
