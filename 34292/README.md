@@ -406,6 +406,36 @@ gate fire - `OpticalFlowLimits` flies well above 0.30 m - so what it covers is
 the record surviving the round trip, and a misparse reading large is what
 `check_replay` would catch. Both bugs this branch hit lived in that path.
 
+## Restructure 2026-09-10: 17 commits -> 12, head 5def1557bd
+
+The three commits that shipped known-broken code mid-branch are folded into
+the commits that introduced the defects, so a bisect no longer lands on any
+of them:
+
+| defect | was fixed | now |
+|---|---|---|
+| parameter metadata CI fails | 2 commits later | folded |
+| `log_ROFH` grows, misparsing every older replay log | 8 commits later | folded |
+| uninitialised stack read, SIGFPE under SITL | 8 commits later | folded |
+
+Also folded: the FLOW_HGT_MIN bound and rangefinder-floor note into the
+commit that adds the parameter, and the GUIDED altitude hold into the test
+it fixes. The DAL `_end` retry fix moved ahead of the ROFM write it is a
+prerequisite for, and the Replay ROFM handler now sits immediately after the
+message it handles. The two stale claims are gone: no commit now says ROFH
+carries the height, and the "above RNGFNDx_MIN" wording is right from the
+start.
+
+Verified per commit across all twelve, not just at the tip:
+
+- `ROFH` format string byte-identical to master at **every** commit, so no
+  point in the history misparses an older log.
+- `param_parse.py --vehicle ArduCopter` passes at **every** commit.
+- Each commit builds `./waf copter`.
+- `git diff` between the old head and the restructured head is **empty**, so
+  the fold changed no content.
+- `OpticalFlowFocusHeight` passes at the head.
+
 ## What it does
 
 An optical flow sensor cannot focus close to the ground and what it returns
