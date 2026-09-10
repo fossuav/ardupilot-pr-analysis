@@ -121,10 +121,48 @@ Measured on that test, 2026-09-09, at the commits above:
 The test fails on the base commit with "XKF5 was not logged for both
 cores (saw [0])", so it discriminates.
 
-**Still outstanding:** the dataflash rate before and after on the same
-SITL run. The bandwidth argument above is still an estimate, and the
-fallback to option 2 has not been costed. Do that before opening the PR,
-because it is the one objection a reviewer is likely to raise.
+### The bandwidth number, measured 2026-09-10
+
+The outstanding item above is answered. Measured on the same autotest with
+and without the guard: **21.9 kB/s of log becomes 22.5 kB/s**, +597 B/s for
+the two messages, 2.7% of the log.
+
+Sizes are 45 B for `XKF5` and 29 B for `XKFA` on disk. Copter writes them at
+10 Hz, or 25 Hz with `MASK_LOG_ATTITUDE_FAST`, so per additional core the
+ceiling is +450 B/s (XKF5 at 10 Hz), +1.13 kB/s at 25 Hz, plus +290 B/s for
+XKFA where `EK3_OPTIONS` bit 3 is set. Three cores at 25 Hz with both
+messages is +3.70 kB/s, the worst case.
+
+Small-board risk is low. `LOG_FILE_BUFSIZE` is 16 kB on the smallest boards,
+so +740 B/s is about 4.5% of one second of buffer; the rate limiter takes one
+decision per message id per tick and applies it to every instance, so a
+budget-limited user drops both cores together rather than one core starving
+the other; and `EK3_LOG_LEVEL=1` still removes `XKF5` outright. Option 1
+stands.
+
+### Two corrections from review, 2026-09-10
+
+**The differ-check in the first version of the test discriminated nothing,
+and its rationale was wrong.** It required the two cores' height series not
+to be a prefix of one another, to guard against "logging the primary twice".
+That cannot happen: `C` is written from `DAL_CORE(core_index)`, so a
+duplicated primary carries the same `C` and the both-cores assertion already
+catches it. Worse, the check passes on any two cores merely because they run
+different IMUs - measured at 19.8% of samples differing with both cores on
+the *same* source set - and for `XKFA` the field is a float, where exact
+equality between two independently integrated cores is effectively
+impossible, so that half could never fire. Replaced with an `XKFS` assertion
+that the two cores are on different source sets, which is the premise the
+test actually needs.
+
+**`LogStructure.h` described `XKF5` as "(primary core)"** and that feeds the
+generated log documentation. Corrected. `XKV1` and `XKV2` still say it and
+are still right, because those keep the guard.
+
+**Any FAILED transcript for this test in an old buildlogs tree is a stale
+binary, not the fix failing.** In those runs the first boot log already shows
+`XKF1` carrying both cores while `XKF5` carries only core 0, which is the
+unfixed code path.
 
 ## What is here
 
