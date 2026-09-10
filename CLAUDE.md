@@ -96,6 +96,45 @@ re-run `../32471/data/ab-2026-09-04/harness.py`."
 Whichever route you take, the original finding stays where it is,
 superseded in place. The code moves; the record accumulates.
 
+## Replay against the flight that exposed it
+
+Every PR here that changes EKF3 estimator code names the real flight that
+exposed the problem, and any later change to that code is replayed against
+that flight before it is believed. The per-PR record is
+[REPLAY_LOGS.md](REPLAY_LOGS.md); keep it current in the same session that
+moves the code.
+
+This is the cheapest way to make the cascade above bite. A SITL A/B tests the
+scenario you thought of; a Replay tests the one that actually happened, on
+the sensor stream that produced it. Where both are available the Replay
+outranks the A/B, and a code argument that contradicts it is refuted.
+
+- **Name the flight, or say why there isn't one.** "No log applies" is a
+  conclusion and belongs in `REPLAY_LOGS.md` with its reason, so the next
+  reader does not go looking. A sign error that is identically zero wherever
+  the origin sits at field elevation has no flight that can show it; that is
+  a fact about the defect, not a gap in the evidence.
+- **Check Replay can answer the question before citing it.** It re-runs the
+  estimator, not the vehicle. It cannot show a vehicle-code fix working - the
+  DAL re-feeds the flags the flight recorded - and it only ever sees what the
+  DAL wrote. A log flown without `LOG_REPLAY` carries no `RFRH` records and
+  cannot be replayed at all, however good the data is.
+- **Identify a log by name and fingerprint, never by path.** Logs are never
+  renamed but they move between machines, and the names collide: there are 24
+  files called `log7.bin` on the primary machine, and `INS_ACC_ID` does not
+  separate them because most of these airframes are the same board.
+  `find_log.py` resolves a name plus `STAT_BOOTCNT` against `AP_LOG_ROOTS`.
+  **Never write an absolute log path into this repo** - it is wrong on every
+  other machine, and for a customer log the path itself names the customer.
+- **A later flight supersedes an earlier one.** When a new flight covers a
+  mechanism more directly, move the row in `REPLAY_LOGS.md` and say what it
+  supersedes. The original stays named in the PR's own record, because that
+  is what the finding was made on; the manifest names what to check against
+  now.
+- **A replay status is a claim about a head.** "Validated pre-submission"
+  stops being true the moment the branch moves. Re-run it and date it, or
+  mark it owed.
+
 ## The "Measured and rejected" table is the point
 
 Most PR READMEs here carry a table of changes that look right from source

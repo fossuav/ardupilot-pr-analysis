@@ -81,7 +81,7 @@ log being replayed, while `MSG_CREATE` copies `offsetof(log_X, _end)` bytes
 from the compiled struct. Growing the struct makes the copy run past the
 record, and every field after the insertion point shifts.
 
-Measured on `../../analysis/logs/logm2_log4.bin` (ROFH `len=40`,
+Measured on logm2_log4 (ROFH `len=40`,
 `fmt=ffffIffffB`) against a build that had grown `log_ROFH` to 44: flow
 quality read a constant 89 where the true per-sample values were 70-102, and
 `minHeight` read -1.15e14. It happened to be harmless on that log, because
@@ -154,7 +154,7 @@ evidence rather than the flight evidence for this PR.
 
 ### Resolved 2026-09-05: the floor fired. The flight evidence stands.
 
-Read from `/mnt/d/support/bragg/JK-4Inch/log67.bin`:
+Read from log67 (see `../REPLAY_LOGS.md` to resolve it):
 
 | parameter | value |
 |---|---|
