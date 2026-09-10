@@ -277,16 +277,30 @@ trade. Left as a design call.
 Four inline comments, all on head `76d3538247`.
 
 **The new DAL message ID must go at the end of `LOG_IDS_FROM_DAL`.** ROFM had
-been inserted after ROFH, which renumbers every `LOG_*_MSG` after it. The
-mechanism, traced from the source: Replay copies each `FMT` record from the
-input log into its output verbatim (`LogReader::handle_log_format_msg`) while
-its own startup writer emits a `FMT` for every structure in the binary
-(`LoggerMessageWriter_DFLogStart`, `Stage::FORMATS`), so a shifted ID leaves
-the replay output carrying two names for one type byte. Replay of the old log
-itself is unaffected either way, because dispatch is on the four-character
-name - which is why this does not show up as a parse failure. Moved to the end
-after RTER, with `LOG_STRUCTURE_FROM_DAL` kept in the same order.
-`test.Copter.Replay` passes.
+been inserted after ROFH. Moved to the end after RTER, with
+`LOG_STRUCTURE_FROM_DAL` kept in the same order. `test.Copter.Replay` passes.
+
+The renumbering is real and was measured: the two A/B builds below differ only
+in these files, and their flight logs give ROFH/ROFM/REPH/RTER as
+157/158/159/164 mid-list against 157/164/158/163 at the end, so six DAL
+messages move.
+
+**The reason first written here for it was wrong, and is corrected in place.**
+The claim was that Replay copies the input `FMT` records into its output while
+also emitting its own format table, so a shifted ID leaves two names on one
+type byte. Replay does not do that. It dispatches on the four-character name
+from the log's own `FMT`; `LogReader::handle_log_format_msg` copies each input
+`FMT` verbatim; `Write_Emit_FMT` suppresses any format Replay would add
+outside types 220-230 in a Replay build; and Replay's own output messages sit
+*before* the DAL block in the enum (`LOG_IDS_FROM_NAVEKF3` at
+`AP_Logger/LogStructure.h:1288` against `LOG_IDS_FROM_DAL` at `:1341`, XKF1 is
+type 44), so they do not move. Replaying `data`'s flow log through a
+mid-list Replay binary and an end-of-list one gave **byte-identical output**,
+and every scanned log has exactly one `FMT` per type byte.
+
+So the rule stands as the maintainer's, and because stable on-disk numbering
+matters to anything outside this tree that caches ID to name - not because a
+failure was demonstrated. Do not quote a mechanism for it that has not been.
 
 **"is zero right? if we're actually moving that seems like a bad idea"**,
 followed by "possibly just set flowDataToFuse = false?". This is M1 of the
