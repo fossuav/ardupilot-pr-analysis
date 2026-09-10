@@ -1,7 +1,9 @@
 # PR #33484 - recover horizontal velocity from a single-axis optical-flow lockout
 
 Analysis archive for [ArduPilot/ardupilot#33484](https://github.com/ArduPilot/ardupilot/pull/33484).
-Branch `pr-vel-flow-axis-gate` (andyp1per fork), base `master`. Real-flight
+Branch `pr-vel-flow-axis-gate` (andyp1per fork), base `master`, head
+`bfb41f69a1` (11 commits) since the two flight-test fixes were pushed
+2026-09-10. Real-flight
 numbers are cited inline; no real-flight logs are committed here. Option bits
 and log message names below are the upstream ones (AglKfForOptflow is
 `EK3_OPTIONS` bit 3, the AGL KF logs as `XKFA`); the flights were flown on the
@@ -243,10 +245,14 @@ the existing `flow aiding unhealthy` message carry the churn warning.
 
 `SmallFastDrone-4.7.1-beta` over base `fd37f6f5fa`:
 
-| fix | commit |
-|---|---|
-| 1 range freshness | `23299c535c` |
-| 2 reset count visible | `ad8cc7fbf3` |
+| fix | commit (beta branch) | commit (this PR) |
+|---|---|---|
+| 1 range freshness | `23299c535c` | `bfb41f69a1` |
+| 2 reset count visible | `ad8cc7fbf3` | `e49918639e` |
+
+Both pushed to the PR 2026-09-10 and explained in
+<https://github.com/ArduPilot/ardupilot/pull/33484#issuecomment-5617276651>,
+which states the master caveat rather than leaving a reviewer to find it.
 
 Fix 2 took the "emit on every reset" option rather than the count-in-the-
 message-once option, and carries the running `flowVelResetCount` so the
