@@ -257,9 +257,32 @@ of `AID_RELATIVE`, and the reset path is gated on `AID_RELATIVE`, so five
 messages per window is the ceiling. *Derived from the source, not
 measured.*
 
+**Withdrawn 2026-09-10, and it was labelled derived for exactly this
+reason.** The derivation missed that the window has to be *reached*. It only
+restarts on a reset more than `FLOW_RESET_WINDOW_MS` after the one that
+opened it, so a reset period T reaches `floor(10000/T) + 1`, and
+`FLOW_RESET_MAX_IN_WINDOW` needs T <= 2.5 s. For T between 2.5 s and 10 s the
+count tops out at 4, `flowVelResetUnhealthy` never latches, and the messages
+continue indefinitely - at T = 2.6 s that is 0.385 Hz against the old code's
+0.096 Hz. Leaving `AID_RELATIVE` additionally needs `bodyOdmFusionTimeout`
+(`Control.cpp:313`), so a vehicle fusing body odometry alongside flow never
+leaves it and keeps resetting either way. There is no ceiling; the reset rate
+is the only bound.
+
 Fix 1 defines its own `FLOW_RESET_RANGE_MAX_AGE_MS` (500) locally rather
 than using this branch's `aglKfRngGapMax_ms` member, so it ports to this
-PR without stacking on #33478, as argued above.
+PR without stacking on #33478, as argued above. Independence of *code* did
+not buy independence of *evidence*, though - see the master Replay result
+below. The 500 ms is now justified against `AP_NavEKF3_Measurements.cpp`'s
+own three-sample median freshness bound, which is on master, rather than
+against #33478's constant, which is not.
+
+The gate sits in the outer condition, not on the reset branch. On the reset
+branch a stale range falls through without refreshing `flowFuseTimeAxis_ms`,
+so the lockout predicate stays true on every later sample and the
+low-quality branch above is re-evaluated on each one - a single poor sample
+then latches `flowVelResetUnhealthy` for the flight. Found in review
+2026-09-10, before anything was pushed.
 
 #### The Replay sweep, rerun with the gate in
 
@@ -278,6 +301,17 @@ All three outdoor misfires are suppressed and not one indoor recovery is.
 The indoor excursions are identical to the metre either way, which is the
 stronger half of the result: the gate does not merely leave the reset
 count alone, it leaves the trajectory alone.
+
+**That result belongs to this branch, not to master (2026-09-10).** Replayed
+on the PR's own master-based tree the same log fires **two** resets with the
+gate and two without - it suppresses nothing there, because on master the
+range is fresh at both. The 3 -> 0 above was measured on
+`SmallFastDrone-4.7.1-beta`, which carries the AGL KF work of #33359 and
+#33478; something in that stack is what lets `lastAglRngFuseTime_ms` go
+stale at the tilt-gate crossings. Both write sites for that timestamp are
+identical on the two trees, so the difference is in the surrounding
+conditions and has not been run down. The commit against #33484 therefore
+cannot claim this measurement, and says so.
 
 The mechanism is the obvious one once measured. Indoors the rangefinder
 is in range and the AGL KF keeps fusing it, so the range is always fresher
