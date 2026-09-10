@@ -36,7 +36,7 @@ that PR, not what could be.
 
 | PR | log | what it exposes | replay status |
 |---|---|---|---|
-| [33359](33359/) | log280 | indoor alt-hold divergence at the rangefinder height-source switch (std 1.14 / max 5.40 m) | validated pre-submission; corrected 2026-09-10 - this row named log281, which is the flight flown *with* the fix, so replaying it would compare a fixed core against a fixed core |
+| [33359](33359/) | log280 | indoor alt-hold divergence at the rangefinder height-source switch (std 1.14 / max 5.40 m) | validated pre-submission, and still valid after the 2026-09-10 head move to 640cd4a5fc (comments only); corrected 2026-09-10 - this row named log281, which is the flight flown *with* the fix, so replaying it would compare a fixed core against a fixed core |
 | [33478](33478/) | log35, log38, log41 | velD fusion on a baro-only vehicle with no velZ source | validated, table in the record |
 | [33484](33484/) | log A, log B, log C | the single-axis flow lockout the recovery is for | 500 ms threshold tuned on these |
 | [33484](33484/) | log7 | the recovery misfiring at the flow tilt gate | re-run 2026-09-10 on the PR's own tree: the gate suppresses **nothing** there, 2 resets either way. The 3 -> 0 is on the beta branch with #33359 and #33478 stacked |
