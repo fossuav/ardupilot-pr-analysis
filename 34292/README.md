@@ -213,6 +213,37 @@ controls, not three tests. Uncovered: the entire DAL/Replay path with a
 non-zero value, the second-log-in-one-power-cycle case, and the Plane
 `EK3_FLOW_USE=2` terrain path of M2.
 
+## SITL A/B 2026-09-10: M1 confirmed - the floor costs 5x on a translating vehicle
+
+Run on the PR's own tree (head 76d3538247), Copter SITL, flow-only nav with
+an analog rangefinder, hover ~3 m AGL. ALT_HOLD with a pitch stick input, so
+the stick and not the estimator decides the real motion; truth is `SIM2`,
+estimate is `XKF1`, averaged over samples where truth exceeds 1 m/s.
+
+| arm | FLOW_HGT_MIN | mean truth speed | mean EKF speed | est/truth |
+|---|---|---|---|---|
+| floor off | 0.0 | 4.32 m/s | 4.32 m/s | **1.00** |
+| floor on | 5.0 | 5.19 m/s | 1.07 m/s | **0.21** |
+
+With the floor inactive the EKF tracks ground speed exactly. With the floor
+active while the vehicle is genuinely translating underneath it, the
+velocity estimate collapses to about a fifth of truth. That is the
+fabricated zero being fused as a full-confidence measurement, not the sample
+being discarded - discarding it would leave the estimate dead-reckoning near
+the last good value, not pulled toward zero.
+
+Caveats worth keeping with the number: this is a deliberately mis-set floor
+(5 m, the PR's clamp ceiling) and the flown value is 0.1 m, where the
+exposure is far smaller. The point is that the 5 m clamp bounds a typo, not
+a plausible mis-set, and that the failure mode is a vehicle which believes
+it is nearly stationary while doing 5 m/s. It also confirms the mechanism
+behind M2: the same fabricated zero reaches `EstimateTerrainOffset` before
+`FuseOptFlow`, and on Plane the terrain estimator is its only consumer.
+
+Not tested here: the Plane `EK3_FLOW_USE=2` terrain path of M2, and whether
+`R_LOS` inflation while the floor is active would be enough to make the zero
+behave as a soft prior instead.
+
 ## What it does
 
 An optical flow sensor cannot focus close to the ground and what it returns

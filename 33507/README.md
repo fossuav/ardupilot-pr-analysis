@@ -239,6 +239,80 @@ the two design findings above (the decay gated on a per-sample flag, and the
 fact that the under-tracking evidence does not isolate the bias state) need
 measurement before either the default or the decay is touched.
 
+## SITL A/B 2026-09-10: both review findings confirmed, and 0.3 is the wrong lever
+
+Two runs on the PR's own tree (head 2532ac916e), Copter SITL, optical-flow
+hover with an analog rangefinder, `EK3_OPTIONS=8`, single lane, and
+**`SIM_ACC1_BIAS_Z = 0` throughout** - there is no true accel bias anywhere
+in either test, so every non-zero bias estimate below is the defect.
+
+### A/B 1: aglKfB tracks climb rate, not accel bias
+
+Steady climbs and descents at both process-noise values, bias averaged over
+the last 12 s of each phase, climb rate by least squares on `XKFA.HAgl`:
+
+| Q | phase | w (m/s) | aglKfB | predicted w/tau_eff |
+|---|---|---|---|---|
+| 0.05 | hover | +0.000 | -0.007 | +0.000 |
+| 0.05 | climb | +0.377 | **+0.155** | +0.184 |
+| 0.05 | descent | -0.412 | **-0.155** | -0.201 |
+| 0.30 | hover | +0.005 | -0.002 | +0.003 |
+| 0.30 | climb | +0.375 | **+0.169** | +0.183 |
+| 0.30 | descent | -0.407 | **-0.181** | -0.199 |
+
+The sign follows the climb direction, the magnitude scales with the rate,
+and it is essentially independent of Q - +0.155 against +0.169 for a 6x
+change in process noise. Hover returns it to zero every time. The measured
+values sit 8-23% below the `w/tau_eff` prediction, which is expected: the
+rangefinder correction partially opposes the drift the decay creates, so
+`w/tau` is an upper bound rather than an equality. **Finding 1 confirmed.**
+
+### A/B 2: the under-tracking slope is a height-gain effect
+
+Same airframe, oscillating height (+/- ~2 m bobs on a 8 s cycle, 12 cycles
+per arm) so the filter's 1.8 s time constant shows as attenuation. An
+earlier run using sustained ramps gave slope ~1.0 in every arm and settled
+nothing - on a ramp a constant lag does not attenuate a change-vs-change
+slope. The stimulus has to oscillate, which is what the flights did.
+
+Regress AGL-KF height change on true height change (`SIM.Alt`):
+
+| arm | EK3_AGL_ABIAS_P | EK3_RNG_M_NSE | slope 1 s | 2 s | 5 s | HAglStd | mean bias |
+|---|---|---|---|---|---|---|---|
+| A | 0.05 | 0.5 | 0.747 | 0.710 | 0.712 | 0.117 | +0.010 |
+| B | 0.30 | 0.5 | 0.907 | 0.870 | 0.875 | 0.142 | -0.005 |
+| C | **0.05** | 0.15 | **0.955** | **0.917** | **0.921** | **0.046** | -0.003 |
+
+Arm A reproduces the flight signature this record used to justify 0.3
+(measured 0.59-0.71 at 0.05); arm B reproduces the improvement (0.83-0.94 at
+0.3). Arm C holds Q at 0.05 and raises the height gain directly by lowering
+the rangefinder noise instead - and **beats arm B**, at 2.5x lower reported
+height uncertainty.
+
+So the slope responds to the height gain, not to the bias state. Note also
+that arm B *inflates* `HAglStd` (0.117 -> 0.142) while improving the slope,
+exactly as Qbias propagating through `P[0][2] -> P[0][1] -> P[0][0]`
+predicts, whereas arm C improves the slope and tightens the variance. And
+the mean bias is ~0 in all three arms, because there is no bias to learn.
+**Finding 2 confirmed: EK3_AGL_ABIAS_P is acting as a proxy for the height
+gain in this evidence.**
+
+### What this decides
+
+- **Do not raise the default to 0.3 on the strength of the under-tracking
+  numbers.** That evidence does not isolate the bias state, and the same
+  improvement is available without touching the bias process noise.
+- Arm C is a **diagnostic, not a recommendation**: the SITL rangefinder is
+  nearly noise-free, so `EK3_RNG_M_NSE = 0.15` is free here and would be
+  over-trusting on a real sensor.
+- The decay gate (finding 1) has to be fixed before any default is chosen,
+  because it is what couples the bias state to vertical motion.
+- What is **not** settled: whether a higher default is needed to track
+  genuine thermal drift. That argument is separate and still standing - the
+  bias-lag table above shows Q does help a real ramp - and it needs its own
+  test with a non-zero `SIM_ACC1_BIAS_Z` ramp. These two runs say only that
+  the *published* justification is the wrong one.
+
 ## The problem
 
 The 2-state AGL KF integrates `velDotNED.z`, which still carries the active
