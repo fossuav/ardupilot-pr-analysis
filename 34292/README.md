@@ -1,9 +1,12 @@
 # PR #34292 - optical flow minimum focus height (FLOW_HGT_MIN)
 
 Analysis archive for [ArduPilot/ardupilot#34292](https://github.com/ArduPilot/ardupilot/pull/34292).
-Branch `pr-flow-hgt-min-tridge-v2` (andyp1per fork), base `master`, head
-`78a33d089d` (2026-09-10, local and unpushed; the pushed PR head is
-`5def1557bd`).
+Branch `pr-flow-hgt-min` (andyp1per fork), base `master`, head
+`a204212074`, pushed 2026-09-10 18:40Z. The three commits that added,
+removed and then properly replaced the terrain-estimator flag were folded
+into one before pushing, so the PR is 16 commits; verified as an identical
+tree by an empty `git diff` and a range-diff. tridge's three threads are
+answered in the PR.
 
 **Two sessions worked this branch on 2026-09-10 and each force-pushed over
 the other's base.** The tridge round below was built on `946708d630`,
