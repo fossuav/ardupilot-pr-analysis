@@ -525,9 +525,38 @@ This PR deliberately defines its own local `FLOW_RESET_RANGE_MAX_AGE_MS = 500`
 so it does not stack on #33478. Correct for independence, duplicated once both
 are in.
 
-*Derived from the source and the timeout constants, not measured* (tier 3). No
-flight or SITL run in this record flies above the range finder ceiling with the
-lockout present.
+**Correction, same day: the last sentence of this section as first written was
+wrong.** It said "no flight or SITL run in this record flies above the range
+finder ceiling with the lockout present". log7 does exactly that, and it is the
+flight this guard was written from. `optflow_horizontal_velocity_lockout.md`
+says so directly: "On log7 the range finder was above its range and the tilt
+gate had stopped range fusion - the same event that created the lockout, which
+is why the two coincide." The error was mine, from deciding the question off the
+source without opening the flight record that answers it.
+
+What the flight evidence adds, and it is the stronger form of the decision
+above:
+
+- **Above the ceiling with the lockout present, every recovery the vehicle got
+  was a misfire.** All three of log7's resets fired in the first samples after
+  `cos(tilt)` climbed back through `DCM33FlowMin`, two of them re-anchoring to
+  roughly a fifth of truth (13.98 -> 6.58 and 14.67 -> 2.87 m/s against 12.28
+  and 12.71 raw GPS). So losing recovery in that regime is not a cost to trade
+  against #33585; on the only flight that has been there, recovery was wrong
+  every time it fired.
+- **The Replay sweep prices it.** 3 resets without the gate, 0 with it on log7,
+  while logs A, B and C keep all 10, 14 and 5 of their indoor recoveries and
+  their peak excursions are identical to the metre either way.
+- **The middle row of the table above is measured, not derived.** The tilt gate
+  produced 15 blind runs longer than 0.5 s with the longest at 4.0 s, so every
+  measured misfire sits inside the 500 ms to 5 s window, and `aglKfValid`'s 5 s
+  timeout would not have fired on any of them. The guard is the only thing that
+  catches them.
+
+The bottom row - a sustained stay above the ceiling, beyond 5 s - remains
+derived from the source and the timeout constants (tier 3). No flight in this
+record stays up there that long with the lockout present, and the point stands
+that `aglKfValid` has already ended recovery by then.
 
 ### The Replay sweep at the reviewed head (2026-09-10)
 
