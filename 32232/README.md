@@ -1,8 +1,8 @@
 # PR #32232 - Range finder ground clearance fusion (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#32232](https://github.com/ArduPilot/ardupilot/pull/32232).
-Branch `ek3_gnd_clear` (rishabsingh3003 fork). Head `28cbfe4adf` (pushed
-2026-09-07); the review work started from `a628150687`. Seven commits sit on
+Branch `ek3_gnd_clear` (rishabsingh3003 fork). Head `8bec444e50` (pushed
+2026-09-11); the review work started from `a628150687`. Seven commits sit on
 top of rmackay9's and rishabsingh3003's, neither of which was rewritten. All
 numbers below are SITL; no hardware and no real-flight logs.
 
@@ -281,8 +281,11 @@ substitution does refresh `rngValidMeaTime_ms` (`Measurements.cpp:109`),
 which is why the freshness gate on the range term is recorded above as a
 no-op. What does not follow is that nothing releases.
 
-No code change. The refutation is **not yet posted to the PR**, so a reader
-of #32232 currently sees a REQUEST CHANGES finding with no response.
+No code change. Posted to the PR on 2026-09-11 at 12:15Z, taking the findings
+in turn; the reply gives the indoor leg as 10.3 m climbed against 10.5 m
+estimated, which is the squashed-branch figure from "Final state" rather than
+the 10.2 m recorded above at the pre-squash head. Both are 5 Hz numbers and
+both are superseded by the soak below.
 
 ### Fixed - the autotest was measuring three of its five legs at 5 Hz
 
@@ -323,9 +326,99 @@ no Sub job in the CI matrix.
   and the landing half.** All three are accurate and all three are already
   in "Open defects" or the PR body; they are description work, not code.
 
-### Owed
+### Owed - discharged 2026-09-11
 
 Re-run the five-leg set at `8bec444e50` and replace the leg numbers above
 with 20 Hz figures throughout. Until then the branch carries a test whose
 sampling changed, which is exactly the kind of change that moves a margin
 without moving a mechanism.
+
+Done, as a 20-iteration soak: see "Soak at `8bec444e50`" below. Following the
+repo's own rule, the numbers above keep their values and the head they were
+taken at; the soak is a separate measurement, not a correction of them. It
+does resolve the provenance question this section raised - leg 3 at 20 Hz
+reads 6.4/6.6, consistent with the 6.4/6.5 in "Sampling note" and not with
+the 6.4/5.9 of the 5 Hz set.
+
+## Soak at `8bec444e50` (2026-09-11)
+
+20 iterations of `Copter.EKF3RangeFinderOnGround`, 19 passed. This is the set
+the "Owed" section above asked for: the first head at which the test holds its
+20 Hz `LOCAL_POSITION_NED` rate across all four reboots, so all five legs are
+sampled at the same rate for the first time. Error is estimate minus truth;
+the bound is a quarter of the climb commanded.
+
+| leg | error over 19 passing runs | fails at |
+|---|---|---|
+| 1 armed and stationary, baro drifting 0.3 m/s | -0.01 m, every run | 1 m |
+| 2 sensor comes into range on the climb | -0.4 to -0.5 m | 1.5 m |
+| 3 sensor never in range | +0.1 to +0.3 m | 1.5 m |
+| 4 terrain path, baro as the height source | 0.0 m, every run | -2 m |
+| 5 indoor, no vertical velocity source | -0.3 to +0.7 m | 2.5 m |
+
+Leg 5 is the leg the refuted finding turns on. Worst case 0.7 m of error
+against a 10.3 m climb, where a pinned estimate would read near 0 - four times
+the failure bound away, which is the same conclusion the 10.3/10.2 measurement
+reached at the pre-squash head and the 10.3/10.5 one reached after the squash.
+Three measurements, three heads, one conclusion.
+
+Leg 2's -0.4 to -0.5 m is systematic rather than spread: the estimate lags the
+truth by about half a metre through the climb in every one of the 19 runs. It
+is the largest error in the test and it sits in the leg that passes either way.
+Worth knowing that leg 2 was **never** affected by the stream rate - it lies
+between the first and second reboots - so the movement between the 5 Hz set and
+this one is not all attributable to the rate fix. Some of it is run-to-run
+spread, which is what motivated running 20 rather than 1.
+
+`soak.sh` in this directory runs the set and prints the per-leg table. One
+iteration is about 11 s of wall clock for 10.3 minutes of sim time.
+
+### The one failure was the harness, not the test
+
+Iteration 17 failed at `arducopter.py:15376`, the reboot before leg 3:
+`reboot_sitl()` -> `detect_and_handle_reboot()` raised "Did not detect reboot"
+after `get_parameter(STAT_BOOTCNT)` returned None. SITL had restarted and
+accepted the connection; the parameter fetch stalled, and the sim clock jumped
+from 3.2 to 268 minutes while the harness waited. No position assertion and no
+EKF assertion was involved.
+
+This is **not** the flake the automated round predicted. That one was leg 5
+taking `reboot_sitl()`'s 1 m startup-location default after the longest climb,
+it is fixed in code at `8bec444e50`, and it did not recur in 20 runs. What the
+soak found instead is that four reboots give this test about four times a
+normal test's exposure to a reconnect stall - a property of the harness, not of
+anything this PR changes. One observation in 20; no rate attached to it.
+
+The round asked for roughly 100 iterations before merge. 20 were run.
+
+## Posted (2026-09-11)
+
+- 12:15Z, comment answering the automated round: headline finding disputed, the
+  two test findings reported fixed, the `get_time_flying_ms()` alternative
+  declined.
+- 18:15Z, PR description patched via `gh api -X PATCH repos/.../pulls/32232`
+  (`gh pr edit` still fails against this repo on the deprecated projectCards
+  field): testing table restated from the soak, and the three accepted points
+  added to the known-issues list.
+- 18:2xZ, comment with the soak figures and the reboot-stall failure.
+
+The "Declined" triage above records master's `onGround` fallback deletion, the
+disarmed substitution and the landing half as "already in Open defects or the
+PR body". They were in neither - the Open defects list has the dual range
+finder, the mid-air re-arm, the gyro sample rate and the fixed-wing case, and
+the PR body had the same four. They are now in the PR body, which is what the
+12:15Z comment promised.
+
+A worktree is left at `../pr-32232`, detached at `8bec444e50` and built, so the
+next round does not pay for the clone and submodules again.
+
+## Still open after this round
+
+- The soak is a fifth of what the round asked for.
+- @rmackay9's 2026-02-26 replay-test request is unanswered. The subtest 4 row
+  above shows a -10.7 m terrain-offset delta with the release disabled, so "no
+  impact on baro vehicles" is not self-evident.
+- @tridge's 2026-03-23 CHANGES_REQUESTED is still live: two of its three points
+  are addressed, the `optFlowTakeoffDetected` rename was answered by going the
+  other way.
+- The four defects under "Open defects" are untouched.
