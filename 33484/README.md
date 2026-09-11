@@ -553,10 +553,73 @@ above:
   timeout would not have fired on any of them. The guard is the only thing that
   catches them.
 
-The bottom row - a sustained stay above the ceiling, beyond 5 s - remains
-derived from the source and the timeout constants (tier 3). No flight in this
-record stays up there that long with the lockout present, and the point stands
-that `aglKfValid` has already ended recovery by then.
+The bottom row - a sustained stay above the ceiling, beyond 5 s - is no longer
+purely derived either. **log8 (SFD-O4, 2026-09-09) is that regime, measured.**
+Its 88 s acro segment ran at 17.3 m/s mean and ~29 m mean AGL (max 61) against
+the same `RNGFND1_MAX=15`, and the range finder returned nothing for about 96%
+of it (`RFND.Stat` median 1, mean 1.04). What the flow lane did there was not
+misfire a recovery - it took six `stopped aiding` / `started relative aiding`
+dropouts between 129.6 s and 201.6 s and accumulated **493 m** of position
+error, which later false-tripped the SRCF offset detector. See
+`../analysis/logs/log8_sfdo4.md`.
+
+That is the bottom row happening: with no range fusion for most of 88 s,
+`aglKfValid` is false, the recovery block cannot run, and the vehicle takes the
+`flowFusionTimeout` demote instead. The cost above the ceiling is real and large,
+and none of it is owed to this PR's guard - it is what the regime does already.
+It also says what the fix for that regime is, and it is not extending an
+AGL-KF-gated recovery into it: it is giving flow scaling a height source that
+survives up there, which is what #33585 and #34361 are for.
+
+Two cautions on log8, because it is easy to over-read:
+
+- Its firmware is `V4.7.0 (f856f69f)` on `sfd-srcf-origin-fixes`, not log7's
+  `V4.7.1 (797f6854)` on `SmallFastDrone-4.7.1-beta`, and the record notes no
+  `flow vel reset (axis lockout)` statustext and no `XKF7.FVC`. **Whether the
+  recovery was even compiled into that build is not established**, so log8 is
+  evidence about the regime, not about the recovery firing in it.
+- Its six dropouts are the `flowFusionTimeout` path - both axes stale for 5 s -
+  which is a different event from the single-axis lockout this PR addresses. The
+  record does not count single-axis lockout episodes on log8, or on any log. See
+  the open item below.
+
+### Hypothesis, untested: a fresh range can still be the wrong range
+
+Raised by log8's profile, not measured, and the `.bin` is not on this machine.
+After a gap longer than `aglKfRngTimeout_ms`, `UpdateAglKf` hard-resets
+`aglKfH` from a single tilt-corrected reading and immediately sets
+`lastAglRngFuseTime_ms` and `aglKfValid` (`AP_NavEKF3_OptFlowFusion.cpp:981-991`).
+So one `Good` sample re-opens the recovery window for 500 ms. High above the
+ceiling, any `Good` sample is by construction a short reading - at most
+`RNGFND1_MAX` against a much larger true AGL - so `aglKfH` would be reset low
+and a reset firing inside that window would scale velocity by roughly
+`RNGFND1_MAX / true AGL`. On log8's numbers that is about 15/29, a factor of two.
+
+The freshness guard does not catch this, because the range genuinely is fresh.
+It is the same failure as the log7 misfires by a different route: not a stale
+`aglKfH`, but a freshly wrong one.
+
+### Open: nothing counts lockout episodes, only resets
+
+Every count in this record is of *resets that fired* (log7's three, the Replay
+sweep's 10/14/5) or of *aiding dropouts* (log8's six). Nothing counts how often
+the single-axis lockout condition - one axis stale beyond
+`FLOW_AXIS_LOCKOUT_MS` while the other still passes - was actually entered. That
+is the denominator: it says how often the recovery gets a chance to act, and
+therefore what fraction of chances it takes and how many it declines.
+
+On log7 the tilt gate alone produced 15 blind runs longer than 0.5 s in the acro
+segment against three resets, so the two numbers are not close and the gap is
+not explained. It is worth logging the condition rather than only its
+consequence - the counter already exists for resets (`XKF7.FVC`), and an episode
+counter beside it would cost one field.
+
+Whether it can occur depends on whether any `Good` samples appear that far above
+the ceiling. `RFND.Stat` mean 1.04 against a median of 1 says the status was not
+always NoData, but not what the excursions were. **Checkable directly from
+log8.bin**: look for `Good` status samples during the acro segment and whether
+any fall within 500 ms of a single-axis lockout. Until then this is a mechanism
+with a plausible route and no evidence that it fired.
 
 ### The Replay sweep at the reviewed head (2026-09-10)
 
