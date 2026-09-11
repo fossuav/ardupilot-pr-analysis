@@ -2,8 +2,10 @@
 
 Analysis archive for [ArduPilot/ardupilot#32768](https://github.com/ArduPilot/ardupilot/pull/32768).
 Branch `pr-baro-drift-minimum` (andyp1per fork), base `master`, head
-`d085579474`, 25 commits (2026-09-07, dev-call review APPROVED contingent on
-`sitltest-copter-tests2b` and `sitltest-quadplane` reporting green). All
+`0ca1c9e775`, 26 commits (2026-09-11). The 2026-09-07 dev-call review
+APPROVED at `d085579474`, contingent on `sitltest-copter-tests2b` and
+`sitltest-quadplane` reporting green; pushing the commit below moved the head
+past it, so that verdict is now stale and the PR needs a fresh round. All
 committed data is SITL; real-flight numbers are cited inline and their logs
 are not committed.
 
@@ -1100,3 +1102,40 @@ Tools/autotest/autotest.py --no-configure test.Copter.RudderDisarmMidair   # fai
 - Reviewers: @tridge (suggested mimicking Plane's periodic reset), @rmackay9,
   Paul Riseborough (EKF author; "less is more", datum reset should not touch
   velocity/covariance - which the velocity-reset finding confirms).
+
+## HeightDatumKeptOnMidairRearm was charging harness latency to its own bound (2026-09-11)
+
+Found while running the SFD refresh's test set, not on this branch: the 4.7
+stack carried a stale copy of the test and it failed its own "descent arrested
+above 30 m" assertion at 12.1 m. The controller was never the problem.
+
+Probed directly - a throwaway variant of the test that samples
+`LOCAL_POSITION_NED` at 20 Hz through the recovery instead of asserting:
+
+| | |
+|---|---|
+| re-arm | 119.4 m, `vz` 16.0 m/s |
+| deceleration onset | 0.40 s after the loop starts |
+| deceleration achieved | **13.67 m/s2** |
+| height lost arresting | **9.0 m** |
+
+So ALT_HOLD arrests a 16 m/s fall in 9 m. What the assertion was actually
+measuring was the gap between `change_mode('ALT_HOLD')` and `set_rc(3, 1700)`:
+the vehicle fell through the mode-change round trip with no throttle demand
+waiting for it, 39 m at 16 m/s on the 4.7 stack.
+
+Asking for the climb first is `0ca1c9e775`. Measured on this branch, not
+carried over from 4.7: the arrest moves from **135.5 m to 154.7 m**. The test
+passed either way here - this branch already takes off at 250 m and raises the
+stream rate before takeoff - so it is margin, not a fix. It is worth having
+because the cost is harness latency, which is not bounded on a loaded CI
+machine, and the bound it eats into is a safety assertion.
+
+*Tier 2 (SITL), both numbers taken at `d085579474` and `0ca1c9e775`
+respectively.*
+
+**Not changed here, and it must not be:** `sitl_start_location()` returns a
+`mavutil.location` on 4.7, which has no `get_alt_m()`, so the SFD branch adapts
+that line and the `Location(...)` beside it. Master's `Location` does have the
+method. That adaptation is recorded in the SFD refresh notes and belongs
+nowhere near this PR.
