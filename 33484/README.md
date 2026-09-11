@@ -483,6 +483,52 @@ that option to stay airborne above the range finder has no lockout
 recovery while it is up there. Raised by the review, not yet decided, and
 it wants deciding across the two PRs rather than emerging.
 
+**Decided 2026-09-11, and the exposure is a 4.5 s slice rather than "while it
+is up there".** Walking the timeline above the ceiling, where no range sample
+is ever `Good` so `rangeDataToFuse` stays false:
+
+| time since last range fusion | recovery | owed to |
+|---|---|---|
+| 0 to 500 ms | fires as before | - |
+| 500 ms to 5 s | **deferred** | this PR's guard |
+| beyond 5 s | already unavailable | pre-existing |
+
+The third row changes the answer. `UpdateAglKf` clears `aglKfValid` once
+`imuSampleTime_ms - lastAglRngFuseTime_ms` passes `aglKfRngTimeout_ms`, which
+is 5000 (`AP_NavEKF3_OptFlowFusion.cpp:902`, acted on at `:967-972`), and the
+recovery block's own precondition is
+`option_is_enabled(AglKfForOptflow) && aglKfValid`. So beyond 5 s there was
+never any recovery up there to lose, before this PR or after it.
+
+What the guard actually removes is the 500 ms to 5 s window - and that is
+precisely the window in which `aglKfH` is coasting on IMU integration with no
+range correction, which is the condition that produced the three outdoor
+misfires above (`aglKfH` 2.20 m against a true 6.23 m at the worst). The slice
+removed is the slice measured to be wrong. That is the fix working, not a
+regression against #33585.
+
+The structural point underneath is the part that wants a decision rather than a
+measurement: the recovery is hard-gated on the AGL KF, while the flow fusion it
+recovers is not. `heightAboveGndEst` falls back to `terrainState - pd` and then
+to the SRTM altitude (`:306-314`), so above the ceiling #33585 keeps flow
+*fusion* alive on a height source the *recovery* structurally cannot use.
+Extending recovery into that regime means scaling the reset from whichever
+source `FuseOptFlow` actually used, and gating freshness on that same source
+rather than on `lastAglRngFuseTime_ms`. That is a feature, and it belongs to
+whichever PR wants to own it - not a defect in either as they stand.
+
+One tidy-up owed at merge, whichever lands second: #33585 already carries
+`aglKfRngGapMax_ms = 500` as a `static constexpr` in `AP_NavEKF3_core.h:1355`
+(from #33478), answering the same "is the range current" question for the
+`v_agl` decay and for `aglKfRngCurrent` in `AP_NavEKF3_PosVelFusion.cpp:768`.
+This PR deliberately defines its own local `FLOW_RESET_RANGE_MAX_AGE_MS = 500`
+so it does not stack on #33478. Correct for independence, duplicated once both
+are in.
+
+*Derived from the source and the timeout constants, not measured* (tier 3). No
+flight or SITL run in this record flies above the range finder ceiling with the
+lockout present.
+
 ### The Replay sweep at the reviewed head (2026-09-10)
 
 The three code changes above all touch the filter, so they were replayed
