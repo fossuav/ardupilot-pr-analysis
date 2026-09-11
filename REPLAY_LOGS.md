@@ -41,7 +41,7 @@ that PR, not what could be.
 | [33484](33484/) | log A, log B, log C | the single-axis flow lockout the recovery is for | 500 ms threshold tuned on these; re-run 2026-09-10 as a before/after over the review fixes, `bfb41f69a1` vs `c3db493b9a` (amended to `853f3f2177`, comment only) - B loses one reset to the unhealthy latch gate, A and C unchanged |
 | [33484](33484/) | log7 | the recovery misfiring at the flow tilt gate | re-run 2026-09-10 on the PR's own tree: the gate suppresses **nothing** there, 2 resets either way. The 3 -> 0 is on the beta branch with #33359 and #33478 stacked. Re-run again at `c3db493b9a` (now `853f3f2177`): still 2 resets, but now **3 deferrals reported** where the tree was previously silent |
 | [33507](33507/) | log311, log66 | accel-Z bias, PD drift over the hover | logs **resolved 2026-09-10** (see the private index); re-run **attempted and blocked** - Replay cannot emit XKFA when replaying these logs, so the bias state is unobservable. PD drift, the available proxy, does not separate: -0.0029 to +0.0005 m/s across pre-fix/fixed and Q 0.05/0.30 |
-| [33585](33585/) | log308 | AltHold demotion at the rangefinder ceiling | validated pre-submission at an earlier head; force-pushed to `a4d8966c85` 2026-09-10 and **not re-run since** |
+| [33585](33585/) | log308 | AltHold demotion at the rangefinder ceiling | validated pre-submission at an earlier head; force-pushed to `a4d8966c85` 2026-09-10, then `4fd131e6bf`, then `36f86f06eb` 2026-09-11 (terrain-database flow scale gated on `terrainAltUsable()`) and **still not re-run**. Two heads behind, and the new commit is on the flow scale path log308 exercises |
 | [32972](32972/) | log7 | finding 6, the height floor blocking a correction in cruise | **owed** - not run |
 | [34292](34292/) | log67 | the near-ground flow floor | partial; the record notes replay does not reproduce the disarm path. Head 337cf08df6 withholds the zeroed sample from the terrain estimator, which is inert on Copter (EK3_FLOW_USE=1) so log67 is unaffected, but a Plane log would be needed to exercise it |
 | [34361](34361/) | log7 | getHAGL reporting nothing while the filter flies on a database AGL | **not applicable** - see below |
@@ -57,7 +57,7 @@ Recorded so nobody looks for one. "No log" here is a conclusion, not a gap.
 | PR | why |
 |---|---|
 | [34360](34360/) | the sign error is 2 x the terrain height above the EKF origin, so it is exactly zero at a field where the origin sits on the ground - which is every flight in this archive. Only SITL over relief exposes it |
-| [32232](32232/) | found by #33585's autotest, not in flight |
+| [32232](32232/) | found by #33585's autotest, not in flight. Still true at `8bec444e50` (2026-09-11); the autotest itself changed, see that README's sampling note |
 | [34305](34305/) | an uninitialised read, demonstrated with a poisoned struct |
 | [34209](34209/) | autotest only; fails on master, passes fixed |
 | [32473](32473/) | gates the same terms as #32471 and borrows its SITL A/B |

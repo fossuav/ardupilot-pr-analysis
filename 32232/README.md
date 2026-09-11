@@ -244,3 +244,88 @@ by re-reading the code.
 Copter only - says nothing about the fly-forward branch of
 `detectFlight()`. No coverage of premature release from vibration (see 3).
 No real-vehicle data.
+
+## Automated review round, and the head move to `8bec444e50` (2026-09-11)
+
+The dev-call reviewer returned REQUEST CHANGES at `28cbfe4adf` on 2026-09-07:
+one finding it called safety-critical, two autotest findings, and a handful of
+smaller items. Triage: **1 refuted, 3 fixed, 2 declined.** Head is now
+`8bec444e50` on `rishabsingh3003/ek3_gnd_clear`.
+
+### Refuted - the "no escape from a false hold" finding
+
+The argument: with `EK3_SRC1_POSZ=2` and a persistently `OutOfRangeLow`
+sensor, all three release terms are simultaneously dead - gyro below 0.1
+rad/s by assumption, the range term pinned by the substitution itself, and
+`movedVertically` circular because `stateStruct.position.z` is driven by the
+substituted measurement. It concluded the PR removes master's
+`lostRngHgt` -> baro rescue with nothing to replace it, and proposed
+`dal.get_time_flying_ms() > 5000` as a fourth term.
+
+Both halves are already answered above, by measurement rather than by
+argument:
+
+- The circularity is the same claim recorded under "The GPS-denied
+  objection, measured", where a reviewer predicted the state would freeze
+  with the range finder as the only vertical observation. Measured in the
+  indoor config: **10.3 m flown, 10.2 m estimated**. The IMU keeps driving
+  `position.z` against a constant height observation, so it lags harder
+  without velD but does not freeze.
+- `get_time_flying_ms() > 5000` is the term recorded under "Bound chosen"
+  as tried first, working, and rejected: Rover, Sub and Tracker set
+  `likely_flying` from the armed flag so it degenerates to arming+5 s, and
+  `AP_VEHICLE_ENABLED` guards it in the DAL.
+
+The mechanism half of the finding is correct and was already known - the
+substitution does refresh `rngValidMeaTime_ms` (`Measurements.cpp:109`),
+which is why the freshness gate on the range term is recorded above as a
+no-op. What does not follow is that nothing releases.
+
+No code change. The refutation is **not yet posted to the PR**, so a reader
+of #32232 currently sees a REQUEST CHANGES finding with no response.
+
+### Fixed - the autotest was measuring three of its five legs at 5 Hz
+
+`reboot_sitl()` calls `initialise_after_reboot_sitl()`, which calls
+`set_streamrate(self.sitl_streamrate())`, and Copter's `sitl_streamrate()`
+returns 5. The `set_message_rate_hz('LOCAL_POSITION_NED', 20)` was applied
+once after the first reboot only. The reboots sit *inside* legs 3, 4 and 5,
+after their `start_subtest` banners, so those three legs flew at 5 Hz.
+
+This is a finding about the measurements in this file, not just about the
+test. The "Sampling note" above records that at 5 Hz the never-in-range leg
+read 6.4/5.9 and at 20 Hz it read 6.4/6.5 - but that leg is leg 3, which the
+structure above says was running at 5 Hz. The two cannot both be true of the
+same tree. **The recorded numbers for legs 3, 4 and 5 should be treated as
+of uncertain provenance until re-run at `8bec444e50`**, which now restores
+the rate after every reboot. Leg 4 is the least affected: its statistic is
+the `TOfs` floor read from the dataflash log, not from a streamed message.
+
+Also fixed: leg 5 took `reboot_sitl()`'s default 1 m `startup_location_dist_max`
+while following the longest climb in the test, where the other two
+uncontrolled-XY legs allow 2 m.
+
+### Fixed - the range term did not carry the Sub sign split
+
+The height term beside it splits on `APM_BUILD_ArduSub` (recorded above as a
+post-squash fix); the range term kept the copter sense for every vehicle.
+`detectFlight()` twenty lines up tests `(rng - rngAtStartOfFlight) < -0.5f`
+on Sub because a Sub moving away from the surface closes the range to the
+bottom. Both terms now match that convention. By inspection only - there is
+no Sub job in the CI matrix.
+
+### Declined
+
+- **Dead initialiser `float range_distance = 0.0f;`.** Every path reaching
+  the store assigns it, but the house rule requires explicit initialisation
+  of stack locals, so it stays.
+- **Master's `onGround` fallback deletion, the disarmed-substitution note,
+  and the landing half.** All three are accurate and all three are already
+  in "Open defects" or the PR body; they are description work, not code.
+
+### Owed
+
+Re-run the five-leg set at `8bec444e50` and replace the leg numbers above
+with 20 Hz figures throughout. Until then the branch carries a test whose
+sampling changed, which is exactly the kind of change that moves a margin
+without moving a mechanism.
