@@ -11,7 +11,11 @@ numbers below are SITL; no hardware and no real-flight logs.
 Review comments from IamPete1 and tridge answered and replied to on the PR,
 an autotest added and A/B'd five ways, the PR body rewritten to the repo
 template with the known-issues list below, and four defects recorded that are
-in the original two commits rather than in the review responses.
+in the original two commits rather than in the review responses. The 2026-09-07
+automated round was triaged 1 refuted, 3 fixed, 2 declined, answered on the PR
+on 2026-09-11, and its re-run discharged by a 20-iteration soak at
+`8bec444e50`. Still carrying tridge's live CHANGES_REQUESTED and rmackay9's
+unanswered replay-test request.
 
 ## What the PR actually does
 
