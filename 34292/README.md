@@ -31,10 +31,16 @@ Mechanism flight-validated on the 4-inch quad as `EK3_FLOW_MIN_H` (log67, see
 #33484's README). Re-implemented as `FLOW_HGT_MIN` in the flow library and
 re-verified in SITL; the re-implementation itself has not been flown.
 
-Under review. tridge's automated pass has run twice (2026-09-04 and
-2026-09-05), tridge himself left four inline comments on 2026-09-09, and
-peterbarker requested changes on 2026-09-04. Every round is recorded under
-"Review" below, including the findings that were rejected.
+Under review. tridge's automated pass has run five times, most recently
+2026-09-10 at `337cf08df6`; tridge himself left four inline comments on
+2026-09-09, all answered; and peterbarker requested changes on 2026-09-04, his
+six inline comments answered on 2026-09-05 and the review not withdrawn. Every
+round is recorded under "Review" below, including the findings that were
+rejected.
+
+The 2026-09-10 round's two code findings were both fixed the same evening, at
+`c08eaf0e43`, but the round itself has no reply, so the PR still reads as an
+open BUG. See "Automated round of 2026-09-10" at the end.
 
 A question raised on 2026-09-05 about whether the flown 0.1 m value sat under
 the EKF's rangefinder clamp was resolved the same day from log67: it did not,
@@ -465,10 +471,14 @@ Verified per commit across all twelve, not just at the tip:
 ## What it does
 
 An optical flow sensor cannot focus close to the ground and what it returns
-there is not motion. Below the sensor's minimum focus height the EKF treats
-the flow as zero motion rather than dead reckoning a phantom velocity from it.
-The check is driven by the rangefinder, which keeps reporting where the flow
-does not.
+there is not motion. Below the sensor's minimum focus height the EKF discards
+the sample rather than dead reckoning a phantom velocity from it. The check is
+driven by the rangefinder, which keeps reporting where the flow does not.
+
+**Changed 2026-09-10 at `c08eaf0e43`: this was "treats the flow as zero motion"
+until tridge asked for a discard instead.** The section below, and the M1
+measurement, were written against the zeroing behaviour and are kept as
+written; see "Zero became discard" for what moved and what it costs.
 
 ## Why the parameter moved
 
@@ -492,6 +502,15 @@ work:
 
 So the sensor states "this sample is untrustworthy" and the estimator decides
 "therefore assume zero motion".
+
+**Superseded 2026-09-10 by `c08eaf0e43`.** The estimator now decides "therefore
+do not fuse this sample", which narrows the gap this bullet describes: not
+fusing has the same aiding consequence as quality 0, because neither updates
+`prevFlowFuseTime_ms`. What survives is the `flowRadXYcomp` point and the
+placement argument - the decision needs the rangefinder and the tilt check, and
+the library has neither. The bullet is left as written because it is the reason
+the parameter is in the flow library while the decision is not, and that is
+still the design.
 
 ## How the value reaches the EKF
 
@@ -904,3 +923,61 @@ For the two-logs-in-one-power-cycle case there is no committed test. It was
 reproduced with a throwaway autotest that armed, flew, disarmed, stopped
 logging with a MAVLink `log_request_data` (which calls `stop_logging()`), then
 armed and flew again, and counted `ROFM` records per log.
+
+## Zero became discard (2026-09-10, `c08eaf0e43`)
+
+tridge, inline on 2026-09-09: "is zero right? if we're actually moving that
+seems like a bad idea", then "possibly just set `flowDataToFuse = false`?".
+Done at `c08eaf0e43`: the two `zero()` calls are gone, `flowDataToFuse` is
+cleared instead and passed into `EstimateTerrainOffset()`, where
+`cantFuseFlowData` now opens with `!flowDataToFuse`.
+
+That one change also closed the terrain leak the flag had been added for, and
+a pre-existing one beside it. `EstimateTerrainOffset()` is entered on
+`rangeDataToFuse` alone - which is exactly the Plane approach case - so gating
+only the call left the zero reaching `terrainState` anyway. `!flowDataToFuse`
+is additionally a flow-**availability** check, because a failed `recall()`
+leaves the flag false, so a never-recalled sample can no longer be fused as a
+deterministic zero either.
+
+**What it costs, and what is not measured.** Discarding is not neutral where
+zeroing was not. A zeroed sample was fused, which kept `prevFlowFuseTime_ms`
+alive; a discarded one is not fused at all, and at 5 s without a flow fusion
+`flowFusionTimeout` fires (`AP_NavEKF3_Control.cpp:308`, acted on at `:315`)
+and the filter drops to constant position. The next consequence after that,
+`attAidLossCritical`, is bounded by `tiltDriftTimeMax_ms` at 15 s
+(`AP_NavEKF3.h:493`), so 5 s is the binding one.
+
+The defence, recorded in `3ff05c761a`'s commit message and the test comment,
+is that a realistic `FLOW_HGT_MIN` is passed through in well under 5 s, and
+that the autotest only sees the fallback because it holds the floor far above
+any real sensor to keep it active long enough to measure. That is reasoning,
+not a measurement: **no run establishes the dwell time below a realistic floor
+on a real approach.** It is the obvious thing to measure next, and it is the
+one place where the flown behaviour and the head's behaviour genuinely differ -
+log67 flew the zeroing version.
+
+Tier 3, derived from the source and the timeout constants, not measured.
+
+## Automated round of 2026-09-10, triaged at `a204212074`
+
+The round was taken at `337cf08df6` and posted 15:43Z. Four of the commits on
+the branch are dated after it: `c08eaf0e43` has a commit date of 18:37Z, nearly
+three hours later. So the round describes code that had already moved by the
+time anyone read it, and **nothing on the PR says so** - the top-level review
+comment has no reply, although all three of tridge's inline threads were
+answered at 18:41Z.
+
+| finding | state at `a204212074` |
+|---|---|
+| BUG: terrain withhold bypassed when range data arrives in the same cycle | Fixed, `c08eaf0e43`. The fix is the one the round proposed - OR the flag into `cantFuseFlowData` rather than gating the call - and also tridge's own inline suggestion |
+| ISSUE: range-only calls fuse fabricated zero flow (pre-existing) | Closed by the same change; `!flowDataToFuse` is the single availability check the round asked for |
+| `LOG_ROFM_MSG` mid-enum | Fixed, `da78928a9b`; ROFM sits after RTER. Answered inline with the FMT-table numbers |
+| No test coverage for the terrain path | Still true. Copter defaults `EK3_FLOW_USE` to 1, so no Copter test reaches the terrain-flow branch |
+| peterbarker's CHANGES_REQUESTED still open | His six inline comments all have replies from 2026-09-05; withdrawing the review is his call |
+
+The round's two self-corrections are worth keeping because they stop the
+same suggestions coming back: the earlier claim about uninitialised
+`flowRadXY` is wrong, `Vector2`'s default constructor zeroes both components;
+and fixing the terrain leak does **not** make the parameter a no-op on Plane,
+because withholding an unusable terrain-flow observation is itself an effect.
