@@ -964,9 +964,11 @@ Tier 3, derived from the source and the timeout constants, not measured.
 The round was taken at `337cf08df6` and posted 15:43Z. Four of the commits on
 the branch are dated after it: `c08eaf0e43` has a commit date of 18:37Z, nearly
 three hours later. So the round describes code that had already moved by the
-time anyone read it, and **nothing on the PR says so** - the top-level review
-comment has no reply, although all three of tridge's inline threads were
-answered at 18:41Z.
+time anyone read it, while all three of tridge's inline threads were answered
+at 18:41Z and the top-level review comment was not.
+
+Answered on the PR on 2026-09-11 with the triage below, plus the discard cost
+recorded in the section above, which the round did not raise.
 
 | finding | state at `a204212074` |
 |---|---|
