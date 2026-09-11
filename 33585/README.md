@@ -733,3 +733,74 @@ re-run. The test must fail, on the leg named in the table above.
 The test sets `TERRAIN_ENABLE = 0` itself for the flat-ground legs. Do not
 remove that: SITL has terrain data, and with it enabled those legs pass
 through the terrain path instead of the one they are testing.
+
+## Automated review round, and the head move to `36f86f06eb` (2026-09-11)
+
+REQUEST CHANGES at `4fd131e6bf`, 2026-09-10. Its decisive observation was
+that the PR's own production code had not changed since the round before -
+the head movement was a rebase onto #34360 plus five `takeoff()` argument
+translations - so both headline findings stood unanswered. Three findings
+from the previous round were withdrawn by the reviewer, two of them because
+the reasoning was already in commit `905aafac31` and had not been engaged
+with.
+
+One finding fixed this round. Head is now `36f86f06eb`.
+
+### Fixed - the third consumer of the terrain datum was never gated
+
+`FuseOptFlow()` used bare `terrain_srtm_alt_valid` to decide whether to
+scale flow from the terrain database, where `terrainAltUsable()` exists for
+exactly that decision and had only two callers.
+
+Verified this is **this PR's doing, not inherited**, which the review did not
+establish. At the base `5b73047ce8`, `writeTerrainData()` returned early
+unless bit 2 was set, so terrain data never reached a core without bit 2 and
+the bare flag was equivalent to `terrainAltUsable()`'s bit-2 branch. This PR
+adds bit 5 to that gate so the flat-ground fallback can prefer the database.
+That opens one case the helper refuses and the bare flag accepts:
+
+    bit 5 set, bit 2 clear, and !flowScaleHgtUsable()
+    i.e. a height timeout, or EK3_SRC1_POSZ = None
+
+in which flow was scaled by differencing the terrain height against the very
+vertical position state that has no source. Identical in shape to the
+`getHeightControlLimit()` defect fixed in `905aafac31` during the seventh
+round; that round fixed two consumers and missed the third.
+
+Byte-identical under bit 2, which short circuits the helper.
+
+**Tier 3 (inspection).** Established by reading the write gate at the base
+and at the head, not by running anything. No A/B, no autotest leg. The
+configuration is reachable but off by default, and nothing in the existing
+test set covers it.
+
+### Still open, and what they need
+
+- **BUG - a datum reset does not carry the measured terrain AGL.**
+  `ResetPositionD()` (`AP_NavEKF3_PosVelFusion.cpp:248`). The reviewer's
+  independent probe reproduced it: a -6 m reset preserved the terrain-state
+  AGL at 3 m while the database-derived AGL moved 3 -> 9 m. It withdrew
+  "permanent for the flight" as too strong - it persists until something
+  re-establishes the offset.
+- **BUG (new) - the height-timeout path bypasses the same carry.**
+  `ResetHeight()` from `PosVelFusion.cpp:1165-1166`; its airborne branch at
+  `:294` only clamps the terrain state and neither carries the measured
+  offset nor invalidates `gndOffsetMeasured`. The reviewer explicitly
+  withdrew its earlier clearance of this path.
+- **ISSUE - terrain-offset uncertainty is pinned while the flat-ground
+  assumption is active**, so `ekf_check` keeps seeing a healthy filter and
+  `XKF5.Herr` keeps reporting a confident terrain error.
+- **Description** - the stack is two PRs deep (#34360 and #33478) and six
+  commits are out of scope, not three; "existing vehicles are unaffected" is
+  not true of the terrain-state reset carry, which is independent of bit 5.
+
+Neither BUG was touched this round. Both are reset-path changes in the code
+this PR's history has already cost three withdrawn fixes in, so they want a
+measurement before a patch, not after.
+
+### Owed
+
+Replay against log308 has not been re-run since the 2026-09-10 force-push and
+is now two heads behind. The autotest coverage was carried over from an
+earlier round's mutation table rather than re-proven, so the reviewer marked
+it unconfirmed; that stands.
