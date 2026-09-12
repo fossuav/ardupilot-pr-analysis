@@ -132,3 +132,67 @@ with the console every time.
 So the open question from the section above - whether the reset is skipped on
 this edge, or taken with `lastKnownPositionNE` already current - is still open,
 and the way to settle it is a temporary log field, not another print.
+
+## Both questions answered with a dataflash probe (2026-09-12)
+
+A temporary `PRBE` message written from `Log_Write()` carrying, per core:
+`lastKnownPositionNE`, `stateStruct.position`, `PV_AidingMode`, `flowDataValid`,
+`useVelXYSource(OPTFLOW)`, `terrain_srtm_alt_valid`, and the return and value of
+`getHeightControlLimit()`. That settled in two runs what four console-probe runs
+could not.
+
+### The teleport is impossible, not merely absent
+
+`moveEKFOrigin()` (`AP_NavEKF3_core.cpp:2273`) moves `EKF_origin` onto the
+vehicle **at 1 Hz** whenever there is a valid origin and GPS is in use, and
+subtracts the delta from `stateStruct.position`, `outputDataNew`,
+`outputDataDelayed` and every entry of `storedOutput`. The comment says it
+plainly: "move the EKF origin to the current position at 1Hz. The public_origin
+doesn't move."
+
+So `stateStruct.position` is held near zero by construction while on GPS. The
+absolute position is carried by `public_origin.get_distance_NE(EKF_origin)`,
+which `getPosNE()` adds back (`AP_NavEKF3_Outputs.cpp:263`) - which is why
+`XKF1.PN/PE` reads -90.6 m while the state itself reads -0.0.
+
+Measured, vehicle 90.5 m from the origin at the fallback:
+
+| t | XKF1 PN,PE | stateStruct PN,PE |
+|---|---|---|
+| 70.0 | -0.1, -47.6 | -0.0, -0.1 |
+| 80.0 | -0.2, -90.6 | -0.0, -0.0 |
+| 90.0 | -0.1, -90.6 |  0.0,  0.0 |
+
+`ResetPosition()` assigning `stateStruct.position = lastKnownPositionNE` is
+therefore a move between two near-zero numbers. The review's "a vehicle 1 km
+downrange jumps 1 km to the EKF origin" requires the state to hold the full
+kilometre; it cannot, because the precondition for this edge is that the vehicle
+*was* navigating on GPS, which is exactly when the origin is being re-based.
+**The finding is refuted at the root and no fix is needed.**
+
+### The height limit finding is real, and worse than stated
+
+The EKF publishes the limit exactly as the review says. At 39.4 m with a 40 m
+range finder: `AID=2 FDV=1 VXY=1 SRTM=0 HOK=1 HCL=27.0`. My earlier guess that
+`flowDataValid` was gating it was **wrong** - `FDV=1`.
+
+The reason a hovering vehicle is not driven down is `AC_Avoid.cpp:418-421`:
+
+    // do not adjust climb_rate if level
+    if (is_zero(climb_rate_cms)) {
+        return;
+    }
+
+`adjust_velocity_z()` exits before it looks at the limit when the climb demand
+is zero. So the consequence needs a pilot input - and then it is severe:
+
+| | altitude |
+|---|---|
+| on GPS, full-up throttle 8 s | 39.5 -> **50.5 m (+11.0)** |
+| on flow, limit 27 m, **same** full-up throttle | 50.5 -> **32.3 m (-18.1)** |
+
+The vehicle descends 18 m while the pilot holds full climb. Not "it will be
+commanded down to ~20 m" but "the next climb input becomes a descent", which is
+a worse failure to meet in the air and is not mentioned in the PR description.
+
+This is the finding on this PR that needs addressing.
