@@ -868,3 +868,36 @@ floors the terrain state rather than moving it with the datum. That one is a
 straight parallel to the carry `c390226e4c` already makes in `ResetPositionD()`
 and does not involve the origin frame at all, so it is the tractable half of the
 pair. It still wants the measurement the section above owes.
+
+### The ResetHeight() BUG is measured and fixed (2026-09-12)
+
+The tractable half of the pair, done the way the section above asks: measured
+first, patched second.
+
+Trigger: a copter hovering at 10 m with an analog range finder fusing the
+terrain state, `EK3_IMU_MASK=1`, and a baro glitch held past
+`hgtRetryTimeMode12_ms` (5 s). `lastHgtPassTime_ms` only advances when the
+height innovation check passes, so a rejected glitch alone reaches the timeout
+and `ResetHeight()`; no source change and no disabled sensor are needed.
+
+**The glitch has to be big enough to be rejected.** 8 m is inside the gate -
+5 sigma on `sqrt(P + EK3_ALT_NSE^2)` - so the filter simply follows it and no
+reset happens at all. The first run of this probe measured a largest
+single-sample datum move of 0.19 m and would have been read as "no defect" if
+the gate had not been checked. 30 m is rejected and reaches the reset.
+
+Measured at the reset, before and after the carry:
+
+| datum move | AGL move, unfixed | AGL move, fixed |
+|---|---|---|
+| -30.00 m | **+30.00 m** | +0.00 m |
+| +30.24 m | -30.48 m | -0.19 m |
+
+Unfixed, the filter came out of the reset believing a vehicle hovering at 10 m
+was 39.5 m above the ground.
+
+Fix is `de33b1f5a4`, conditioned exactly as `c390226e4c`'s carry in
+`ResetPositionD()` and keeping the existing floor after the carry. Test is
+`76f3428d1a`, `EK3_TerrainStateFollowsHeightReset`, which fails on the unfixed
+code with "height above ground moved +30.00 m across a -30.00 m datum reset"
+and raises rather than passing if no reset is found at all.
