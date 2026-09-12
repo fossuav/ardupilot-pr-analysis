@@ -80,3 +80,55 @@ Not examined here, and none of them depend on the BUG above:
   `ResetVelocity()` zeroes the horizontal velocity on the transition
 - the added test hovers at home, where the position question is invisible; the
   fly-out above is the fix for that regardless of the outcome
+
+## The height control limit does not command a descent either (2026-09-12)
+
+The review's third finding: because `getHeightControlLimit()` gates on the same
+`AID_RELATIVE`, the fallback silently switches on the EKF height limit, and
+"a copter that loses GPS at 100 m will now be commanded down to ~20 m AGL".
+
+Measured. LOITER at 39.4 m, `SIM_TERRAIN 0` so `terrain_srtm_alt_valid` cannot
+suppress the limit, analog range finder at its 40 m default, so the limit would
+be `40*0.7 - 1 = 27 m` - twelve metres below the vehicle. Switch to the flow
+source set and watch for 30 s:
+
+    altitude before 39.4 m
+    t+05s 39.5   t+10s 39.5   t+15s 39.5
+    t+20s 39.5   t+25s 39.5   t+30s 39.5
+    net change +0.1 m
+
+**No descent.** The mode change to AID_RELATIVE is confirmed in the same run.
+
+The descent path itself is real: Copter calls the four-argument
+`adjust_velocity_z()` (`ArduCopter/mode.cpp:993`), and that overload does fold a
+non-zero `backup_speed_cms` into the climb rate
+(`AC_Avoid.cpp:396-405`). So something upstream is not publishing the limit.
+
+The most likely gate is `flowDataValid` in `getHeightControlLimit()`
+(`AP_NavEKF3_Outputs.cpp:94`): at 39.5 m with a 40 m range finder the flow
+measurements are at or past the edge of validity, and that is the same regime
+the review's own "loses GPS at 100 m" scenario assumes. If so the finding is
+partly self-cancelling - the limit only engages where flow is still valid, which
+is where the vehicle is low enough not to be driven down far. **Not confirmed**,
+and confirming it needs the limit itself in the dataflash rather than a console
+probe.
+
+## Instrumentation: console probes are not trustworthy here
+
+Recorded because it cost several runs and produced two wrong intermediate
+conclusions.
+
+`GCS_SEND_TEXT` is dropped under load. Switching to `::fprintf(stderr, ...)`
+fixed the loss but not the ordering: SITL's stderr and the harness's stdout are
+separate streams merged into one capture, and the test reboots SITL partway, so
+a line printed by the pre-reboot instance can appear *after* a harness line from
+the post-reboot one. That made a transition that the dataflash places at
+PE = -89.3 m read as happening at the origin.
+
+Anything that has to be correlated with vehicle state belongs in the dataflash.
+`XKF1.PN/PE`, `XKF4.OFN/OFE` and `XKF4.AID` were right every time and disagreed
+with the console every time.
+
+So the open question from the section above - whether the reset is skipped on
+this edge, or taken with `lastKnownPositionNE` already current - is still open,
+and the way to settle it is a temporary log field, not another print.
