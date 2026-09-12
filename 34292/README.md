@@ -983,3 +983,32 @@ same suggestions coming back: the earlier claim about uninitialised
 `flowRadXY` is wrong, `Vector2`'s default constructor zeroes both components;
 and fixing the terrain leak does **not** make the parameter a no-op on Plane,
 because withholding an unusable terrain-flow observation is itself an effect.
+
+## Terrain path now has a test (2026-09-12)
+
+Closes the one open item from the triage table above: "No test coverage for the
+terrain path - still true."
+
+`FlowHeightMinTerrainPath` sets `EK3_FLOW_USE = 2`, `FLOW_HGT_MIN = 5`, and
+`WP_SPD = 12` so the vehicle clears the terrain estimator's 5 m/s floor, then
+flies a guided leg at 3 m and another at 15 m. The observable is `XKF5.AFI`,
+`auxFlowObsInnov.length()*1000`, which `EstimateTerrainOffset()` writes only on
+the flow-fusion branch (`AP_NavEKF3_OptFlowFusion.cpp:209`).
+
+| build | AFI below FLOW_HGT_MIN | AFI above |
+|---|---|---|
+| head | **0** | 62 |
+| `!flowDataToFuse` removed from `cantFuseFlowData` | **2462** | - |
+
+The high-leg assertion is what keeps it honest: a rig that never fuses terrain
+flow would also read zero on the low leg, so the test requires the high leg to
+be non-zero before the low-leg zero means anything.
+
+The unfocused sample's innovation is about 40 times the focused one, which is a
+useful number to have when arguing why the withhold exists at all.
+
+Guided position targets rather than RC, per peterbarker's comment on the other
+test in this PR. Note for future work: `fly_guided_move_local` silently
+reported arrival without moving the vehicle in one run on #33568; this test uses
+`send_position_target_local_ned` plus `wait_groundspeed`, which cannot report a
+leg as flown when it was not.
