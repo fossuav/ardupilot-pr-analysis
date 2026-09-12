@@ -391,9 +391,14 @@ The SITL A/B above remains the evidence for the decay fix and the default.
 
 ## The problem
 
-The 2-state AGL KF integrates `velDotNED.z`, which still carries the active
-accel-Z bias (`correctDeltaVelocity` removes only the inactive-lane bias and
-the frozen hover-Z correction). With no bias state the rangefinder only
+The 2-state AGL KF integrates `velDotNED.z`, which still carries the *error*
+in the main filter's accel-Z bias estimate. Correcting an earlier claim here
+and in the PR body: `correctDeltaVelocity` does remove the active lane's
+estimate, because `learnInactiveBiases` assigns `stateStruct.accel_bias`
+straight into `inactiveBias[i]` when `accel_index_active == i`
+(`AP_NavEKF3_Measurements.cpp:1363-1365`). So the residual is the estimate's
+error, not the raw sensor bias - which is what the commit message says and
+what this record said wrongly. With no bias state the rangefinder only
 partially corrects the drift, so the AGL height sits high by an amount that
 tracks the main filter's bias: `HAgl - RFND*cosTilt` was +0.33 m at
 `XKF2.AZ` 0.51 decaying to +0.13 at 0.21 (4-inch quad, log56). Not tilt
@@ -537,3 +542,53 @@ change; the default should show a slope well under 1 at high correlation.
   has to stay learnable while the baro is gated, which is exactly when the
   main-filter bias freezes; #33478 makes the main bias observable through
   the velD fusion instead of by sharing the state.
+
+
+## Covariance conditioning, and what the bias bound does not fix (2026-09-12)
+
+rishabsingh3003's review asked for a limit on the bias state. The limit went
+in as `EK3_ACC_BIAS_LIM`, but it is not what makes the filter safe, and the
+measurement says so.
+
+Scenario, both in SITL and in a standalone copy of `UpdateAglKf()`: hover at
+a true 10 m AGL and hold the range finder 80 m long for 4 s, far enough out
+that every reading fails the innovation gate, then restore it.
+
+| build | outcome |
+|---|---|
+| PR as-is | SITL aborts, `ERROR: Floating point exception`, when good readings resume |
+| + bias bound only | aborts at the same point |
+| + bound + row/column variance cap | passes; AGL height 9.97 -> 10.02 m, peak abs bias 0.023 |
+
+Mechanism: the caps clamped the diagonals only, so while the gate rejects,
+`P[1][2]` gains `imuDt*P[2][2]` every step with `P[2][2]` pinned at its cap
+and `P[0][1]`/`P[0][2]` integrate that in turn. The implied correlations pass
+`sqrt(P[i][i]*P[j][j])` and the gains built from them are unbounded. In the
+standalone copy `P[0][1]` reaches 690 against 98 with the cap applied as a
+row/column scaling, and the peak bias 3.11 m/s/s against 0.21.
+
+**Do not "fix" the gate-reject inflation to scale the whole matrix.** It is
+the better arithmetic and it measures worse: it carries the correlations
+across the rejection, so the first accepted reading after a glitch lands in
+the bias state. On a 60 m false reading that takes the peak bias from 0.93 to
+16.9 m/s/s. The diagonal-only inflation decorrelates, and that is what
+protects the bias state. There is now a comment in the code saying so.
+
+Two magnitudes in the 2026-09-12 dev-call review did not reproduce: it
+reported a bias of 91.56 m/s/s and a height of 57.58 m where the standalone
+copy tops out near 3.11 and 29.3 under the same scenario shape. The direction
+of the finding held; the numbers did not.
+
+`EK3_AGL_ABIAS_P`'s stated rationale did not survive measurement either. The
+parameter description claimed it lets the bias track IMU temperature drift.
+Stepping the true residual and measuring the response: 63% in 27.9 s at 0.01,
+9.5 s at 0.05 (the default), 6.4 s at 0.1, 4.0 s at 0.3. Seconds, not a
+thermal timescale, and a 6x change in the parameter buys 2.4x in the time
+constant. Description reworded to say what it does.
+
+Coverage: `OpticalFlowAGLKalmanFilter` now has a second subtest for the
+excursion. It needs a lidar-class range finder (`RNGFND1_MAX` 100,
+`RNGFND1_SCALING` and `SIM_SONAR_SCALE` 20) - at the default 40 m ceiling the
+covariance inflation opens the gate wide enough to accept an in-range glitch
+within about half a second, so the filter re-anchors instead of coasting and
+the failure never arises.
