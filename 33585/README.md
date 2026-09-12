@@ -804,3 +804,67 @@ Replay against log308 has not been re-run since the 2026-09-10 force-push and
 is now two heads behind. The autotest coverage was carried over from an
 earlier round's mutation table rather than re-proven, so the reviewer marked
 it unconfirmed; that stands.
+
+## The datum-reset BUG cannot be fixed by carrying terrain_srtm_alt (2026-09-12)
+
+Worth recording before it becomes a fourth withdrawn fix, because the obvious
+patch is the wrong one and it looks right.
+
+The finding itself is arithmetic and holds. `FuseOptFlow()` derives the database
+AGL as `(-pd) - terrain_srtm_alt` (`AP_NavEKF3_OptFlowFusion.cpp:328`), while
+`ResetPositionD()` moves `pd` by `posResetD`. `terrainState` is carried by
+`c390226e4c` so the measured AGL is preserved, and nothing carries
+`terrain_srtm_alt`, so the database AGL moves by the whole reset. That is exactly
+the reviewer's probe: a -6 m reset, measured AGL held at 3 m, database AGL 3 -> 9 m.
+
+**The symmetric patch does not survive.** Mirroring the terrain-state carry with
+`terrain_srtm_alt -= posResetD` inside `ResetPositionD()` is erased within about
+100 ms:
+
+- `AP_Terrain::update()` is scheduled at 10 Hz (`ArduCopter/Copter.cpp:235`,
+  `SCHED_TASK(terrain_update, 10, 100, 144)`).
+- Every pass with a valid position and a valid tile calls
+  `ahrs.writeTerrainAMSL(height)` (`AP_Terrain.cpp:382`).
+- That converts with `alt_above_origin_m = alt_amsl_m - state.origin.alt*0.01`
+  (`AP_AHRS.cpp:1654`) and stores it verbatim: `terrain_srtm_alt = alt_m`
+  (`AP_NavEKF3_Measurements.cpp:1182`).
+
+`state.origin` does not move when the height datum does, so the vehicle keeps
+writing an origin-referenced number at 10 Hz over whatever the reset wrote.
+
+### What the defect actually is
+
+Not a missing carry. After a datum reset `position.z` is no longer referenced to
+the EKF origin, while `terrain_srtm_alt` always is, so the subtraction mixes two
+frames. Any fix has to convert between them rather than nudge one of them once.
+
+The EKF does carry such a term - `ekfGpsRefHgt`, "the WGS-84 reference height used
+to convert GPS height to local height", maintained at
+`AP_NavEKF3_Measurements.cpp:705` and :852 and already used for exactly this kind
+of correction at `AP_NavEKF3_PosVelFusion.cpp:1502` and :1532
+(`hgtMea += ekfGpsRefHgt - 0.01*EKF_origin.alt`). So
+`(-pd) + (ekfGpsRefHgt - 0.01*EKF_origin.alt) - terrain_srtm_alt` is the shape of
+a correct conversion.
+
+**But it is GPS-maintained**, and this PR's case is optical flow with no GPS,
+which is where it will be least trustworthy - set once from the origin at
+`Control.cpp:711` and `PosVelFusion.cpp:411`, and thereafter only moved by GPS
+height innovations. So the term that would fix it is the term that is absent in
+the configuration that needs it. That is the open design question, and it is not
+answerable by reading more source.
+
+**Tier 3 (inspection).** The 10 Hz overwrite is established from the scheduler
+table and the call chain, not from a run. A SITL confirmation would take the
+existing `EK3_TerrainStateFollowsDatumReset` trigger plus
+`install_terrain_handlers_context()` and `TERRAIN_ENABLE 1`, and would need
+temporary instrumentation because the database AGL is a local in `FuseOptFlow()`
+and is not logged anywhere.
+
+### The other reset-path BUG is unaffected by this
+
+`ResetHeight()`'s airborne branch (`AP_NavEKF3_PosVelFusion.cpp:294`) does
+`terrainState = MAX(stateStruct.position.z + rngOnGnd, terrainState)`, which
+floors the terrain state rather than moving it with the datum. That one is a
+straight parallel to the carry `c390226e4c` already makes in `ResetPositionD()`
+and does not involve the origin frame at all, so it is the tractable half of the
+pair. It still wants the measurement the section above owes.
