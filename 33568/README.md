@@ -196,3 +196,31 @@ commanded down to ~20 m" but "the next climb input becomes a descent", which is
 a worse failure to meet in the air and is not mentioned in the PR description.
 
 This is the finding on this PR that needs addressing.
+
+### Scope: it is AC_Avoid only, but AC_Avoid is on by default
+
+`AC_Avoid.cpp:459` is the **only** consumer of `AP_AHRS::get_hgt_ctrl_limit()`
+in the tree; everything else is AHRS plumbing over the two EKF backends. So the
+limit reaches the vehicle through avoidance or not at all.
+
+Confirmed by measurement - same 40 m flight, same full-up throttle after the
+fallback:
+
+| AVOID_ENABLE | result |
+|---|---|
+| default (3) | 50.5 -> **32.3 m (-18.1)** |
+| 0 | 39.4 -> **46.8 m (+7.4)** |
+
+That is not much comfort, for three reasons:
+
+- `AVOID_ENABLE` defaults to `AC_AVOID_STOP_AT_FENCE | AC_AVOID_USE_PROXIMITY_SENSOR`
+  (`AC_Avoid.h:19`), so it is on out of the box.
+- The height-limit block is **not** gated by either bit. Only the function-level
+  `if (_enabled == AC_AVOID_DISABLED) return;` guards it, so a user who enabled
+  avoidance purely for the fence gets the optical-flow ceiling as well.
+- It is reached from every pilot-controlled altitude path -
+  `get_avoidance_adjusted_climbrate_ms()` is called by ALT_HOLD, LOITER,
+  POSHOLD, FLOWHOLD, CIRCLE, ZIGZAG, AUTOTUNE and GUIDED's velocity control.
+
+So the exposure is "any vehicle with default parameters, in any normal flight
+mode, the first time the pilot asks for a climb after GPS is lost".
