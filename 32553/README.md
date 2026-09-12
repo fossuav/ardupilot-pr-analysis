@@ -187,3 +187,101 @@ the on-ground value); the PR body lists an autotest as outstanding.
 - Depends in practice on #32472 (release check); pairs with #33359.
 - Review: rmackay9 asked for logs and repro steps; rishabsingh3003
   requested changes.
+
+## SITL reproduction built, and the reset cannot work in it (2026-09-12)
+
+The "Reproduce" section above proposed exactly the right rig and it has now
+been built: `SIM_BARO_GEFF_M` (up to N metres of baro under-read on the ground,
+decaying linearly to zero at 2 m AGL, applied only while the motors turn -
+`AP_Baro_SITL.cpp:70-77`), a SITL range finder, and `EK3_RNG_USE_HGT = 50` with
+`RNGFND1_MAX = 10` as in issue #32612.
+
+The missing ingredient was dwell. A normal climbing takeoff barely spends time
+below 2 m, so nothing accumulates. Hovering **inside** the band is what
+reproduces it, which is also the flown case: a 25 s hover at 1.2 m, then a climb
+to ~15 m.
+
+Terrain offset measured above 5 m after the climb out, `GEFF_M` 3.0:
+
+| GNDEFF_ALT | low dwell | without the PR | with the PR |
+|---|---|---|---|
+| 0.5 (default) | 25 s | 0.292 m mean, 1.20 worst | 0.283 m, 1.19 |
+| 2.0 (matches the band) | 3.5 s | 0.091 m, 0.41 | 0.094 m, 0.47 |
+| 2.0 (matches the band) | 25 s | 0.304 m, 1.24 | 0.293 m, 1.22 |
+
+0.30 m mean and 1.24 m worst is the same order as the 1.88 m the PR body cites
+from flight, so the rig is faithful. **The reset removes none of it.**
+
+### Why, and why no parameter fixes it
+
+`takeoff_expected` is capped at 5 s by `AP_GROUNDEFFECT_TAKEOFF_MAX_MS`.
+`GNDEFF_ALT` can only *delay* the window's release, never extend it past that
+cap, and the cap is a compile-time constant. On any hover longer than 5 s the
+window therefore closes while the vehicle is still inside the error. Measured at
+the falling edge: **HAGL 0.82 m, with 1.77 m of the 3.0 m error still present.**
+The reset then reconstructs `terrainState` from a baro reading that is still
+wrong, writing the contamination in rather than removing it.
+
+Shortening the hover so the window closes above the band leaves no error to
+correct (row 2). So there is no parameter choice for which the reset both has
+something to fix and is able to fix it.
+
+The premise is not wrong; the window is. `takeoff_expected` is supposed to mean
+"baro is untrustworthy", and the 5 s cap breaks that promise for sustained low
+flight - which is the indoor case this PR was written for. If the window tracked
+the actual error the arithmetic here would work unchanged. That points the fix at
+the detector, and overlaps #34362. Note this is the opposite direction from
+`PLAN.md` fix 1a, which looked at whether the cap was too *long*.
+
+Gating the reset on range finder AGL instead was considered and rejected: the
+vehicle may not have one, and `AP_GroundEffect` already falls back to
+height-since-takeoff in that case.
+
+Test committed as `autotest: cover terrain offset recovery from the ground
+effect baro error`, on branch `pr-terrain-reset-ge-master`. **It is red on
+master and red with the PR**, and the commit message says so - it records the
+case, it does not claim a fix.
+
+### The three review findings, measured
+
+The 2026-09-12 dev-call review raised three. All are structurally real; two have
+no reachable effect.
+
+- **The clear edge was consumed outside its consumer.** `prevGndEffectActive` was
+  updated on every call while `gndEffectJustCleared` was only read inside
+  `if (rangeDataToFuse)`. Real, but **measured unreachable**: 0 flow-only entries
+  in 2231 calls to `EstimateTerrainOffset()`, including with `EK3_FLOW_USE = 2`.
+  The latch is a robustness fix, not a bug fix.
+- **No one-shot latch.** Measured 6 clear edges per flight (3 per core), all
+  applied: takeoff at t=53.0 s, a *spurious touchdown at t=68.8 s with the
+  vehicle at altitude*, and the real landing at t=97.1 s. The mid-flight one is
+  the same spurious latching #34362 addresses. Each reset moved `terrainState` by
+  **< 0.01 m** in clean SITL, so the repetition is not itself harmful there.
+- **The `baroHgtOffset` snapshot was inert.** `calcFiltBaroOffset()` is the only
+  writer and is guarded on `activeHgtSource != BARO`
+  (`AP_NavEKF3_PosVelFusion.cpp:1363`), while the reset requires `== BARO`, so the
+  offset is frozen throughout the window in which the reset can run. Where the
+  snapshot and the live value *can* differ - a height datum reset, or a source
+  change inside the window - the live value is the one `position.z` is consistent
+  with, so the snapshot was the wrong one of the pair. Dropped.
+
+**Correction to a claim made in this work.** The commit that added the latch said
+the dropped edge was "the most likely reason it has been hard to observe at all".
+That is refuted by the 0-of-2231 measurement above and the commit message needs
+fixing before the branch is pushed.
+
+### It does not fix #32612
+
+Worth stating on the PR, since rmackay9 tested it against that issue and reported
+the offset remained. #32612 is the rangefinder-to-baro height *datum* offset under
+`EK3_RNG_USE_HGT`, reproduced with `SIM_BARO_GLITCH` and no ground effect
+involved. This reset only fires on the ground effect clear edge with baro active.
+The two do not overlap and the PR has never claimed otherwise in writing.
+
+### Branch note
+
+`pr-terrain-reset-ge` is based on a master from **12 May 2026** and predates
+`libraries/AP_GroundEffect` entirely, so none of the current ground effect
+framework or `SIM_BARO_GEFF_M` is available on it. The work above is on
+`pr-terrain-reset-ge-master`, the three commits cherry-picked onto current
+master; they applied cleanly.
