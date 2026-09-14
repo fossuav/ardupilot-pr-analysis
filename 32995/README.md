@@ -3,8 +3,8 @@
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 Buzz's PR, branch `rp2350-v5-squashed-and-cleaned-and-rebased` on the
 **davidbuzz** remote, which andyp1per pushes to. Base `master`, merge-base
-`b832113b10`. PR head `c1c8709823` as of 2026-09-14, 222 commits; 30 local
-commits sit on top of it at `ebbc93f962`, **not pushed**. The
+`b832113b10`. PR head `c1c8709823` as of 2026-09-14, 222 commits; 32 local
+commits sit on top of it at `fea5156687`, **not pushed**. The
 2026-09-11 session left head `27f3531d62` (198 commits); the work of
 2026-09-12 and 2026-09-13 (`3326ce8af7`..`c1c8709823`: watchdog reset
 detection, SD storage health, registry misses failing the build, bootloader
@@ -240,9 +240,7 @@ brackets):
   `HAL_UART_NUM_SERIAL_PORTS` changes; `HAL_HAVE_PIO_UARTS` is emitted for RP
   MCUs only
 - `STM32_HW` is now defined once, in `board.h`, instead of in three
-  headers with an `#undef` in `SoftSigReaderInt.cpp` (tpwrules'
-  thread is narrower but not closed: it is still a name ChibiOS does not
-  define for this chip)
+  headers (see the third round below for what it still guards)
 - `-DHAL_ENABLE_THREAD_STATISTICS` out of Laurel's `chibios_board.mk`: it
   duplicated the hwdef define and caused 103 redefinition warnings
 - Every `#warning` added to shared driver code (F7 FIFO, DMA, I2C, GPIO)
@@ -354,6 +352,54 @@ Verification, measured:
 - The note 2 commit cannot fix `add88d684f`'s commit message, which makes
   the same "runs once" claim; that has to wait for the squash
 
+### Third round, 2026-09-14: Thomas's ChibiOS question and STM32_HW
+
+**Correction.** The open-threads table had tpwrules' `stm32_util.h` thread
+("Surely this should be fixed in ChibiOS?") as an objection to the
+`#undef STM32_HW` / `#undef RP2350` block, and called him right on that.
+That was a misreading. His selection at `d2728d3ae2` is lines 21-28, the
+`PAL_LINE` override; the `STM32_HW` block starts at line 29.
+
+What he was pointing at, derived from the source: ArduPilot/ChibiOS master
+(`9aebaf4a40`) defines the RP `PAL_LINE(port, pad)` as `((pad), (port))`.
+The comma operator discards the pad and yields the port, and `IOPORT1` is 0,
+so every `PAL_LINE(IOPORT1, n)` was line 0; the discarded pad is what raised
+`-Wunused-value`. The port's override `((void)(port), (ioline_t)(pad))`
+fixed the value as well as the warning, although its comment claimed the
+opposite. Upstream ChibiOS fixed the macro on 2026-03-24 (`aaea5285ad`,
+Eric Molitor, `(port << 5) | pad` for the RP2350B high bank), ChibiOS#113's
+first commit `9f37253c1b` carries it, and the submodule already had it when
+he reviewed. The override came in with `5fb4a96ab1` and went in
+`7fd63d181b` (2026-05-15). So he was right, it is fixed in ChibiOS, and
+only a reply is owed.
+
+`STM32_HW`: ChibiOS has no generic STM32 define. A `-dM` macro dump of
+CubeOrange, MatekF405, f103-GPS and RPI_UAVFC shows only per-port include
+guards (`STM32_REGISTRY_H`, `STM32_RCC_H`, `STM32_TIM_H`) and per-family
+clock limits common to the STM32 builds and absent on RP2350, none of them
+an interface. The family defines (`STM32H7`, `STM32F4`, `RP2350`) come from
+our generator. Andy kept `STM32_HW` for its meaning and had the dead and
+redundant uses removed:
+
+- `7891b761e4`: the guard inside `send_pulses_DMAR()` (already
+  `!defined(RP2350)`), `SoftSigReader.cpp` (only built with `HAL_USE_ICU`,
+  off on RP2350; the file is master's again, `#undef` and `#error`
+  included), and the two `Scheduler.cpp` watchdog calls that `watchdog.h`
+  already maps
+- `fea5156687`: the DMA stats layout tests RP2350 first, so master's two
+  STM32 cases are unchanged and its catch-all `#warning` is gone
+
+16 uses remain, each over STM32-only registers or types (`stm32_tim_t`,
+`rccEnableSPIn()`, GPIO and clock init, IWDG). Measured: CubeOrange,
+MatekF405, revo-mini (which builds the ICU path), RPI_UAVFC, Pico2 and
+Laurel objects are identical apart from three `__LINE__` constants in
+`RCOutput.cpp`, shifted by 2. The `7891b761e4` message says object code is
+unchanged, which overlooks those constants; fix it at the squash.
+
+Found in passing, not changed: the RP2350 DMA stats layout says 12
+channels, but `rp_registry.h` gives RP2350 16 (`RP_DMA_NUM_CHANNELS`), so
+channels 12-15 would be shown as a second controller.
+
 ## Outstanding
 
 **Needs a decision (blocks Peter's "any direct mention of RP2350" thread).**
@@ -425,8 +471,7 @@ rest is not:
   copter, and its copter check scans every object under the build root, so
   stale objects from another target can satisfy it
 - Not from the review, found while auditing (derived from the source, not
-  measured): `STM32_HW` is still a name this port invents for a non-STM32
-  chip, now in one place (tpwrules' thread); the RP2350 USB direct-IO path
+  measured): the RP2350 USB direct-IO path
   keeps dead branches, `drop_unopened_usb_tx_backlog()` does nothing; RP2350
   sets up the USB strings early in `board.c` for no recorded reason;
   `hrt.c` uses `port_lock()` on RP2350 instead of the system lock, and its
@@ -444,7 +489,8 @@ PR head before replying. Remaining:
 | who | file | comment | why still open |
 |---|---|---|---|
 | tpwrules | `AP_AHRS.cpp` | "Why?" | DCM skip still there, pending decision |
-| tpwrules | `stm32_util.h` | "Surely this should be fixed in ChibiOS?" | still `#undef STM32_HW` / `#undef RP2350` in a shared header; he is right |
+| tpwrules | `stm32_util.h` | "Surely this should be fixed in ChibiOS?" | about the `PAL_LINE` override, not `STM32_HW` (corrected 2026-09-14, see the third round); fixed in ChibiOS#113, override gone since `7fd63d181b`; reply owed |
+| tpwrules | `Laurel/images/*.jpg` | "These pictures can be scaled down, 1MB is large ... Do we need the board at all?" | new 2026-09-14, not answered |
 | tpwrules | `bl_protocol.cpp` | "How does the board run reliably in this case?" | answered in-thread, code stands |
 | peterbarker | `Copter.cpp` | "*Any* direct mention of RP2350 outside of its own HAL is suspect" | 3 chip checks left; status reply posted, not resolved |
 | peterbarker | `mode.cpp` | "Separate PR... similarly elsewhere" | unrelated changes remain |
