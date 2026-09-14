@@ -3,8 +3,8 @@
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 Buzz's PR, branch `rp2350-v5-squashed-and-cleaned-and-rebased` on the
 **davidbuzz** remote, which andyp1per pushes to. Base `master`, merge-base
-`b832113b10`. PR head `c1c8709823` as of 2026-09-14, 222 commits; 23 local
-cleanup commits sit on top of it at `00d07c8f34`, **not pushed**. The
+`b832113b10`. PR head `c1c8709823` as of 2026-09-14, 222 commits; 30 local
+commits sit on top of it at `ebbc93f962`, **not pushed**. The
 2026-09-11 session left head `27f3531d62` (198 commits); the work of
 2026-09-12 and 2026-09-13 (`3326ce8af7`..`c1c8709823`: watchdog reset
 detection, SD storage health, registry misses failing the build, bootloader
@@ -316,6 +316,44 @@ Cleanup commits on top leave each original commit building as it did. The
 per-subsystem squash will meet the same conflicts, so it is not free; it
 was deferred, not solved.
 
+### Second round, 2026-09-14
+
+Seven more commits (`ae1143446e`..`ebbc93f962`), for tridge's F10, F11 and
+notes 2-6:
+
+- F11 (`d948479ad1`): RP2350 forced every PWM group at or below 400 Hz to
+  50 Hz with a 3 MHz counter, a workaround for the 375 MHz clock overflowing
+  the divider's 8-bit integer part at 1 MHz. All three boards now run below
+  256 MHz (a static assert checks it), so RP2350 takes master's 1 MHz path
+  and SERVO_RATE/RC_SPEED are honoured. 3 MHz could not stay: `pwmcnt_t` is
+  16 bits on RP, and SERVO_RATE 25 Hz needs a period of 120000 at 3 MHz.
+  **Not run on hardware**
+- F10 (`ebbc93f962`): the picotool tarball's SHA256 is pinned (it matches
+  GitHub's published asset digest) and only plain files and directories
+  under `picotool/` are extracted. That also stops the archive's top-level
+  `.keep` landing in the source root, which is where the untracked `.keep`
+  in the working tree came from
+- Notes 2-6: comment and document corrections, plus removal of the newlib
+  memcpy/memset picks from `common_rp2350_smp.ld`, which matched nothing
+  since `rp2350_memfunctions.S` supplies both
+
+Verification, measured:
+
+- Notes 2, 3, 5 and 6 together: RPI_UAVFC, Pico2 and Laurel copter and
+  bootloader binaries byte-identical before and after (same HEAD, working
+  tree builds)
+- F11: CubeOrange and MatekF405 differ only in `RCOutput.cpp.0.o`, and
+  only in five `__LINE__` constants shifted by 7. The RPI_UAVFC
+  `set_freq_group()` literal pool holds 1000000 where it held 3000000, and
+  the `#50` load is gone. Zero warnings on all five boards
+- F10: a scratch harness runs `ensure_picotool()` extracted from the source:
+  good archive, already present, hash mismatch, path traversal and a
+  symlink entry all behave. Each check was removed in turn and a test
+  failed, including with the Python 3.12 `data` filter disabled, since
+  that filter alone also stops the traversal and symlink cases
+- The note 2 commit cannot fix `add88d684f`'s commit message, which makes
+  the same "runs once" claim; that has to wait for the squash
+
 ## Outstanding
 
 **Needs a decision (blocks Peter's "any direct mention of RP2350" thread).**
@@ -373,17 +411,15 @@ Same bring-up-convenience shape as the IMU flag on a board that has a DPS310 -
 deliberately left alone, but worth asking the same question.
 
 **Open after 2026-09-14.** From tridge's automated review of 2026-09-13
-at `c1c8709823`; ISSUE (fault store), F6, F7, F8, F9, F12, note 1 and the
-stale watchdog comments are addressed in the unpushed commits, the rest is
-not:
+at `c1c8709823`; ISSUE (fault store), F6, F7, F9, F10, F11, F12, notes 1-6
+and the stale watchdog comments are addressed in the unpushed commits, the
+rest is not:
 
-- F10: picotool is downloaded in `Tools/ardupilotwaf/chibios.py` with no
-  checksum and a bare `extractall`
-- F11: the 50 Hz override in `RCOutput.cpp`
+- F8: deliberately not addressed. Andy's call on 2026-09-14: RPI_UAVFC keeps
+  the 1/16 DCM backup rate until the performance is dug into. The define
+  from `971182202a` leaves it at 16 on all three RP2350 boards; the RPI_UAVFC
+  binary at `00d07c8f34` still skips DCM while the count is 15 or below
 - F13: PR size (185 files at `c1c8709823`, 178 now)
-- Notes 2-6: `rp2350_memfunctions.S:19`, the thread-creation claim, the
-  DShot wording in RPI_UAVFC's `defaults.parm`, the dead newlib relocation,
-  `PORT_SPINLOCK_STATS` in `DEVELOPMENT.md`
 - Core1 watchdog coverage is only indirect (`rp2350_core_affinity.h`)
 - The RAMFUNC2 section script is silent about registry misses outside
   copter, and its copter check scans every object under the build root, so
@@ -397,7 +433,7 @@ not:
   safety under SMP was not checked; `PICO2.py` carries datasheet tables
   flattened into comments; `AP_HAL_Boards.h` still defines three
   `AP_RP2350_*` feature names
-- Push the 23 commits (needs `/prepare-for-push` from Andy), then reply to
+- Push the 30 commits (needs `/prepare-for-push` from Andy), then reply to
   Peter's `flash.c:85` thread and post a status reply for tridge's items
 
 ## Open review threads (8 of 41)
