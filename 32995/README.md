@@ -3,9 +3,14 @@
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 Buzz's PR, branch `rp2350-v5-squashed-and-cleaned-and-rebased` on the
 **davidbuzz** remote, which andyp1per pushes to. Base `master`, merge-base
-`b832113b10`. Head `27f3531d62` as of 2026-09-11, 198 commits (179 at the
-start of the session). Local safety refs `backup/rp2350-pre-cleanup-20260911`
-(the original 179 at `164ac005d5`) and `backup/rp2350-pre-gitmodules-drop`.
+`b832113b10`. PR head `c1c8709823` as of 2026-09-14, 222 commits; 23 local
+cleanup commits sit on top of it at `00d07c8f34`, **not pushed**. The
+2026-09-11 session left head `27f3531d62` (198 commits); the work of
+2026-09-12 and 2026-09-13 (`3326ce8af7`..`c1c8709823`: watchdog reset
+detection, SD storage health, registry misses failing the build, bootloader
+hex/UF2 address) was pushed without an entry here. Local safety refs
+`backup/rp2350-pre-cleanup-20260911` (the original 179 at `164ac005d5`) and
+`backup/rp2350-pre-gitmodules-drop`.
 
 ## Status (one line)
 
@@ -15,6 +20,13 @@ conditionals outside the HAL from 26 to 3 and open review threads from 20 to
 8. Remaining blockers are the ChibiOS submodule not being merged upstream,
 three behaviour-changing chip checks awaiting a decision, and a handful of
 unrelated changes that want spinning out as precursor PRs.
+
+2026-09-14: the three chip checks are now board defines and there are no
+`defined(RP2350)` checks left in vehicle or library code (only
+`AP_HAL_ChibiOS`, `Tools/AP_Bootloader` and `Tools/CPUInfo` still have them);
+shared-file churn is reverted to master text (excluding the submodule,
+modified files 93 -> 86, lines deleted from master 694 -> 371). Unpushed.
+The ChibiOS check is still the one red gate.
 
 ## Facts worth not re-deriving
 
@@ -83,6 +95,11 @@ dropping the `.gitmodules` commit was safe. **Goes green only when the
 RP2350 ChibiOS commits land in `ArduPilot/ChibiOS` master.** There are 20 of
 them, from `9f37253c1b` to `e709d68239`.
 
+2026-09-14: the pin has since moved to `63cd89e0f6` (ArduPilot/ChibiOS#113),
+still `ahead` of ChibiOS master, so the check stays red on the same grounds.
+That series now also adds 138 lines of optional write-path statistics to the
+shared `hal_mmc_spi.c`; that belongs in the ChibiOS#113 review.
+
 **The mock IMU backend and the inverted panic guard.** Master's
 `AP_InertialSensor::start()` (around line 874) panics *when*
 `AP_INERTIALSENSOR_ALLOW_NO_SENSORS` is set and the gyro count is zero. That
@@ -133,7 +150,7 @@ binary from the same package. Unconditional `#pragma GCC optimize("O2")` is
 established house style - 20 files in master use it - so the pragma itself was
 never the problem, only the chip conditional around it.
 
-## What this session changed
+## What the 2026-09-11 session changed
 
 Listed oldest first; all are on the PR head.
 
@@ -177,6 +194,128 @@ Review cleanup (`dd970772aa`..`27f3531d62`):
 - Dropped four churn items: a comment reindent, the `NOINLINE` commenting-out,
   a `1.8f` literal change, a `::printf` left in the BinarySem example
 
+## What the 2026-09-14 session changed
+
+Started from Peter's `flash.c:85` comment: the RP2350 change was buried in a
+reindent of the whole file (+144/-41 against master; now +69/-0). Andy set
+the scope as that file, the same churn in every shared file, and shared
+behaviour changes the commit messages never mentioned. The rule: revert to
+master unless RP2350 needs it; if it does, gate it behind a board define;
+leave genuine generic fixes in for now and spin them out later. History: 23
+commits on top of `c1c8709823` (`b9b143b1fc`..`00d07c8f34`), squashing per
+subsystem deferred.
+
+Chip checks that became board settings. Defaults live in the library's
+`_config.h`; RP2350 values go in the `PICO2.py` `DEFINES` dict, which the
+generator emits as `#ifndef` blocks into `hwdef.h`:
+
+| define | default | RP2350 | was |
+|---|---|---|---|
+| `AP_AHRS_DCM_BACKUP_DECIMATION` | 1 | 16 | `defined(RP2350)` in `AP_AHRS.cpp` |
+| `AP_SCHEDULER_FAST_TASK_MODULO` | 1 | 2 on Pico2 only | a const member tested every tick on every board |
+| `AP_MAVLINK_FTP_THREAD_PRIORITY_BASE`/`_OFFSET` | `PRIORITY_IO`, 0 | `PRIORITY_UART`, 121 | chip check in `GCS_FTP.cpp` |
+| `AP_MAVLINK_FTP_TXBUF_BACKPRESSURE_ENABLED` | 1 | 0 | chip check in `GCS_FTP.cpp` |
+| `HAL_INS_RATE_LOOP`, `__FASTRAMFUNC__` | as master | set in `PICO2.py` | RP2350 branches in `board/chibios.h` and `AP_HAL_Boards.h` |
+| `HAL_WITH_ESC_TELEM` | master | 1 in `PICO2.py` | RP2350 branch in `AP_ESC_Telem_config.h` |
+| `AP_RP2350_DEBUG_REPORT_ENABLED` | 0 | 1 in Laurel and Pico2 `hwdef.dat` (RPI_UAVFC already set 0) | chip check in `AP_HAL_Boards.h` |
+
+Reverted to master, or cut down to an RP2350-only block (tridge's items in
+brackets):
+
+- `AP_Scheduler::task_info()` allocated from the calling thread, racing the
+  main loop, and changed the `TasksV2` header for all boards (F6)
+- STM32 fault handlers and `save_fault_watchdog()`: master text. With the
+  `STM32_HW` guard gone, RP2350 saves through the `watchdog.h` macro to
+  `rp2350_watchdog_save()`; its handlers stay a separate block (ISSUE).
+  Derived from the source, not exercised with a real fault
+- `thread_info()` restored `realprio != 1`; the SMP core suffix is only
+  compiled with `CH_CFG_SMP_MODE`
+- GDB thread helpers in `Scheduler.cpp` (F9); `sdcard.cpp` honours the
+  caller's `tries` again; the storage-thread comment corrected (note 1)
+- `chconf.h` dropped the `CH_CFG_USE_TM` override (an RT 8 leftover), and
+  `halconf.h`, `common.ld`, `usbcfg.h`, `usbcfg_dualcdc.c`, `hrt.h`,
+  `AP_Vehicle.cpp` and `AP_HAL/board/chibios.h` are master copies
+- `chibios_hwdef.py`: OTG1 default-serial emission, `#ifndef` wrappers
+  around non-RP CRT0 defines, the bootloader `CH_CFG_USE_TM` and
+  `HAL_UART_NUM_SERIAL_PORTS` changes; `HAL_HAVE_PIO_UARTS` is emitted for RP
+  MCUs only
+- `STM32_HW` is now defined once, in `board.h`, instead of in three
+  headers with an `#undef` in `SoftSigReaderInt.cpp` (tpwrules'
+  thread is narrower but not closed: it is still a name ChibiOS does not
+  define for this chip)
+- `-DHAL_ENABLE_THREAD_STATISTICS` out of Laurel's `chibios_board.mk`: it
+  duplicated the hwdef define and caused 103 redefinition warnings
+- Every `#warning` added to shared driver code (F7 FIFO, DMA, I2C, GPIO)
+- `flash.c` and `watchdog.c` back to master layout with the RP2350 code in
+  its own `#if` blocks; the watchdog comments that named the wrong file
+  and claimed a stub were rewritten
+- About 70 garbled comments rewritten across 20 shared files; five had lost
+  words, restored from the commits that introduced them (`100de10e82`,
+  `c70cf83cbb`). About 90 non-ASCII characters replaced in 20 RP2350 files
+
+Kept as generic fixes, for precursor PRs: `FastRateBuffer` rate limit and
+signal-after-unlock, `AP_Logger_File` heartbeat, `@READONLY`, FATFS
+`ENODEV`, UART `thread_init` priority boost, the `RCInput` counter, GPIO
+`iomode_t`, `sdcard.cpp` bus lock, `io_size`, backoff and `f_mkdir`,
+`GCS_FTP` semaphore wake, reply timeout and `ENOMEM` texts, and the Storage
+SD reopen.
+
+Verification, all measured on `00d07c8f34` or the commit named:
+
+- After the `flash.c`, watchdog and `chconf.h` reverts, CubeOrange and
+  MatekF405 `arducopter.bin` were byte-identical before and after. The
+  later reverts changed STM32 objects only where intended: `system.o` back
+  to master, `thread_info()`, and `__LINE__` constants
+- Generator: `hwdef.h` output from master's and the branch's
+  `chibios_hwdef.py` identical for all 870 non-RP2350 `hwdef.dat` and
+  `hwdef-bl.dat` files
+- 22 files whose change was meant to be comment-only compared equal after
+  `gcc -fpreprocessed -dD -E -P` comment stripping
+- CubeOrange objects, and then MatekF405 preprocessed sources, compared
+  between the branch and a worktree holding master copies of every shared
+  file. That audit is what found the undisclosed changes above; what
+  remains is the generic-fix list
+- Zero warnings building copter for CubeOrange, MatekF405, RPI_UAVFC, Pico2
+  and Laurel, AP_Periph for f103-GPS, and the CubeOrange, RPI_UAVFC, Pico2
+  and Laurel bootloaders. ESC telemetry and the rate thread are present in
+  the RPI_UAVFC and Pico2 ELFs, thread statistics in Laurel's
+- Every one of the 23 commits builds copter for RPI_UAVFC and CubeOrange
+  with zero warnings, and the Laurel bootloader builds clean at `257775aefb`
+  (the chconf/halconf change) and at `00d07c8f34`
+- **Nothing was booted or flown.** The RP2350 behaviour claims (DCM rate,
+  FTP priority, the fast-task modulo) are the same settings as before, moved;
+  that equivalence is derived from the source, not measured on hardware
+
+Method notes:
+
+- Audit with the ChibiOS-coupled headers (`halconf.h`, `mcuconf.h`,
+  `spi_hook.h`) at branch versions, or the master copies fail to compile
+  against the pinned submodule
+- A preprocessing wrapper that passes `-E` through a compile line must also
+  drop the joined `-oFILE` form; the first version overwrote about 30
+  CubeOrange objects with preprocessed text
+- MatekF405, not CubeOrange, for preprocessed audits: CubeOrange's include
+  dirs go stale (`lib_scsi.h`) after a clean
+- A CubeOrange bootloader build after a copter build fails on stale DroneCAN
+  dsdlc headers until `build/CubeOrange` is removed, and then needs a
+  configure before waf finds `common.ld`
+
+**Rejected: folding the cleanup into the original commits.** Andy's first
+choice. Two attempts, both abandoned on 2026-09-14:
+
+- Forward application of tip-to-cleaned hunks onto every historical version
+  of each file (plumbing only, a new branch): the hunks matched text in early
+  versions whose surroundings differed, and the first commit touching
+  `flash.c` no longer compiled
+- Walking backwards with a three-way merge per version
+  (`git merge-file current=Vi' base=Vi other=V(i-1)`): 19 files conflicted,
+  and the walk stops at each file's first conflict, so that is a floor.
+  Every hand resolution was another chance to break an intermediate build
+
+Cleanup commits on top leave each original commit building as it did. The
+per-subsystem squash will meet the same conflicts, so it is not free; it
+was deferred, not solved.
+
 ## Outstanding
 
 **Needs a decision (blocks Peter's "any direct mention of RP2350" thread).**
@@ -190,6 +329,13 @@ Three chip checks remain outside the HAL:
   like `HAL_RATE_THREAD_STACK_SIZE`); the other removes MAVLink back-pressure
   (`last_txbuf_is_greater(33)`) on one chip, which changes GCS behaviour and
   wants explaining before being blessed
+
+2026-09-14: all three are now board defines, master behaviour by default
+and the old values on RP2350 (see the table in "What the 2026-09-14
+session changed"). That removes the chip mention but not the questions:
+the factor 16 still has no measured cost behind it, the back-pressure
+removal is still unexplained, and neither define has been put to Thomas or
+Peter yet.
 
 **Precursor PRs (blocks Peter's `mode.cpp` and `AP_AHRS_NavEKF3.cpp`
 "similarly elsewhere" threads).** Unrelated changes still in, descending size:
@@ -225,6 +371,34 @@ audited against the post-cleanup tree.
 **Also open:** `HAL_BARO_ALLOW_INIT_NO_BARO` is still set on Laurel and Pico2.
 Same bring-up-convenience shape as the IMU flag on a board that has a DPS310 -
 deliberately left alone, but worth asking the same question.
+
+**Open after 2026-09-14.** From tridge's automated review of 2026-09-13
+at `c1c8709823`; ISSUE (fault store), F6, F7, F8, F9, F12, note 1 and the
+stale watchdog comments are addressed in the unpushed commits, the rest is
+not:
+
+- F10: picotool is downloaded in `Tools/ardupilotwaf/chibios.py` with no
+  checksum and a bare `extractall`
+- F11: the 50 Hz override in `RCOutput.cpp`
+- F13: PR size (185 files at `c1c8709823`, 178 now)
+- Notes 2-6: `rp2350_memfunctions.S:19`, the thread-creation claim, the
+  DShot wording in RPI_UAVFC's `defaults.parm`, the dead newlib relocation,
+  `PORT_SPINLOCK_STATS` in `DEVELOPMENT.md`
+- Core1 watchdog coverage is only indirect (`rp2350_core_affinity.h`)
+- The RAMFUNC2 section script is silent about registry misses outside
+  copter, and its copter check scans every object under the build root, so
+  stale objects from another target can satisfy it
+- Not from the review, found while auditing (derived from the source, not
+  measured): `STM32_HW` is still a name this port invents for a non-STM32
+  chip, now in one place (tpwrules' thread); the RP2350 USB direct-IO path
+  keeps dead branches, `drop_unopened_usb_tx_backlog()` does nothing; RP2350
+  sets up the USB strings early in `board.c` for no recorded reason;
+  `hrt.c` uses `port_lock()` on RP2350 instead of the system lock, and its
+  safety under SMP was not checked; `PICO2.py` carries datasheet tables
+  flattened into comments; `AP_HAL_Boards.h` still defines three
+  `AP_RP2350_*` feature names
+- Push the 23 commits (needs `/prepare-for-push` from Andy), then reply to
+  Peter's `flash.c:85` thread and post a status reply for tridge's items
 
 ## Open review threads (8 of 41)
 
