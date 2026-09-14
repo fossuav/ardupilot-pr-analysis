@@ -400,6 +400,52 @@ Found in passing, not changed: the RP2350 DMA stats layout says 12
 channels, but `rp_registry.h` gives RP2350 16 (`RP_DMA_NUM_CHANNELS`), so
 channels 12-15 would be shown as a second controller.
 
+### Fourth round, 2026-09-14: threads.txt, stack sizes, tridge's review of fea5156687
+
+Local commits on top of the pushed `fea5156687`, **not pushed**:
+`78cdd18667` (threads.txt per-core load and stack sizes on SMP),
+`a31dc4a69e` (default MSP on the RP2350 boards), `7af065f5b6` (default
+timer/rcin/rcout stacks), `480f26b109` (c1_main sleeps, core1 PSP 1 KB),
+`03a9d450a4` (overflow check covers core1's MSP).
+
+Andy's `--enable-stats` run on RPI_UAVFC hardware showed loads summing to
+~50% per core and `c1_main` with a negative stack size. Derived from the
+source: every load was divided by the total over both cores, and the core1
+main thread's context lives in its OS instance, below its stack.
+
+**The RP2350 stack increases were a misreading.** `threads.txt` prints
+`STACK=free/total`; commit `036e5e8972` and the Laurel/Pico2 hwdef comments
+read the first number as used. Every step from 4 KB to 38 KB recorded a
+gap of 130-370 bytes ("208 B free" on the MSP), which is the real usage.
+Measured on Andy's stats build (bench run, not flight): MSP 208 bytes of
+38912, rcin 344 of 22752, rcout 224 of 14560, timer 336 of 3296, c1_main
+112 of 16384. Back at master defaults the heap base drops by 126992 bytes
+on RPI_UAVFC and Laurel and 65536 on Pico2 (ELF symbols); CubeOrange
+objects unchanged. rcout at 512 is the tightest and wants checking with
+bidirectional DShot active.
+
+**Pico2's core1 never joins ChibiOS** (derived from the source and ELF, not
+run): its `c1_main.c` is the legacy FIFO dispatcher and never calls
+`chInstanceObjectInit()`, while the hwdef enables SMP and pins rcout, the
+rate thread and the SPI0 bus thread to `ch1`. Not changed.
+
+tridge's automated review at `fea5156687` (issuecomment-5671665240, posted
+2026-09-14 22:27 UTC) moved to **REQUEST CHANGES**:
+
+- F8 is a correctness bug, not a trade-off. Confirmed from the source:
+  `AP_AHRS_DCM::matrix_update()` rotates by the INS's latest delta angle,
+  which `_publish_gyro()` replaces on every update, so at decimation 16 the
+  backup DCM integrates ~1/16 of the rotation (his Codex harness: 0.320 rad
+  in, 0.020 rad integrated). This overturns the "performance only" reading
+  under which Andy kept it; decision pending
+- Core1 faults still bypass `save_fault_watchdog()` (own SRAM handler)
+- A second copy of the F7 `#warning` in `RCOutput_bdshot.cpp:374`
+- STM32 bootloaders lost the `SCB_VTOR` write before jumping, and gained
+  `bl_usb_tx_poll_drain()` after every `cout()`; both want RP2350 guards
+- OneShot/OneShot125 accepted on RP2350 but cannot work (period 0 to TOP)
+- PR no longer merges cleanly: `Tools/CPUInfo/CPUInfo.cpp`
+- CI: no workflow has run at `fea5156687`; waiting for approval
+
 ## Outstanding
 
 **Needs a decision (blocks Peter's "any direct mention of RP2350" thread).**
@@ -462,7 +508,9 @@ and the stale watchdog comments are addressed in the commits pushed at `fea51566
 rest is not:
 
 - F8: deliberately not addressed. Andy's call on 2026-09-14: RPI_UAVFC keeps
-  the 1/16 DCM backup rate until the performance is dug into. The define
+  the 1/16 DCM backup rate until the performance is dug into. Superseded in
+  part the same night: tridge's review of `fea5156687` shows the skipped
+  updates lose rotation, confirmed from the source (see the fourth round). The define
   from `971182202a` leaves it at 16 on all three RP2350 boards; the RPI_UAVFC
   binary at `00d07c8f34` still skips DCM while the count is 15 or below
 - F13: PR size (185 files at `c1c8709823`, 178 now)
