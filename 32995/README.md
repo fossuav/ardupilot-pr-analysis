@@ -3,8 +3,8 @@
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 Buzz's PR, branch `rp2350-v5-squashed-and-cleaned-and-rebased` on the
 **davidbuzz** remote, which andyp1per pushes to. Base `master`, merge-base
-`b832113b10`. PR head `c1c8709823` as of 2026-09-14, 222 commits; 32 local
-commits sit on top of it at `fea5156687`, **not pushed**. The
+`b832113b10`. PR head `fea5156687`, pushed by Andy 2026-09-14 21:18 UTC:
+the 32 commits of this session on top of `c1c8709823` (222 commits). The
 2026-09-11 session left head `27f3531d62` (198 commits); the work of
 2026-09-12 and 2026-09-13 (`3326ce8af7`..`c1c8709823`: watchdog reset
 detection, SD storage health, registry misses failing the build, bootloader
@@ -25,7 +25,7 @@ unrelated changes that want spinning out as precursor PRs.
 `defined(RP2350)` checks left in vehicle or library code (only
 `AP_HAL_ChibiOS`, `Tools/AP_Bootloader` and `Tools/CPUInfo` still have them);
 shared-file churn is reverted to master text (excluding the submodule,
-modified files 93 -> 86, lines deleted from master 694 -> 371). Unpushed.
+modified files 93 -> 86, lines deleted from master 694 -> 371). Pushed at `fea5156687`.
 The ChibiOS check is still the one red gate.
 
 ## Facts worth not re-deriving
@@ -458,7 +458,7 @@ deliberately left alone, but worth asking the same question.
 
 **Open after 2026-09-14.** From tridge's automated review of 2026-09-13
 at `c1c8709823`; ISSUE (fault store), F6, F7, F9, F10, F11, F12, notes 1-6
-and the stale watchdog comments are addressed in the unpushed commits, the
+and the stale watchdog comments are addressed in the commits pushed at `fea5156687`, the
 rest is not:
 
 - F8: deliberately not addressed. Andy's call on 2026-09-14: RPI_UAVFC keeps
@@ -478,8 +478,10 @@ rest is not:
   safety under SMP was not checked; `PICO2.py` carries datasheet tables
   flattened into comments; `AP_HAL_Boards.h` still defines three
   `AP_RP2350_*` feature names
-- Push the 30 commits (needs `/prepare-for-push` from Andy), then reply to
-  Peter's `flash.c:85` thread and post a status reply for tridge's items
+- Pushed 2026-09-14 at `fea5156687`. Still to do: reply to Peter's
+  `flash.c:85` thread and post a status reply for tridge's items (drafted,
+  not posted); Andy's hardware test of the change set is planned for
+  2026-09-15, including whether the RP2350 fault-path save is safe
 
 ## Open review threads (8 of 41)
 
