@@ -478,10 +478,12 @@ rest is not:
   safety under SMP was not checked; `PICO2.py` carries datasheet tables
   flattened into comments; `AP_HAL_Boards.h` still defines three
   `AP_RP2350_*` feature names
-- Pushed 2026-09-14 at `fea5156687`. Still to do: reply to Peter's
-  `flash.c:85` thread and post a status reply for tridge's items (drafted,
-  not posted); Andy's hardware test of the change set is planned for
-  2026-09-15, including whether the RP2350 fault-path save is safe
+- Pushed 2026-09-14 at `fea5156687`. Replies posted the same evening: Peter's
+  `flash.c:85` thread (discussion_r4009838869), tpwrules' `stm32_util.h`
+  thread (discussion_r4009839843) and a status comment for tridge's review
+  (issuecomment-5671163072). Andy's hardware test of the change set is
+  planned for 2026-09-15, including whether the RP2350 fault-path save is
+  safe
 
 ## Open review threads (8 of 41)
 
@@ -491,7 +493,7 @@ PR head before replying. Remaining:
 | who | file | comment | why still open |
 |---|---|---|---|
 | tpwrules | `AP_AHRS.cpp` | "Why?" | DCM skip still there, pending decision |
-| tpwrules | `stm32_util.h` | "Surely this should be fixed in ChibiOS?" | about the `PAL_LINE` override, not `STM32_HW` (corrected 2026-09-14, see the third round); fixed in ChibiOS#113, override gone since `7fd63d181b`; reply owed |
+| tpwrules | `stm32_util.h` | "Surely this should be fixed in ChibiOS?" | about the `PAL_LINE` override, not `STM32_HW` (corrected 2026-09-14, see the third round); fixed in ChibiOS#113, override gone since `7fd63d181b`; replied 2026-09-14, not resolved |
 | tpwrules | `Laurel/images/*.jpg` | "These pictures can be scaled down, 1MB is large ... Do we need the board at all?" | new 2026-09-14, not answered |
 | tpwrules | `bl_protocol.cpp` | "How does the board run reliably in this case?" | answered in-thread, code stands |
 | peterbarker | `Copter.cpp` | "*Any* direct mention of RP2350 outside of its own HAL is suspect" | 3 chip checks left; status reply posted, not resolved |
