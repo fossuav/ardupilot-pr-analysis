@@ -2,8 +2,8 @@
 
 Analysis archive for [ArduPilot/ardupilot#33498](https://github.com/ArduPilot/ardupilot/pull/33498).
 Branch `pr-gyro-z-unobservable-without-yaw` (andyp1per fork), base `master`,
-PR head `17f19f6202` (2026-09-02); local head `bdce23d76c` (2026-09-15, not
-pushed). The flight evidence is from a 4-inch optical-flow quad (MatekH743,
+PR head `ba52c7e431` (pushed 2026-09-15); before that `17f19f6202`
+(2026-09-02). The flight evidence is from a 4-inch optical-flow quad (MatekH743,
 ARK Flow, no compass in the flow source set); numbers are cited inline and
 no logs are committed.
 
@@ -445,3 +445,12 @@ above. The paragraph above is left as the design the test grew from.
   2026-09-07, not yet answered on the PR.
 - Related: #33497 (the same airframe's flow half-rate fault, fixed first so
   this could be seen), #33484 (per-axis lockout recovery).
+
+## Pushed 2026-09-15
+
+Force-pushed as two commits on the same base: `17f19f6202`, `bfd220a15a` and
+`bdce23d76c` squashed into `97661a3b2d` ("AP_NavEKF3: learn Z gyro bias from
+optical flow only after yaw fusion"), then the autotest `30ee7cc232` as
+`ba52c7e431`. The tree is byte-identical to `bdce23d76c`'s, so every number in
+the 2026-09-15 round holds for the pushed head. rmackay9's review is not yet
+answered on the PR.

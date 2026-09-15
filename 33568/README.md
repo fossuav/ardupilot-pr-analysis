@@ -1,8 +1,8 @@
 # PR #33568 - Fall back to relative aiding when optical flow replaces lost GPS (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#33568](https://github.com/ArduPilot/ardupilot/pull/33568).
-Branch `pr-flow-aiding`. PR head `4bb2ef3583`; local head `8627ddedc6`
-(2026-09-15, three commits on top, not yet pushed). Base master 23 Jun 2026,
+Branch `pr-flow-aiding`. PR head `9e04d0e0a7` (pushed 2026-09-15, rebased
+onto master `bf08027404`); before that `4bb2ef3583`. Base master 23 Jun 2026,
 1364 commits behind on 2026-09-15 but `git merge-tree` against master is still
 clean.
 
@@ -403,3 +403,22 @@ switched off). `glitch_stats.py <log> <glitch start> <glitch end>` and
 `moving_stats.py <head log> <fix log>` produce the tables above;
 `replay_compare.py` compares three Replay outputs of one log
 (`build/sitl/tool/Replay <log>` per build, run from separate directories).
+
+## Pushed 2026-09-15
+
+Rebased onto master `bf08027404` and force-pushed as `9e04d0e0a7`. The first
+rebased candidate failed OpticalFlowGPSLossAiding at 4.5 s with a TypeError:
+master now requires `delay_sim_time(seconds, reason)`, and the PR's test
+calls predate that. `reason` arguments were added in the two autotest commits
+that introduce the calls; nothing else changed. On the pushed head the test
+passes: transition at 105.5 m from the origin and 5.5 m/s, largest step
+0.59 m and 0.06 m/s. OpticalFlowLimits also passes.
+
+| measured on | pushed as |
+|---|---|
+| `06dcc8660b` drop to relative aiding | `cb29b3b4c1` |
+| `0da9da2b2e` log AID in XKF4 | `b52fb278dd` |
+| `4bb2ef3583` autotest (plus `reason` arguments) | `809cb35af7` |
+| `05d1db1b9d` keep the states on the fall back | `bdef1ff967` |
+| `6c6339bd41` fly through the fall back (plus `reason` arguments) | `16a019c608` |
+| `8627ddedc6` do not fall back on a rejected GPS | `9e04d0e0a7` |

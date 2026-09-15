@@ -1,7 +1,8 @@
 # PR #32471 - hover Z-bias learning for vibration rectification (EKF3 / Copter)
 
 Analysis archive for [ArduPilot/ardupilot#32471](https://github.com/ArduPilot/ardupilot/pull/32471).
-Branch `pr-vrf-core` (andyp1per fork), base `master`, approved. Real-flight
+Branch `pr-vrf-core` (andyp1per fork), base `master`, approved; head
+`bb0a818b52` (pushed 2026-09-15, rebased onto master `bf08027404`). Real-flight
 numbers inline; no real-flight logs committed. SITL A/B logs and plots added
 2026-09-04. Partial: the fleet-wide VRFB history (the frozen-correction /
 ground-effect conflict) is not yet here.
@@ -620,3 +621,23 @@ are unaffected. Only a new flight with bit 2 and `LOG_REPLAY=1` exercises it.
 - Author: @andyp1per. Approved, then reworked by the 2026-09-04 review pass.
 - Distinct from #34209 (XY bias in unaided flight) and #32473 (acro
   inhibit), which still carries `cb5026417f`.
+
+## Pushed 2026-09-15
+
+Rebased onto master `bf08027404` and force-pushed as `bb0a818b52`. The
+`fixup!` was folded into its test commit; the two AP_NavEKF3 commits stay
+separate. One conflict, in `AP_DAL.cpp`: master's `8ad9ae2314` had removed
+the `ahrs_airspeed_sensor_enabled` line next to ours and retired RFRN bit 3,
+so the resolution keeps master's removal; this PR uses bit 1, no collision.
+
+The numbers in the 2026-09-15 round were taken on the local commits; they map
+to the pushed ones as:
+
+| measured on | pushed as |
+|---|---|
+| `bd001d81e9` write the inhibit to the DAL once the cores run | `18511cd9f2` |
+| `373a931c99` RISK comment | `294b9eb1a2` |
+| `51f17f7c33` + `7eb93ad76c` Replay AccelBiasInhibit bit | `bb0a818b52` |
+
+Re-run on `bb0a818b52` before pushing: VibrationRectificationBiasLearning,
+AccelBiasMovingPlatform and the full Copter Replay test all pass (SITL).
