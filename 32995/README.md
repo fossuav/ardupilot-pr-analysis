@@ -5,9 +5,11 @@ Buzz's PR, branch `rp2350-v5-squashed-and-cleaned-and-rebased` on the
 **davidbuzz** remote, which andyp1per pushes to. Base `master`, merge-base
 `b832113b10`. PR head `fea5156687`, pushed by Andy 2026-09-14 21:18 UTC:
 the 32 commits of this session on top of `c1c8709823` (222 commits). As of
-2026-09-15 the local branch (and Andy's test branch `tt`) is 5 commits
-ahead at `03a9d450a4`, **not pushed, and `480f26b109` among them stops the
-board booting** - see the fifth round. The
+2026-09-15 the local branch (and Andy's test branch `tt`) is 6 commits
+ahead at `638efaa5d0`, **not pushed**; the sixth bumps ChibiOS to
+`af493a7bd5`, which fixes the boot hang `480f26b109` exposed (fifth round).
+The ChibiOS commit is on `rp2350-clean-v7` (ArduPilot/ChibiOS#113) locally
+and must be pushed there before the ArduPilot branch. The
 2026-09-11 session left head `27f3531d62` (198 commits); the work of
 2026-09-12 and 2026-09-13 (`3326ce8af7`..`c1c8709823`: watchdog reset
 detection, SD storage health, registry misses failing the build, bootloader
@@ -517,9 +519,15 @@ about a minute on the bench, disarmed: core0 MSP 200/1536 used, core1 MSP
 192/704, timer 296/1728 (sizes include the port context overhead). Not
 flown, and rcout not checked with bidirectional DShot.
 
-Where the fix belongs is Andy's call: ChibiOS `chsys.c` (the actual bug;
-the upstream RP2040 demo `c1_main.c` calls the same function) or the
-`c1_main.c` workaround used for the test, on RPI_UAVFC and Laurel.
+Andy chose to fix it in ChibiOS as part of #113. `af493a7bd5` "RT: re-read
+the system state while waiting for it" on `rp2350-clean-v7` reads the state
+through a volatile pointer; the ArduPilot branch bumps to it in `638efaa5d0`.
+Built at `638efaa5d0` with no `c1_main.c` change: RPI_UAVFC and CubeOrange
+0 warnings, `chSysWaitSystemState` now branches back to the `ldrb` each
+pass. Flashed to the debug board (bench, 2026-09-15): heartbeats on USB,
+`WD_SCRATCH1` = `0xBB000035`, core1 sampled in `Copter::rate_controller_thread`,
+the notch, `RCOutput::dshot_send` and `RCOutput_pico::restart_sm`. Not
+flown. Neither commit is pushed.
 
 Build and flash notes:
 
@@ -542,8 +550,7 @@ Build and flash notes:
   and `rp2350.cmN read_memory 0xE000101C 32 1` (PC samples) do not halt.
   Shut it down before any flash or reboot
 
-Still to decide before any push: what to do with `480f26b109` (needs the
-wait fix below before it can go anywhere), F8 (tridge shows
+Still to decide before any push: F8 (tridge shows
 the 1/16 decimation loses rotation), and tridge's other findings from the
 fourth round. `Tools/bootloaders/RPI_UAVFC_bl.bin`/`.hex` are modified and
 `RPI_UAVFC_bl.uf2` is new in Andy's checkout from his 2026-09-14 22:39
