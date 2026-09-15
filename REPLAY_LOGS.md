@@ -41,14 +41,16 @@ that PR, not what could be.
 | [33484](33484/) | log A, log B, log C | the single-axis flow lockout the recovery is for | 500 ms threshold tuned on these; re-run 2026-09-10 as a before/after over the review fixes, `bfb41f69a1` vs `c3db493b9a` (amended to `853f3f2177`, comment only) - B loses one reset to the unhealthy latch gate, A and C unchanged |
 | [33484](33484/) | log7 | the recovery misfiring at the flow tilt gate | re-run 2026-09-10 on the PR's own tree: the gate suppresses **nothing** there, 2 resets either way. The 3 -> 0 is on the beta branch with #33359 and #33478 stacked. Re-run again at `c3db493b9a` (now `853f3f2177`): still 2 resets, but now **3 deferrals reported** where the tree was previously silent |
 | [33507](33507/) | log311, log66 | accel-Z bias, PD drift over the hover | logs **resolved 2026-09-10** (see the private index); re-run **attempted and blocked** - Replay cannot emit XKFA when replaying these logs, so the bias state is unobservable. PD drift, the available proxy, does not separate: -0.0029 to +0.0005 m/s across pre-fix/fixed and Q 0.05/0.30 |
-| [33585](33585/) | log308 | AltHold demotion at the rangefinder ceiling | validated pre-submission at an earlier head; force-pushed to `a4d8966c85` 2026-09-10, then `4fd131e6bf`, then `36f86f06eb` 2026-09-11 (terrain-database flow scale gated on `terrainAltUsable()`) and **still not re-run**. Two heads behind, and the new commit is on the flow scale path log308 exercises |
+| [33585](33585/) | log308 | AltHold demotion at the rangefinder ceiling | validated pre-submission at an earlier head; force-pushed to `a4d8966c85` 2026-09-10, then `4fd131e6bf`, then `36f86f06eb` 2026-09-11 (terrain-database flow scale gated on `terrainAltUsable()`) and **still not re-run**. Two heads behind, and the new commit is on the flow scale path log308 exercises. Five commits behind by 2026-09-15 (`de33b1f5a4`, `76f3428d1a`, and three local unpushed commits from the 2026-09-15 round); log308 did not resolve under the log roots on the machine used, so still not re-run |
 | [32972](32972/) | log7 | finding 6, the height floor blocking a correction in cruise | **owed** - not run |
 | [34292](34292/) | log67 | the near-ground flow floor | partial; the record notes replay does not reproduce the disarm path. Head 337cf08df6 withholds the zeroed sample from the terrain estimator, which is inert on Copter (EK3_FLOW_USE=1) so log67 is unaffected, but a Plane log would be needed to exercise it |
 | [34361](34361/) | log7 | getHAGL reporting nothing while the filter flies on a database AGL | **not applicable** - see below |
-| [32553](32553/) | log200-log206 | terrain offset after ground effect clears | not established |
+| [32553](32553/) | log200-log206 | terrain offset after ground effect clears | not run; SITL A/B 2026-09-15 shows the reset needs the takeoff window held until above GNDEFF_ALT, which Replay cannot show because it re-feeds the recorded `takeoff_expected` |
 | [32768](32768/) | log3, log12, log21 | baro temperature drift across an arm | not established |
-| [33498](33498/) | log53, log54, log56 | Z gyro bias with no yaw source | not run |
-| [32471](32471/) | log197, log198 | the hover Z-bias measurement | the A/B harness ran without replay records |
+| [33498](33498/) | log53, log54, log56 | Z gyro bias with no yaw source | not run; the 2026-09-15 guard change (`bfd220a15a`, unpushed) owes a replay, log roots unavailable on the machine used |
+| [32471](32471/) | log197, log198 | the hover Z-bias measurement | the A/B harness ran without replay records. The 2026-09-15 Replay inhibit fix (`bd001d81e9`, unpushed) is a defect in what the flight writes: a log flown at `9b852c9464` with bit 2 already lacks the set event, so no existing log can show it; the Copter.Replay AccelBiasInhibit bit covers it |
+| [32473](32473/) | log7 (SFD-O4) | 134 s of ACRO on a build carrying the acro inhibit | **owed** - replay with the inhibit events suppressed; log root not reachable 2026-09-15. Supersedes this PR's entry under "no flight log applies" |
+| [33568](33568/) | not named | the GPS-then-flow Loiter flight behind the PR body's scaler plot and "bit-identical" claim | **owed** - the flight is not named in this archive or the flight analyses; a SITL-log Replay A/B stands in (2026-09-15, see README) |
 
 ## Where no flight log applies, and why
 
@@ -60,7 +62,7 @@ Recorded so nobody looks for one. "No log" here is a conclusion, not a gap.
 | [32232](32232/) | found by #33585's autotest, not in flight. Still true at `8bec444e50` (2026-09-11); the autotest itself changed, see that README's sampling note |
 | [34305](34305/) | an uninitialised read, demonstrated with a poisoned struct |
 | [34209](34209/) | autotest only; fails on master, passes fixed |
-| [32473](32473/) | gates the same terms as #32471 and borrows its SITL A/B |
+| [32473](32473/) | gates the same terms as #32471 and borrows its SITL A/B. **Superseded 2026-09-15**: log7 (SFD-O4) flew 134 s of ACRO with LOG_REPLAY=1 on a build carrying the inhibit, so a log does apply - see the record above |
 | [33338](33338/) | closed experiment |
 | [33497](33497/) | needs a DroneCAN flow node, which SITL does not have |
 | [34363](34363/) | logging only, no estimator behaviour |
