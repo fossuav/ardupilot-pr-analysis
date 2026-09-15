@@ -641,3 +641,12 @@ to the pushed ones as:
 
 Re-run on `bb0a818b52` before pushing: VibrationRectificationBiasLearning,
 AccelBiasMovingPlatform and the full Copter Replay test all pass (SITL).
+
+Reply posted 2026-09-15 11:23Z answering the 2026-09-05 automated round
+(https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-5679359541). The
+`AIReview` label was already on, so the next sweep should re-review at
+`bb0a818b52`; the 2026-09-05 round is stale from the push. Still open from
+this session: #32473's acro A/B measured the bit-2 covariance restore
+overshooting on release (8.0 m lost in ALT_HOLD after a 0.5 m/s/s bias step,
+against 6.0 m without the restore and 1.5 m uninhibited; single SITL runs, see
+`../32473/`). Not yet examined here.
