@@ -326,6 +326,7 @@ committed.
 git checkout pr-vrf-core
 ./waf configure --board sitl && ./waf copter
 Tools/autotest/autotest.py --no-configure test.Copter.VibrationRectificationBiasLearning
+Tools/autotest/autotest.py --no-configure test.Copter.Replay   # AccelBiasInhibit bit, from 2026-09-15
 ```
 
 `VibrationRectificationBiasLearning` was rewritten 2026-09-04 to use
@@ -506,9 +507,116 @@ handler cannot land until `NavEKF3::setInhibitAccelBiasLearning` exists, which
 needs the enum. Closing that window entirely would put two modules in one
 commit. It was 18 commits wide before this round.
 
+## Review round, 2026-09-15 - the inhibit event never reached Replay
+
+tridge's pass at `9b852c9464` (posted 2026-09-05, verdict REQUEST CHANGES)
+found that the on-change guard added in the 2026-09-05 round broke Replay.
+Measured before fixing. Local head after this round `7eb93ad76c`: four
+commits on `9b852c9464`, **not pushed**, one of them a `fixup!` for an
+autosquash.
+
+The "Landed" bullet above, "the accel-bias inhibit DAL event is written on
+change instead of at 1 Hz forever while disarmed", is what this section
+supersedes. It was a code argument that nobody replayed; the `RISK` counting
+in the section above checked the per-frame record and not this event.
+
+### The defect, measured
+
+Mechanism, derived from the source: Copter sets the inhibit from
+`one_hz_loop` while disarmed. With `LOG_REPLAY=1` and `LOG_DISARMED=1` the
+DAL does not log until `AP_Logger::allow_start_ekf()`, which waits for the
+startup messages (every parameter) to be out, so the first tick's `REV3` is
+dropped at `AP_DAL.cpp:305` and the guard never writes it again. Replay then
+starts with the inhibit clear and learns bias the flight did not, and it also
+never sees the true-to-false edge that triggers the bit-2 covariance restore
+at `AP_NavEKF3_Control.cpp:180`.
+
+Measured in SITL, 2026-09-15. Sit disarmed 30 s on `SIM_PLAT_ACC_Z=-1.0` with
+`ACC_ZBIAS_LEARN=4`, take off in LOITER, clear the platform, hover 10 s,
+land, then `build/sitl/tool/Replay` and `Tools/Replay/check_replay.py`. Same
+debug build configuration both sides; only `AP_NavEKF3.cpp` and
+`AP_NavEKF3.h` differ.
+
+| EKF3 files | inhibit `REV3` in the flight log | `XKF2.AZ` at arm, flight C0/C1 | Replay C100/C101 | check_replay |
+|---|---|---|---|---|
+| `9b852c9464` | unset at 76.9 s (arm), set at 123.4 s (after landing); **no set before arm** | 0.00 / 0.00 | **-0.99 / -0.99** | 83440 mismatches |
+| `bd001d81e9` | set at 4.45 s (first `UpdateFilter` frame; first DAL frame 3.44 s), unset at 76.7 s, set at 123.4 s | 0.00 / 0.00 | 0.00 / 0.00 | 0 |
+
+A first head run the same day paired a non-debug flight binary with a debug
+Replay (the autotest's `build_replay()` reconfigures) and read -0.99 / -0.98
+with 85424 mismatches. The debug-matched row is the control; the first run
+is recorded only so the two counts are not mistaken for a discrepancy.
+
+### The fix, and the alternative rejected
+
+Rejected: dropping the guard, although the review offered it. The same
+reviewer's previous round asked for the guard ("3,600 redundant events per
+idle hour"), and #32473 turns the Copter writer into a level written every
+second in every state, so it would put an event a second in every Copter
+log. It would also leave up to 1 s between the cores starting and the next
+tick in which Replay runs without the inhibit. Rejected on that cost and that
+window, both derived from the source, not measured.
+
+Landed as `bd001d81e9`: `setInhibitAccelBiasLearning()` records the state and
+a pending flag, and `NavEKF3::UpdateFilter()` writes a pending change before
+`dal.start_frame()` once the cores exist. A replayable log does not start the
+cores until the DAL is logging (`AP_AHRS_NavEKF3.cpp:28` gates on
+`allow_start_ekf()`, which is half of the DAL's `logging_started`), so the
+first write lands. Between frames is where `log_event3()` puts an event anyway,
+via its `end_frame()`. Only a change is written, and a vehicle that never calls
+the setter writes nothing.
+
+In flight the core reads the frontend flag exactly as before; only where the
+event is written moves. That is derived from the source, and the two
+behaviour tests were re-run below.
+
+Limit, derived from the source: a second log in the same boot does not get
+the state re-written, the same as every other `REV3`-carried state. Such a
+log does not contain the EKF start and does not replay exactly anyway.
+
+### Coverage and re-runs at `7eb93ad76c`
+
+- `Copter.Replay` gains an `AccelBiasInhibit` bit (`51f17f7c33`, plus the
+  fixup `7eb93ad76c`, which resets the sticks the OpticalFlow bit leaves
+  non-neutral - without it arming fails "Pitch (RC2) is not neutral"). Full
+  `Replay` with the fix: all 7 bits pass, 0 mismatches each. The new bit
+  alone against `9b852c9464`'s EKF3 files: fails, 83440 mismatches.
+- `VibrationRectificationBiasLearning`: pass, learned 0.130 against 0.15.
+- `AccelBiasMovingPlatform`: pass, -0.990 m/s/s with bit 2 clear and 0.000
+  with it set, the same values as 2026-09-04.
+- `arducopter`, `arduplane` and `Replay` build.
+
+A control run of the full `Replay` test against head's EKF3 files failed
+early in the Beacon bit with "Did not get GLOBAL_POSITION_INT", a harness
+timeout unrelated to this change, which is why the control above is the
+single bit.
+
+### Other items in the review
+
+- The stale `RISJ` comment in `hoverZBiasApplied()`: `373a931c99`.
+- "The 0.448 m recovery ... is still unmeasured": answered by the
+  2026-09-05 measurement above, "Bit 2's cost, mostly recovered" (0.467 m to
+  0.284 m against `=2`'s 0.201 m, at `9b852c9464`). This round moves no
+  flight-EKF behaviour, so those numbers still describe the branch.
+- CI failures: all external per the review; a rebase picks up #34303.
+
+### No flight log can show this fix
+
+The defect is in what the flight writes. A log flown on `9b852c9464` with bit
+2 set already lacks the set event, and Replaying it through the fixed code
+cannot put it back. log197 and log198 remain the hover Z-bias measurement and
+are unaffected. Only a new flight with bit 2 and `LOG_REPLAY=1` exercises it.
+
+### Owed
+
+- Squash `7eb93ad76c` into `51f17f7c33`, and ideally fold `bd001d81e9` and
+  `373a931c99` into the commits that introduced the guard and `RISK`, then
+  rebase for CI. All need a push grant.
+
 ## Branches and people
 
 - `pr-vrf-core` - the PR branch, `9b852c9464` as of 2026-09-05. Depends on #32396.
+  Local head `7eb93ad76c` 2026-09-15, not pushed (see the 2026-09-15 round).
 - Author: @andyp1per. Approved, then reworked by the 2026-09-04 review pass.
 - Distinct from #34209 (XY bias in unaided flight) and #32473 (acro
   inhibit), which still carries `cb5026417f`.
