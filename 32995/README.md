@@ -4,7 +4,10 @@ Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ar
 Buzz's PR, branch `rp2350-v5-squashed-and-cleaned-and-rebased` on the
 **davidbuzz** remote, which andyp1per pushes to. Base `master`, merge-base
 `b832113b10`. PR head `fea5156687`, pushed by Andy 2026-09-14 21:18 UTC:
-the 32 commits of this session on top of `c1c8709823` (222 commits). The
+the 32 commits of this session on top of `c1c8709823` (222 commits). As of
+2026-09-15 the local branch (and Andy's test branch `tt`) is 5 commits
+ahead at `03a9d450a4`, **not pushed, and `480f26b109` among them stops the
+board booting** - see the fifth round. The
 2026-09-11 session left head `27f3531d62` (198 commits); the work of
 2026-09-12 and 2026-09-13 (`3326ce8af7`..`c1c8709823`: watchdog reset
 detection, SD storage health, registry misses failing the build, bootloader
@@ -445,6 +448,69 @@ tridge's automated review at `fea5156687` (issuecomment-5671665240, posted
 - OneShot/OneShot125 accepted on RP2350 but cannot work (period 0 to TOP)
 - PR no longer merges cleanly: `Tools/CPUInfo/CPUInfo.cpp`
 - CI: no workflow has run at `fea5156687`; waiting for approval
+
+### Fifth round, 2026-09-15: the stack changes on hardware
+
+Andy flashed RPI_UAVFC (tier 1, bench, not flown):
+
+| build | result |
+|---|---|
+| `78cdd18667` threads.txt fix | boots; per-core loads and stack sizes now make sense |
+| `03a9d450a4` all five commits | **does not boot** |
+| `7af065f5b6` MSP + thread stacks at master defaults | boots |
+| `480f26b109` + c1_main sleeps + core1 PSP 1 KB | does not boot ("appears to start booting") |
+| `psp-only`: `7af065f5b6` + core1 PSP 1 KB, heartbeat kept | does not boot |
+| `samelayout-1k-psp`: 1 KB usable core1 PSP, RAM layout identical to `7af065f5b6` | built, not yet flashed |
+| `sleep-only`: `7af065f5b6` + c1_main sleeps, 16 KB PSP | not flashed |
+
+So the MSP and rcin/rcout/timer reductions work on hardware and the core1
+process stack cut is the breakage; the sleep itself is untested. What is
+known about why, derived from the source and ELF, not measured:
+
+- `_crt0_c1_entry` (disassembled) sets `PSP` and `PSPLIM` to the core1
+  process stack, switches `CONTROL` to PSP, runs `__c1_cpu_init()` and
+  `__c1_early_init()` (both trivial), fills the stacks with the canary and
+  calls `c1_main`. So the 112 bytes the canary showed should be real
+- ChibiOS saves and reloads `PSPLIM` per thread (`PORT_SAVE_PSPLIM`), and
+  CRT0 sets `MSPLIM`/`PSPLIM` on both cores, so an overflow faults at once.
+  A frame that moves SP far down but writes little would fault while the
+  canary still looks intact
+- A disassembly walk of `c1_main`'s calls (veneers followed) found under
+  100 bytes of frames
+- Between `7af065f5b6` and `psp-only` the only RAM difference is `.bss`,
+  `.ram0` and the heap starting 15 KB lower (`objdump -h`); no fixed
+  address found in that window yet
+- Ruled out by reading: `chThdSleep(TIME_INFINITE)` has no halting check;
+  the notify-before-insert order in `chSchReadyI()` is covered because
+  PendSV's `__port_schedule_next()` takes the kernel spinlock
+
+`samelayout-1k-psp` separates the two: if it boots, the 15 KB shift is the
+problem; if not, something really uses more than 1 KB of core1's PSP, and
+core1's fault record (`WD_SCRATCH2` = 0xC1FA0001, CFSR in `WD_SCRATCH3`,
+PSP at fault in `c1_fault_info[5]`) read over SWD should name it.
+
+Build and flash notes:
+
+- The variant `.apj` files and `uploader.py` are in
+  `C:\Users\uav\rp2350_bisect` (the scratchpad copies under `/tmp` do
+  not survive a reboot). Flash from Windows python (pyserial 3.5):
+  `py uploader.py --port COM9,COM10,COM11,COM12 <file>.apj`, with Mission
+  Planner closed
+- **waf does not track `hwdef/<board>/c1_main.c`.** Changing it without a
+  change to anything waf does track leaves a stale `c1_main.o` in
+  `libch.a`; the first `psp-only` build silently kept the sleep version.
+  Remove `build/<board>/modules/ChibiOS` to force it. Worth a fix
+- A scratch worktree under `/tmp` was used for the bisect; after a reboot
+  run `git worktree prune`
+- `jq` is not installed, so a `gh`-plus-`jq` CI watch never reports; use
+  `gh api --jq`
+
+Still to decide before any push: what to do with `480f26b109` (drop the
+PSP cut, find the real use, or fix the layout dependency), F8 (tridge shows
+the 1/16 decimation loses rotation), and tridge's other findings from the
+fourth round. `Tools/bootloaders/RPI_UAVFC_bl.bin`/`.hex` are modified and
+`RPI_UAVFC_bl.uf2` is new in Andy's checkout from his 2026-09-14 22:39
+bootloader build; not staged.
 
 ## Outstanding
 
