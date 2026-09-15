@@ -1,0 +1,75 @@
+diff --git a/ArduCopter/Attitude.cpp b/ArduCopter/Attitude.cpp
+index 02cb2ae86c..92c8f4b909 100644
+--- a/ArduCopter/Attitude.cpp
++++ b/ArduCopter/Attitude.cpp
+@@ -269,7 +269,10 @@ void Copter::update_accel_bias_inhibit(void)
+ {
+     const bool inhibit_disarmed = (g2.accel_zbias_learn & uint8_t(AccZBiasLearn::INHIBIT_DISARMED)) != 0;
+     const bool disarmed_hold = inhibit_disarmed && !motors->armed();
+-    const bool acro_spooled_up = flightmode->mode_number() == Mode::Number::ACRO &&
++    static const int probe_variant = getenv("ACRO_INH") ? atoi(getenv("ACRO_INH")) : 1;
++    const bool acro_spooled_up = probe_variant != 0 && flightmode->mode_number() == Mode::Number::ACRO &&
+                                  motors->get_spool_state() == AP_Motors::SpoolState::THROTTLE_UNLIMITED;
+     ahrs.set_inhibit_accel_bias_learning(disarmed_hold || acro_spooled_up);
++    AP::logger().Write("PRBA", "TimeUS,Inh,Var,Mode", "QBBB", AP_HAL::micros64(),
++                       uint8_t(disarmed_hold || acro_spooled_up), uint8_t(probe_variant), uint8_t(flightmode->mode_number()));
+ }
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_Control.cpp b/libraries/AP_NavEKF3/AP_NavEKF3_Control.cpp
+index cb83545558..acdd9ab7da 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_Control.cpp
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_Control.cpp
+@@ -177,7 +177,8 @@ void NavEKF3_core::setWindMagStateLearningMode()
+     // states the same starting uncertainty they get when first activated rather
+     // than one floored across an arbitrarily long disarmed period.
+     const bool vehicleInhibitAccelBias = frontend->getInhibitAccelBiasLearning();
+-    if (prevVehicleInhibitAccelBias && !vehicleInhibitAccelBias && !inhibitDelVelBiasStates) {
++    static const bool probe_no_restore = getenv("ACRO_INH") && atoi(getenv("ACRO_INH")) == 3;
++    if (prevVehicleInhibitAccelBias && !vehicleInhibitAccelBias && !inhibitDelVelBiasStates && !probeZOnly() && !probe_no_restore) {
+         P[13][13] = sq(ACCEL_BIAS_LIM_SCALER * frontend->_accBiasLim * dtEkfAvg);
+         P[14][14] = P[13][13];
+         P[15][15] = P[13][13];
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_Outputs.cpp b/libraries/AP_NavEKF3/AP_NavEKF3_Outputs.cpp
+index 993d9bc00f..00b45439b6 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_Outputs.cpp
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_Outputs.cpp
+@@ -153,7 +153,13 @@ void NavEKF3_core::getAccelBias(Vector3f &accelBias) const
+ // combines internal state inhibition with vehicle-requested inhibition
+ bool NavEKF3_core::accelBiasLearningInhibited() const
+ {
+-    return inhibitDelVelBiasStates || frontend->getInhibitAccelBiasLearning();
++    return inhibitDelVelBiasStates || (frontend->getInhibitAccelBiasLearning() && !probeZOnly());
++}
++
++bool NavEKF3_core::probeZOnly() const
++{
++    static const bool z_only = getenv("ACRO_INH") && atoi(getenv("ACRO_INH")) == 2;
++    return z_only;
+ }
+ 
+ // return the transformation matrix from XYZ (body) to NED axes
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_core.cpp b/libraries/AP_NavEKF3/AP_NavEKF3_core.cpp
+index c0cd556297..0b328422c1 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_core.cpp
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_core.cpp
+@@ -1198,7 +1198,8 @@ void NavEKF3_core::CovariancePrediction(Vector3F *rotVarVecPtr)
+             // accelerates horizontally in flight.
+             // On ground and moving (e.g. carried or on a boat): inhibit all axes
+             // to prevent learning biases from external motion accelerations.
+-            const bool is_bias_observable = (fabsF(prevTnb[index][2]) > 0.8f && onGroundNotMoving) || !onGround;
++            const bool is_bias_observable = ((fabsF(prevTnb[index][2]) > 0.8f && onGroundNotMoving) || !onGround) &&
++                                            !(index == 2 && probeZOnly() && frontend->getInhibitAccelBiasLearning());
+ 
+             if (!is_bias_observable && !dvelBiasAxisInhibit[index]) {
+                 // store variances to be reinstated wben learning can commence later
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_core.h b/libraries/AP_NavEKF3/AP_NavEKF3_core.h
+index 554b1a0ecf..0ecf11de7e 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_core.h
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_core.h
+@@ -183,6 +183,7 @@ public:
+     // check if accel bias learning should be inhibited
+     // combines internal state inhibition with vehicle-requested inhibition
+     bool accelBiasLearningInhibited() const;
++    bool probeZOnly() const;
+ 
+     // hover Z-bias correction currently applied to an IMU's delta velocity
+     ftype hoverZBiasApplied(uint8_t accel_index) const;

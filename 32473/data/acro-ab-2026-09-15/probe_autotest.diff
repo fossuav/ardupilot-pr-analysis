@@ -1,0 +1,218 @@
+diff --git a/Tools/autotest/arducopter.py b/Tools/autotest/arducopter.py
+index 8821938353..ec5266d45c 100644
+--- a/Tools/autotest/arducopter.py
++++ b/Tools/autotest/arducopter.py
+@@ -15318,6 +15318,195 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
+         self.assert_ekfs_match_sim_state(ekf_message_types=['XKF1'], max_pos_d_err_m=2.5)
+         self.reboot_sitl()
+ 
++    def AcroBiasProbe(self):
++        """probe: accel bias learning across an acro segment (not for commit)"""
++        import os as _os
++        import shutil as _shutil
++        cond = _os.environ.get("PROBE_COND", "scale")
++        pre_hover = float(_os.environ.get("PROBE_PRE", "30"))
++        acro_s = float(_os.environ.get("PROBE_ACRO_S", "60"))
++        self.context_push()
++        lua = """
++local HOME_ALT = 40
++local MODE_ACRO = 1
++local phases = {"roll", "rec", "pitch", "rec", "punch", "rec"}
++local idx = 1
++local t0 = 0
++local rot = 0
++local last_s = 0
++local overriding = false
++local climbed = false
++local function ch(n) return rc:get_channel(n) end
++local function alt_thr()
++  local pd = ahrs:get_relative_position_D_home()
++  local v = ahrs:get_velocity_NED()
++  if not pd or not v then return 1500 end
++  local thr = 1500 + 25 * (HOME_ALT + pd) + 60 * v:z()
++  return math.max(1150, math.min(1900, thr))
++end
++local function set(r, p, t)
++  ch(1):set_override(math.floor(r))
++  ch(2):set_override(math.floor(p))
++  ch(3):set_override(math.floor(t))
++  ch(4):set_override(1500)
++end
++function update()
++  local now = millis():tofloat() * 0.001
++  local dt = now - last_s
++  last_s = now
++  if vehicle:get_mode() ~= MODE_ACRO or not arming:is_armed() then
++    if overriding then
++      for n = 1, 4 do ch(n):set_override(0) end
++      overriding = false
++    end
++    idx = 1
++    t0 = now
++    rot = 0
++    climbed = false
++    return update, 20
++  end
++  overriding = true
++  if not climbed then
++    local pd = ahrs:get_relative_position_D_home()
++    if pd and pd < -35 then
++      climbed = true
++      t0 = now
++    else
++      set(1500, 1500, 1850)
++      return update, 20
++    end
++  end
++  local ph = phases[idx]
++  local el = now - t0
++  local g = ahrs:get_gyro()
++  local nextp = false
++  if ph == "roll" then
++    rot = rot + math.abs(g:x()) * dt
++    set(2000, 1500, alt_thr() + 150)
++    nextp = rot > 5.6 or el > 3
++  elseif ph == "pitch" then
++    rot = rot + math.abs(g:y()) * dt
++    set(1500, 1000, alt_thr() + 150)
++    nextp = rot > 5.6 or el > 3
++  elseif ph == "punch" then
++    set(1500, 1500, 1900)
++    nextp = el > 1.0
++  else
++    set(1500, 1500, alt_thr())
++    nextp = el > 2.5
++  end
++  if nextp then
++    idx = idx % #phases + 1
++    t0 = now
++    rot = 0
++  end
++  return update, 20
++end
++return update, 1000
++"""
++        self.install_script_content_context("acro_driver.lua", lua)
++        params = {
++            "SCR_ENABLE": 1,
++            "ACRO_TRAINER": 1,
++            "FS_EKF_ACTION": 0,
++            "LOG_DISARMED": 0,
++        }
++        if cond in ("scale", "scale_vrf"):
++            for i in (1, 2):
++                for ax in "XYZ":
++                    params["SIM_ACC%u_SCAL_%s" % (i, ax)] = 1.03
++        if cond == "lever":
++            params["SIM_IMU_POS_X"] = 0.05
++            params["SIM_IMU_POS_Y"] = 0.05
++            params["SIM_IMU_POS_Z"] = 0.05
++        if cond in ("vrf", "scale_vrf"):
++            params["SIM_ACC_VRF_Z"] = 0.15
++        self.set_parameters(params)
++        self.reboot_sitl()
++        self.wait_ready_to_arm()
++        if _os.environ.get("PROBE_ACRO_TAKEOFF", "0") == "1":
++            self.change_mode('ACRO')
++            self.zero_throttle()
++            self.arm_vehicle()
++        else:
++            self.takeoff(40, mode='LOITER')
++            self.delay_sim_time(pre_hover, "pre-acro hover")
++            self.change_mode('ACRO')
++        tstart = self.get_sim_time()
++        while self.get_sim_time_cached() - tstart < acro_s:
++            self.progress("acro alt %.1f" % self.get_altitude(relative=True))
++            self.delay_sim_time(5, "lua flies acro")
++        self.change_mode('ALT_HOLD')
++        self.set_rc(3, 1500)
++        self.delay_sim_time(40, "post-acro hover")
++        self.change_mode('LAND')
++        self.wait_disarmed(timeout=180)
++        path = self.current_onboard_log_filepath()
++        dest = _os.path.join(_os.environ.get("PROBE_OUT", "/tmp"),
++                             "acro_%s%s_inh%s.BIN" % (cond, "_to" if _os.environ.get("PROBE_ACRO_TAKEOFF", "0") == "1" else "", _os.environ.get("ACRO_INH", "1")))
++        _shutil.copy(path, dest)
++        self.progress("PROBE LOG %s -> %s" % (path, dest))
++        self.context_pop()
++        self.reboot_sitl()
++
++    def AccelBiasLearningInhibitedInAcro(self):
++        '''Test accel bias is not learned while spooled up in acro'''
++        # Copter inhibits EKF accel bias learning while spooled up in acro.
++        # Step a real Z accel bias in once the inhibit is held: the estimate
++        # must not follow it in acro, and must follow it once back in a mode
++        # that learns, which also shows the step was learnable at all.
++        injected = 0.5
++        self.context_push()
++        self.takeoff(40, mode='LOITER')
++        self.delay_sim_time(20, "settle the accel bias in hover")
++        self.change_mode('ACRO')
++        # the inhibit is written from the 1Hz loop
++        self.delay_sim_time(3, "let the acro inhibit engage")
++        self.set_parameters({
++            "SIM_ACC1_BIAS_Z": injected,
++            "SIM_ACC2_BIAS_Z": injected,
++        })
++        self.delay_sim_time(20, "fly acro with the bias step")
++        self.change_mode('ALT_HOLD')
++        self.delay_sim_time(20, "hover and learn the bias step")
++        self.change_mode('LAND')
++        self.wait_disarmed(timeout=120)
++
++        dfreader = self.dfreader_for_current_onboard_log()
++        acro_in = None
++        acro_out = None
++        az = []
++        while True:
++            m = dfreader.recv_match(type=['MODE', 'XKF2'])
++            if m is None:
++                break
++            if m.get_type() == 'MODE':
++                if m.Mode == 1 and acro_in is None:
++                    acro_in = m.TimeUS
++                elif m.Mode == 2 and acro_in is not None and acro_out is None:
++                    acro_out = m.TimeUS
++                continue
++            if m.C == 0:
++                az.append((m.TimeUS, m.AZ))
++        if acro_in is None or acro_out is None:
++            raise NotAchievedException("did not find the acro segment in the log")
++        # the step lands 3s into acro; compare from there to the exit
++        in_acro = [a for (t, a) in az if acro_in + 3e6 <= t <= acro_out]
++        after = [a for (t, a) in az if t > acro_out]
++        if len(in_acro) < 10 or len(after) < 10:
++            raise NotAchievedException("too few XKF2 samples either side of the acro exit")
++        moved_in_acro = max(abs(a - in_acro[0]) for a in in_acro)
++        moved_after = max(a - in_acro[0] for a in after)
++        self.progress("XKF2.AZ moved %.3f in acro and %.3f after it, against a %.2f step" %
++                      (moved_in_acro, moved_after, injected))
++        if moved_after < 0.5 * injected:
++            raise NotAchievedException(
++                "bias step was not learned after acro (%.3f), so the check below proves nothing" % moved_after)
++        if moved_in_acro > 0.05:
++            raise NotAchievedException("EKF learned accel bias in acro (%.3f m/s/s)" % moved_in_acro)
++        self.context_pop()
++        self.reboot_sitl()
++
+     def VibrationRectificationBiasLearning(self):
+         '''Test hover Z-bias learning for vibration rectification'''
+         # SIM_ACC_VRF_Z injects an accel offset present only while the motors run,
+@@ -16718,6 +16907,8 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
+              self.TouchdownGroundEffectAlt,
+              self.VibrationRectificationBiasLearning,
+              self.AccelBiasMovingPlatform,
++             self.AccelBiasLearningInhibitedInAcro,
++             self.AcroBiasProbe,
+              self.StabilityPatch,
+              self.OBSTACLE_DISTANCE_3D,
+              self.AC_Avoidance_Proximity,
+@@ -20307,7 +20498,7 @@ RTL_ALT_M 111
+             self.reboot_sitl()
+ 
+             # uncomment this if you just want the test scenario set up for you:
+-            # self.delay_sim_time(100000)
++            # self.delay_sim_time(100000, "manoeuvre")
+ 
+             self.progress("Connect to the serial port on the peripheral, which should be talking mavlink")
+             self.drain_mav()
