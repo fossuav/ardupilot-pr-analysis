@@ -3,13 +3,11 @@
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 Buzz's PR, branch `rp2350-v5-squashed-and-cleaned-and-rebased` on the
 **davidbuzz** remote, which andyp1per pushes to. Base `master`, merge-base
-`b832113b10`. PR head `fea5156687`, pushed by Andy 2026-09-14 21:18 UTC:
-the 32 commits of this session on top of `c1c8709823` (222 commits). As of
-2026-09-15 the local branch (and Andy's test branch `tt`) is 6 commits
-ahead at `638efaa5d0`, **not pushed**; the sixth bumps ChibiOS to
-`af493a7bd5`, which fixes the boot hang `480f26b109` exposed (fifth round).
-The ChibiOS commit is on `rp2350-clean-v7` (ArduPilot/ChibiOS#113) locally
-and must be pushed there before the ArduPilot branch. The
+`b832113b10`. PR head `638efaa5d0`, pushed by Andy 2026-09-15 13:18 UTC
+(`fea5156687` on 2026-09-14 plus six commits: threads.txt, the stack sizes,
+and the ChibiOS bump to `af493a7bd5`, which fixes the boot hang
+`480f26b109` exposed - fifth round). ArduPilot/ChibiOS#113 head is
+`af493a7bd5`, also pushed. The
 2026-09-11 session left head `27f3531d62` (198 commits); the work of
 2026-09-12 and 2026-09-13 (`3326ce8af7`..`c1c8709823`: watchdog reset
 detection, SD storage health, registry misses failing the build, bootloader
@@ -527,7 +525,7 @@ Built at `638efaa5d0` with no `c1_main.c` change: RPI_UAVFC and CubeOrange
 pass. Flashed to the debug board (bench, 2026-09-15): heartbeats on USB,
 `WD_SCRATCH1` = `0xBB000035`, core1 sampled in `Copter::rate_controller_thread`,
 the notch, `RCOutput::dshot_send` and `RCOutput_pico::restart_sm`. Not
-flown. Neither commit is pushed.
+flown. Both pushed 2026-09-15.
 
 Build and flash notes:
 
