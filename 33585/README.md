@@ -1085,3 +1085,11 @@ this PR's ten. The three 2026-09-15 commits map as:
 
 The rebased branch's test results in the 2026-09-15 section were taken on
 `e18c7d6fc3` itself.
+
+Reply posted 2026-09-15 11:23Z
+(https://github.com/ArduPilot/ardupilot/pull/33585#issuecomment-5679360111) covering the ExtNav
+start race and its fix, the declined `prevHgtSource` suggestion, the two-hop
+gap left open, the test fixes, the SRTM handover comment and Popt. The PR body
+was rewritten for the new stack: five #33478 commits then ten of this PR's,
+the three autotests, and the terrain carry on all three reset paths.
+`AIReview` was already on; the 2026-09-13 round is stale from the push.

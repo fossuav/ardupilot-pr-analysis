@@ -11,8 +11,8 @@ no logs are committed.
 
 Correctness fix, flight-validated on the airframe that exposed it. The
 2026-09-15 round makes the guard purely fusion-based (the compass leg M1 is
-measured and fixed) and adds an autotest; not yet pushed, and rmackay9's
-review is not yet answered on the PR. See "Round of 2026-09-15" below.
+measured and fixed) and adds an autotest; pushed 2026-09-15 as `ba52c7e431`
+and rmackay9's review answered the same day. See "Round of 2026-09-15" below.
 
 ## Review 2026-09-10: two of the three legs are honest, the compass leg is not
 
@@ -452,5 +452,13 @@ Force-pushed as two commits on the same base: `17f19f6202`, `bfd220a15a` and
 `bdce23d76c` squashed into `97661a3b2d` ("AP_NavEKF3: learn Z gyro bias from
 optical flow only after yaw fusion"), then the autotest `30ee7cc232` as
 `ba52c7e431`. The tree is byte-identical to `bdce23d76c`'s, so every number in
-the 2026-09-15 round holds for the pushed head. rmackay9's review is not yet
-answered on the PR.
+the 2026-09-15 round holds for the pushed head.
+
+Reply to rmackay9 posted 2026-09-15 11:23Z
+(https://github.com/ArduPilot/ardupilot/pull/33498#issuecomment-5679359765): his second
+option (record what was actually fused) taken, the `getYawSource()` swap
+declined with the SITL table, `recentYawFusion()` named as he suggested. The
+PR body's guard paragraph was replaced to describe the fusion-only test, the
+FlowGyroZBiasNoYawReference table added and the automated-test box ticked.
+The PR had no `AIReview` label; it was added 2026-09-15, so its 2026-09-02
+APPROVE round will be superseded by a review of `ba52c7e431`.

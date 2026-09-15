@@ -13,6 +13,10 @@ later flies on flow gets the flow control limits. The 2026-09-12 automated
 review's headline BUG - that the new edge teleports the NE position to the EKF
 origin - **did not reproduce when measured**.
 
+**Superseded 2026-09-15:** it was measured hovering. Moving at 5.4 m/s through
+the fall back the estimate stepped 21.0 m and 5.9 m/s; fixed by skipping both
+resets on that edge and pushed as `9e04d0e0a7`. See the 2026-09-15 sections.
+
 **Superseded 2026-09-15:** it reproduces on a vehicle that is still moving
 when the fall back fires (21 m and 5.9 m/s steps at 5.4 m/s); the 2026-09-12
 runs hovered through it. Fixed locally in `05d1db1b9d`, and the per-cycle GPS
@@ -422,3 +426,12 @@ passes: transition at 105.5 m from the origin and 5.5 m/s, largest step
 | `05d1db1b9d` keep the states on the fall back | `bdef1ff967` |
 | `6c6339bd41` fly through the fall back (plus `reason` arguments) | `16a019c608` |
 | `8627ddedc6` do not fall back on a rejected GPS | `9e04d0e0a7` |
+
+Reply posted 2026-09-15 11:23Z
+(https://github.com/ArduPilot/ardupilot/pull/33568#issuecomment-5679359949) conceding the
+teleport, correcting the "bit-identical" claim with the Replay A/B, and
+covering the `readyToUseGPS()` guard, the fly-out test and #34380. The PR body
+was rewritten the same day: the fall-back guard described without the old
+per-cycle test, a paragraph on why the states are not reset, the corrected
+bit-identical sentence, and the new test. `AIReview` was already on; the
+2026-09-12 round is stale from the push.
