@@ -807,3 +807,19 @@ rate and PID logging is the likely load (734k `PIDA` records).
   the high-rate PID and RATE log bits off, so `DSF.Dp` stays 0 in the air,
   flown in the flown configuration: `EK3_RNG_USE_HGT` 3, low hover, climb,
   landing.
+
+### Pushed 2026-09-15 as `1aca58844c`
+
+The branch was squashed into two commits on the same base `37ea692edb` and
+force-pushed over `1714711b33`: `f5fb7d164d` (AP_NavEKF3, folding
+`018befc712`, `9c866c162b`, `82f3c95a3b`, `fcdb0edd7d` and `be5d764ed8`)
+and `1aca58844c` (autotest, folding `1714711b33`, `c2b6db5831` and
+`d0347f265b`). The tree is byte-identical to `d0347f265b`, so every number
+above taken on the local commits holds for the pushed head. The commit
+messages drop the claim that the live `baroHgtOffset` is frozen while the
+reset can run and the old `TKOFF_GNDEFF_*` names, and say that the
+flown-config rig puts the error in the offset. The PR body was replaced the
+same day with the template sections and a status list pointing at the
+13:51Z findings comment; the old body's "22 indoor flights", raw-baro
+formula, non-ASCII arrows and tool attribution are gone. `AIReview` was
+already on.
