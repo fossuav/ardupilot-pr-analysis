@@ -525,7 +525,11 @@ Built at `638efaa5d0` with no `c1_main.c` change: RPI_UAVFC and CubeOrange
 pass. Flashed to the debug board (bench, 2026-09-15): heartbeats on USB,
 `WD_SCRATCH1` = `0xBB000035`, core1 sampled in `Copter::rate_controller_thread`,
 the notch, `RCOutput::dshot_send` and `RCOutput_pico::restart_sm`. Not
-flown. Both pushed 2026-09-15.
+flown. Both pushed 2026-09-15. The same one-hunk fix is also offered on
+its own against ArduPilot/ChibiOS master as
+[ArduPilot/ChibiOS#114](https://github.com/ArduPilot/ChibiOS/pull/114)
+(`04602a8a8c`, branch `pr-wait-system-state`), since master carries the
+identical `chSysWaitSystemState()`.
 
 Build and flash notes:
 
