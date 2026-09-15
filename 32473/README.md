@@ -19,6 +19,14 @@ fix on top of `39c0642ed7`. SITL shows the ungated inhibit trades acro height
 error for post-acro height error and costs 1.0 m on a take-off in acro, so
 gating it is the open decision.
 
+### Superseded 2026-09-15 (later) by the gating decision
+
+Decided: the acro inhibit goes behind `ACC_ZBIAS_LEARN` bit 3, off by default,
+holding all three axes. Pushed 2026-09-15 as `pr-acro-bias-inhibit` head `fc67be977d`,
+restacked onto #32471 as pushed (`bb0a818b52`). See "Gated behind
+ACC_ZBIAS_LEARN bit 3" below. The line above is left because it records what
+the decision was made on.
+
 ## The problem
 
 Acro sustains rates and accelerations where the accel bias is poorly observable,
@@ -271,11 +279,81 @@ without the release restore). `PROBE_ACRO_TAKEOFF=1` takes off in ACRO.
 `analyse_probe.py` and `analyse_test.py` print the table rows. The gzipped
 logs are the take-off-in-acro pair and the three release-transient flights.
 
+## Gated behind ACC_ZBIAS_LEARN bit 3 (2026-09-15)
+
+The user's decision after the A/B above: opt-in, default off, all three axes.
+No SFD or other parameter file sets the bit.
+
+Branch `pr-acro-bias-inhibit-restacked`, built by cherry-pick onto #32471's
+pushed head `bb0a818b52` so `pr-acro-bias-inhibit` (`7d2bc5ae9d`) is left as
+it was:
+
+| commit | what |
+|---|---|
+| `66efdd6102` | Copter: add ACC_ZBIAS_LEARN bit 3 to inhibit accel bias learning in acro |
+| `fc67be977d` | autotest: check ACC_ZBIAS_LEARN bit 3 holds accel bias learning in acro |
+
+`66efdd6102` folds `39c0642ed7`, the comment fix `d5bc764af9` and the gate into
+one commit, so no commit on the branch ships an ungated inhibit. The gate is
+`AccZBiasLearn::INHIBIT_ACRO` (`ArduCopter/Attitude.cpp:172`) and
+`acro_hold = inhibit_acro && ACRO && THROTTLE_UNLIMITED` in
+`update_accel_bias_inhibit()` (`Attitude.cpp:269-276`); `ACC_ZBIAS_LEARN`'s
+@Description and @Bitmask gain bit 3 (`ArduCopter/Parameters.cpp:1076-1077`).
+The enum and the parameter docs are the only two places bits 0-2 were
+described, and both carry bit 3. `@RebootRequired: True` is unchanged although
+bit 3, like bit 2, is read live at 1 Hz.
+
+`fc67be977d` makes the test revert-sensitive in both directions with one
+flight and two acro segments: bit 3 set and a +0.5 m/s/s Z bias step 3 s into
+acro, 20 s in ALT_HOLD, then bit 3 cleared and the step removed 3 s into a
+second acro segment. SITL, 2026-09-15, `XKF2.AZ` core 0:
+
+| build | acro, bit set | ALT_HOLD after | acro, bit clear | result |
+|---|---|---|---|---|
+| `fc67be977d` | 0.000 | 1.010 | 0.330 | pass (twice, identical) |
+| inhibit forced on regardless of the bit | 0.000 | 1.010 | **0.000** | fails on the bit-clear leg |
+| acro inhibit removed | **0.300** | 0.440 | 0.280 | fails on the bit-set leg |
+
+Thresholds: bit-set leg under 0.05, the ALT_HOLD check at least half the step,
+bit-clear leg at least 0.15 (the uninhibited readings are 0.28-0.33). The
+1.010 after the first exit is the #32471 release restore overshooting the
+0.5 step, the same transient as finding (d) above; the check only needs it
+to have learned.
+
+Also at `fc67be977d`: `VibrationRectificationBiasLearning` and
+`AccelBiasMovingPlatform` pass; copter and plane build; the mechanical gate
+reports only two subject-length notes on #32471's own commits.
+
+A note on "Z only measured worse", which is how this decision was summarised.
+On the height metric Z-only is not worse: in every row of the acro table it
+is at or below XYZ (0.44 against 0.61 m in acro with the scale error, 0.76
+against 1.01 m on the take-off in acro). What it costs is X/Y bias (0.16 /
+0.24 m/s/s on that take-off) and 1.0 deg of mean roll error. Holding all three
+axes was chosen on that attitude cost, not on height.
+
+### Pushed, retitled and answered (2026-09-15)
+
+Force-pushed `39c0642ed7` -> `fc67be977d` (33 commits: #32471's 31, then
+`66efdd6102` and `fc67be977d`). The PR is retitled to the commit subject,
+"Copter: add ACC_ZBIAS_LEARN bit 3 to inhibit accel bias learning in acro",
+and its body rewritten: opt-in design, the SITL trade-off table, why all three
+axes are held (attitude, not height), the dropped covariance commit, and the
+open items. Reply to the 2026-09-12 automated review posted 12:34Z
+(https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-5680233979).
+`AIReview` was already on, so the 2026-09-12 round is stale from the push.
+
+Still open: flight evidence for enabling bit 3 (the log7 Replay above is
+owed), and the release-restore transient, being re-measured on #32471 with
+repeated runs.
+
 ## Branches and people
 
 - `pr-acro-bias-inhibit` - depends on `pr-vrf-core` (#32471), `39c0642ed7` as
   of 2026-09-05 on the fork; local `7d2bc5ae9d` as of 2026-09-15, unpushed,
   and must be restacked onto #32471's Replay de-dup fix when that lands.
+  Restacked 2026-09-15 as local `pr-acro-bias-inhibit-restacked`
+  (`fc67be977d`, on #32471's `bb0a818b52`) and force-pushed over the fork
+  branch the same day; the local restacked branch was then removed.
 - Author: @andyp1per.
 - peterbarker, 2026-07-17: this revisits #20776, which was deliberately reduced
   to #20781. Answered in prose ("insufficient"), not in code.
