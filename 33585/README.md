@@ -1,11 +1,12 @@
 # PR #33585 - Keep optical flow nav alive above the rangefinder range (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#33585](https://github.com/ArduPilot/ardupilot/pull/33585).
-Branch `pr-optflow-flat-ground` (andyp1per fork), four commits as of
-2026-09-09 (`535cfca48f`, `e98741fbb2`, `9afa402696`, `4d9c92035b`) plus
-round seven's unfolded fixups; PR still at `f266fd0fd9`. Base `master`.
-Stacked on #33478 (`../33478/`), whose three commits are the first three on
-the branch.
+Branch `pr-optflow-flat-ground` (andyp1per fork). PR head `76f3428d1a`
+(pushed 2026-09-12); the local branch is three commits ahead at `b42ab3936b`
+(2026-09-15, unpushed). Base `master`. Stacked on #33478 (`../33478/`).
+#34360, which the PR head also carries, merged on 2026-09-15; the local
+branch `pr-optflow-flat-ground-rebased` is the same work on current master
+and current #33478 - see the 2026-09-15 section at the end.
 
 ## Status (one line)
 
@@ -711,7 +712,13 @@ carry-over reason recorded above, and passes here on master.
 
 ```
 33585/
-  README.md          <- this file
+  README.md                  <- this file
+  data/flow_scale_*          <- the 2026-09-11 flow scale A/B: harness diff,
+                                script, control and x2 SITL logs
+  data/extnav_start_probe.diff <- 2026-09-15 probe for the external nav
+                                start reset: PRBE/PRB2 dataflash records
+                                and the ten-start test, against 76f3428d1a
+                                plus the fix
 ```
 
 No logs committed. The SITL .BIN behind the bit 3 + bit 5 table in the analysis
@@ -901,3 +908,165 @@ Fix is `de33b1f5a4`, conditioned exactly as `c390226e4c`'s carry in
 `76f3428d1a`, `EK3_TerrainStateFollowsHeightReset`, which fails on the unfixed
 code with "height above ground moved +30.00 m across a -30.00 m datum reset"
 and raises rather than passing if no reset is found at all.
+
+## Automated review round at `76f3428d1a` (2026-09-13), answered 2026-09-15
+
+REQUEST CHANGES, one finding at the head plus seven carried over. Local
+branch now `b42ab3936b`; nothing pushed.
+
+| commit | what |
+|---|---|
+| `49985b005a` | AP_NavEKF3: name the external nav height source before its start reset |
+| `09540d6623` | autotest: tighten EK3_TerrainStateFollowsHeightReset |
+| `b42ab3936b` | AP_NavEKF3: record why the terrain database flow height ignores a datum reset |
+
+### The external nav start reset skips the carry - measured, and it is a race
+
+The finding: `setAidingMode()` calls `ResetHeight()` when absolute aiding
+starts on external nav with `EK3_SRCn_POSZ = ExtNav`, from
+`controlFilterModes()`, before `selectHeightForFusion()` has updated
+`activeHgtSource` in the same update. Leaving a range finder height source,
+the carry's `activeHgtSource != RANGEFINDER` exclusion then reads the source
+being left and skips the carry.
+
+**It is real, and it is not every time.** Which runs first after a source set
+change depends on whether the update before the change recalled an external
+nav sample (`extNavDataToFuse` is set in `SelectVelPosFusion()` and read by
+the next `controlFilterModes()`). If it did not, `selectHeightForFusion()`
+switches the height source first, `ResetPositionD()` carries the terrain
+state, and the aiding-mode reset that follows moves nothing.
+
+Probe: `data/extnav_start_probe.diff`. Source set 1 flow + range finder
+height (to arm), set 3 range finder height with no horizontal aiding, set 2
+external nav for everything. Ten starts from set 3 into set 2, 22 s apart so
+the filter falls back to AID_NONE between them, `SIM_VICON_GLIT_Z`
+alternating -30 and 0 so each start moves the datum by about 30 m,
+`SURFTRAK_MODE 0`. A `PRBE` record written around the aiding-mode
+`ResetHeight()` logs the height source it saw; `PRB2` logs every
+height-source-change reset.
+
+Two things had to be learned to see it at all:
+
+- **The first scenario could not show it.** With the range finder still
+  delivering after the handover, the terrain estimator's own re-init -
+  `terrainState = rng + position.z` when `gndHgtValidTime_ms` is more than 5 s
+  old (`EstimateTerrainOffset()`) - fires on the first range sample. A range
+  finder height source inhibits the estimator throughout, so that timestamp
+  is always stale by then. In that run 2 of 10 starts took the aiding path
+  first with the range finder as the stale source and the carry was skipped
+  (`PRBE` terrain move 17.37 m and 0.00 m against datum moves of +30.01 and
+  -29.98 m), yet `XKF5.HAGL` did not move at 10 Hz. So the defect is masked
+  unless range data stops at the handover.
+- **The vehicle climbs out of range.** With ALT_HOLD surface tracking on, a
+  10 m hover reached 32 m within 10 s of the first start, past
+  `RNGFND1_MAX`, which silently turned every later start into a baro start.
+  With `SURFTRAK_MODE 0` it climbed about 3 m per start instead and stayed in
+  range for all ten. Surface tracking reacting to the datum reset is the
+  likely cause; not investigated further.
+
+With `RNGFND1_ORIENT` set away at the handover, so the re-init cannot hide it
+(`76f3428d1a` plus the probe, 2026-09-15):
+
+| start | source `ResetHeight()` saw | datum move | HAGL |
+|---|---|---|---|
+| 2 | RANGEFINDER | +30.02 m | **12.64 -> 0.06** (the `rngOnGnd` floor) |
+| 3 | RANGEFINDER | -17.40 m | **16.18 -> 33.59** |
+| 4, 10 | two-hop, see below | +6.58, +23.48 m | 19.71 -> 13.13, 1.57 -> 0.04 |
+| the other 6 | EXTNAV (height source switched first) | about 30 m | unchanged |
+
+With `49985b005a` (same probe, same scenario):
+
+| start | source before the fix line | datum move | terrain move | HAGL |
+|---|---|---|---|---|
+| 2 | BARO | +30.02 m | +30.02 m | 12.78 -> 12.79 |
+| 5 | RANGEFINDER | -29.98 m | -29.98 m | 15.83 -> 15.83 |
+| 6 | RANGEFINDER | +29.98 m | +29.98 m | 18.91 -> 18.92 |
+| 10 | two-hop, see below | +12.49 m | 0.00 m | 25.12 -> 12.64 |
+| the other 6 | EXTNAV | about 30 m | carried | unchanged |
+
+The fix sets `activeHgtSource = EXTNAV` before that `ResetHeight()`.
+`selectHeightForFusion()` would pick the same source in the same update
+(`POSZ = ExtNav` and a recalled sample implies fresh data), and
+`prevHgtSource` is left alone, so the source-change reset that follows still
+fires with a near-zero delta. It also makes `ResetHeight()`'s external nav
+vertical velocity branch (`inFlight && useExtNavVel && activeHgtSource ==
+EXTNAV`) behave the same whichever order the race resolves in.
+
+**Rejected: the review's first suggestion, "test `prevHgtSource` rather than
+the not-yet-updated `activeHgtSource`".** On this path neither has been
+updated, and the probe shows both reading RANGEFINDER (`PHS = 2`), so
+excluding on `prevHgtSource` skips the carry exactly as before. Its second
+suggestion, carrying unconditionally on this path, would work; naming the
+source keeps the existing authorisation terms instead.
+
+**No autotest committed for it.** The ten-start harness takes about 280 s of
+simulated flight, and which starts take the race path is set by scheduling
+phase, not by anything the test controls: starts 2 and 3 in two unfixed runs,
+starts 5 and 6 in the fixed one. A green run would not show the path was
+taken. The evidence is the probe A/B above (tier 2).
+
+**Found while measuring, not fixed: a two-hop handover inside 5 s.** In
+three of the twenty starts across both runs the parameter latency pointed
+the range finder away far enough ahead of the source set change that the
+height source fell back to baro first: RANGEFINDER -> BARO (carried, e.g.
+`PRB2` +17.49 m in the fixed run's start 10) and then BARO -> EXTNAV through
+`ResetPositionD()` with no carry (+12.49 m datum, 0.00 terrain, HAGL
+25.12 -> 12.64). The fix does not touch this path, which is why it shows in
+both tables. The second hop is not authorised because
+`prevHgtSource` is BARO, `gndOffsetValid` is false (the estimator never ran
+while the range finder was the height source) and `gndOffsetMeasured` is
+false (it latches only when the estimator runs in flight). So it is confined
+to a vehicle whose range finder has been the height source for the whole
+flight so far, changing source twice within 5 s. Measured once; no fix
+attempted, because `gndOffsetMeasured` also authorises `flatGroundAssumed()`
+and changing what sets it is the kind of change this PR has withdrawn three
+times.
+
+### The test notes
+
+`09540d6623`: the comments said `hgtRetryTimeMode12_ms` (5 s); with GPS
+vertical velocity in use `hgtRetryTimeMode0_ms` (10 s) applies, so the glitch
+is now held 16 s rather than 12. A reset with no XKF5 sample on one side now
+fails instead of being skipped. The 0.5 m tolerance is unchanged: the unfixed
+failure is 30 m, and the review agreed its -0.20 m reading on the recovery
+reset is descent between samples. At `09540d6623`: resets of -30.00 m
+(AGL +0.00) and +30.25 m (AGL -0.13), pass.
+
+### The two lower items
+
+- **SRTM route after a datum reset.** Documented rather than fixed
+  (`b42ab3936b`). The route is chosen by `gndOffsetValid`, which is master's
+  rule and this PR does not change it; the database height cannot be carried
+  because AP_Terrain rewrites it against the origin at 10 Hz (section of
+  2026-09-12 above). Fixing it needs a frame conversion through
+  `ekfGpsRefHgt`, which is GPS-maintained and so least trustworthy in the
+  flow-only case. Still open as a design question.
+- **Frozen `Popt`.** Derived from the source, not measured: `Popt` has two
+  consumers, `EstimateTerrainOffset()` itself and `XKF5.Herr`. It freezes
+  whenever the estimator is inhibited, which on master is any time range data
+  stops, bit 5 or not; on re-acquisition after 5 s the terrain state is
+  re-initialised from the range, so the stale variance does not steer the
+  state. It is stale log accounting. Not worth a change in this PR.
+
+The bit 2/5 merge question stays with rmackay9, and the squash suggestions
+with the author.
+
+### Rebased onto master and current #33478 (local only)
+
+`pr-optflow-flat-ground-rebased` = `upstream/master` at `bf08027404` (the
+#34360 merge) + #33478's five commits at `e21558d163` (including the missing
+`0a50ee9939` GPS gate) + this PR's nine commits including the three above.
+Every cherry-pick applied cleanly; the three #34360 commits and the stale
+#33478 copies drop out. Copter and plane build; the mechanical gate is clean.
+Passing on it, 2026-09-15: `EK3_TerrainStateFollowsHeightReset`,
+`EK3_TerrainStateFollowsDatumReset`, `EK3_OptflowAssumeFlatGnd`,
+`EK3_AglKfVelForVelD`, `EK3_OptflowTerrainScaleHeight`.
+
+Pushing it replaces the PR branch, so it needs the user's grant.
+
+### Owed
+
+- Replay against log308. Still not re-run since `36f86f06eb`, now five
+  commits behind. `log308.bin` does not resolve under the log roots
+  configured on the machine used (2026-09-15).
+- The PR body, which still describes a two-commit PR on #33478 and #34360.
