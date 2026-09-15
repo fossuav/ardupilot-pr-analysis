@@ -686,3 +686,124 @@ firmware with the AGL KF switch, terrain trust and noise floor, which this
 base lacks. Whether the reset contributed there can only be settled by the
 flight, which is missing. The June campaign's AGL KF route (#33359, logs
 283-286) bounded TOfs with no reset.
+
+## Posted findings, and Replay of log224 (2026-09-15, round 4)
+
+### Posted
+
+Comment 5681318760 on the PR, 2026-09-15 13:51Z. It was built from the
+round 3 draft with two changes: the four local commit hashes removed,
+since they are unpushed, and a caveat added that each table cell is one run
+and the master-based rig lacks the AGL KF height switch and the noise
+floor. The PR was not marked draft; that was the user's choice.
+
+### log224 by itself (tier 1)
+
+Fingerprint: `INS_ACC_ID` 3408138, `STAT_BOOTCNT` 260, V4.7.0-beta3-SFD
+`fae5c01d`, `LOG_REPLAY` 1. It holds two flights.
+
+Flight 1 (armed 567.2 s): LOITER on flow, `EK3_RNG_USE_HGT` 3,
+`RNGFND1_MAX` 30, `EK3_GND_EFF_DZ` -8, `TKOFF_GNDEFF_ALT` 0.5 and `_TMO` 3.
+
+- **On the ground, armed, before liftoff (6.4 s):** takeoff_expected is
+  set. PD drifts to +0.19 m, below ground, with the baro within 0.1 m.
+- **Liftoff at about 574 s:** once airborne the baro reads high, +3.6 to
+  +5.3 m against a rangefinder of 0.3-2.3 m. The SITL model under-reads, so
+  the flight's error has the opposite sign.
+- **About 9 s airborne:** takeoff_expected clears and re-latches twice.
+  EKF height (PD from arm) ranges from 1.75 m below to 0.6 m above the
+  rangefinder; at 578.4 s `XKF5.HAGL` is 2.02 m against a 1.17 m
+  rangefinder.
+- **Motor emergency stop at 583.6 s, then on the ground from 584 s:** baro
+  +0.1 to +0.6 m, rangefinder 0 (below its minimum), AGL KF 0.06 m. EKF
+  height reads +3.06 m and `XKF5.HAGL` 2.7 m for 19 s, until disarm. An EKF
+  variance failsafe triggers at 589.4 s.
+
+So the flight shows the log200 signature, EKF height wrong by 3 m while
+baro and rangefinder agree. It shows it on the ground after landing rather
+than in a hover. There is no clean climb-out step.
+
+Flight 2 (armed 687.3 s) followed parameter changes that set
+`EK3_RNG_USE_HGT` -1 and GPS sources, so it is not the PR's configuration.
+It ends with the same post-landing error, 2.6 m.
+
+### Which state the flight points at (tier 3, from logged values)
+
+- **The observation was offset.** After landing, `XKF3.IPD` reads -0.03 to
+  -0.31 m while EKF height and baro disagree by 3 m. At 600 s that puts the
+  fused height observation at about 2.8 m, 2.5 m above a baro reading
+  0.3 m. There are two candidates.
+- **Candidate 1, the SITL mechanism:** `baroHgtOffset`.
+- **Candidate 2, this firmware's pre-takeoff synthetic observation.** With
+  takeoff_expected set, a negative `EK3_GND_EFF_DZ` and `time_flying_ms`
+  zero (all true again after the landing), it fuses `meaHgtAtTakeOff`.
+  That is the baro filtered while takeoff_expected is clear. In its last
+  clear window (580.7-582.4 s) the airborne baro read 1.8-3.0 m, against
+  the 2.8 m reference IPD implies at 600 s.
+- **Flight 2 favours candidate 2 for the post-landing error.** It had no
+  rangefinder height source and so no offset learnt across a source switch,
+  and it ends the same way. Neither state is logged, so neither candidate is
+  established.
+- **The same exposure may remain in #32972.** Its current head holds PD
+  (`posDownGndEffectRef`, captured while takeoff_expected is clear and
+  dropped past a 5 m innovation) rather than a filtered baro. A PD captured
+  in the air from a contaminated estimate would anchor a landing the same
+  way. Derived from the source, not measured; it belongs to #32972, and this
+  flight is the evidence.
+
+### Replay: cannot answer on this log
+
+**The build.** Replay was built at `fae5c01d` with `--debug --ekf-single`
+and `AP_INERTIALSENSOR_LOW_NOISE=1`.
+
+- The SmallFastDronev1 hwdef defines that flag, and the SFD EKF3 uses it
+  for the initial gyro bias uncertainty and limit. Without it the replay
+  diverged from the first sample, reaching 31 deg of yaw difference by
+  arming.
+- `--ekf-single` needed two simulator-only cast fixes to compile at that
+  commit.
+
+**The ground phase replays.** Over the 560 s before flight 1: yaw within
+0.2 deg, mag offsets within 1 mG, PD equal to 0.01 m. `check_replay` still
+counts mismatches, because the build is not bit-exact across ARM and x86.
+
+**The flight does not.** Within 80 ms of the rangefinder coming into range
+at 574 s, the flight fused 0.17 m where the replay fused the 0.05 m
+on-ground substitute. At 574.07 s replay HAGL is 1.65 m against the flight's
+0.16 m.
+
+| flight 1 segment | PD replay minus flight, mean | max |
+|---|---|---|
+| airborne | 0.80 m | 1.59 m |
+| on the ground after the stop | 1.09 m | 1.43 m |
+
+**The cause is the logger.** It was saturated from arming. `DSF.Dp` is 0 at
+567.2 s and 72449 by 584.3 s, with the free-buffer minimum at 0. `RFRH`
+frame records fall from 200/s on the ground to 125/s in flight 1, with gaps
+of 20-95 ms. 37% of the DAL frames in the air are missing. The high-rate
+rate and PID logging is the likely load (734k `PIDA` records).
+
+**What was not run.**
+
+- The variants (PR reset form, offset freeze), because a baseline that does
+  not reproduce the flight gives them nothing to be measured against.
+- The takeoff window change could not be tested in Replay in any case.
+  Replay re-feeds the recorded takeoff and touchdown flags, and this flight
+  recorded both, with takeoff_expected re-latching twice in the air in
+  flight 1.
+- log225 (`STAT_BOOTCNT` 261) is a 7 s boot with no flight, so there is no
+  control.
+
+### What this means
+
+- **The SITL mechanism is untested by flight.** The `baroHgtOffset` account
+  is neither confirmed nor refuted: log224 cannot test it.
+- **A #32972 mechanism may explain the flight's error at least as well.**
+  The pre-takeoff synthetic height reference, which the SITL rig did not
+  contain, is at least as good an account of the post-landing error.
+- **Nothing in log224 argues for the terrain reset.** Neither candidate
+  involves terrainState.
+- **A flight that can settle it needs clean logging.** `LOG_REPLAY` with
+  the high-rate PID and RATE log bits off, so `DSF.Dp` stays 0 in the air,
+  flown in the flown configuration: `EK3_RNG_USE_HGT` 3, low hover, climb,
+  landing.
