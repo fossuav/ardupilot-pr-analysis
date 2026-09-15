@@ -558,6 +558,47 @@ fourth round. `Tools/bootloaders/RPI_UAVFC_bl.bin`/`.hex` are modified and
 `RPI_UAVFC_bl.uf2` is new in Andy's checkout from his 2026-09-14 22:39
 bootloader build; not staged.
 
+### Seventh round, 2026-09-15: tridge's clear-cut findings
+
+Local commits on top of the pushed `638efaa5d0`, **not pushed**:
+
+- `7be8dbed47` F7 remainder: the `#warning` and `defined()` test in
+  `RCOutput_bdshot.cpp` sat inside `!defined(RP2350)` already; master's line
+  is back and MatekL431-bdshot AP_Periph builds with no FIFO warning
+- `72e1aef733` the STM32 bootloader writes `SCB_VTOR` before jumping again;
+  RP2350 unchanged
+- `7e80b5ead1` `bl_usb_tx_poll_drain()` is RP2350-only; STM32 `cout()` is
+  master's
+- `3dd6650b42` OneShot/OneShot125 refused on RP2350, falling back to normal
+  PWM with a setup error, as a DShot group without DMA does
+- `45e954e317` waf tracks the board `chibios_board.mk` and, for RP2350, the
+  `c1_main.c` in `RP2350_BOARD_DIR` as ChibiOS make inputs. Tested: no
+  rebuild on an unchanged tree, `libch.a` rebuilt after editing `c1_main.c`
+
+Measured from the objects: MatekF405 and CubeOrange bootloaders have the
+VTOR write in `jump_to_app` (`str` to `0xE000E000 + 0xD08`) and no
+`usbStartTransmitI` in `support.o`; RPI_UAVFC keeps the drain and has no
+VTOR write. CubeOrange, MatekF405, Laurel and Pico2 copter, MatekL431-bdshot
+AP_Periph and the three bootloaders build with 0 warnings. Not run on
+hardware. Note the ChibiOS make step also does not track
+`modules/ChibiOS/os/rt`, so a kernel change (like `af493a7bd5`) needs
+`build/<board>/modules/ChibiOS` removed; that is master's behaviour and was
+left alone.
+
+Left for Andy, each a judgement call rather than a mechanical fix:
+
+- F8, the 1/16 DCM decimation that loses rotation
+- core1 faults bypass `save_fault_watchdog()` (core1's own SRAM handler);
+  routing them there means running flash code from a core1 fault
+- printing registry misses outside copter: rover alone has 47, so a line
+  per miss would flood every non-copter and bootloader build; a one-line
+  count is the quieter option
+- the copter registry check scanning stale objects under the build root
+- Pico2's core1 never joining ChibiOS while its hwdef pins threads there
+- the `Tools/CPUInfo/CPUInfo.cpp` merge conflict with master, which needs a
+  rebase
+- core1 watchdog coverage being indirect; F13 PR size
+
 ## Outstanding
 
 **Needs a decision (blocks Peter's "any direct mention of RP2350" thread).**
