@@ -3,7 +3,8 @@
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 Buzz's PR, branch `rp2350-v5-squashed-and-cleaned-and-rebased` on the
 **davidbuzz** remote, which andyp1per pushes to. Base `master`, merge-base
-`b832113b10`. PR head `638efaa5d0`, pushed by Andy 2026-09-15 13:18 UTC
+`b832113b10` (rebased 2026-09-15 onto `bf08027404`, local tip `d0106975ee`,
+not pushed - eighth round). PR head `638efaa5d0`, pushed by Andy 2026-09-15 13:18 UTC
 (`fea5156687` on 2026-09-14 plus six commits: threads.txt, the stack sizes,
 and the ChibiOS bump to `af493a7bd5`, which fixes the boot hang
 `480f26b109` exposed - fifth round). ArduPilot/ChibiOS#113 head is
@@ -598,6 +599,33 @@ Left for Andy, each a judgement call rather than a mechanical fix:
 - the `Tools/CPUInfo/CPUInfo.cpp` merge conflict with master, which needs a
   rebase
 - core1 watchdog coverage being indirect; F13 PR size
+
+### Eighth round, 2026-09-15: rebased onto master
+
+The branch is rebased onto `upstream/master` `bf08027404` (55 commits past
+the old merge-base `b832113b10`), tip `d0106975ee`, **not pushed**; the push
+will be a force push. Safety ref `backup/rp2350-pre-rebase-20260915` at the
+old tip `d421415240`.
+
+The only conflict was `Tools/CPUInfo/CPUInfo.cpp`: master `4cbc74d8fa`
+added `div1000_check()` and `test_div1000_structured()`, and PR commit
+`98c5daa842` had replaced the TRNG loop with an xorshift PRNG and watchdog
+pats. Resolved at that commit (now `d5500148de`) by running master's
+structured test first in the `div1000_pass1` section and having the PRNG
+loop call `div1000_check()`.
+
+Verified: `git range-diff` shows 265 of 266 commits identical and only
+`d5500148de` changed; the whole PR diff against its base is identical
+outside `CPUInfo.cpp` after normalising hunk offsets; ChibiOS pointer
+unchanged at `af493a7bd5` (master still pins `9aebaf4a40`). Built at the
+tip with 0 warnings: RPI_UAVFC, Laurel, Pico2, CubeOrange and MatekF405
+copter; CPUInfo for RPI_UAVFC, CubeOrange and SITL; the RPI_UAVFC
+bootloader. The mechanical checks show only what they showed before the
+rebase (printf false positives, four long subjects, diff size).
+
+Not tested: master's structured div1000 test runs about 220000 divisions
+with no watchdog pat, which on RP2350 CPUInfo may come close to the
+watchdog.
 
 ## Outstanding
 
