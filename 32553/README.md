@@ -14,6 +14,15 @@ the current snapshot form of the reset has not been flown. On the same
 vehicle the AGL-KF stack (#33359 + #33507) later achieved the target
 without a reset, so the PR may be superseded.
 
+### Superseded 2026-09-15 by the four-way SITL A/B
+
+GitHub head `1714711b33` (four commits, with an autotest), local tip
+`d0347f265b` with four more unpushed. In the SITL rig the reset alone
+changes nothing measurable, the fixed 5 s takeoff window alone changes
+little, and the two together bring the terrain offset back to the ground
+value. See "Four-way A/B: the reset works only once the takeoff window
+tracks the band" at the end. Direction of the PR is an open decision.
+
 ## Review 2026-09-10: the reset targets the wrong state
 
 Not superseded, but not justified either, and the mechanism cannot deliver
@@ -285,3 +294,110 @@ The two do not overlap and the PR has never claimed otherwise in writing.
 framework or `SIM_BARO_GEFF_M` is available on it. The work above is on
 `pr-terrain-reset-ge-master`, the three commits cherry-picked onto current
 master; they applied cleanly.
+
+## Second automated review round, and the four-way A/B (2026-09-15)
+
+The 2026-09-13 dev-call follow-up (at `1714711b33`) kept REQUEST CHANGES
+with four findings at head plus four carried over. Worked on
+`pr-terrain-reset-ge-master` in the `pr-32553m` worktree. Four commits
+added, unpushed:
+
+| commit | what |
+|---|---|
+| `c2b6db5831` | autotest: count only samples with the rangefinder Good, measure against the on-ground offset, list the test in `disabled_tests()` |
+| `fcdb0edd7d` | AP_NavEKF3: clear the pending reset whenever ground effect is active; comment says one reset per clear edge |
+| `be5d764ed8` | AP_NavEKF3: add the `EK3_OGN_HGT_MASK` correction to the baro reconstruction |
+| `d0347f265b` | autotest: take the on-ground value whatever the rangefinder status (it reads 0 m, below `RNGFND1_MIN`, on the ground, so it is never Good there) |
+
+### The test metric: the frozen-value finding is right, and fixing it changes nothing
+
+Confirmed on the head log (`1714711b33`, 2026-09-12): 468 samples above
+5 m HAGL, only 192 with `RFND.Stat` Good. So the review was right that
+most of the old average was a value frozen above `RNGFND1_MAX`.
+
+Restricting to Good samples and subtracting the on-ground offset
+(+0.100 m, the `rngOnGnd` clearance, not zero) moves the number from
++0.293 to +0.226 m on that log. It still fails the 0.15 m threshold. The
+failure was never an artefact of the metric.
+
+### Four-way A/B: the reset works only once the takeoff window tracks the band
+
+Rig as in the 2026-09-12 section (`SIM_BARO_GEFF_M` 3.0, `RNGFND1_MAX`
+10, `EK3_RNG_USE_HGT` 50, `GNDEFF_ALT` 2.0, `GNDEFF_TMO` 0, 25 s hover at
+1.2 m, climb to ~12.8 m). Metric: mean and worst terrain offset above 5 m
+with the rangefinder Good, relative to the on-ground offset. Threshold
+0.15 m. Three runs each, 2026-09-15.
+
+| variant | build | mean (m) | worst (m) |
+|---|---|---|---|
+| master EKF3 | `dd8cafa3ec` (PR tip, `AP_NavEKF3` at merge base `37ea692edb`) | +0.243, +0.244, +0.239 | 1.16, 1.16, 1.17 |
+| PR | `be5d764ed8` | +0.216, +0.241, +0.236 | 1.08, 1.16, 1.16 |
+| master EKF3 + window prototype | `8aea365a77` | +0.200, +0.178, +0.172 | 1.02, 0.96, 0.93 |
+| PR + window prototype | `b00cbed1f1` | **-0.007, -0.004, -0.009** | **0.32, 0.34, 0.34** |
+
+The prototype is one line in `AP_GroundEffect::update()`: the takeoff
+window releases only once `height_m > GNDEFF_ALT`, dropping the
+unconditional 5 s release. It is on local branches only and is not a
+proposal as written.
+
+What the logs show (run 1 of each, `XKF4.SS` bits 11/12 and `XKF5`):
+
+- master and PR: `takeoff_expected` clears at 55-57 s, 5 s after the
+  last on-ground anchor, at XKF5 HAGL 0.6-1.6 m. On the PR the reset
+  fires at that edge and steps TOfs +0.31 -> +1.26 m. The low-hover
+  offset then averages +0.72 m (master) and +1.03 m (PR).
+- master + prototype: the window holds until 81.1 s, when the vehicle
+  climbs past 2 m. The low-hover offset halves (+0.35 m) because the baro
+  innovation floor is in force for the whole hover, but some
+  contamination still gets in through the floored innovation and it
+  survives the climb.
+- PR + prototype: the window clears at 80.6 s on the climb, the reset
+  fires from a baro that is now outside the error band and steps TOfs
+  +1.53 -> +0.50 m, and range fusion settles it. The test passes.
+
+So the premise of the PR holds in SITL, and the 2026-09-12 conclusion
+("the premise is not wrong; the window is") is now measured rather than
+argued: neither change is enough alone, and the pair is. Why the
+contamination persists above 5 m on master once the baro is clean was
+not traced here.
+
+What the prototype costs, by inspection only, not measured:
+
+- The 5 s cap is the only release when `get_hagl()` fails and
+  `height_m` falls back to `-pos_d - takeoff_alt`. That height is built
+  from the baro-contaminated PD, so without a rangefinder the window
+  could hold for as long as the error lasts, keeping the baro de-weighted.
+  A production form would extend the window only on the `height_is_agl`
+  path and keep the cap on the fallback.
+- A vehicle that hovers below `GNDEFF_ALT` indefinitely keeps
+  `takeoff_expected`, and with it the EKF baro floor and the EKF-GSF
+  start condition, for the whole hover.
+- It changes `AP_GroundEffect`, which is #32472's merged code and
+  #34362's open follow-up, not this PR.
+
+### Review findings at `1714711b33`, dispositions
+
+| finding | disposition |
+|---|---|
+| test registered in tests1c and failing | FIXED `c2b6db5831`, in `disabled_tests()` with a reason |
+| reset writes the baro error in rather than removing it | CONFIRMED (tier 2, table above); the fix is the window, not the reset |
+| test cannot tell the change from master | CONFIRMED (tier 2): 0.216-0.241 against 0.239-0.244 |
+| metric measures a frozen value | CONFIRMED and FIXED `c2b6db5831`/`d0347f265b`; verdict unchanged |
+| 0.15 m threshold leaves little headroom | REFUTED for the new metric (tier 2): the passing variant reads -0.004 to -0.009 over three runs, and the failing ones 0.17-0.24 |
+| latch not cleared when ground effect returns | FIXED `fcdb0edd7d`, by inspection; inert in this rig (no reactivation before the next range sample) |
+| stale-range reset runs first and leaves the latch set | NOT CHANGED: the baro reset then applies on the next range cycle, which is what the premise asks for (inspection) |
+| edges noticed late while `inhibitGndState` | OPEN: while the range finder is the height source the terrain state is frozen and `baroHgtOffset` tracks PD, so a late reset is close to a no-op (inspection, not measured) |
+| "one reset per ground effect episode" comment | FIXED `fcdb0edd7d` |
+| `EK3_OGN_HGT_MASK` term missing from the reconstruction | FIXED `be5d764ed8`, by inspection; default mask 0 unaffected, not exercised in SITL |
+| reset not logged or counted | OPEN, optional |
+| Popt handling differs from the stale-range reset | OPEN, consistency note only |
+| commit messages and description stale | OPEN, needs a rewrite: `018befc712` says `baroHgtOffset` tracks the contaminated PD (refuted 2026-09-12) and names `TKOFF_GNDEFF_ALT`/`TKOFF_GNDEFF_TMO` (master: `GNDEFF_ALT`/`GNDEFF_TMO`); `9c866c162b` says the live offset "would re-import the contaminated PD", which `82f3c95a3b` reverses. `82f3c95a3b` already carries the corrected "not the reason it was hard to observe" wording. Squashing the four AP_NavEKF3 commits under one corrected message is the tidy form. |
+
+### For the SmallFastDrone fork
+
+Nothing measurable today. `SmallFastDrone-4.7.1-beta` carries the older
+snapshot form (`9c866c162b`) and the same 5 s
+`AP_GROUNDEFFECT_TAKEOFF_MAX_MS` cap, so in this rig it sits in the
+"PR" row: no better than master. The flight number in the PR body
+(1.88 -> 0.3 m, log206) came with #32472's release check and was not
+shown to persist; the Replay runs proposed above are still not done.
