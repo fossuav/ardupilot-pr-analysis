@@ -1,9 +1,9 @@
 # PR #33585 - Keep optical flow nav alive above the rangefinder range (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#33585](https://github.com/ArduPilot/ardupilot/pull/33585).
-Branch `pr-optflow-flat-ground` (andyp1per fork). PR head `76f3428d1a`
-(pushed 2026-09-12); the local branch is three commits ahead at `b42ab3936b`
-(2026-09-15, unpushed). Base `master`. Stacked on #33478 (`../33478/`).
+Branch `pr-optflow-flat-ground` (andyp1per fork). PR head `e18c7d6fc3`
+(pushed 2026-09-15, the rebased stack below); before that `76f3428d1a`
+(pushed 2026-09-12). Base `master`. Stacked on #33478 (`../33478/`).
 #34360, which the PR head also carries, merged on 2026-09-15; the local
 branch `pr-optflow-flat-ground-rebased` is the same work on current master
 and current #33478 - see the 2026-09-15 section at the end.
@@ -1070,3 +1070,18 @@ Pushing it replaces the PR branch, so it needs the user's grant.
   commits behind. `log308.bin` does not resolve under the log roots
   configured on the machine used (2026-09-15).
 - The PR body, which still describes a two-commit PR on #33478 and #34360.
+
+## Pushed 2026-09-15
+
+`pr-optflow-flat-ground-rebased` force-pushed as `pr-optflow-flat-ground`,
+head `e18c7d6fc3`: master, then #33478's five commits at `e21558d163`, then
+this PR's ten. The three 2026-09-15 commits map as:
+
+| measured on | pushed as |
+|---|---|
+| `49985b005a` name the external nav height source before its start reset | `7050b23964` |
+| `09540d6623` tighten EK3_TerrainStateFollowsHeightReset | `67caf21bc4` |
+| `b42ab3936b` record why the terrain database flow height ignores a datum reset | `e18c7d6fc3` |
+
+The rebased branch's test results in the 2026-09-15 section were taken on
+`e18c7d6fc3` itself.
