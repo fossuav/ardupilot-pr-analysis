@@ -1,0 +1,155 @@
+diff --git a/Tools/autotest/arducopter.py b/Tools/autotest/arducopter.py
+index 1b206febdf..37933ca899 100644
+--- a/Tools/autotest/arducopter.py
++++ b/Tools/autotest/arducopter.py
+@@ -2845,6 +2845,92 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
+                     "height above ground moved %+.2f m across a %+.2f m datum reset"
+                     % (agl_move, move))
+ 
++    def EK3_TerrainStateFollowsExtNavStart(self):
++        """Starting external nav off a range finder height carries the terrain state"""
++        self.set_parameters({
++            "EK3_IMU_MASK": 1,
++            "SIM_FLOW_ENABLE": 1,
++            "FLOW_TYPE": 10,
++            "EK3_SRC1_POSXY": 0,
++            "EK3_SRC1_VELXY": 5,    # optical flow, to arm
++            "EK3_SRC1_POSZ": 2,     # range finder
++            "EK3_SRC1_VELZ": 0,
++            "EK3_SRC1_YAW": 1,
++            "EK3_SRC3_POSXY": 0,
++            "EK3_SRC3_VELXY": 0,
++            "EK3_SRC3_POSZ": 2,     # range finder, no horizontal aiding
++            "EK3_SRC3_VELZ": 0,
++            "EK3_SRC3_YAW": 1,
++            "EK3_SRC2_POSXY": 6,    # external nav
++            "EK3_SRC2_VELXY": 6,
++            "EK3_SRC2_POSZ": 6,
++            "EK3_SRC2_VELZ": 6,
++            "EK3_SRC2_YAW": 1,
++            "VISO_TYPE": 2,
++            "SERIAL5_PROTOCOL": 2,
++            "RC8_OPTION": 90,       # EKF source set selector
++            "SIM_VICON_GLIT_Z": 0,
++            "SURFTRAK_MODE": 0,
++            "SIM_VICON_RATE": 100,
++        })
++        self.set_analog_rangefinder_parameters()
++        self.set_parameter("RNGFND1_MAX", 30)
++        self.customise_SITL_commandline(["--serial5=sim:vicon:"])
++        self.set_rc(8, 1000)
++        self.wait_ready_to_arm(require_absolute=False)
++        self.takeoff(10, mode='ALT_HOLD', require_absolute=False)
++        self.set_rc(8, 2000)
++        self.delay_sim_time(10, reason="drop to no aiding on range finder height")
++        marks = []
++        attempts = 10
++        for i in range(attempts):
++            self.set_parameter("SIM_VICON_GLIT_Z", -30 if i % 2 == 0 else 0)
++            self.delay_sim_time(1, reason="let the glitch reach the external nav stream")
++            marks.append(self.get_sim_time())
++            self.set_parameter("RNGFND1_ORIENT", 0)
++            self.set_rc(8, 1500)
++            self.delay_sim_time(3, reason="external nav takes over")
++            self.set_rc(8, 2000)
++            self.set_parameter("RNGFND1_ORIENT", 25)
++            self.delay_sim_time(18, reason="drop back to no aiding on range finder height")
++        self.set_parameter("SIM_VICON_GLIT_Z", 0)
++        self.change_mode('LAND')
++        self.wait_disarmed(timeout=120)
++
++        dfreader = self.dfreader_for_current_onboard_log()
++        prev = None
++        resets = []
++        while True:
++            m = dfreader.recv_match(type=["XKF5", "PRBE", "PRB2", "EV"])
++            if m is None:
++                break
++            if m.get_type() == "EV":
++                if m.Id in (85, 86, 87):
++                    self.progress("EV %.3f source set %u" % (m.TimeUS*1e-6, m.Id))
++                continue
++            if m.C != 0:
++                continue
++            t = m.TimeUS * 1.0e-6
++            if m.get_type() in ("PRBE", "PRB2"):
++                self.progress("%s %.3f IMS=%u AHS=%u PHS=%u dPD=%.2f dTO=%.2f" %
++                              (m.get_type(), t, m.IMS, m.AHS, m.PHS, m.dPD, m.dTO))
++                continue
++            posd = m.TOfs - m.HAGL
++            if any(mk < t < mk + 3 for mk in marks) and prev is not None and abs(posd - prev[0]) > 5:
++                resets.append((t, posd - prev[0], prev[1], m.HAGL))
++            prev = (posd, m.HAGL)
++        bad = 0
++        for (t, moved, hagl_before, hagl_after) in resets:
++            self.progress("reset at %.2fs moved %+.2fm, HAGL %.2f -> %.2f"
++                          % (t, moved, hagl_before, hagl_after))
++            if abs(hagl_after - hagl_before) > 0.5:
++                bad += 1
++        self.progress("%u resets, %u moved the height above ground" % (len(resets), bad))
++        if len(resets) != attempts:
++            raise NotAchievedException("expected %u datum resets, saw %u" % (attempts, len(resets)))
++        if bad:
++            raise NotAchievedException("%u of %u external nav starts moved the height above ground" % (bad, attempts))
++
+     def EK3_TerrainStateFollowsDatumReset(self):
+         """A height source change carries the terrain state with the vertical datum"""
+         # ResetPositionD() re-expresses position.z against a different height reference.
+@@ -17273,6 +17359,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
+              self.EK3_AglKfVelForVelD,
+              self.EK3_OptflowAssumeFlatGnd,
+              self.EK3_TerrainStateFollowsHeightReset,
++             self.EK3_TerrainStateFollowsExtNavStart,
+              self.EK3_TerrainStateFollowsDatumReset,
+              self.EK3_ZeroVelFusionNotUsedWithGPS,
+              self.TakeoffGroundEffectAlt,
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_Control.cpp b/libraries/AP_NavEKF3/AP_NavEKF3_Control.cpp
+index 8bc2bb8c08..94465b5c5e 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_Control.cpp
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_Control.cpp
+@@ -5,6 +5,7 @@
+ #include <GCS_MAVLink/GCS.h>
+ 
+ #include "AP_DAL/AP_DAL.h"
++#include <AP_Logger/AP_Logger.h> // PROBE
+ 
+ // Control filter mode transitions
+ void NavEKF3_core::controlFilterModes()
+@@ -485,7 +486,13 @@ void NavEKF3_core::setAidingMode()
+                 if (frontend->sources.getPosZSource(core_index) == AP_NavEKF_Source::SourceZ::EXTNAV) {
+                     hgtMea = -extNavDataDelayed.pos.z;
+                     posDownObsNoise = sq(constrain_ftype(extNavDataDelayed.posErr, 0.1f, 10.0f));
++                    const uint8_t prbe_ahs = (uint8_t)activeHgtSource;
++                    const float prbe_tofs = terrainState;
++                    activeHgtSource = AP_NavEKF_Source::SourceZ::EXTNAV;
+                     ResetHeight();
++                    AP::logger().Write("PRBE", "TimeUS,C,IMS,AHS,PHS,dPD,dTO", "QBIBBff",
++                                       AP_HAL::micros64(), core_index, imuSampleTime_ms, prbe_ahs, (uint8_t)prevHgtSource,
++                                       (float)posResetD, (float)(terrainState - prbe_tofs));
+                 }
+ #endif // EK3_FEATURE_EXTERNAL_NAV
+             }
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_PosVelFusion.cpp b/libraries/AP_NavEKF3/AP_NavEKF3_PosVelFusion.cpp
+index caf66f763a..774d950ab9 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_PosVelFusion.cpp
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_PosVelFusion.cpp
+@@ -2,6 +2,7 @@
+ 
+ #include "AP_NavEKF3.h"
+ #include "AP_NavEKF3_core.h"
++#include <AP_Logger/AP_Logger.h> // PROBE
+ #include <GCS_MAVLink/GCS.h>
+ #include <AP_DAL/AP_DAL.h>
+ 
+@@ -1569,7 +1570,11 @@ void NavEKF3_core::selectHeightForFusion()
+     if ((activeHgtSource != prevHgtSource) && fuseHgtData) {
+         // reset before recording the new source, so the reset can see which source is
+         // being left as well as which is being taken up
++        const float prb2_tofs = terrainState;
+         ResetPositionD(-hgtMea);
++        AP::logger().Write("PRB2", "TimeUS,C,IMS,AHS,PHS,dPD,dTO", "QBIBBff",
++                           AP_HAL::micros64(), core_index, imuSampleTime_ms, (uint8_t)activeHgtSource, (uint8_t)prevHgtSource,
++                           (float)posResetD, (float)(terrainState - prb2_tofs));
+         prevHgtSource = activeHgtSource;
+     }
+ 
