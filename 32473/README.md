@@ -373,3 +373,9 @@ default.
 - Author: @andyp1per.
 - peterbarker, 2026-07-17: this revisits #20776, which was deliberately reduced
   to #20781. Answered in prose ("insufficient"), not in code.
+
+Result posted on the PR 2026-09-15 13:34Z
+(https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-5681061008),
+and the body's "Still open" bullet on the restore replaced with the repeated
+numbers, including that no acro inhibit is better at the exit (1.98 against
+4.70 m) and worse afterwards (1.13 against 0.33 m).

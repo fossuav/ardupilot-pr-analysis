@@ -802,3 +802,9 @@ kept: the 0.50 step for V1, V2 and V3 at run index 0, and the platform run
 that learns the acceleration after arm. `runs.spec`, `rows.csv` and
 `tables.md` hold every run; `analyse_restore.py` and `aggregate.py`
 regenerate the tables from logs made with `run_restore.sh`.
+
+Result posted on the PR 2026-09-15 13:34Z
+(https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-5681060411):
+the arm-release table, the platform case with its spread and the one run that
+learned the platform acceleration after arming, the acro-exit numbers, and the
+1/16 variant rejected. No code change.
