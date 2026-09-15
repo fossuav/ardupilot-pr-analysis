@@ -460,7 +460,8 @@ Andy flashed RPI_UAVFC (tier 1, bench, not flown):
 | `7af065f5b6` MSP + thread stacks at master defaults | boots |
 | `480f26b109` + c1_main sleeps + core1 PSP 1 KB | does not boot ("appears to start booting") |
 | `psp-only`: `7af065f5b6` + core1 PSP 1 KB, heartbeat kept | does not boot |
-| `samelayout-1k-psp`: 1 KB usable core1 PSP, RAM layout identical to `7af065f5b6` | built, not yet flashed |
+| `samelayout-1k-psp`: 1 KB usable core1 PSP, RAM layout identical to `7af065f5b6` | USB and heartbeats, but core1 stuck (see below) |
+| `waitfix-full`: `03a9d450a4` + volatile state wait in `c1_main` | **boots**; both cores doing normal work |
 | `sleep-only`: `7af065f5b6` + c1_main sleeps, 16 KB PSP | not flashed |
 
 So the MSP and rcin/rcout/timer reductions work on hardware and the core1
@@ -489,6 +490,37 @@ problem; if not, something really uses more than 1 KB of core1's PSP, and
 core1's fault record (`WD_SCRATCH2` = 0xC1FA0001, CFSR in `WD_SCRATCH3`,
 PSP at fault in `c1_fault_info[5]`) read over SWD should name it.
 
+**Root cause, found on the debug board over SWD (tier 1, bench) on
+2026-09-15:** `chSysWaitSystemState()` in ChibiOS `chsys.c` is
+`while (ch_system.state != state) {}` with `state` not volatile, and the
+compiler loads it once and then compares the cached register forever
+(`ldrb r3,[r3]` before the loop, `cmp r3,r0; bne` inside). On
+`samelayout-1k-psp`, read without halting: `WD_SCRATCH1` = `0xBB000003`
+(core1 entered `c1_main`, never past the wait), core1's PC in that loop
+on every sample, `ch_system.state` in memory already `2`
+(`ch_sys_running`), core0 sitting in idle with the main thread blocked.
+USB and heartbeats still came up, which is the "appears to start booting".
+
+The stack size only moved the timing (inference, not measured): core1's
+CRT0 fills its whole PSP with the canary before calling `c1_main`, and 16 KB
+took long enough that core0 had finished `chSysInit()` first. That is why
+the same-layout build, which fills only 1 KB, hung too, and why the RAM
+shift was a red herring. The race is live at 16 KB as well; anything that
+slows core0's init can hang boot on current code.
+
+Verified: `waitfix-full` (the whole failing series with `c1_main` polling
+`*(volatile system_state_t *)&ch_system.state` instead) boots, heartbeats on
+USB, `WD_SCRATCH1` = `0xBB000035`, core0 sampled in EKF3/AHRS, core1 in the
+IMU FIFO read, notch and servo output. Canary headroom on that build after
+about a minute on the bench, disarmed: core0 MSP 200/1536 used, core1 MSP
+120/1536, core1 PSP 104/1024, main thread 1880/7168, rcin 312/1216, rcout
+192/704, timer 296/1728 (sizes include the port context overhead). Not
+flown, and rcout not checked with bidirectional DShot.
+
+Where the fix belongs is Andy's call: ChibiOS `chsys.c` (the actual bug;
+the upstream RP2040 demo `c1_main.c` calls the same function) or the
+`c1_main.c` workaround used for the test, on RPI_UAVFC and Laurel.
+
 Build and flash notes:
 
 - The variant `.apj` files and `uploader.py` are in
@@ -502,11 +534,16 @@ Build and flash notes:
   Remove `build/<board>/modules/ChibiOS` to force it. Worth a fix
 - A scratch worktree under `/tmp` was used for the bisect; after a reboot
   run `git worktree prune`
-- `jq` is not installed, so a `gh`-plus-`jq` CI watch never reports; use
-  `gh api --jq`
+- A stuck app ignores the uploader's MAVLink reboot; start the uploader
+  first and power-cycle the board so it catches the bootloader
+- OpenOCD from WSL: `cd /opt/openocd-0.12.0+dev-x64-win && ./openocd.exe -s
+  scripts -f interface/cmsis-dap.cfg -f target/rp2350.cfg -c "gdb port
+  50000" -c "tcl port 50001" -c "telnet port 50002"`; tcl `read_memory`
+  and `rp2350.cmN read_memory 0xE000101C 32 1` (PC samples) do not halt.
+  Shut it down before any flash or reboot
 
-Still to decide before any push: what to do with `480f26b109` (drop the
-PSP cut, find the real use, or fix the layout dependency), F8 (tridge shows
+Still to decide before any push: what to do with `480f26b109` (needs the
+wait fix below before it can go anywhere), F8 (tridge shows
 the 1/16 decimation loses rotation), and tridge's other findings from the
 fourth round. `Tools/bootloaders/RPI_UAVFC_bl.bin`/`.hex` are modified and
 `RPI_UAVFC_bl.uf2` is new in Andy's checkout from his 2026-09-14 22:39
