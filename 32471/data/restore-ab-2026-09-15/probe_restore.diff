@@ -1,0 +1,277 @@
+diff --git a/Tools/autotest/arducopter.py b/Tools/autotest/arducopter.py
+index ec5266d45c..9859bd8925 100644
+--- a/Tools/autotest/arducopter.py
++++ b/Tools/autotest/arducopter.py
+@@ -15449,6 +15449,188 @@ return update, 1000
+         self.context_pop()
+         self.reboot_sitl()
+ 
++    def RestoreArmProbe(self):
++        """probe: #32471 accel bias covariance restore at arm (not for commit)"""
++        import os as _os
++        import shutil as _shutil
++        learn = int(_os.environ.get("VRF_LEARN", "6"))
++        vrf = float(_os.environ.get("VRF_SIM", "0.15"))
++        pre = float(_os.environ.get("VRF_PRE", "0.15"))
++        plat = float(_os.environ.get("PLAT_Z", "0"))
++        run = int(_os.environ.get("PROBE_RUN", "0"))
++        tag = _os.environ.get("PROBE_TAG", "s1")
++        self.context_push()
++        params = {
++            "ACC_ZBIAS_LEARN": learn,
++            "SIM_ACC_VRF_Z": vrf,
++            "SIM_ACC1_BIAS_Z": 0,
++            "INS_ACC_VRFB_Z": pre,
++            "INS_ACC2_VRFB_Z": pre,
++            "INS_ACC3_VRFB_Z": pre,
++            "LOG_DISARMED": 1,
++        }
++        if plat != 0:
++            params["SIM_PLAT_ACC_Z"] = plat
++        self.set_parameters(params)
++        self.reboot_sitl()
++        self.wait_ready_to_arm()
++        dwell = (90 if plat != 0 else 60) + 7 * run
++        self.delay_sim_time(dwell, "settle disarmed")
++        armed_dwell = float(_os.environ.get("ARMED_DWELL", "-1"))
++        if armed_dwell >= 0:
++            self.change_mode('LOITER')
++            self.set_rc(3, 1000)
++            self.wait_ready_to_arm()
++            self.arm_vehicle()
++            self.delay_sim_time(armed_dwell, "sit armed on the platform")
++            self.set_rc(3, 1800)
++            self.wait_altitude(9, 30, relative=True, timeout=60)
++            self.set_rc(3, 1500)
++        else:
++            self.takeoff(10, mode='LOITER')
++        self.delay_sim_time(40, "hover after arm")
++        self.land_and_disarm()
++        self.delay_sim_time(5, "let the log flush")
++        src = self.current_onboard_log_filepath()
++        dest = _os.path.join(_os.environ.get("PROBE_OUT", "/tmp"), "%s.BIN" % tag)
++        _shutil.copy(src, dest)
++        self.progress("PROBE LOG %s -> %s" % (src, dest))
++        self.context_pop()
++        self.reboot_sitl()
++
++    def RestoreAcroProbe(self):
++        """probe: #32471 accel bias covariance restore on acro exit (not for commit)"""
++        import os as _os
++        import shutil as _shutil
++        step = float(_os.environ.get("STEP", "0.5"))
++        run = int(_os.environ.get("PROBE_RUN", "0"))
++        tag = _os.environ.get("PROBE_TAG", "s2")
++        pre_hover = 20 + 3 * run
++        step_at = 3 + 1.1 * run
++        acro_s = 20 + 2 * run
++        self.context_push()
++        lua = """
++local HOME_ALT = 40
++local MODE_ACRO = 1
++local phases = {"roll", "rec", "pitch", "rec", "punch", "rec"}
++local idx = 1
++local t0 = 0
++local rot = 0
++local last_s = 0
++local overriding = false
++local climbed = false
++local function ch(n) return rc:get_channel(n) end
++local function alt_thr()
++  local pd = ahrs:get_relative_position_D_home()
++  local v = ahrs:get_velocity_NED()
++  if not pd or not v then return 1500 end
++  local thr = 1500 + 25 * (HOME_ALT + pd) + 60 * v:z()
++  return math.max(1150, math.min(1900, thr))
++end
++local function set(r, p, t)
++  ch(1):set_override(math.floor(r))
++  ch(2):set_override(math.floor(p))
++  ch(3):set_override(math.floor(t))
++  ch(4):set_override(1500)
++end
++function update()
++  local now = millis():tofloat() * 0.001
++  local dt = now - last_s
++  last_s = now
++  if vehicle:get_mode() ~= MODE_ACRO or not arming:is_armed() then
++    if overriding then
++      for n = 1, 4 do ch(n):set_override(0) end
++      overriding = false
++    end
++    idx = 1
++    t0 = now
++    rot = 0
++    climbed = false
++    return update, 20
++  end
++  overriding = true
++  if param:get('SCR_USER1') == 1 then
++    set(1500, 1500, alt_thr())
++    return update, 20
++  end
++  if not climbed then
++    local pd = ahrs:get_relative_position_D_home()
++    if pd and pd < -35 then
++      climbed = true
++      t0 = now
++    else
++      set(1500, 1500, 1850)
++      return update, 20
++    end
++  end
++  local ph = phases[idx]
++  local el = now - t0
++  local g = ahrs:get_gyro()
++  local nextp = false
++  if ph == "roll" then
++    rot = rot + math.abs(g:x()) * dt
++    set(2000, 1500, alt_thr() + 150)
++    nextp = rot > 5.6 or el > 3
++  elseif ph == "pitch" then
++    rot = rot + math.abs(g:y()) * dt
++    set(1500, 1000, alt_thr() + 150)
++    nextp = rot > 5.6 or el > 3
++  elseif ph == "punch" then
++    set(1500, 1500, 1900)
++    nextp = el > 1.0
++  else
++    set(1500, 1500, alt_thr())
++    nextp = el > 2.5
++  end
++  if nextp then
++    idx = idx % #phases + 1
++    t0 = now
++    rot = 0
++  end
++  return update, 20
++end
++return update, 1000
++"""
++        self.install_script_content_context("acro_driver.lua", lua)
++        self.set_parameters({
++            "SCR_ENABLE": 1,
++            "ACRO_TRAINER": 1,
++            "FS_EKF_ACTION": 0,
++            "LOG_DISARMED": 0,
++            "ACC_ZBIAS_LEARN": 0,
++            "SCR_USER1": 0,
++        })
++        self.reboot_sitl()
++        self.wait_ready_to_arm()
++        self.takeoff(40, mode='LOITER')
++        self.delay_sim_time(pre_hover, "pre-acro hover")
++        self.change_mode('ACRO')
++        tstart = self.get_sim_time()
++        self.delay_sim_time(step_at, "acro before the bias step")
++        self.set_parameters({
++            "SIM_ACC1_BIAS_Z": step,
++            "SIM_ACC2_BIAS_Z": step,
++        })
++        while self.get_sim_time_cached() - tstart < acro_s:
++            self.delay_sim_time(2, "lua flies acro")
++        # stop the flips and let ACRO_TRAINER level the vehicle so every run
++        # leaves acro in the same state
++        self.set_parameter("SCR_USER1", 1)
++        self.delay_sim_time(4, "level before leaving acro")
++        self.wait_attitude(desroll=0, despitch=0, tolerance=15, timeout=30)
++        self.change_mode('ALT_HOLD')
++        self.set_rc(3, 1500)
++        self.delay_sim_time(40, "post-acro hover")
++        self.change_mode('LAND')
++        self.wait_disarmed(timeout=180)
++        self.delay_sim_time(3, "let the log close")
++        src = self.current_onboard_log_filepath()
++        dest = _os.path.join(_os.environ.get("PROBE_OUT", "/tmp"), "%s.BIN" % tag)
++        _shutil.copy(src, dest)
++        self.progress("PROBE LOG %s -> %s" % (src, dest))
++        self.context_pop()
++        self.reboot_sitl()
++
+     def AccelBiasLearningInhibitedInAcro(self):
+         '''Test accel bias is not learned while spooled up in acro'''
+         # Copter inhibits EKF accel bias learning while spooled up in acro.
+@@ -16909,6 +17091,8 @@ return update, 1000
+              self.AccelBiasMovingPlatform,
+              self.AccelBiasLearningInhibitedInAcro,
+              self.AcroBiasProbe,
++             self.RestoreArmProbe,
++             self.RestoreAcroProbe,
+              self.StabilityPatch,
+              self.OBSTACLE_DISTANCE_3D,
+              self.AC_Avoidance_Proximity,
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_Control.cpp b/libraries/AP_NavEKF3/AP_NavEKF3_Control.cpp
+index acdd9ab7da..91b200b7ca 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_Control.cpp
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_Control.cpp
+@@ -5,6 +5,7 @@
+ #include <GCS_MAVLink/GCS.h>
+ 
+ #include "AP_DAL/AP_DAL.h"
++#include <AP_Logger/AP_Logger.h>
+ 
+ // Control filter mode transitions
+ void NavEKF3_core::controlFilterModes()
+@@ -178,10 +179,44 @@ void NavEKF3_core::setWindMagStateLearningMode()
+     // than one floored across an arbitrarily long disarmed period.
+     const bool vehicleInhibitAccelBias = frontend->getInhibitAccelBiasLearning();
+     static const bool probe_no_restore = getenv("ACRO_INH") && atoi(getenv("ACRO_INH")) == 3;
+-    if (prevVehicleInhibitAccelBias && !vehicleInhibitAccelBias && !inhibitDelVelBiasStates && !probeZOnly() && !probe_no_restore) {
+-        P[13][13] = sq(ACCEL_BIAS_LIM_SCALER * frontend->_accBiasLim * dtEkfAvg);
+-        P[14][14] = P[13][13];
+-        P[15][15] = P[13][13];
++    // PROBE: RESTORE_V 1 = restore as pushed, 0 = no restore, 4 = pre-inhibit variance plus
++    // the process noise growth over the inhibited interval, capped at the first-activation value
++    static const int probe_restore_v = getenv("RESTORE_V") ? atoi(getenv("RESTORE_V")) : 1;
++    if (!prevVehicleInhibitAccelBias && vehicleInhibitAccelBias) {
++        probeInhibitStart_ms = imuSampleTime_ms;
++        probeSavedValid = !inhibitDelVelBiasStates;
++        for (uint8_t i=0; i<3; i++) {
++            probeSavedAccBiasVar[i] = P[13+i][13+i];
++        }
++        AP::logger().Write("PRBR", "TimeUS,C,E,Pb,Pa,Sv,Gr,V", "QBBffffB",
++                           AP_HAL::micros64(), core_index, uint8_t(1),
++                           float(P[15][15]), float(P[15][15]), float(probeSavedAccBiasVar[2]), 0.0f, uint8_t(probe_restore_v));
++    }
++    if (prevVehicleInhibitAccelBias && !vehicleInhibitAccelBias) {
++        const ftype first = sq(ACCEL_BIAS_LIM_SCALER * frontend->_accBiasLim * dtEkfAvg);
++        const ftype before = P[15][15];
++        ftype grown = 0;
++        if (!inhibitDelVelBiasStates && !probeZOnly() && !probe_no_restore) {
++            if (probe_restore_v == 1) {
++                P[13][13] = first;
++                P[14][14] = P[13][13];
++                P[15][15] = P[13][13];
++            } else if (probe_restore_v == 4) {
++                P[13][13] = first * 0.0625;
++                P[14][14] = P[13][13];
++                P[15][15] = P[13][13];
++            } else if (probe_restore_v == 5) {
++                const ftype steps = (imuSampleTime_ms - probeInhibitStart_ms) * 0.001 / MAX(dtEkfAvg, (ftype)0.001);
++                grown = steps * sq(sq(dtEkfAvg) * constrain_ftype(frontend->_accelBiasProcessNoise, 0.0, 1.0));
++                for (uint8_t i=0; i<3; i++) {
++                    const ftype base = probeSavedValid ? MAX(probeSavedAccBiasVar[i], P[13+i][13+i]) : first;
++                    P[13+i][13+i] = MIN(first, base + grown);
++                }
++            }
++        }
++        AP::logger().Write("PRBR", "TimeUS,C,E,Pb,Pa,Sv,Gr,V", "QBBffffB",
++                           AP_HAL::micros64(), core_index, uint8_t(0),
++                           float(before), float(P[15][15]), float(probeSavedValid ? probeSavedAccBiasVar[2] : -1.0f), float(grown), uint8_t(probe_restore_v));
+     }
+     prevVehicleInhibitAccelBias = vehicleInhibitAccelBias;
+ 
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_core.h b/libraries/AP_NavEKF3/AP_NavEKF3_core.h
+index 0ecf11de7e..c8d5daaa9b 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_core.h
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_core.h
+@@ -1532,6 +1532,9 @@ private:
+ 	// variables used to inhibit accel bias learning
+     bool inhibitDelVelBiasStates;       // true when all IMU delta velocity bias states are de-activated
+     bool prevVehicleInhibitAccelBias;    // previous state of the vehicle's accel bias learning inhibit
++    uint32_t probeInhibitStart_ms;       // PROBE: time the vehicle inhibit last rose
++    bool probeSavedValid;                // PROBE: pre-inhibit variances were captured with the states active
++    ftype probeSavedAccBiasVar[3];       // PROBE: P[13..15] diagonal when the inhibit rose
+     bool dvelBiasAxisInhibit[3] {};		// true when IMU delta velocity bias states for a specific axis is de-activated
+ 	Vector3F dvelBiasAxisVarPrev;		// saved delta velocity XYZ bias variances (m/sec)**2
+ 

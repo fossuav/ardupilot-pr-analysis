@@ -346,6 +346,22 @@ Still open: flight evidence for enabling bit 3 (the log7 Replay above is
 owed), and the release-restore transient, being re-measured on #32471 with
 repeated runs.
 
+### The release restore, A/B'd on #32471 (2026-09-15)
+
+See `../32471/`, "The release restore, A/B'd". Repeated SITL runs (3 per
+cell) keep #32471's restore as pushed: after an acro exit it gives the lowest
+sustained height error at every bias step (0.33 m mean 10-35 s after the exit
+at 0.50 m/s/s, against 1.78 m without the restore). The single-run "8.0 m
+against 6.0 m" in finding (d) above was mostly the vehicle following the
+corrected estimate down: the EKF was 4.7 m low at the release. Superseded by
+that A/B for the restore question.
+
+It weighs against enabling bit 3, not against the restore: with no acro
+inhibit, the in-flight bias step leaves 2.4x less height error at the exit
+(1.98 against 4.70 m at 0.50 m/s/s). A bias that changes during acro is the
+case where holding learning costs most. Consistent with bit 3 staying off by
+default.
+
 ## Branches and people
 
 - `pr-acro-bias-inhibit` - depends on `pr-vrf-core` (#32471), `39c0642ed7` as
