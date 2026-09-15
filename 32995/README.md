@@ -621,7 +621,13 @@ unchanged at `af493a7bd5` (master still pins `9aebaf4a40`). Built at the
 tip with 0 warnings: RPI_UAVFC, Laurel, Pico2, CubeOrange and MatekF405
 copter; CPUInfo for RPI_UAVFC, CubeOrange and SITL; the RPI_UAVFC
 bootloader. The mechanical checks show only what they showed before the
-rebase (printf false positives, four long subjects, diff size).
+rebase (printf false positives, four long subjects, diff size). The
+rewritten commit was not built on its own: a build of it in the scratch
+worktree failed on the symlinked ChibiOS submodule (missing
+`fatfs-0.14b_patched.7z` extraction), which is the worktree setup, not the
+code. Its `CPUInfo.cpp` differs from the tip only by the later `__ARM_FP`
+guard `392686bc0f`, a no-op on ARM, so it compiles wherever the tip does
+(inference from the diff).
 
 Not tested: master's structured div1000 test runs about 220000 divisions
 with no watchdog pat, which on RP2350 CPUInfo may come close to the
