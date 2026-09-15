@@ -650,3 +650,155 @@ this session: #32473's acro A/B measured the bit-2 covariance restore
 overshooting on release (8.0 m lost in ALT_HOLD after a 0.5 m/s/s bias step,
 against 6.0 m without the restore and 1.5 m uninhibited; single SITL runs, see
 `../32473/`). Not yet examined here.
+
+## The release restore, A/B'd (2026-09-15)
+
+The open item above: does `9b852c9464`'s restore of P[13..15] on the
+falling edge of the vehicle inhibit help or hurt, now that #32473 makes it
+fire on every acro exit as well as at arm. Everything here is tier 2 (SITL),
+three runs per cell unless marked.
+
+**Verdict: keep the restore as pushed.** Among the variants that keep the
+inhibit, it gives the lowest height error in every arm-release cell and the
+lowest sustained error after an acro exit. What it costs is a transient: the
+bias estimate overshoots about 2x for a few seconds after an in-flight
+release (up to 0.31 m past truth in height), and on a moving platform it
+learns the platform acceleration as bias during an armed wait. The 8.0 m
+against 6.0 m "altitude lost" in `../32473/` is mostly the vehicle
+descending to the height it was really at, sooner. It is not extra error.
+
+### What was run
+
+A local-only probe branch (`probe-32471-restore-ab`, not pushed; diff in
+`data/restore-ab-2026-09-15/probe_restore.diff`) on top of the #32473
+branch with its acro probe. It picks the release behaviour from
+`RESTORE_V` and writes a `PRBR` dataflash record at each inhibit edge with
+P[15][15] before and after. The restore code there is the same as on the
+pushed `bb0a818b52`: a diff of `AP_NavEKF3_Control.cpp` shows only the probe
+lines and an unrelated airspeed-check line.
+
+- V1: restore as pushed, P[13..15] = (0.2 x EK3_ACC_BIAS_LIM x dt)^2,
+  logged 6.2e-6
+- V2: no restore, P stays at the inhibited floor, logged 5e-8
+- V3: no inhibit (control)
+- V4: candidate, 1/16 of V1's variance (sigma 0.05 instead of 0.2 m/s/s),
+  logged 3.9e-7
+
+Every counted run with an inhibit was checked for a `PRBR` falling edge at
+arm (S1) or at the acro exit (S2). None is missing.
+
+Variance arithmetic, derived from the source and not measured: the
+per-step accel-bias process noise is (dt^2 x EK3_ABIAS_P_NSE)^2 = 8.3e-12 at
+dt 0.012. Natural regrowth over a 20 s acro segment is therefore about
+1.4e-8, below the 5e-8 floor, and about 4e-7 over 600 s, which is the
+review's "3.7x". A restore to "what the covariance would have grown to"
+therefore collapses onto V2 after acro. At arm it collapses onto V1: the
+disarmed inhibit rises at boot, when P is still at the first-activation
+value (`PRBR` shows 5.76e-6 saved). That candidate was not run; the scaled
+V4 was run instead.
+
+S1 is `RestoreArmProbe`: disarmed dwell (60 s, or 90 s on the platform,
+plus 7 s per run index), arm, climb to 10 m in LOITER, 40 s hover. Bit 2 is
+set (`ACC_ZBIAS_LEARN` 6, or 4 on the platform). Metric: worst |EKF - truth|
+height over 35 s after arm, as in the 2026-09-04 harness. S2 is
+`RestoreAcroProbe`: the #32473 Lua acro driver at 40 m, a Z accel bias step
+injected 3-5 s into acro, 20-24 s of acro, then the driver levels the vehicle
+for 4 s before ALT_HOLD. Run index varies pre-hover, step time and acro
+length.
+
+### S1, release at arm
+
+Worst height error over 35 s after arm, m, mean (min..max):
+
+| cell | V1 restore | V2 none | V3 no inhibit | V4 1/16 |
+|---|---|---|---|---|
+| VRF 0.05, correction preloaded | 0.16 (0.16..0.16) | 0.28 (0.27..0.28) | 0.17 (0.16..0.18) | |
+| VRF 0.15, preloaded | 0.28 (0.27..0.28) | 0.53 (0.53..0.53) | 0.30 (0.30..0.30) | 0.37 (0.37..0.38) |
+| VRF 0.30, preloaded | 0.45 (0.44..0.45) | 1.01 (1.00..1.01) | 0.50 (0.49..0.51) | |
+| VRF 0.15, nothing preloaded | 0.28 (0.28..0.28) | 0.70 (0.70..0.70) | 0.65 (0.65..0.65) | 0.36 (0.35..0.36) |
+| platform 1.0, prompt takeoff | 0.99 (0.16..2.47) | 2.97 (0.15..8.24) | 6.96 (1 run) | |
+| platform 1.0, armed 0 s | 0.56 (0.31..0.88) | 1.07 (0.28..2.44) | 7.18 (1 run) | 0.89 (0.26..1.82) |
+| platform 1.0, armed 5 s | 1.01 (0.34..2.11) | 2.70 (0.34..7.15) | 7.03 (1 run) | 1.15 (0.31..2.56) |
+
+The VRF 0.15 preloaded row reproduces the 2026-09-05 table: 0.28 with the
+restore against 0.53 without (0.284 and 0.467 then). The code base differs
+by #32473's commits.
+
+Two costs show up in S1:
+
+- The restore absorbs the ground spool-up transient as bias. XKF2.AZ moves
+  -0.13 m/s/s between arm and liftoff at VRF 0.15 (-0.23 at 0.30), against
+  -0.01 for V2. It decays in flight, which is why V1's mean error 10-35 s
+  after arm is higher than V2's in the preloaded cells: 0.24 against 0.16 m
+  at 0.15.
+- On the platform, one run index in each of the three platform cells (97 s
+  dwell, liftoff 4-7 s after arm) learns the platform acceleration after
+  arm: AZ at liftoff -0.99, -0.81 and -0.96 m/s/s with V1, -0.35 to -0.61
+  with V4, -0.06 to -0.14 with V2. That is the invented bias bit 2 exists to
+  prevent, re-learned in the seconds after arming. V2 learns nothing in the
+  same run, but its height estimate diverges on the ground instead (+5.8 m
+  while sitting), which is where its 8.24 m worst comes from. Why only that
+  run index was not traced; the movement check is the first suspect. The
+  log is `s1_platd5_1.00_v1_r1.BIN.gz`.
+
+### S2, release at an acro exit
+
+Z bias step injected in acro; release at the ALT_HOLD entry. Heights in m,
+bias in m/s/s:
+
+| step | variant | error at release | mean error 0-10 s | mean error 10-35 s | overshoot past truth | AZ peak | time to 80% |
+|---|---|---|---|---|---|---|---|
+| 0.05 | V1 | -0.41 | 0.20 (0.11..0.37) | 0.04 (0.02..0.05) | 0.05 | 0.10 | 0.9 s |
+| 0.05 | V2 | -0.42 | 0.47 (0.35..0.66) | 0.12 (0.09..0.18) | 0.00 | 0.04 | not reached |
+| 0.05 | V3 | -0.19 | 0.20 (0.12..0.30) | 0.10 (0.08..0.13) | 0.00 | 0.04 | not reached |
+| 0.15 | V1 | -1.28 | 0.41 (0.37..0.46) | 0.08 (0.02..0.11) | 0.14 | 0.30 | 0.9 s |
+| 0.15 | V2 | -1.40 | 1.45 (1.03..2.10) | 0.36 (0.26..0.54) | 0.00 | 0.14 | 16.9 s |
+| 0.15 | V3 | -0.55 | 0.53 (0.51..0.57) | 0.27 (0.24..0.30) | 0.00 | 0.13 | 17.6 s |
+| 0.15 | V4 | -1.45 | 1.02 (0.72..1.59) | 0.09 (0.06..0.14) | 0.10 | 0.17 | 3.4 s |
+| 0.30 | V1 | -2.80 | 1.61 (0.82..2.03) | 0.21 (0.16..0.24) | 0.27 | 0.68 | 0.8 s |
+| 0.30 | V2 | -2.83 | 3.72 (3.65..3.86) | 1.06 (1.06..1.07) | 0.00 | 0.28 | 16.1 s |
+| 0.30 | V3 | -1.20 | 1.23 (0.88..1.71) | 0.61 (0.50..0.79) | 0.00 | 0.28 | 16.4 s |
+| 0.50 | V1 | -4.70 | 3.21 (3.02..3.32) | 0.33 (0.32..0.35) | 0.31 | 1.01 | 0.8 s |
+| 0.50 | V2 | -4.82 | 6.33 (5.90..6.74) | 1.78 (1.77..1.79) | 0.00 | 0.46 | 15.9 s |
+| 0.50 | V3 | -1.98 | 2.29 (1.72..2.66) | 1.13 (0.80..1.32) | 0.00 | 0.47 | 15.5 s |
+| 0.50 | V4 | -4.59 | 3.88 (2.23..4.82) | 0.33 (0.09..0.45) | 0.23 | 0.58 | 3.6 s |
+
+Truth altitude lost in the 20 s after the exit at the 0.50 step, mean
+(min..max): V1 6.20 (5.23..7.34), V2 3.79 (2.89..4.66), V3 0.59 (0.11..1.26),
+V4 6.13 (4.99..6.84). The EKF was 4.7 m low at release with any inhibit, so
+most of V1's descent is the controller following the corrected estimate down
+to where the vehicle really is. About 1.5 m is beyond that correction: the
+0.31 m overshoot plus the altitude controller's own transient. V2 has covered
+less of the same error 20 s later and still carries 1.8 m of it.
+
+V4 halves the bias overshoot but reaches the corrected height about 3 s later.
+It is worse than V1 in every S1 cell it was run in, and no better on the
+platform. It is not an improvement on the restore as pushed.
+
+The first S2 matrix is not counted. The Lua driver left acro mid-flip on one
+run index (roll 152 to 174 deg, 7-8 m/s descending), and every variant hit
+the ground from there; two V1 runs then failed to disarm. The driver now
+levels the vehicle before the exit (|roll| at most 33 deg, vertical speed
+-0.2 to +3.5 m/s at the exit), and all 36 S2 runs were repeated.
+
+### What this means for the two PRs
+
+- #32471: no change before merge. The restore is the best inhibited variant
+  on every height metric measured. Its transients are a 2x bias overshoot for
+  a few seconds and absorbing an acceleration the vehicle is exposed to after
+  arm; the second is a limit of bit 2 as designed, which only covers the
+  disarmed period. Worth one sentence in the PR if it comes up: a moving
+  platform with a long armed wait can still teach the filter a bias.
+- #32473: V3 (no inhibit) beats every inhibited variant after an in-flight
+  bias step. It carries 2.4x smaller error into the exit at the 0.50 step, and
+  the release restore is what makes the inhibited case recover at all. That
+  weighs against the acro inhibit, not against this restore.
+
+Numbers taken 2026-09-15 on the probe branch in `../../ab-32471` at
+`31137aa3d0` (first S1 matrix), `af5ec2054b` (levelled S2) and
+`18755b2da3`/`b1dbfafd40` (armed dwell and V4). V1, V2 and V3 behave
+identically across those commits; only V4 and the harness changed. Logs
+kept: the 0.50 step for V1, V2 and V3 at run index 0, and the platform run
+that learns the acceleration after arm. `runs.spec`, `rows.csv` and
+`tables.md` hold every run; `analyse_restore.py` and `aggregate.py`
+regenerate the tables from logs made with `run_restore.sh`.
