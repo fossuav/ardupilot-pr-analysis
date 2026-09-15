@@ -2,14 +2,17 @@
 
 Analysis archive for [ArduPilot/ardupilot#33498](https://github.com/ArduPilot/ardupilot/pull/33498).
 Branch `pr-gyro-z-unobservable-without-yaw` (andyp1per fork), base `master`,
-head `17f19f6202` (2026-09-02). All evidence is from real flights on a 4-inch
-optical-flow quad (MatekH743, ARK Flow, no compass in the flow source set);
-numbers are cited inline and no logs are committed.
+PR head `17f19f6202` (2026-09-02); local head `bdce23d76c` (2026-09-15, not
+pushed). The flight evidence is from a 4-inch optical-flow quad (MatekH743,
+ARK Flow, no compass in the flow source set); numbers are cited inline and
+no logs are committed.
 
 ## Status (one line)
 
-One-commit correctness fix, flight-validated on the airframe that exposed it
-and reconfirmed on a later flight; no SITL reproduction yet (see Reproduce).
+Correctness fix, flight-validated on the airframe that exposed it. The
+2026-09-15 round makes the guard purely fusion-based (the compass leg M1 is
+measured and fixed) and adds an autotest; not yet pushed, and rmackay9's
+review is not yet answered on the PR. See "Round of 2026-09-15" below.
 
 ## Review 2026-09-10: two of the three legs are honest, the compass leg is not
 
@@ -239,6 +242,117 @@ mode, since no variance is forced to zero with live cross terms.
   are current rather than one step stale. It is the first thing a careful
   reviewer checks.
 
+## Round of 2026-09-15: rmackay9's review, and M1 measured
+
+Answering rmackay9's CHANGES_REQUESTED of 2026-09-07. Local commits on top
+of `17f19f6202`, not pushed:
+
+- `bfd220a15a` AP_NavEKF3: learn flow Z gyro bias only after actual yaw
+  fusion
+- `30ee7cc232` autotest: check optical flow learns no Z gyro bias without
+  yaw fusion
+- `bdce23d76c` AP_NavEKF3: do not overstate what last_mag_yaw_fuse_ms
+  records (comment only)
+
+### What changed
+
+The guard is now `recentYawFusion()`: true if GPS, compass or external nav
+yaw was fused within 5 s, read only from fusion timestamps. A new
+`last_mag_yaw_fuse_ms` is stamped where compass data is actually fused:
+after all three axes of `FuseMagnetometer()` (reached only if `magHealth`
+passed and every `FinishFusion()` succeeded), and after
+`fuseEulerYaw(MAGNETOMETER)` in the FUSE_YAW branch when
+`!faultStatus.bad_yaw`. The external nav stamp got the same
+`!faultStatus.bad_yaw` condition (the should-fix above). The guard no longer
+reads `yaw_source_last`, `use_compass()` or `magTimeout`, and
+`setWindMagStateLearningMode()` is byte-identical to master again: the
+hoisted `recentGpsYawFusion()` is gone.
+
+One deliberate behaviour difference, derived from the source, not measured:
+the guard no longer tests which source is active, so after an in-flight
+switch away from GPS or compass yaw the flow can still learn the bias for up
+to 5 s. A yaw reference really was fused in that window, and each stamp can
+only be written while its source is the active one.
+
+### Measured, SITL, 2026-09-15
+
+Autotest `FlowGyroZBiasNoYawReference` as committed in `30ee7cc232`:
+flow-only Loiter, analog range finder, `FLOW_FXSCALER 200`, 16 legs of 10 s
+forward flight with a yaw turn between legs (240 s), bias-free simulated
+gyro, yaw reference removed 5 s after takeoff. Metric is max |XKF1.GZ| in
+deg/s over both cores. Every flight also logged 3085-4201 non-zero XKF5 flow
+innovations, so flow was fused in all of them.
+
+| code | no yaw source | all compasses fail (`SIM_MAGn_FAIL 1`) | GPS yaw lost (`copter-gps-for-yaw.parm`, both receivers disabled) |
+|---|---|---|---|
+| merge-base `c56e34434b` | 0.30 | 0.30 | 0.23 |
+| PR head `17f19f6202` | 0.00 | **0.29** | 0.02 |
+| temporary guard on the configured source, `frontend->sources.getYawSource(core_index)` | 0.00 | 0.31 | 0.08, 0.18, 0.18 (three runs) |
+| `bfd220a15a` | 0.00, 0.00 | **0.03**, 0.03 | 0.01, 0.02 |
+
+The head's no-yaw-source number is from a first run of the test that ended
+in LAND; the flight portion is identical. That run found a harness problem:
+in LAND with the flow scale error the vehicle touched down and then held a
+30 deg roll demand on the ground (ATT.DesRoll -29.7, Roll 0.1) and never
+detected the landing, so the test lands in ALT_HOLD.
+
+M1 is real at tier 2: with every compass dead in flight the head's compass
+leg keeps passing and the bias runs to 0.29 deg/s, the same as with no
+guard. The fusion guard holds it at 0.03.
+
+The GPS-yaw-lost case is the noisy one. The configured-source guard is
+logically identical to the merge-base there, yet read 0.08 once and 0.18
+twice against the merge-base's 0.23. The likely cause is how long GPS yaw
+fused on the ground before takeoff, which sets `P[12][12]` at the loss; not
+isolated. The test threshold is 0.1 deg/s: guarded runs top out at 0.03,
+and the compass case alone separates a revert or a configured-source guard
+(0.29-0.31) from the fix.
+
+Also run at `bdce23d76c` (binary built from `bfd220a15a`; the later commit
+is comment-only), all passing: `LoiterNoCompassYaw`,
+`GPSForYawCompassFallback`, `MagFail`, `OpticalFlowLimits`. The external
+nav stamp change was not exercised in SITL.
+
+### rmackay9's three points
+
+1. "I don't think using yaw_source_last is correct." The guard no longer
+   reads it; see the numbers above.
+2. "A new use of yaw_source_last... change to getYawSource(core_index), OR
+   we need a new variable to capture what the last yaw source that was
+   actually fused."
+   - Not new: master's `setWindMagStateLearningMode()` has the identical
+     expression inline (`AP_NavEKF3_Control.cpp:62-65` at `c56e34434b`);
+     the head only hoisted it. Derived from the source.
+   - `yaw_source_last` is not only a change detector. `setYawSource()`
+     writes it from `getYawSource(core_index)` with one remap while the
+     compass is being calibrated (COMPASS -> NONE, GPS_COMPASS_FALLBACK ->
+     GPS), and about 25 decisions on master read it, `use_compass()` among
+     them. Swapping `getYawSource()` into `recentGpsYawFusion()` is a no-op:
+     both remapped values stay inside the GPS set. Derived from the source.
+   - A guard on the configured source is what fails, measured: 0.31 deg/s
+     with the compass dead, 0.08-0.18 with GPS yaw lost.
+   - His second option is what was done: fusion timestamps for all three
+     sources and nothing else.
+3. Rename the double negative to `recentYawFusion()`: taken.
+
+### Not done this round, with reasons
+
+- Renaming `last_extnav_yaw_fusion_ms` to `last_extnav_yaw_ms`: master code
+  outside the change; the new member's comment carries the distinction.
+- The pre-existing GPS path stamps `last_gps_yaw_fuse_ms` on a
+  `fuseEulerYaw(GPS)` return without checking `bad_yaw`. Master code with
+  the same gap the external nav path had; left alone, worth a sentence on
+  the PR.
+- `FuseBodyVel()` still learns state 12 unguarded: deferred, as before.
+- Logging the guard state: not done.
+- Replay against log53/log56: owed. The log roots are not mounted on the
+  machine this ran on. In the flights' own no-yaw source set the two guards
+  behave identically (derived from the source); what Replay would show is
+  the up-to-5 s tail after a switch from a compass-yaw source set.
+- History: `17f19f6202`'s message still describes the compass test as "in
+  use and not timed out". The three AP_NavEKF3 commits want squashing under
+  a rewritten message before the push.
+
 ## The problem
 
 First flow-only Loiter on the airframe (`EK3_SRC2` POSXY=0, VELXY=5, YAW=0;
@@ -314,9 +428,20 @@ No SITL test exists. A candidate: optical-flow-only nav with
 assert `XKF1.GZ` rails on master and holds with this change. SITL flow is
 perfectly scaled, so without an injected mismatch nothing drives the bias.
 
+### Superseded 2026-09-15 by the autotest in `30ee7cc232`
+
+`Tools/autotest/autotest.py test.Copter.FlowGyroZBiasNoYawReference` on the
+branch. It uses `FLOW_FXSCALER 200` rather than `SIM_FLOW_OFS_X` (not on
+master) and covers no yaw source, compass lost in flight and GPS yaw lost in
+flight. Numbers and the threshold rationale are in "Round of 2026-09-15"
+above. The paragraph above is left as the design the test grew from.
+
 ## Branches and people
 
 - `pr-gyro-z-unobservable-without-yaw` - the PR branch (one commit).
 - Author: @andyp1per. No review yet.
+- 2026-09-15: four local commits (see "Round of 2026-09-15"); reviews:
+  tridge (automated) APPROVE at `17f19f6202`, rmackay9 CHANGES_REQUESTED
+  2026-09-07, not yet answered on the PR.
 - Related: #33497 (the same airframe's flow half-rate fault, fixed first so
   this could be seen), #33484 (per-axis lockout recovery).
