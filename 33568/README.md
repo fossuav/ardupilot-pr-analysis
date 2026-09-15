@@ -1,8 +1,10 @@
 # PR #33568 - Fall back to relative aiding when optical flow replaces lost GPS (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#33568](https://github.com/ArduPilot/ardupilot/pull/33568).
-Branch `pr-flow-aiding`, head `4bb2ef3583`, base master (23 Jun 2026, four
-months stale but it still merges cleanly).
+Branch `pr-flow-aiding`. PR head `4bb2ef3583`; local head `8627ddedc6`
+(2026-09-15, three commits on top, not yet pushed). Base master 23 Jun 2026,
+1364 commits behind on 2026-09-15 but `git merge-tree` against master is still
+clean.
 
 ## Status (one line)
 
@@ -10,6 +12,11 @@ Adds the missing AID_ABSOLUTE -> AID_RELATIVE edge so a GPS-booted vehicle that
 later flies on flow gets the flow control limits. The 2026-09-12 automated
 review's headline BUG - that the new edge teleports the NE position to the EKF
 origin - **did not reproduce when measured**.
+
+**Superseded 2026-09-15:** it reproduces on a vehicle that is still moving
+when the fall back fires (21 m and 5.9 m/s steps at 5.4 m/s); the 2026-09-12
+runs hovered through it. Fixed locally in `05d1db1b9d`, and the per-cycle GPS
+guard in `8627ddedc6`. See "Moving through the fall back (2026-09-15)".
 
 ## The claimed BUG, and what the measurement says (2026-09-12)
 
@@ -53,6 +60,14 @@ Either way the review's stated consequence is refuted for this scenario, and the
 suggested fix (write `lastKnownPositionNE` before setting AID_RELATIVE) should
 not be applied on the strength of the review alone.
 
+### Superseded 2026-09-15 by a run moving through the fall back
+
+"For this scenario" was the whole of it: the vehicle hovered for the 10 s
+between the source switch and the fall back. Kept moving across it, the
+position steps 21 m. Mechanism and numbers in "Moving through the fall back
+(2026-09-15)". The table above is left as measured because it is right for a
+hovering vehicle, which is what it was.
+
 ## Traps this cost, worth not repeating
 
 - **`GCS_SEND_TEXT` from EKF probe code is lossy.** Three runs' worth of probe
@@ -80,6 +95,11 @@ Not examined here, and none of them depend on the BUG above:
   `ResetVelocity()` zeroes the horizontal velocity on the transition
 - the added test hovers at home, where the position question is invisible; the
   fly-out above is the fix for that regardless of the outcome
+
+### Superseded 2026-09-15
+
+All four were measured on 2026-09-15; see "Remaining review findings,
+measured (2026-09-15)". The height limit one was measured on 2026-09-12 below.
 
 ## The height control limit does not command a descent either (2026-09-12)
 
@@ -170,6 +190,18 @@ kilometre; it cannot, because the precondition for this edge is that the vehicle
 *was* navigating on GPS, which is exactly when the origin is being re-based.
 **The finding is refuted at the root and no fix is needed.**
 
+#### Superseded 2026-09-15: the origin stops following 4 s before the edge
+
+The re-base above is gated on `filterStatus.flags.using_gps`, which is
+`(imuSampleTime_ms - lastGpsPosPassTime_ms) < 4000 && AID_ABSOLUTE`
+(`AP_NavEKF3_Control.cpp:812` at `8627ddedc6`). After the source switch no GPS
+position passes, so the origin stops following the vehicle 4 s later, while
+the fall back only fires at `posRetryTimeUseVel_ms` = 10 s. For the 6 s in
+between `stateStruct.position` accumulates whatever the vehicle flies, and
+`ResetPosition()` then throws exactly that away. The 2026-09-12 table is
+right: that vehicle hovered through the window, so there was nothing to throw
+away. "Refuted at the root" was wrong, and so was "no fix is needed".
+
 ### The height limit finding is real, and worse than stated
 
 The EKF publishes the limit exactly as the review says. At 39.4 m with a 40 m
@@ -224,3 +256,150 @@ That is not much comfort, for three reasons:
 
 So the exposure is "any vehicle with default parameters, in any normal flight
 mode, the first time the pilot asks for a climb after GPS is lost".
+
+## Moving through the fall back (2026-09-15)
+
+Same test scenario as 2026-09-12 (fly out ~100 m on GPS, switch to the flow
+source set), but with roll stick held from 3 s to 12 s after the switch, so
+the vehicle is moving when the fall back fires at about 10 s. Numbers from
+`XKF1` core 0 and `POS` against `SIM` truth.
+
+| | PR head `4bb2ef3583` | with `05d1db1b9d` |
+|---|---|---|
+| speed at the transition | 5.4 m/s | 5.5 m/s |
+| largest position step between XKF1 samples | **21.0 m** | 0.6 m (own motion) |
+| largest velocity step | **5.9 m/s** | 0.06 m/s |
+| EKF position error 0.5 s before | 0.6 m | 0.6 m |
+| 0.5 s after | **23.6 m** | 0.6 m |
+| 3 s after | **30.6 m** | 0.5 m |
+| just before GPS returns | **32.7 m** | 0.2 m |
+
+A slower first probe (2.5 m/s, pitch stick) showed the same shape: VE -2.44
+to -0.01 m/s against a true -2.51, still 2.0 m/s wrong 1.1 s later, and a
+4.5 m position step. The error keeps growing after the step because the
+zeroed velocity has to be re-learnt from flow.
+
+Both halves come from the mode change block calling `ResetVelocity()` and
+`ResetPosition()` on every mode change. With `PV_AidingMode` already
+`AID_RELATIVE`, the first zeroes the horizontal velocity and the second
+assigns `lastKnownPositionNE`. Right when relative aiding starts from
+AID_NONE, wrong on this edge, where flow has been aiding the states all
+along.
+
+### The fix, and the alternative the review suggested
+
+`05d1db1b9d` skips both resets on the AID_ABSOLUTE -> AID_RELATIVE edge only.
+The review suggested writing `lastKnownPositionNE` from the state before
+setting AID_RELATIVE instead. That fixes the position but not the velocity,
+which `ResetVelocity()` still zeroes (the 5.9 m/s step above), so it was not
+taken. Derived from the source, not measured separately.
+
+### Replay: is the velocity estimate bit-identical?
+
+The PR body says a replay of the real flight gave a "bit-identical" velocity
+estimate. That flight is not named anywhere in this archive or in the flight
+analyses, so it could not be re-run (a `REPLAY_LOGS.md` row is owed). The same
+phrase appears in the #33585 flight record for log308, about a different
+change, so it may have been carried across. Tested instead on the SITL log of
+the 2.5 m/s probe (`LOG_REPLAY=1`), replayed by three Replay builds. Core 100,
+flight 40-83.5 s:
+
+| comparison | max \|dV\| | max \|dP\| | first difference |
+|---|---|---|---|
+| Replay at head vs the flight | 0.000 | 0.00 | none (faithful) |
+| head vs master's `Control.cpp` | **2.480 m/s** | **9.58 m** | 69.84 s, the fall back |
+| `8627ddedc6` vs master's `Control.cpp` | 0.101 m/s | 0.02 m | 83.04 s, GPS returning |
+
+So the claim is false for the PR as submitted and true for the flow segment
+with the fix. The residual difference at 83.04 s is the return to GPS
+resetting velocity and position through the mode change, where master
+recovers in place.
+
+## Remaining review findings, measured (2026-09-15)
+
+### `!readyToUseGPS()` under a sustained GPS rejection - real, fixed
+
+`readyToUseGPS()` includes `gpsDataToFuse`, true only on cycles with a GPS
+sample at the fusion horizon. Probe: hover on GPS with flow velocity fused
+(`EK3_SRC_OPTIONS=1`, `EK3_SRC2_VELXY=5`), then `SIM_GPS1_GLTCH_X` stepped
+0.00045 deg (50 m) every 5 s for 60 s. Window glitch start to 40 s after it
+ends:
+
+| build | AID changes (core 0) | "started relative aiding" / "is using GPS" | EKF position error at +20/+40/+60 s |
+|---|---|---|---|
+| master `Control.cpp` | 0 | 0 / 0 | 100.2 / 300.6 / 501.0 m |
+| PR head | **12** (6 round trips, 0.2 s each) | **7 / 7** | 100.2 / 300.6 / 501.0 m |
+| `05d1db1b9d` | 12 | 7 / 7 | 100.2 / 300.6 / 501.0 m |
+| `8627ddedc6` | 0 | 0 / 0 | 100.2 / 300.6 / 501.0 m |
+
+Position following is identical in every build (the glitch is followed
+either way; recovery after it ends took the same ~20 s), so the round trips
+bought nothing but messages and, before `05d1db1b9d`, a velocity zeroing on
+each one. `8627ddedc6` replaces `!readyToUseGPS()` with "GPS is the
+configured position source and a 3D fix arrived within
+`gpsNoFixTimeout_ms`" (`lastTimeGpsReceived_ms` is only written for a 3D
+fix).
+
+Rejected alternatives:
+
+- `getPosXYSource() != GPS` (the review's first suggestion): stops the churn,
+  but also stops the fall back for a GPS set whose receiver dies while flow
+  is fused, which the PR head does handle. With `8627ddedc6` and
+  `SIM_GPS1_ENABLE=0` the fall back still fires 10.6 s after the last fix
+  (69.4 -> 80.04 s) and returns to GPS on re-enable. Not measured on the
+  review's variant; it follows from the code.
+- `!gpsIsInUse` (the review's second): `gpsIsInUse` is set false two lines
+  above the test, so it is always true there. Derived from the source.
+
+Not changed, same class: `readyToUseRangeBeacon()` and `readyToUseExtNav()`
+are per-cycle as well (`rngBcn.dataToFuse`, `extNavDataToFuse`), so a rejected
+beacon or ExtNav source would bounce the same way. Derived from the source,
+not measured; the review raised GPS only.
+
+### The test - extended
+
+`6c6339bd41`: fly ~100 m out, keep moving across the fall back, assert the
+transition happened more than 50 m out and above 3 m/s, and that the largest
+XKF1 position and velocity steps are under 2 m and 1.5 m/s. Reboots at the
+end. Fails at the PR head (21.0 m), passes with the fix (0.6 m, 0.06 m/s),
+and fails with master's `Control.cpp` on "did not fall back to
+AID_RELATIVE".
+
+### Declined or already done
+
+- XKF4's format string at the 16-character limit: no comment added.
+  `CHECK_ENTRY` asserts the limit at startup, so the next field added fails
+  loudly, and the macro block carries no comments to match.
+- "Autotest included" checkbox: already ticked in the body by 2026-09-15.
+- The height limit and #34380: already in the body by 2026-09-15.
+
+### Side effects of AID_RELATIVE - derived from the source, not measured
+
+At `8627ddedc6`, what else changes when this edge is taken:
+
+- `FuseDeclination()` runs with 3-axis mag fusion (`MagFusion.cpp:440`),
+  as for any vehicle that flies on flow from boot. In the Replay above it
+  made no difference to velocity or position on the flow segment, but that
+  SITL flight may well have been on simple yaw fusion.
+- `badMagYaw` (`MagFusion.cpp:161`) needs AID_ABSOLUTE, so the
+  velocity-innovation yaw reset is off, as for flow-from-boot vehicles.
+- `getTerrainAltVariance()` (`Outputs.cpp:619`) starts reporting the terrain
+  variance while `flowDataValid`, and `getHeightControlLimit()` (`:94`)
+  starts publishing the limit (#34380).
+- `status.flags.gps_glitching` and `using_gps` (`Control.cpp:812-813`) clear.
+
+### Branch
+
+Three commits on top of `4bb2ef3583`, unpushed. The branch is 1364 commits
+behind master; the merged tree has the same 16-character XKF4 format and the
+test helpers it uses. A rebase is worth it before CI is trusted again, and is a
+force push.
+
+### Reproduce (2026-09-15)
+
+`data/2026-09-15/probe_tests.py` holds the three temporary probe tests
+(velocity through the transition with `LOG_REPLAY`, sustained glitch, GPS
+switched off). `glitch_stats.py <log> <glitch start> <glitch end>` and
+`moving_stats.py <head log> <fix log>` produce the tables above;
+`replay_compare.py` compares three Replay outputs of one log
+(`build/sitl/tool/Replay <log>` per build, run from separate directories).
