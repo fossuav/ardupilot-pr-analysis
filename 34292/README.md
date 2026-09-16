@@ -1138,6 +1138,147 @@ stuck), `probe.diff`, `stale5s.diff`, `run_fl.sh`, `analyse_fl.py`,
 `dump_window.py`. Branches are local only (`fl-control`, `fl-hgtmin`,
 `fl-hgtmin-stale5s`, `fl-master`).
 
+## The hold and the ground clearance floor (2026-09-16, later)
+
+All three recommendations above done on `pr-flow-hgt-min`, local and unpushed,
+five commits on `0374a23d84`:
+
+| commit | what |
+|---|---|
+| `48c843a5ce` | AP_NavEKF3: hold optical flow off below FLOW_HGT_MIN after range dropout |
+| `0ce208012c` | autotest: check flow stays discarded on a landing below RNGFND1_MIN |
+| `837c7e1fbe` | AP_NavEKF3: skip the flow focus height hold without any range sample |
+| `d83c4a9559` | AP_NavEKF3: discard optical flow at the range finder ground clearance |
+| `6f1d116306` | AP_OpticalFlow: describe the FLOW_HGT_MIN hold and ground clearance floor |
+
+`837c7e1fbe` fixes a regression `48c843a5ce` introduced: with no range sample
+ever recalled, the carried height was the vertical position alone, so a vehicle
+with `FLOW_HGT_MIN` set and no range finder would hold flow off near the origin
+height. Derived from the source, not measured: a flow-only copter with no range
+finder cannot arm in this harness ("Failed to get EKF.flags=271").
+
+### The gate
+
+`AP_NavEKF3_OptFlowFusion.cpp` at `6f1d116306`:
+
+- `:59-61` record the tilt-corrected range and the vertical position whenever a
+  range sample is recalled (`rangeDataToFuse`), and that one has been.
+- `:69` the floor is `MAX(FLOW_HGT_MIN, rngOnGnd + 0.05)`.
+- fresh range (under 500 ms, as before): discard below the floor.
+- stale range, `:79-85`: carry the last sample forward by the height change
+  since. A hold starts only on a descent through the floor (the previous check
+  was above it), and then lasts while the range finder reported
+  OutOfRangeLow in the last 500 ms (`AP_NavEKF3_Measurements.cpp:46`, stamped
+  from `AP_DAL_RangeFinder::Status`, so it replays) or the carried height stays
+  below the floor.
+- ends: a fresh sample above the floor; the carried height back above the floor
+  with no OutOfRangeLow; `takeOffDetected` clearing on the ground (disarm on
+  Copter).
+
+How it tells the cases apart (read from the source): `readRangeFinder()` at this
+head stores only `Good` samples, so OutOfRangeLow and a dead sensor both leave
+`rngValidMeaTime_ms` stale and `rangeDataDelayed` at its last value. The status
+separates low from lost; the carried height separates a sensor lost at height
+(carried height stays high) from one lost near the ground. Out of range high
+leaves the last sample near the maximum. A vehicle below the floor at takeoff
+does not start a hold from OutOfRangeLow alone, because there has been no
+descent through the floor.
+
+### In-flight side effects, SITL, master-based
+
+Probe branches `fl34292-old` (`0374a23d84`) and `fl34292-new` (`48c843a5ce`),
+each plus a local PRFG dataflash probe. Flow-only copter, analog range finder.
+"Held" counts samples the new hold discarded with a stale range; the old gate
+has no hold to count, so compare fused counts.
+
+| scenario | old: flow fused | new: flow fused | new: held with stale range | outcome |
+|---|---|---|---|---|
+| out of range high: `RNGFND1_MAX` 3, climb to 8 m, 20 s, back down (`FLOW_HGT_MIN` 1.0, `AVOID_ENABLE` 0) | 486 | 487 | 0 | same |
+| range finder lost at 5 m (orientation changed), 20 s (`FLOW_HGT_MIN` 1.0) | 284 airborne | 301 airborne | 0 airborne | same in the air; LAND below 0.3 m true height fused 27 old, 0 new (held 191) |
+| hover 1.1 m, `FLOW_HGT_MIN` 1.0, `SIM_SONAR_RND` 0.3 | 348 | 342 | 0 | same (fresh discards from noise on both) |
+| dip: hover 3 m, 8 s at 1.5 m, back to 3 m (`FLOW_HGT_MIN` 2.0, `RNGFND1_MIN` 0) | stopped aiding 1.5 m, restarted at 2.20-2.32 m | stopped aiding 1.5 m, restarted at 2.18-2.42 m | 0 | same |
+| dip, `RNGFND1_MIN` 1.7 set in flight | **never stopped aiding: 88 unfocused samples fused below the floor** | stopped aiding at 1.5 m after 5 s, restarted at 2.08-2.20 m | 624 | old gate released below the range finder minimum, the defect |
+
+The lost-at-height row is the one behaviour change in flight: once the carried
+height says the vehicle is below the floor, flow near the ground is discarded
+with a dead range finder, where the old gate fused it. Disarm time was the same
+(12.6 s). Single runs per cell, deterministic flights.
+
+### The landing test
+
+New subtest of `OpticalFlowFocusHeight` (`Tools/autotest/arducopter.py:4527`):
+`FLOW_HGT_MIN` 0.3, take off, raise `RNGFND1_MIN` to 0.2 in flight (SITL's range
+finder reads 0 m on the ground, so a minimum above it would stop arming on
+flow), LAND, require disarm and zero changes in XKF5 `FIX/FIY/NI` from the
+first RFND OutOfRangeLow to disarm (they change only when flow is fused).
+
+| build | runs | updates from range low to disarm (about 2.5 s) | result |
+|---|---|---|---|
+| `0ce208012c` | 4 | 0, 0, 0, 0 | pass |
+| `6f1d116306` | 1 | 0 | pass |
+| `0ce208012c` with `48c843a5ce` reverted | 3 | 19, 19, 20 | fail |
+
+Deterministic in these runs (0 flakes in 8). Disarm alone does not
+discriminate on master-based code: master's in-range landings disarm (8 of 8
+above), which is why the assertion is on fusion.
+
+On the #34380 stack with the hold, `FLOW_HGT_MIN` 0.3 and `RNGFND1_MIN` 0.2
+(variant (e) above, which stuck 2 of 5 without the hold): 5 of 5 disarmed 2.1 s
+after touchdown, no innovation over 0.5 rad/s fused, ground lean demand 1.6-2.9
+deg.
+
+### The default
+
+Why it was 0, answered:
+
+- tridge's automated rounds: "default 0 = disabled, so nothing changes on
+  upgrade". That stays true of `FLOW_HGT_MIN` itself, which is still 0.
+- this record's "Default" section: sensors do not share a focus height, and the
+  flown 0.1 m was a property of that range finder, not a safe global value.
+  Also still true; that is why a focus height is not guessed.
+- the 2026-09-12 round's note that latching on a stale range "could withhold
+  flow indefinitely": the hold is bounded by a fresh sample, the carried height
+  and takeoff detection, and only a descent through the floor starts it.
+
+What changed the answer: the landing failure is not at a focus height. It
+starts where EKF3's range clamp bites, at the range finder ground clearance, and
+it continues on the ground until disarm. So the default is a floor tied to
+`rngOnGnd` (`MAX(RNGFNDx_GNDCLR, 0.05)`) plus 5 cm, always on, and
+`FLOW_HGT_MIN` only raises it. It does change behaviour on upgrade, in the last
+5 cm of a landing and on the ground until disarm, and the tests below are the
+evidence that nothing else moves.
+
+The two framings, #34380 stack, stuck-landing repro (60 m flow climb, LAND, 6
+m/s wind), no user settings:
+
+| build | ground clearance | disarmed | innovations over 0.5 rad/s fused near touchdown | ground lean |
+|---|---|---|---|---|
+| no floor, `FLOW_HGT_MIN` 0 (variant (c) above) | 0.10 | 0 of 5 | 1-7 per run | 30 deg |
+| A: `FLOW_HGT_MIN` default 0.15 | 0.10 | 5 of 5 | 0 | 1.5-2.5 deg |
+| B: floor at ground clearance + 0.05 (chosen) | 0.10 | 5 of 5 | 0 | 1.2-3.6 deg |
+| A | 0.30 | 3 of 3 | 2 per run | 6.0-13.2 deg |
+| B | 0.30 | 3 of 3 | 0 | 1.8-2.5 deg |
+
+A fixed default sits below the clamp on any airframe whose ground clearance
+exceeds it; B follows the airframe. The 5 cm margin comes from the stuck runs:
+samples at range readings of 0.13-0.16 m had innovations of 0.15 rad/s or less,
+the first bad one arrived at the clamped 0.10 m.
+
+Normal flow behaviour at `6f1d116306` plus a local SITL port switch only
+(`fl34292-final`), all pass: OpticalFlowFocusHeight (with the landing subtest),
+FlowHeightMinTerrainPath (the `EK3_FLOW_USE=2` terrain path Plane defaults to:
+low leg AFI max 0, high leg 62), OpticalFlow, OpticalFlowLimits,
+LoiterNoCompassYaw, OpticalFlowCalibration, Replay. Copter and plane build.
+
+Model caveat: SITL's flow sensor sits at ground level when landed, so its rates
+go to v/0 at touchdown and the phantom is larger than on a real vehicle, whose
+flow sensor stays at its mounting height. The flight evidence for the real
+near-ground phantom is the focus-height log above, not this.
+
+Open for the push: `6f1d116306`'s subject is 73 characters (gate note), and
+`48c843a5ce`'s message quotes the #34380-stack landing numbers without saying so;
+both are for the rewrite at push time.
+
 ## Round of 2026-09-17 (AP-Review at d8646651c2), answered 2026-09-18
 
 - Blocker, `rngOutOfRangeLowTime_ms` unguarded: guarded with
