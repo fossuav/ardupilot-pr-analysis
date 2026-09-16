@@ -1093,3 +1093,33 @@ gap left open, the test fixes, the SRTM handover comment and Popt. The PR body
 was rewritten for the new stack: five #33478 commits then ten of this PR's,
 the three autotests, and the terrain carry on all three reset paths.
 `AIReview` was already on; the 2026-09-13 round is stale from the push.
+
+## rmackay9: make it the default and remove the height limit (2026-09-16)
+
+rmackay9 (2026-09-15 23:30Z): make "use terrain, or whatever we've got" above
+the rangefinder range the default, and remove the AHRS/EKF
+`get_hgt_ctrl_limit()` and the AC_Avoid vertical limit #34380 touches. That
+also answers his bits 2/5 question.
+
+Decided with the user 2026-09-16: agree, retire bit 5 by making the behaviour
+the default here, and turn #34380 into the height-limit removal stacked on
+this PR (removing the ceiling first would let a default-configured flow
+vehicle climb into the failsafe the limit keeps it away from). Reply posted
+16:00Z (https://github.com/ArduPilot/ardupilot/pull/33585#issuecomment-5700538642)
+with the flight evidence (Loiter held at 24 m on flow and baro with velocity
+within about 0.2 m/s of GPS, `../../analysis/topics/dow_althold_ekf_failsafe.md`;
+relative position held for a whole flight with the rangefinder unusable 46% of
+it, `log7` there) and three caveats to settle before the default flips:
+
+- Uneven ground: a GPS-denied vehicle has no terrain data, so the default is the
+  terrain offset frozen at the last range measurement, which over rising ground
+  drifts instead of failing safe. To be measured in SITL over sloping terrain
+  (the Kalaupapa rig above) against today's failsafe before flipping. Folding
+  bit 2 in changes its contract the same way.
+- EKF2 publishes the same limit with no above-range mode; proposed to remove it
+  there too unless rmackay9 objects.
+- The limit is the only thing stopping a climb to where the flow sensor stops
+  resolving texture; without it the EKF drops flow and fails safe higher up.
+
+Consequence for the tests: master's `OpticalFlowLimits` asserts the 35 m
+ceiling and changes with the removal.
