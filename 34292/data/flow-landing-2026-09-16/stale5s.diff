@@ -1,0 +1,13 @@
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_OptFlowFusion.cpp b/libraries/AP_NavEKF3/AP_NavEKF3_OptFlowFusion.cpp
+index 87fee4e045..da052466b5 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_OptFlowFusion.cpp
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_OptFlowFusion.cpp
+@@ -68,7 +68,7 @@ void NavEKF3_core::SelectFlowFusion()
+     // the rangefinder is the height source. rangeDataDelayed holds its last value when the
+     // rangefinder stops reporting, so the sample is also checked for staleness.
+     if (flowDataToFuse && takeOffDetected && tiltOK && (ofDataDelayed.minHeight > 0.0f) &&
+-        (imuSampleTime_ms - rngValidMeaTime_ms < 500) &&
++        (imuSampleTime_ms - rngValidMeaTime_ms < 5000) &&
+         (rangeDataDelayed.rng * prevTnb.c.z < ofDataDelayed.minHeight)) {
+         flowDataToFuse = false;
+     }

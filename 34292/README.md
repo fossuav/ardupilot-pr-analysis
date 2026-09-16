@@ -1012,3 +1012,128 @@ test in this PR. Note for future work: `fly_guided_move_local` silently
 reported arrival without moving the vehicle in one run on #33568; this test uses
 `send_position_target_local_ned` plus `wait_groundspeed`, which cannot report a
 leg as flown when it was not.
+
+## The stuck flow landing, and what FLOW_HGT_MIN does about it (2026-09-16)
+
+Two SITL sightings on unrelated branches: #34380's removal branch (60 m flow
+climb, LAND, never disarmed, 1.4 m touchdown position step, 30 deg lean on
+the ground) and #33498 round 1 (LAND with a flow scale error, 30 deg roll held
+on the ground). Question: is a phantom flow velocity at touchdown the cause,
+and does this PR's floor fix it?
+
+### Reproducer
+
+SITL, tier 2. #34380's removal stack (`dc841b8fd1`, on #33585 `e18c7d6fc3`)
+plus local probe commits (`probe.diff`: a PRFL dataflash message per flow
+fusion call with innovations, per-axis test ratios, measured flow, EKF HAGL,
+range, range age and position/velocity sigma, and an autotest knob set).
+Flow-only copter, no GPS, `EK3_OPTIONS` 32 (bit 5), SITL analog rangefinder
+(`RNGFND1_MAX` 40, `RNGFND1_MIN` 0, `RNGFND1_GNDCLR` default 0.10), default
+`AVOID_ENABLE`. Take off in ALT_HOLD to 5 m, LOITER 10 s, full climb to 60 m,
+hold 25 s, LAND, `SIM_WIND_SPD` 6 (runs vary turbulence 1 and direction 0, 45,
+90, 135). About 8 s of wall time per run.
+
+It is not minimal in the sense of short: with the same wind, climbs of 5, 20,
+35 and 45 m all disarmed 2 s after touchdown, and a pilot reposition in LAND
+released at 0.1-0.3 m (touchdown speed 0.18 m/s, 5 m climb, with or without
+wind) also disarmed. Two things separate the stuck runs:
+
+| climb | touchdown speed | position sigma 0.5 s before touchdown | outcome |
+|---|---|---|---|
+| 5 m | 0.02 m/s | 2.2 m | disarmed |
+| 45 m | 0.08-0.09 m/s | 31 m | disarmed |
+| 60 m | 0.11-0.27 m/s | 45-48 m | stuck |
+
+Velocity sigma was 0.06-0.07 m/s in all of them. Position sigma grows through a
+long flow-only flight; the 60 m climb goes above the 40 m range, which only the
+bit-5 stack can navigate. An in-range 25 m flight held 120 s (sigma 34 m) with
+a 0.18 m/s touchdown also disarmed, on the removal branch and on master alike,
+so the above-range flight is part of the recipe, not just flight time.
+`AVOID_ENABLE 0` stuck 2 of 3, so avoidance is not a factor; the earlier 4 of 4
+disarms with it off were windless runs.
+
+### Where the step starts
+
+Per-sample PRFL at touchdown (stuck run `a_w6_c60_r2`, removal branch):
+
+- rangefinder reading 0.17 and 0.13 m: measured flow 1.25 rad/s, innovation
+  -0.15, test ratio 0.02. Normal.
+- rangefinder reading below the 0.10 m ground clearance, EKF range clamped to
+  `rngOnGnd` 0.10 while the SITL sensor range goes to zero: measured flow
+  2.53 rad/s, innovation -0.87, test ratio 0.59, **fused**, about 0.16 s before
+  touchdown.
+- on the ground: SITL flow computes `v / range` with range near zero, so
+  sub-millimetre motion reads as rad/s (and exactly zero height gives zero
+  flow). Innovations of 0.9 to 1.6 rad/s are fused or rejected per axis over
+  the next second, the EKF position walks 1.1-13.6 m against truth (5 stuck
+  runs), and the roll/pitch demand reaches 30 deg within about 1 s, which holds
+  `large_angle_request` and resets the land detector.
+
+So the phantom starts below `RNGFNDx_GNDCLR`, not below `RNGFNDx_MIN`: SITL's
+analog rangefinder reports Good all the way to 0, with the range age 0-50 ms.
+The SITL flow near-zero-range amplification is a model feature, but a real
+sensor below its focus height also reports non-motion, which is this PR's
+premise.
+
+### Variants (5 runs each unless stated)
+
+| variant | disarmed | large innovations fused near touchdown | lean on ground |
+|---|---|---|---|
+| (a) removal branch, no #34292 | 0 of 5 | yes | 30 deg |
+| (c) + #34292, `FLOW_HGT_MIN` 0 (default) | 0 of 5 | 1-7 per run | 30 deg |
+| (b) + #34292, `FLOW_HGT_MIN` 0.3 | **5 of 5**, 2.0-2.1 s after touchdown | 0 | 0.9-4.3 deg |
+| (e) as (b), `RNGFND1_MIN` 0.2 set in flight | 3 of 5 | 2-4 in every run | 30 deg in the 2 stuck |
+| (f) as (e), gate freshness 500 ms -> 5000 ms (`stale5s.diff`) | **5 of 5** | 0 | 1.4-2.5 deg |
+
+0.3 m was chosen above both `RNGFND1_MIN` (0 here) and the 0.10 m ground
+clearance where the phantom starts, and is crossed in about 0.6 s at land
+speed, well inside the 5 s flow fusion timeout. #34292's own commits were
+cherry-picked onto the removal base; its last autotest commit `0374a23d84`
+conflicted and was skipped, no C++ was skipped.
+
+(e) is the realistic rangefinder: below 0.2 m it goes OutOfRangeLow, the last
+Good reading freezes (0.279 m in `e_hm03_rmin02_r1`), and the gate keeps
+discarding while the reading is under 500 ms old. At touchdown the age reaches
+500 ms, the gate switches off, and ground flow is fused again (innovations
+1.27, -0.86, -0.63 in that run). This is the staleness check the parameter
+description already warns about, and it lands exactly on the touchdown.
+
+### Master
+
+`b2b1b3d279` plus the probe, in-range scenarios only, because master caps the
+climb and has no above-range flow navigation: 25 m held 60 s in 6 m/s wind (3
+of 3 disarmed), 25 m held 120 s with a 0.18-0.19 m/s touchdown (3 of 3, lean up
+to 13.9 deg), 10 m held 240 s with `FLOW_FXSCALER` 200 and a reposition (2 of 2;
+a third run failed in the harness before landing). The phantom innovations are
+there on master too (1-4 fused above 0.5 rad/s per run), but no master landing
+stuck in 8 measured runs. So the phantom is pre-existing; the stuck landing was
+only reproduced after the above-range flow flight that #33585 and #34380 make
+reachable. Not established whether a longer or faster master flight sticks.
+
+### Conclusions and recommendation
+
+- Mechanism: tier 2. Fused phantom flow at and after touchdown, below the
+  ground clearance, moves a position estimate whose sigma has grown to tens of
+  metres; the position controller cannot correct it on the ground, winds the
+  lean past 15 deg and the land detector never completes.
+- This PR fixes the reproducer, but only with `FLOW_HGT_MIN` set above the
+  ground clearance (default 0 does nothing), and only while the rangefinder
+  keeps reporting. With a rangefinder whose minimum is above the ground, the
+  500 ms freshness check turns the gate off at touchdown and 2 of 5 still stuck.
+- What should change, in order: (1) the gate should keep acting when the range
+  finder has dropped out low rather than switching off after 500 ms - the 5 s
+  window is the measured form, a narrower one (keep discarding while the last
+  Good reading was below the floor and no newer reading exists, or while the
+  vehicle is landing) is not measured, and the 5 s window's in-flight side
+  effects are unmeasured (tier 3); (2) #34380's description should state the
+  landing exposure and point at `FLOW_HGT_MIN`; (3) whether `FLOW_HGT_MIN`
+  should default to a small non-zero value just above the default ground
+  clearance is a maintainer decision - sensors do not share a focus height,
+  which is why the default is 0, but the landing failure is at the ground
+  clearance, not at the focus height.
+
+Data in `data/flow-landing-2026-09-16/`: `c_hm0_r2` (default 0, stuck),
+`b_hm03_r2` (0.3, disarmed), `e_hm03_rmin02_r4` (0.3 with `RNGFND1_MIN` 0.2,
+stuck), `probe.diff`, `stale5s.diff`, `run_fl.sh`, `analyse_fl.py`,
+`dump_window.py`. Branches are local only (`fl-control`, `fl-hgtmin`,
+`fl-hgtmin-stale5s`, `fl-master`).

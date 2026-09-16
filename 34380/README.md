@@ -149,6 +149,8 @@ flow bit flies OpticalFlowLimits). OpticalFlowGPSLossAiding is not on this stack
 
 ### Open: LAND after a high flow climb did not disarm
 
+Traced 2026-09-16 in `../34292/` ("The stuck flow landing"): phantom flow fused below the ground clearance at touchdown after a long above-range flight; not avoidance (`AVOID_ENABLE 0` stuck 2 of 3 in wind); fixed by `FLOW_HGT_MIN` 0.3 5 of 5, but 2 of 5 still stick once the rangefinder drops out low.
+
 Observed, mechanism traced from the dataflash, cause of the configuration split
 not established (tier 2 symptom, tier 3 for why).
 
