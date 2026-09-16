@@ -7,6 +7,12 @@ tells us which cause it is, instead of another round of guessing.
 
 Read [README.md](README.md) for the state of the PR itself.
 
+**Superseded in part by the first flights** - see
+[field-test-2026-09-16-results.md](field-test-2026-09-16-results.md).
+`AP_XIP_PROFILER_ENABLED` below cost ~13% of core1 in flight and must be
+dropped, and the log does not carry the full 10 s report: MSG text is capped
+at 64 bytes.
+
 ## What the data has to separate
 
 All of these produce "the OSD is glitchy and the RC feels laggy", and the
@@ -47,8 +53,9 @@ undef AP_XIP_PROFILER_ENABLED
 define AP_XIP_PROFILER_ENABLED 1
 ```
 
-The `undef` lines matter: the board hwdef already defines each as 0, and
+The `undef` lines matter for the two flags the board hwdef defines as 0;
 without them the overlay only adds a second, conflicting definition.
+RPI_UAVFC does not define `AP_XIP_PROFILER_ENABLED` at all.
 
 What each switch buys and costs:
 
