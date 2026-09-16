@@ -1123,3 +1123,136 @@ it, `log7` there) and three caveats to settle before the default flips:
 
 Consequence for the tests: master's `OpticalFlowLimits` asserts the 35 m
 ceiling and changes with the removal.
+
+## Uneven ground: what a default flat-ground assumption costs (2026-09-16)
+
+The first caveat in the 2026-09-16 reply to rmackay9, measured. Question: if
+navigating on flow above the rangefinder range becomes the default, a
+GPS-denied vehicle flies on the terrain offset frozen at the last range
+measurement. Over sloping ground, how wrong is that, what does the vehicle do,
+and how does it compare with today?
+
+### The rig (tier 2, SITL)
+
+- Code: `e18c7d6fc3` (this PR as pushed) plus local-only probe commits on
+  `uneven-ground-ab` (`a9827e3354` .. `fc06a4fd17`, diff in
+  `data/uneven-ground-2026-09-16/probe.diff`). The probe logs a `PRBU`
+  message: the height FuseOptFlow actually scaled flow with, the simulator's
+  true height above terrain, `flatGroundAssumed()`, `terrainAltUsable()`,
+  `gndOffsetValid`/`gndOffsetMeasured`, `horiz_pos_rel` and the aiding mode.
+  An env switch withholds terrain data from the cores.
+- SITL does model this. `hagl()` in `SIM_Aircraft.cpp` subtracts the terrain
+  database height at the true location, and both the SITL optical flow range
+  (`AP_OpticalFlow_SITL.cpp:67-69`) and the SITL rangefinder use it, with
+  `SIM_TERRAIN=1` and `TERRAIN_ENABLE=1`. Confirmed: true AGL minus the
+  rangefinder reading, while in range, median +0.01 m in every run.
+- Copter, CMAC home, `SIM_GPS1_ENABLE=0`, `EK3_SRC1_POSXY=0`, `VELXY=5`
+  (flow), `POSZ=1` (baro), `VELZ=0`, compass yaw, `EK3_IMU_MASK=1`,
+  `RNGFND1_MAX=8`, `AVOID_ENABLE=0` (the height limit would stop the climb),
+  `COMPASS_DEC=12.4 deg` with autodec off (with no GPS the EKF frame is
+  otherwise rotated 12.4 deg from truth, which reads as position error).
+- Profile: ALT_HOLD takeoff, LOITER, climb to 35 m (above the 8 m range),
+  15 s for the offset to go stale, then a GUIDED velocity of 5 m/s (EKF frame)
+  on a fixed bearing for 1000-1200 m, then 60 s of LOITER in a 4 m/s crosswind,
+  then LAND. The fall-low case climbs to 6 m only, in range, and flies off the
+  slope, so the range is lost in motion.
+- Terrain under the path (SRTM, relative to home): flat, bearing 150, within
+  3 m; rise, bearing 240, +16 m by the end of the flown distance; fall,
+  bearing 30, -14 m (35 m cases) and about -19 m then rising again (fall-low).
+- Truth: `SIM2` position and velocity against `XKF1`, displacements measured
+  from the traverse start.
+- Two rigs, because Copter's `ekf_check()` returns immediately when the EKF has
+  no origin (`ArduCopter/ekf_check.cpp:36-39`): rig A has no origin at all; rig B
+  sets one by `SET_GPS_GLOBAL_ORIGIN` at CMAC before takeoff. In rig B, "bit 5,
+  terrain withheld" is the GPS-denied frozen-offset case and "bit 5, terrain
+  allowed" is the terrain database path.
+
+### Today, bit 5 clear, origin set (rig B)
+
+| run | what happened |
+|---|---|
+| climb, r0 / r1 | `horiz_pos_rel` cleared at 14.2 / 14.3 m true AGL; "EKF variance: position lost", LAND 1 s later at 15.1 / 15.0 m; horizontal drift during the landing 2.3 / 1.1 m |
+| fall-low, r0 / r1 | range lost in motion; LAND 1 s later after 43 / 38 m of traverse; still moving at 5.8 / 5.7 m/s, it carried 19.6 / 19.7 m while landing |
+
+### Bit 5 set: traverse error against truth
+
+EKF-frame 5 m/s commanded. Position error is the EKF displacement minus the
+true displacement at the end of the traverse. A and B columns are the two
+rigs; with terrain withheld they are the second run of the same cell.
+
+| case | terrain to the EKF | true / EKF distance (m) | true / EKF speed (m/s) | position error (m) | flow height / true AGL at end |
+|---|---|---|---|---|---|
+| flat | withheld (A, B) | 853, 849 / 838, 835 | 4.32, 4.29 / 3.75, 3.76 | 15.0, 14.3 | 36.6 / 38.0 |
+| rise +16 m | withheld (A, B) | 739, 740 / 916, 918 | 3.69 / 4.59, 4.61 | 177.2, 178.8 | 36.8 / 21.6 |
+| rise | allowed (B) | 807 / 814 | 4.07 / 4.09 | 9.6 | 19.7 / 19.8 |
+| fall -14 m | withheld (A, B) | 1038, 1048 / 884, 889 | 4.39, 4.42 / 3.40, 3.42 | 154.8, 159.0 | 36.9 / 51.1 |
+| fall | allowed (B) | 1003 / 981 | 4.24 / 3.86 | 23.8 | 49.4 / 50.2 |
+| fall-low from 6 m | withheld (A, B) | 2041, 2033 / 1091, 1094 | 9.71, 9.65 / 4.59, 4.57 | 950.5, 940.0 | 7.8 / 8.7 (median ratio 0.54) |
+| fall-low | allowed (B) | 1307 / 1195 | 5.50 / 4.84 | 113.7 | 24.4 / 23.4 |
+
+With bit 5 set, `horiz_pos_rel` held for 100% of every traverse and no
+failsafe fired in either rig. The 60 s crosswind hold afterwards was stable in
+every case (true drift 5-35 m, position error 2-9 m). The drift was largest
+on the flat, where the 4/HAGL gain scaler at 37 m detunes the loiter.
+
+### What the vehicle does (tier 2)
+
+- Rising ground makes the frozen height too large, so flow velocity is
+  overestimated. The vehicle flies slower and less far than it believes (24%
+  here) and in a hold its effective gain goes up. That errs towards stopping.
+- Falling ground makes the frozen height too small, so velocity is
+  underestimated. The vehicle flies faster and further than commanded. From
+  low altitude over a slope the true height roughly doubled, the vehicle flew
+  at 9.7 m/s on a 5 m/s command, and ended 940-950 m from where it believed it
+  was. That is the "drifts instead of failing safe" case, and it is real: it
+  does not stop, and nothing reports a problem.
+- The error is proportional to the fractional change in height above ground.
+  A few metres of slope matters little at 35 m and a lot at 6-10 m.
+- With terrain data reaching the EKF (an origin and coverage) the same flights
+  come in at 1-2% of distance over steady slopes and about 9% when flying off
+  the slope from low altitude.
+
+### What is and is not new with the default
+
+Derived from the source, and consistent with the runs: flow fusion is not
+changed by bit 5. Today's firmware scales flow with the same frozen offset
+above the range; bit 5 only changes the status flags and `canDeadReckon`.
+So the velocity errors above already exist today. What bit 5 removes is the
+reaction to them:
+
+- With an EKF origin (outdoors with GPS present but not a source, or an
+  origin set by a GCS), today's vehicle loses relative position about 5 s
+  after the range goes stale and the EKF failsafe lands it 1 s later, within
+  about 20 m. With bit 5 it keeps flying on the wrong scale indefinitely.
+- With no origin, `ekf_check()` never runs, so today's vehicle does not fail
+  safe either. In rig A with bit 5 clear, LOITER carried on above the range
+  for about 100 s with position invalid, and only GUIDED was refused ("requires
+  position"). For these vehicles bit 5 changes which modes can be used, not
+  what the vehicle physically does. One rig A bit-5-clear traverse run
+  (`v2_falllow_r0`) lost the SITL link about 22 s into the traverse and timed
+  out after 28 minutes. It is discarded and was not explained.
+
+### Verdict
+
+- Terrain database path (origin plus coverage): safe to make default. The
+  errors are small, and this is what "use terrain" means in the proposal.
+- Flat-ground assumption without terrain data: do not make it the default.
+  On vehicles that have an origin it removes a failsafe that today lands the
+  vehicle within about 20 m, and replaces it with unbounded flight on a scale
+  that can be half the truth over falling ground. Keep it opt-in (bit 5) for
+  the known-flat indoor case it was built for.
+- Untested idea for a safer default: trust the frozen offset only while the
+  horizontal distance flown since the last range measurement stays under a
+  few times the frozen height. A hover or slow indoor flight keeps it; a
+  traverse away from the measured ground ends it and the vehicle falls back to
+  today's behaviour. Needs its own A/B before anyone proposes it.
+- Caveats: SITL terrain is SRTM with bilinear interpolation, so there are no
+  cliffs, buildings or vegetation, and a flow sensor looking at a real slope
+  sees more texture variation than SITL models. Wind was off during the
+  traverses. The runs are deterministic: the A and B pairs agree within about
+  1%.
+
+Data: `data/uneven-ground-2026-09-16/`, containing `probe.diff`,
+`run_uneven.sh`, `analyse_uneven.py`, `results.txt` (analysis of every run
+cited) and three gzipped SITL logs: `b_v1_falllow_r0` (terrain withheld),
+`b_v1t_falllow_r0` (terrain allowed) and `b_v2_falllow_r0` (today, origin set).

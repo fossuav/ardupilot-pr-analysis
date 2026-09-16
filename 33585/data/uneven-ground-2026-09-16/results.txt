@@ -1,0 +1,99 @@
+== b_v2_climb_r0.BIN
+events: [(32.4, 'climb start'), (41.0, 'mode LAND during climb at 15.1m'), (72.8, 'disarmed')]
+modes: [(14.5, 2), (14.5, 2), (22.3, 5), (41.1, 9)]
+sanity: TH - RFND (Good, >1m) median +0.01 m over 296 samples
+climb: horiz_pos_rel first clear at t=40.2 true AGL 14.2 m
+== b_v2_climb_r1.BIN
+events: [(32.4, 'climb start'), (41.0, 'mode LAND during climb at 15.0m'), (72.8, 'disarmed')]
+modes: [(14.5, 2), (14.5, 2), (22.2, 5), (41.2, 9)]
+sanity: TH - RFND (Good, >1m) median +0.01 m over 304 samples
+climb: horiz_pos_rel first clear at t=40.3 true AGL 14.3 m
+== b_v2_falllow_r0.BIN
+events: [(32.4, 'climb start'), (34.2, 'climb done'), (49.8, 'traverse start'), (59.8, 'mode LAND during traverse'), (59.8, 'traverse end'), (82.8, 'disarmed')]
+modes: [(14.5, 2), (14.5, 2), (22.3, 5), (49.9, 4), (59.6, 9)]
+sanity: TH - RFND (Good, >1m) median +0.01 m over 472 samples
+traverse: err max 1.6 end 1.6 m | dist ekf 41 true 43 m | spd ekf 4.99 true 4.99 m/s | FH/TH end 7.7/8.4 med ratio 0.98 | FG 0% TU 0% HR 88% AID [2]
+climb: horiz_pos_rel first clear at t=58.7 true AGL 8.3 m
+== b_v2_falllow_r1.BIN
+events: [(32.4, 'climb start'), (34.4, 'climb done'), (50.0, 'traverse start'), (59.2, 'mode LAND during traverse'), (59.2, 'traverse end'), (83.0, 'disarmed')]
+modes: [(14.5, 2), (14.5, 2), (22.2, 5), (50.1, 4), (59.0, 9)]
+sanity: TH - RFND (Good, >1m) median +0.01 m over 459 samples
+traverse: err max 1.1 end 1.1 m | dist ekf 37 true 38 m | spd ekf 4.87 true 4.88 m/s | FH/TH end 7.7/8.4 med ratio 0.97 | FG 0% TU 0% HR 86% AID [2]
+climb: horiz_pos_rel first clear at t=58.1 true AGL 8.3 m
+== v1_flat_r0.BIN
+events: [(32.6, 'climb start'), (57.4, 'climb done'), (74.0, 'traverse start'), (274.4, 'traverse end'), (275.0, 'hold start'), (336.2, 'hold end'), (382.0, 'disarmed')]
+modes: [(14.4, 2), (14.4, 2), (22.4, 5), (73.0, 4), (274.6, 5), (336.8, 9)]
+sanity: TH - RFND (Good, >1m) median +0.01 m over 305 samples
+traverse: err max 16.2 end 15.0 m | dist ekf 838 true 853 m | spd ekf 3.75 true 4.32 m/s | FH/TH end 36.6/38.0 med ratio 0.98 | FG 100% TU 0% HR 100% AID [2]
+hold: err max 3.3 end 2.3 m | dist ekf 32 true 35 m | spd ekf 0.19 true 0.44 m/s | FH/TH end 36.6/38.2 med ratio 0.96 | FG 100% TU 0% HR 100% AID [2]
+climb: horiz_pos_rel never cleared after climb start
+== b_v1_flat_r0.BIN
+events: [(32.4, 'climb start'), (57.4, 'climb done'), (74.0, 'traverse start'), (274.4, 'traverse end'), (275.0, 'hold start'), (335.2, 'hold end'), (378.0, 'disarmed')]
+modes: [(14.5, 2), (14.5, 2), (22.2, 5), (73.0, 4), (274.6, 5), (335.9, 9)]
+sanity: TH - RFND (Good, >1m) median +0.01 m over 305 samples
+traverse: err max 14.3 end 14.3 m | dist ekf 835 true 849 m | spd ekf 3.76 true 4.29 m/s | FH/TH end 36.7/38.1 med ratio 0.98 | FG 100% TU 0% HR 100% AID [2]
+hold: err max 6.5 end 5.4 m | dist ekf 35 true 30 m | spd ekf 0.17 true 0.26 m/s | FH/TH end 36.7/38.3 med ratio 0.96 | FG 100% TU 0% HR 100% AID [2]
+climb: horiz_pos_rel never cleared after climb start
+== v1_rise_r0.BIN
+events: [(32.8, 'climb start'), (57.8, 'climb done'), (73.4, 'traverse start'), (273.8, 'traverse end'), (274.4, 'hold start'), (335.6, 'hold end'), (361.8, 'disarmed')]
+modes: [(14.5, 2), (14.5, 2), (22.5, 5), (73.4, 4), (274.1, 5), (336.2, 9)]
+sanity: TH - RFND (Good, >1m) median +0.01 m over 293 samples
+traverse: err max 177.2 end 177.2 m | dist ekf 916 true 739 m | spd ekf 4.59 true 3.69 m/s | FH/TH end 36.8/21.6 med ratio 1.19 | FG 100% TU 0% HR 100% AID [2]
+hold: err max 8.4 end 8.4 m | dist ekf 15 true 7 m | spd ekf 0.21 true 0.14 m/s | FH/TH end 36.8/21.6 med ratio 1.70 | FG 100% TU 0% HR 100% AID [2]
+climb: horiz_pos_rel never cleared after climb start
+== b_v1_rise_r0.BIN
+events: [(32.5, 'climb start'), (57.5, 'climb done'), (73.1, 'traverse start'), (273.5, 'traverse end'), (274.1, 'hold start'), (334.3, 'hold end'), (371.9, 'disarmed')]
+modes: [(14.3, 2), (14.3, 2), (22.1, 5), (73.1, 4), (273.7, 5), (334.9, 9)]
+sanity: TH - RFND (Good, >1m) median +0.01 m over 307 samples
+traverse: err max 178.8 end 178.8 m | dist ekf 918 true 740 m | spd ekf 4.61 true 3.69 m/s | FH/TH end 36.7/21.5 med ratio 1.19 | FG 100% TU 0% HR 100% AID [2]
+hold: err max 8.6 end 8.5 m | dist ekf 15 true 7 m | spd ekf 0.21 true 0.14 m/s | FH/TH end 36.7/21.5 med ratio 1.71 | FG 100% TU 0% HR 100% AID [2]
+climb: horiz_pos_rel never cleared after climb start
+== b_v1t_rise_r0.BIN
+events: [(32.4, 'climb start'), (57.2, 'climb done'), (72.8, 'traverse start'), (273.0, 'traverse end'), (273.6, 'hold start'), (335.0, 'hold end'), (364.8, 'disarmed')]
+modes: [(14.5, 2), (14.5, 2), (22.3, 5), (72.9, 4), (273.2, 5), (335.6, 9)]
+sanity: TH - RFND (Good, >1m) median +0.01 m over 304 samples
+traverse: err max 10.6 end 9.6 m | dist ekf 814 true 807 m | spd ekf 4.09 true 4.07 m/s | FH/TH end 19.7/19.8 med ratio 1.00 | FG 100% TU 100% HR 100% AID [2]
+hold: err max 3.0 end 3.0 m | dist ekf 12 true 9 m | spd ekf 0.17 true 0.11 m/s | FH/TH end 19.6/19.7 med ratio 0.99 | FG 100% TU 100% HR 100% AID [2]
+climb: horiz_pos_rel never cleared after climb start
+== v1_fall_r0.BIN
+events: [(32.6, 'climb start'), (57.6, 'climb done'), (73.2, 'traverse start'), (313.4, 'traverse end'), (314.0, 'hold start'), (375.4, 'hold end'), (616.8, 'not disarmed: Failed to DISARM within 240.000000s')]
+modes: [(14.3, 2), (14.3, 2), (22.3, 5), (73.3, 4), (313.7, 5), (376.1, 9)]
+sanity: TH - RFND (Good, >1m) median -0.01 m over 306 samples
+traverse: err max 154.8 end 154.8 m | dist ekf 884 true 1038 m | spd ekf 3.40 true 4.39 m/s | FH/TH end 36.9/51.1 med ratio 0.83 | FG 100% TU 0% HR 100% AID [2]
+hold: err max 5.9 end 3.9 m | dist ekf 21 true 24 m | spd ekf 0.36 true 0.32 m/s | FH/TH end 36.9/51.0 med ratio 0.72 | FG 100% TU 0% HR 100% AID [2]
+climb: horiz_pos_rel first clear at t=443.4 true AGL 0.6 m
+== b_v1_fall_r0.BIN
+events: [(32.4, 'climb start'), (57.2, 'climb done'), (72.8, 'traverse start'), (313.4, 'traverse end'), (314.4, 'hold start'), (375.6, 'hold end'), (435.8, 'disarmed')]
+modes: [(14.3, 2), (14.3, 2), (22.1, 5), (72.9, 4), (313.7, 5), (376.3, 9)]
+sanity: TH - RFND (Good, >1m) median -0.05 m over 270 samples
+traverse: err max 159.0 end 159.0 m | dist ekf 889 true 1048 m | spd ekf 3.42 true 4.42 m/s | FH/TH end 36.4/51.0 med ratio 0.83 | FG 100% TU 0% HR 100% AID [2]
+hold: err max 5.8 end 4.2 m | dist ekf 19 true 23 m | spd ekf 0.34 true 0.30 m/s | FH/TH end 36.4/50.8 med ratio 0.71 | FG 100% TU 0% HR 100% AID [2]
+climb: horiz_pos_rel first clear at t=428.7 true AGL 1.8 m
+== b_v1t_fall_r0.BIN
+events: [(32.3, 'climb start'), (57.3, 'climb done'), (72.9, 'traverse start'), (313.3, 'traverse end'), (313.9, 'hold start'), (374.1, 'hold end'), (425.9, 'disarmed')]
+modes: [(14.4, 2), (14.4, 2), (22.2, 5), (72.9, 4), (313.5, 5), (374.8, 9)]
+sanity: TH - RFND (Good, >1m) median +0.01 m over 296 samples
+traverse: err max 24.4 end 23.8 m | dist ekf 981 true 1003 m | spd ekf 3.86 true 4.24 m/s | FH/TH end 49.4/50.2 med ratio 0.98 | FG 100% TU 100% HR 100% AID [2]
+hold: err max 6.9 end 6.5 m | dist ekf 21 true 19 m | spd ekf 0.47 true 0.27 m/s | FH/TH end 49.4/50.1 med ratio 0.98 | FG 100% TU 100% HR 100% AID [2]
+climb: horiz_pos_rel never cleared after climb start
+== v1_falllow_r0.BIN
+events: [(32.8, 'climb start'), (34.6, 'climb done'), (50.2, 'traverse start'), (290.6, 'traverse end'), (291.2, 'hold start'), (352.2, 'hold end'), (371.8, 'disarmed')]
+modes: [(14.5, 2), (14.5, 2), (22.5, 5), (50.2, 4), (290.9, 5), (352.9, 9)]
+sanity: TH - RFND (Good, >1m) median +0.01 m over 465 samples
+traverse: err max 950.5 end 950.5 m | dist ekf 1091 true 2041 m | spd ekf 4.59 true 9.71 m/s | FH/TH end 7.8/8.7 med ratio 0.54 | FG 100% TU 0% HR 100% AID [2]
+hold: err max 1.9 end 1.8 m | dist ekf 4 true 4 m | spd ekf 0.12 true 0.10 m/s | FH/TH end 7.8/8.6 med ratio 0.90 | FG 100% TU 0% HR 100% AID [2]
+climb: horiz_pos_rel never cleared after climb start
+== b_v1_falllow_r0.BIN
+events: [(32.4, 'climb start'), (34.2, 'climb done'), (49.8, 'traverse start'), (290.2, 'traverse end'), (290.8, 'hold start'), (352.0, 'hold end'), (369.8, 'disarmed')]
+modes: [(14.5, 2), (14.5, 2), (22.3, 5), (49.9, 4), (290.4, 5), (352.7, 9)]
+sanity: TH - RFND (Good, >1m) median +0.01 m over 462 samples
+traverse: err max 940.0 end 940.0 m | dist ekf 1094 true 2033 m | spd ekf 4.57 true 9.65 m/s | FH/TH end 7.7/8.6 med ratio 0.54 | FG 100% TU 0% HR 100% AID [2]
+hold: err max 2.2 end 2.1 m | dist ekf 4 true 5 m | spd ekf 0.11 true 0.11 m/s | FH/TH end 7.7/8.5 med ratio 0.91 | FG 100% TU 0% HR 100% AID [2]
+climb: horiz_pos_rel never cleared after climb start
+== b_v1t_falllow_r0.BIN
+events: [(32.4, 'climb start'), (34.2, 'climb done'), (49.8, 'traverse start'), (290.2, 'traverse end'), (290.8, 'hold start'), (351.0, 'hold end'), (382.0, 'disarmed')]
+modes: [(14.4, 2), (14.4, 2), (22.2, 5), (49.8, 4), (290.5, 5), (351.7, 9)]
+sanity: TH - RFND (Good, >1m) median +0.01 m over 475 samples
+traverse: err max 114.5 end 113.7 m | dist ekf 1195 true 1307 m | spd ekf 4.84 true 5.50 m/s | FH/TH end 24.4/23.4 med ratio 0.91 | FG 100% TU 100% HR 100% AID [2]
+hold: err max 2.1 end 2.1 m | dist ekf 4 true 5 m | spd ekf 0.19 true 0.19 m/s | FH/TH end 24.3/23.2 med ratio 1.05 | FG 100% TU 100% HR 100% AID [2]
+climb: horiz_pos_rel never cleared after climb start
