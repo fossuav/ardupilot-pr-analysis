@@ -3,7 +3,7 @@
 Analysis archive for [ArduPilot/ardupilot#33498](https://github.com/ArduPilot/ardupilot/pull/33498).
 Branch `pr-gyro-z-unobservable-without-yaw` (andyp1per fork), base `master`,
 PR head `ba52c7e431` (pushed 2026-09-15); before that `17f19f6202`
-(2026-09-02). The flight evidence is from a 4-inch optical-flow quad (MatekH743,
+(2026-09-02). Local head `55aa43f4c6` (2026-09-16, rounds 2 and 2b, not pushed). The flight evidence is from a 4-inch optical-flow quad (MatekH743,
 ARK Flow, no compass in the flow source set); numbers are cited inline and
 no logs are committed.
 
@@ -13,6 +13,9 @@ Correctness fix, flight-validated on the airframe that exposed it. The
 2026-09-15 round makes the guard purely fusion-based (the compass leg M1 is
 measured and fixed) and adds an autotest; pushed 2026-09-15 as `ba52c7e431`
 and rmackay9's review answered the same day. See "Round of 2026-09-15" below.
+Round 2 (2026-09-16, local, not pushed): the AP-Review re-acquisition finding
+reproduced and fixed in `checkGyroCalStatus()`, with a recovery autotest; see
+"Round 2, 2026-09-16" at the end.
 
 ## Review 2026-09-10: two of the three legs are honest, the compass leg is not
 
@@ -462,3 +465,256 @@ PR body's guard paragraph was replaced to describe the fusion-only test, the
 FlowGyroZBiasNoYawReference table added and the automated-test box ticked.
 The PR had no `AIReview` label; it was added 2026-09-15, so its 2026-09-02
 APPROVE round will be superseded by a review of `ba52c7e431`.
+
+## Round 2, 2026-09-16: flow aiding never restarts once yaw fusion has stopped
+
+Reviews at `ba52c7e431`: tridge (automated) COMMENT 2026-09-15 14:54Z (then
+deprecated), AP-Review REQUEST CHANGES 2026-09-16 04:11Z, rmackay9 approved
+2026-09-15 23:11Z with a suggested commit (`a6eeb104ed`) and said on
+2026-09-16 07:16Z he would check the recovery finding himself unless we did.
+
+Local commits on top of `ba52c7e431`, not pushed:
+
+- `576746c749` AP_NavEKF3: skip the Z gyro bias check while no yaw is being
+  fused
+- `bc305a61b3` AP_NavEKF3: record the anchored compass yaw fusion
+- `790286326b` AP_NavEKF3: gps-for-yaw fuse time fixed (rmackay9's
+  `a6eeb104ed`, cherry-picked with his authorship)
+- `6f4552b8ba` autotest: tighten FlowGyroZBiasNoYawReference
+- `6a7e1d9d0f` autotest: check optical flow aiding restarts while compass yaw
+  is not fused
+- `9e5f3fd364` autotest: do not state an unmeasured reason for the GPS case
+  limit (comment only; squash into `6f4552b8ba`)
+
+### The finding reproduced
+
+`checkGyroCalStatus()` drops the Z axis from the `delAngBiasLearned` test
+only when no yaw source is configured. With the PR, flow stops learning the Z
+gyro bias once yaw fusion stops, so with a configured but dead compass
+`P[12][12]` never falls below `delAngBiasVarMax` (`sq(radians(0.15 *
+0.012))` = 9.87e-10). `delAngBiasLearned` gates `readyToUseOptFlow()`, and
+from AID_NONE nothing else can restart aiding.
+
+SITL 2026-09-16, non-debug build with a temporary dataflash probe
+(`delAngBiasLearned`, `P[10..12]`, `recentYawFusion()`, `PV_AidingMode`) that
+was never committed. Flow-only Copter, `FLOW_FXSCALER 200`, no GPS,
+`EK3_SRC1_YAW 1`, all three compasses failed 5 s after takeoff, box legs
+until t = 346 s, then `SIM_FLOW_ENABLE 0` for 30 s in ALT_HOLD. Core 0:
+
+| code | `P[12][12]` 60 / 200 / 330 s | `delAngBiasLearned` | aiding restarted |
+|---|---|---|---|
+| merge-base `c56e34434b` | 2.97e-9 / 9.54e-10 / 5.07e-10 | true from 184.3 s | yes, at flow return (378.1 s) |
+| PR head `ba52c7e431` | 3.93e-9 / 3.76e-9 / 3.39e-9 | false from 4.7 s on | **no**, 60 s waited |
+| head + `!recentYawFusion() \|\|` | 4.07e-9 flat | true (XY test) | yes, at flow return (377.4 s) |
+
+One run each. The review's 3/3 plus these agree.
+
+**Pre-existing on master for an early dropout.** The same dropout 5 s after
+the compass fails (the autotest's timing) does not recover on the
+merge-base either: `P[12][12]` was 7.93e-9 at the dropout, 8x the threshold,
+and master only gets under it after about 180 s of flow flight. So the fix
+also removes a master limitation, and the new test fails on master as well
+as on the PR head. Measured, one run each: merge-base no restart in 30 s;
+head no restart; fix restarted 1.0 s after flow returned; no yaw source
+configured (`EK3_SRC1_YAW 0`, existing branch) restarted 0.6 s after.
+
+A side observation from the fix run: in the XY branch the variance vector is
+rotated by `prevTnb` (the "checkGyroCalStatus and tilt" note in the EKF3
+playbook), so with `P[12][12]` at 4e-9 `delAngBiasLearned` toggled false
+during every pitched leg and true when level. A restart therefore needs the
+vehicle roughly level when flow returns. Same property as master's
+no-yaw-source branch; not changed.
+
+### Fix chosen, and its side effects
+
+`576746c749` adds `!recentYawFusion() ||` to the condition, the review's
+suggestion, keeping the existing no-source clause (it still decides the up
+to 5 s tail after a switch away from a fused source).
+
+`recentYawFusion()` is also false at boot before the first yaw fusion, and
+the same function gates `readyToUseGPS()` and `readyToUseRangeBeacon()`.
+Measured on the probe build, 2 runs each with the fix, 1 without, all
+identical:
+
+| vehicle, defaults | cov init | first yaw stamp | `delAngBiasLearned` | GPS aiding starts | `P[12][12]` at GPS start |
+|---|---|---|---|---|---|
+| Copter, fix | 5.94 s | 6.14 s | 41.54 s | 41.74 s | 1.04e-9 |
+| Copter, head | 5.94 s | 6.14 s | 41.54 s | 41.74 s | 1.04e-9 |
+| Plane, fix | 10.27 s | 12.31 s | not needed | 20.67 s (with `delAngBiasLearned` false) | 1.48e-7 |
+| Plane, head | 10.27 s | 12.31 s | not needed | 20.67 s | 1.48e-7 |
+
+No sample had `recentYawFusion()` false between the first stamp and GPS
+start. Plane starts GPS aiding with `P[12][12]` 150x the threshold as a matter
+of course (`assume_zero_sideslip()` bypasses the check), which bounds what an
+earlier start can cost.
+
+Derived from the source, not measured: on the ground the FUSE_YAW branch
+fuses compass yaw even over the innovation gate, and EK3_MAG_CAL 7 anchors
+it, so a compass-configured Copter stamps continuously on the ground. The one
+configuration left where the stamp can be missing on the ground is
+EK3_MAG_CAL 4 with 3-axis fusion rejected from boot; there the fix lets the
+XY-only test pass and GPS aiding start without the Z variance converged,
+where master waited. A narrower "ever fused, not recently" form would keep
+master's wait there; not adopted, because the measured default boots do not
+change and Plane shows an unconverged Z variance at GPS start is not in
+itself harmful. Recorded in case that edge ever shows up.
+
+Recovery autotest `FlowAidingRestartsWithoutYawFusion` (`6a7e1d9d0f`): no
+flow error, compasses failed in ALT_HOLD, wait for the compass to report
+unhealthy, flow off until "stopped aiding", flow on, expect "started relative
+aiding" within 30 s. About 6 s wall on the debug build (first recorded here
+as "about 2 min", a misreading; see the correction below). Debug build: passes at
+`6a7e1d9d0f`; with `576746c749` reverted it fails ("Failed to receive text:
+ekf3 imu0 started relative aiding"). The GPS-yaw-lost recovery takes the same
+branch; derived from the source, not run.
+
+### GPS-yaw-lost leg on the debug build
+
+CI builds `./waf configure --board sitl --debug`. Merge-base EKF3, old test
+(yaw lost 5 s after takeoff): 0.09 and 0.10 deg/s, both under the 0.1 limit,
+reproducing the review. A third run on a build carrying the dataflash probe
+read 0.21, so the value is sensitive to timing.
+
+Changed in `6f4552b8ba`: yaw lost straight after takeoff, and a 0.05 limit
+for that case only. Debug build, max |GZ| deg/s:
+
+| code | GPS yaw lost | runs |
+|---|---|---|
+| merge-base | 0.22, 0.11, 0.13, 0.10 | 4, all fail |
+| `6f4552b8ba` and later | 0.01, 0.01, 0.01 | 3, all pass |
+
+Merge-base compass case with the immediate loss: 0.39 (1 run). Full test at
+`6a7e1d9d0f` on debug: no yaw source 0.00, compass lost 0.02, GPS yaw lost
+0.01, about 46 min wall on this machine.
+
+**Correction 2026-09-16: that runtime is wrong by a factor of 60.** The
+autotest `AT-` prefix is seconds since the harness started, not minutes, and
+the "46 min" was read off `AT-0046.5`. Timed directly with `date`, the same
+test on the same debug build took 71 s wall (46.5 s in the original run). The
+"about 2 min" for the recovery test was the same misreading (`AT-0005.7`).
+The numbers above are unaffected; only the runtimes were wrong. The test
+has since been shortened anyway; see "Round 2b" below.
+
+### "Flow was fused" now means accepted
+
+`6f4552b8ba` replaces the XKF5 FIX/FIY count with: "fusing optical flow"
+appeared, and no "stopped aiding" while armed. With flow as the only aiding
+source, AID_RELATIVE drops to AID_NONE once `prevFlowFuseTime_ms` is 5 s
+stale, which only advances when a flow update passes the innovation gate.
+Nothing new is logged.
+
+Mutation, debug build, no-yaw-source case: `FinishFusion()` never called for
+flow. Old metric on that log: 3156 non-zero FIX/FIY samples (it would have
+passed). New check: 2 "stopped aiding" while armed, so the test fails. (The
+bias limit failed too in that run, at 0.64 deg/s on core 1, so this mutation
+is caught twice; the review's mutation was not caught by the bias limit.)
+
+### Items 4 and 5
+
+- Anchored yaw stamp (`bc305a61b3`): the anchored `fuseEulerYaw(MAGNETOMETER)`
+  with `!faultStatus.bad_yaw` is an applied yaw update, the same predicate the
+  FUSE_YAW branch stamps on. Before, a failed 3-axis fusion straight after it
+  skipped the stamp, which erred towards inhibiting.
+- rmackay9's `a6eeb104ed` (`790286326b`): correct. `have_fused_gps_yaw` also
+  decides clearing the compass fallback and `learnMagBiasFromGPS()`; a sample
+  `FinishFusion()` did not apply should do neither, and the fallback cannot
+  engage from it because `last_gps_yaw_ms` is still refreshed. Derived from
+  the source. The commit message's reason is not quite the case it catches:
+  an in-flight innovation over the gate already returns false; what it adds
+  is `FinishFusion()` skipping the update. Other callers: EXTNAV and
+  MAGNETOMETER already check `bad_yaw`; the anchored call checks and now
+  stamps; GSF's result only chooses whether to fuse a synthetic yaw that
+  cycle, and STATIC/PREDICTED results are unused. Left alone.
+
+### Non-blocking, recorded
+
+- The bias test passes with `recentYawFusion()` forced false: it only
+  checks that too much bias is not learned, and never-learn satisfies that.
+  No cheap case discriminates: whenever a yaw reference is fused it observes
+  state 12 through its own gains, so flow's contribution is second order.
+  Derived from the source, not measured. The recovery test does not
+  discriminate it either (forced false takes the XY branch).
+- Masked-gain covariance symmetrisation (half-corrected cross-covariance
+  rows): pre-existing on master for every `kalman_mask` use (mag states
+  16-21, wind 22-23, bias states); this PR changes one bit's condition.
+  Agreed with AP-Review that it belongs to a separate discussion.
+- Wiki: a sentence for the optical flow page is drafted in the round-2
+  reply.
+
+### Round 2b, 2026-09-16: FlowGyroZBiasNoYawReference shortened
+
+Asked for on the strength of the wrong 46 min figure; still worth doing,
+because the flight time is what CI pays for. `55aa43f4c6`:
+
+- The yaw reference is removed at arming, before the climb, instead of after
+  takeoff. This is what made the difference. Measured on the merge-base
+  debug build with `FLOW_FXSCALER 400` and the same legs: GPS yaw removed
+  after takeoff gave 0.03 deg/s 30 s later and 0.14 at 120 s; removed at
+  arming, 0.30 at 30 s and 0.71 at 120 s. The climb's yaw fusion shrinks
+  `P[12][12]` enough to slow the phantom bias. Mechanism by inference from
+  the timing, not probed.
+- `FLOW_FXSCALER` 200 -> 400. At 200 with the short flight the merge-base's
+  no-yaw-source case read 0.15, too close to the limit.
+- 4 legs of 5 s forward, 2 s turn, 3 s stop (40 s) instead of 16 legs of
+  10 s (240 s).
+- One 0.1 deg/s limit for all three cases; the GPS case's 0.05 limit is gone.
+- Tried and rejected: full forward stick (`RC2 1100`) made the merge-base's
+  GPS case learn less (0.09 max over 240 s against 0.38 at `RC2 1300`).
+
+Debug build, max |XKF1.GZ| deg/s over both cores:
+
+| case | merge-base `c56e34434b` | `55aa43f4c6` |
+|---|---|---|
+| no yaw source | 0.26, 0.27, 0.26, 0.28 (4 runs) | 0.00, 0.00, 0.00 (3) |
+| compass lost | 1.03, 1.06, 1.10, 0.90 (4) | 0.01, 0.01, 0.01 (3) |
+| GPS yaw lost | 1.22, 1.26, 1.09 (3) | 0.01, 0.02, 0.01 (3) |
+
+A fourth merge-base run lost its GPS case to "Did not detect reboot"
+(SITL ports, not the test) and is not counted. Every merge-base run failed
+the test; every run of this branch passed.
+
+Wall time for the whole test on this machine's debug build: 71 s before,
+23-24 s after (merge-base runs 24-25 s).
+
+Accepted-fusion check, re-checked on the short flight with the same mutation
+(flow `FinishFusion()` never called): the no-yaw-source case now learns only
+0.04 deg/s, so the bias limit alone would pass it, and the case fails only
+because aiding stopped twice while armed. The check is doing work the bias
+limit cannot.
+
+### History and push
+
+Before push: squash `9e5f3fd364` into `6f4552b8ba`, and probably
+`55aa43f4c6` too; reword `6a7e1d9d0f` (subject 75 characters, gate note).
+Keep `790286326b` as rmackay9's commit. All of this needs a grant.
+
+Replay: still not run against log53/log56 (log roots not mounted here). The
+round-2 EKF changes only differ from `ba52c7e431` when yaw fusion has stopped
+and aiding has dropped to AID_NONE, which those flights (no yaw source) never
+reach; derived from the source.
+
+### Round 2 pushed and answered (2026-09-16)
+
+Force-pushed `ba52c7e431` -> `450d8d7378`, six commits on the same base, with
+`97661a3b2d` kept so the SHA cited in the 2026-09-15 reply stays valid. Tree
+byte-identical to the local `55aa43f4c6`, so every round-2 and round-2b
+number holds for the pushed head:
+
+| measured on | pushed as |
+|---|---|
+| `576746c749` skip the Z gyro bias check while no yaw is being fused | `0c4f801054` |
+| `bc305a61b3` record the anchored compass yaw fusion | `a52c416e44` |
+| `790286326b` rmackay9's gps-for-yaw fuse time (his authorship) | `db4de79a6c` |
+| `ba52c7e431` + `6f4552b8ba` + `9e5f3fd364` + `55aa43f4c6` FlowGyroZBiasNoYawReference | `c2c6591548` |
+| `6a7e1d9d0f` recovery test, subject shortened | `450d8d7378` |
+
+The squashed test commit message gives the merge-base no-yaw-source range as
+0.26 to 0.27 deg/s; the runs recorded above are 0.26, 0.27, 0.26 and 0.28, so
+the message is 0.01 low at the top of the range. Left for the next rewrite.
+
+Reply posted 19:10Z
+(https://github.com/ArduPilot/ardupilot/pull/33498#issuecomment-5703092575)
+answering the AP-Review round and rmackay9. PR body updated the same day: the
+gyro bias check paragraph, the new test description and table, and both
+autotests in the checklist; the old "guard on the configured yaw source" row
+is gone from the body but remains in the 2026-09-15 reply.
