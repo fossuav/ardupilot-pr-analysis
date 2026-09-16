@@ -1279,6 +1279,34 @@ Open for the push: `6f1d116306`'s subject is 73 characters (gate note), and
 `48c843a5ce`'s message quotes the #34380-stack landing numbers without saying so;
 both are for the rewrite at push time.
 
+### Pushed and answered (2026-09-16)
+
+Fast-forward push `0374a23d84` -> `29cfdb6ddc`, four commits, tree
+byte-identical to the local `6f1d116306`:
+
+| measured on | pushed as |
+|---|---|
+| `48c843a5ce` + `837c7e1fbe` the hold after range dropout (no-range-sample skip folded in) | `8f736ce1f0` |
+| `0ce208012c` landing subtest in OpticalFlowFocusHeight | `5aeccff68e` |
+| `d83c4a9559` the ground clearance floor | `8325d8d337` |
+| `6f1d116306` parameter description, subject shortened | `29cfdb6ddc` |
+
+The hold and floor commit messages now say their landing numbers were taken
+after a flow flight above the rangefinder range with the height limit removed
+(#34380), which is what makes that flight reachable. PR body: the "Defaults to
+0, off" paragraph replaced with the floor, the hold and FLOW_HGT_MIN raising
+the floor. Reply posted 21:40Z
+(https://github.com/ArduPilot/ardupilot/pull/34292#issuecomment-5704968854)
+with the variant table, the hold, the default decision answering the earlier
+review's reasons, and the SITL flow sensor caveat. `AIReview` and `DevCallEU`
+are on.
+
+Still open from the 2026-09-12 automated round and not addressed in this push:
+the no-hysteresis note at the floor, the ROFM units note, the wiki note, and
+the test message `high and len(high)` at `Tools/autotest/arducopter.py:15167`,
+which raises TypeError instead of the intended NotAchievedException when
+`high` is empty (one-line fix, `len(high)`).
+
 ## Round of 2026-09-17 (AP-Review at d8646651c2), answered 2026-09-18
 
 - Blocker, `rngOutOfRangeLowTime_ms` unguarded: guarded with
