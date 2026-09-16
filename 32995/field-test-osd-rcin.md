@@ -27,7 +27,7 @@ ignore any earlier capture.
 ## The build
 
 Board RPI_UAVFC, branch `rp2350-v5-squashed-and-cleaned-and-rebased`,
-ArduPilot `b8ebd9fc66`, ChibiOS `af493a7bd5`. Built with an overlay so the
+ArduPilot `bc30cce141`, ChibiOS `af493a7bd5`. Built with an overlay so the
 board hwdef is untouched:
 
 ```
@@ -82,18 +82,49 @@ compare like with like.
 
 ## Files for the tester
 
-In `C:\Users\uav\rp2350_field` (Windows host beside the bench):
+In `C:\Users\uav\rp2350_field` (Windows host beside the bench). The same
+firmware in three containers, so the tester can pick whichever upload route
+suits them:
 
-- `RPI_UAVFC-field-profile.apj` - the firmware, md5 `6c8578fe74f5168984c01db923481334`
-- `RPI_UAVFC-field-profile.elf` - **keep this**. Sampler output is raw
-  addresses; without the exact ELF it cannot be attributed to functions
-- `field-profile.hwdef` - the overlay above
-- `uploader.py` - flash with
-  `py uploader.py --port COM5 RPI_UAVFC-field-profile.apj` (Mission Planner
-  closed; the bootloader can appear on a different COM number)
+| File | md5 | Use |
+|---|---|---|
+| `RPI_UAVFC-field-profile.uf2` | `685f1d621de26cd70f6bf5a42b68c96c` | BOOTSEL drag-and-drop |
+| `RPI_UAVFC-field-profile.apj` | `380b42ed779f9af74581c2a9e28adc6b` | `uploader.py` / Mission Planner |
+| `RPI_UAVFC-field-profile_with_bl.hex` | `d2c392a743a045be9c045de62c641f35` | SWD, app **and** bootloader |
 
-The log records the firmware hash; check it reads `b8ebd9fc` before
+Plus `RPI_UAVFC-field-profile.elf` - **keep this**. Sampler output is raw
+addresses; without the exact ELF it cannot be attributed to functions. And
+`field-profile.hwdef`, the overlay above.
+
+The log records the firmware hash; check it reads `bc30cce1` before
 trusting an attribution.
+
+### Which one to use
+
+**UF2 is the easy one.** Hold BOOTSEL while plugging in USB, the board
+appears as a mass-storage drive, copy the `.uf2` onto it. The blocks are
+addressed at `0x10020000`, so it writes the app and leaves the bootloader at
+`0x10000000` alone - unlike a Betaflight UF2, which starts at `0x10000000`
+and takes the bootloader with it.
+
+Caveat worth stating plainly: the generator is verified (the UF2 payload is
+byte-identical to the `.bin`, 5745 blocks from `0x10020000`, RP2350 Arm
+Secure family `0xe48bff59`), but nobody has yet flashed an *app* UF2 on this
+hardware - only bootloaders that way. If the board comes up on the old
+firmware, or does not come up, fall back to the apj:
+
+```
+py uploader.py --port COM5 RPI_UAVFC-field-profile.apj
+```
+
+with Mission Planner closed; the bootloader can appear on a different COM
+number.
+
+The `_with_bl.hex` is for SWD recovery only. It starts at `0x10000000` and so
+rewrites the bootloader as well - the way back if a BOOTSEL load ever wipes
+it. Until 2026-09-16 this file was written at the STM32 base `0x08000000`,
+where openocd silently wrote none of it; check the first line reads
+`:020000041000` before trusting one.
 
 ## Parameters
 
@@ -116,8 +147,8 @@ regardless.
    easy to find. "OSD tore at about 3 minutes" is much weaker than a mode
    change at the moment it happened.
 5. Land and **do not power cycle**. The sampler histogram, the thread
-   statistics, the XIP park counters and the SPI counters all accumulate
-   since boot and are gone after a reset.
+   statistics and the XIP park counters all accumulate since boot and are
+   gone after a reset.
 6. With USB connected, pull these files over MAVFTP (MAVProxy:
    `ftp get @SYS/threads.txt threads.txt`, and the same for each):
    `threads.txt`, `tasks.txt`, `pcprof0.txt`, `pcprof.txt`, `dma.txt`,
