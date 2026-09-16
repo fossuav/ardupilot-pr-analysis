@@ -40,7 +40,7 @@ disarm. A visible OSD hitch then, but not in flight.
 ### Why that matters for the OSD (hypothesis)
 
 `OSD_c1` is the lowest-priority thread on core1 (58, `PRIORITY_IO`), behind
-the rate thread (182), `SPI0` and `rcout` (181). The renderer keeps two 8-line
+the rate thread (182), `SPI0` and `rcout` (181). The renderer keeps two 9-line
 blocks queued, about 1 ms of video. When it is late, `advance_to()` sends that
 block transparent - the overlay drops out for a band of lines. With ~2% idle
 on the core that is a plausible in-flight-only OSD fault. **Not proven:**
@@ -120,9 +120,10 @@ Recorded loudly, since the guide is what the tester flew from:
 - It recommended `AP_XIP_PROFILER_ENABLED`. That cost ~13% of core1 in
   flight and its per-thread figures are invalid on SMP. Drop it.
 - It said the 10 s report lands in the log, which "is what makes a field
-  flight readable afterwards". MSG text is capped at 64 bytes: `Perf:` is cut
-  at `core1lo`, losing core1 load and XIP rate, and each `PROFc1` line keeps
-  about four tokens. The windowed idle figure above is recoverable; core1
+  flight readable afterwards". The log keeps only the first 50 characters of
+  a STATUSTEXT (the MAVLink field length, not the 64 of the MSG record), so
+  `Perf:` is cut at `core1lo`, losing core1 load and XIP rate, and each
+  `PROFc1` line keeps about four tokens. The windowed idle figure above is recoverable; core1
   load and XIP rate per window are not.
 - It said the board hwdef defines each overlay flag as 0. RPI_UAVFC does not
   define `AP_XIP_PROFILER_ENABLED` at all (and the XIP code tests
@@ -140,8 +141,8 @@ Build changes, smallest first:
 3. Report `pio_uart_rx_overrun_count`, `pio_uart_rx_framing_count` and
    `pio_uart_irq_us_max` for the RC port, and implement `uart_info()` for
    `PIORXDriver` so `uarts.txt` covers it.
-4. Split `Perf:` into lines under 64 bytes, so core1 load and XIP rate
-   survive into the log.
+4. Split `Perf:` into lines of at most 50 characters, so core1 load and XIP
+   rate survive into the log.
 
 Flight changes for the tester:
 
@@ -154,3 +155,18 @@ Flight changes for the tester:
 
 A/B worth doing once the counters exist: the same hover with the OSD enabled
 and `OSD_TYPE 0`, which says directly how much core1 the scan-out takes.
+
+## Round two build (2026-09-16)
+
+All four build changes above are done, as additive commits on the PR branch:
+
+| Commit | Change |
+|---|---|
+| `3729215583` | count late and desynced OSD blocks |
+| `04d0df615d` | PIO UART traffic and error stats: `uarts.txt` rows, `UART` log records, counters for the report |
+| `709499232b` | fit the report into 50 characters: `Perf:` split in two, `PROFc1` wrapped on the real limit |
+| `35e92d8b2e` | `OSD:` and `PIOn` lines in the 10 s report, as per-window deltas |
+
+Normal RPI_UAVFC, Laurel and Pico2 builds: 0 warnings. The field build is in
+the guide. Not yet run on hardware - the bench board was not connected - so the
+first boot is also the first check that the new lines appear.
