@@ -1,0 +1,219 @@
+diff --git a/Tools/autotest/arducopter.py b/Tools/autotest/arducopter.py
+index 1d4406c278..6a9dba62b7 100644
+--- a/Tools/autotest/arducopter.py
++++ b/Tools/autotest/arducopter.py
+@@ -4855,6 +4855,130 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
+                 raise NotAchievedException("Alt should be limited by EKF optical flow limits")
+         self.reboot_sitl(force=True)
+ 
++    def UnevenGroundProbe(self):
++        '''PROBE: flow-only flight above the rangefinder range over uneven terrain'''
++        bit5 = os.environ.get("PROBE_BIT5", "1") == "1"
++        case = os.environ.get("PROBE_CASE", "flat")
++        tag = os.environ.get("PROBE_TAG", "probe")
++        out = os.environ.get("PROBE_OUT")
++        alt = float(os.environ.get("PROBE_ALT", "35"))
++        dist = float(os.environ.get("PROBE_DIST", "1000"))
++        speed = float(os.environ.get("PROBE_SPEED", "5"))
++        wind = float(os.environ.get("PROBE_WIND", "4"))
++        hold = float(os.environ.get("PROBE_HOLD", "60"))
++        extra = os.environ.get("PROBE_PARAMS", "")
++        bearing = {"flat": 150, "rise": 240, "fall": 30}[case]
++        self.install_terrain_handlers_context(unserveable_requests_fatal=False)
++        params = {
++            "SIM_FLOW_ENABLE": 1,
++            "FLOW_TYPE": 10,
++            "SIM_GPS1_ENABLE": 0,
++            "SIM_TERRAIN": 1,
++            "TERRAIN_ENABLE": 1,
++            "EK3_IMU_MASK": 1,
++            "AVOID_ENABLE": 0,
++            "EK3_OPTIONS": 32 if bit5 else 0,
++            "LOG_DISARMED": 0,
++            # no GPS, so no automatic declination: align the EKF frame with truth
++            "COMPASS_AUTODEC": 0,
++            "COMPASS_DEC": math.radians(12.4),
++        }
++        for kv in extra.split(","):
++            if "=" in kv:
++                k, v = kv.split("=")
++                params[k] = float(v)
++        self.set_parameters(params)
++        self.configure_EKFs_to_use_optical_flow_instead_of_GPS()
++        self.set_analog_rangefinder_parameters()
++        self.set_parameter("RNGFND1_MAX", 8)
++        self.reboot_sitl()
++        if os.environ.get("PROBE_ORIGIN", "0") == "1":
++            tstart = self.get_sim_time()
++            while True:
++                if self.get_sim_time_cached() - tstart > 60:
++                    raise AutoTestTimeoutException("origin not accepted")
++                self.mav.mav.set_gps_global_origin_send(1, int(-35.363261 * 1e7), int(149.165230 * 1e7), 584000)
++                self.delay_sim_time(2, reason="origin to propagate")
++                if self.assert_receive_message('GLOBAL_POSITION_INT').lat != 0:
++                    break
++            self.progress("PROBE origin set")
++        self.progress("PROBE tag=%s bit5=%u case=%s alt=%.0f dist=%.0f speed=%.1f wind=%.1f" %
++                      (tag, bit5, case, alt, dist, speed, wind))
++
++        events = []
++
++        def note(what):
++            t = self.get_sim_time_cached()
++            events.append((round(t, 1), what))
++            self.progress("PROBE EVENT t=%.1f %s" % (t, what))
++
++        self.takeoff(altitude_min=5, mode='ALT_HOLD', require_absolute=False, takeoff_throttle=1800)
++        self.change_mode('LOITER')
++        self.delay_sim_time(10, reason="settle in loiter below the rangefinder range")
++        note("climb start")
++        self.set_rc(3, 1800)
++        tstart = self.get_sim_time()
++        reached = False
++        while self.get_sim_time_cached() - tstart < 90:
++            m = self.assert_receive_message('GLOBAL_POSITION_INT', timeout=10)
++            if self.mav.flightmode != 'LOITER':
++                note("mode %s during climb at %.1fm" % (self.mav.flightmode, m.relative_alt*0.001))
++                break
++            if m.relative_alt * 0.001 >= alt:
++                reached = True
++                break
++        self.set_rc(3, 1500)
++        if reached:
++            note("climb done")
++            self.delay_sim_time(15, reason="terrain offset to go stale above the range")
++        if self.mav.flightmode == 'LOITER':
++            self.change_mode('GUIDED')
++            note("traverse start")
++            vn = speed * math.cos(math.radians(bearing))
++            ve = speed * math.sin(math.radians(bearing))
++            typemask = (MAV_POS_TARGET_TYPE_MASK.POS_IGNORE | MAV_POS_TARGET_TYPE_MASK.ACC_IGNORE |
++                        MAV_POS_TARGET_TYPE_MASK.YAW_IGNORE | MAV_POS_TARGET_TYPE_MASK.YAW_RATE_IGNORE)
++            tstart = self.get_sim_time()
++            last_mode = 'GUIDED'
++            while self.get_sim_time_cached() - tstart < dist / speed:
++                self.mav.mav.set_position_target_local_ned_send(
++                    0, 1, 1, mavutil.mavlink.MAV_FRAME_LOCAL_NED, typemask,
++                    0, 0, 0, vn, ve, 0, 0, 0, 0, 0, 0)
++                self.delay_sim_time(0.2, reason="velocity target rate")
++                if self.mav.flightmode != last_mode:
++                    last_mode = self.mav.flightmode
++                    note("mode %s during traverse" % last_mode)
++                    if last_mode != 'GUIDED':
++                        break
++            note("traverse end")
++            if self.mav.flightmode == 'GUIDED':
++                self.change_mode('LOITER')
++                self.set_parameters({"SIM_WIND_SPD": wind, "SIM_WIND_DIR": (bearing + 90) % 360})
++                note("hold start")
++                tstart = self.get_sim_time()
++                while self.get_sim_time_cached() - tstart < hold:
++                    self.delay_sim_time(1, reason="hold in wind")
++                    if self.mav.flightmode != 'LOITER':
++                        note("mode %s during hold" % self.mav.flightmode)
++                        break
++                note("hold end")
++        self.set_parameter("SIM_WIND_SPD", 0)
++        if self.mav.flightmode not in ('LAND', 'RTL'):
++            self.change_mode('LAND')
++        try:
++            self.wait_disarmed(timeout=240)
++            note("disarmed")
++        except Exception as e:
++            note("not disarmed: %s" % str(e))
++            self.disarm_vehicle(force=True)
++        self.progress("PROBE EVENTS %s" % str(events))
++        if out is not None:
++            log = self.current_onboard_log_filepath()
++            shutil.copy(log, os.path.join(out, tag + ".BIN"))
++            with open(os.path.join(out, tag + ".events"), "w") as f:
++                f.write(repr(events) + "\n")
++        self.reboot_sitl(force=True)
++
+     def LoiterNoCompassYaw(self):
+         '''Loiter indoors with optical flow and no GPS, compass not an EK3 yaw source'''
+         # Indoor case: position from optical flow + rangefinder, no GPS. The
+@@ -17378,6 +17502,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
+              self.OpticalFlow,
+              self.OpticalFlowLocation,
+              self.OpticalFlowLimits,
++             self.UnevenGroundProbe,
+              self.LoiterNoCompassYaw,
+              self.LoiterNoCompassYawGPS,
+              self.LoiterFlowBrakeOvershoot,
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3.cpp b/libraries/AP_NavEKF3/AP_NavEKF3.cpp
+index 5988f25dee..e071a2c73b 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3.cpp
++++ b/libraries/AP_NavEKF3/AP_NavEKF3.cpp
+@@ -1779,6 +1779,11 @@ void NavEKF3::writeTerrainData(float alt_m)
+ #if EK3_FEATURE_OPTFLOW_SRTM
+     // write altitude to DAL
+     dal.writeTerrainData(alt_m);
++#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
++    if (getenv("PROBE_NO_EKF_TERRAIN") != nullptr) {
++        return;
++    }
++#endif
+ 
+     // forward to the cores when either above-range optical flow option is set, so the
+     // flat-ground fallback automatically prefers the terrain database where coverage exists
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_Logging.cpp b/libraries/AP_NavEKF3/AP_NavEKF3_Logging.cpp
+index ca24424172..db176de351 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_Logging.cpp
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_Logging.cpp
+@@ -9,6 +9,9 @@
+ #include <AP_Logger/AP_Logger.h>
+ 
+ #include <AP_DAL/AP_DAL.h>
++#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
++#include <SITL/SITL.h>
++#endif
+ 
+ #pragma GCC diagnostic ignored "-Wnarrowing"
+ 
+@@ -420,6 +423,21 @@ void NavEKF3_core::Log_Write(uint64_t time_us)
+ 
+     Log_Write_XKFS(time_us);
+     Log_Write_Quaternion(time_us);
++#if CONFIG_HAL_BOARD == HAL_BOARD_SITL && EK3_FEATURE_OPTFLOW_SRTM
++    {
++        nav_filter_status st;
++        getFilterStatus(st);
++        const auto *sitl = AP::sitl();
++        AP::logger().WriteStreaming("PRBU", "TimeUS,C,FH,TH,TS,PD,FG,TU,GV,GM,HR,AID",
++                                    "QBffffBBBBBB",
++                                    time_us, (uint8_t)core_index, (float)probeFlowHagl,
++                                    sitl != nullptr ? (float)sitl->state.height_agl : -1.0f,
++                                    (float)terrainState, (float)stateStruct.position.z,
++                                    (uint8_t)flatGroundAssumed(), (uint8_t)terrainAltUsable(),
++                                    (uint8_t)gndOffsetValid, (uint8_t)gndOffsetMeasured,
++                                    (uint8_t)st.flags.horiz_pos_rel, (uint8_t)PV_AidingMode);
++    }
++#endif
+ 
+ 
+ #if EK3_FEATURE_BEACON_FUSION
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_OptFlowFusion.cpp b/libraries/AP_NavEKF3/AP_NavEKF3_OptFlowFusion.cpp
+index b01c43a72e..2a5ffa6092 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_OptFlowFusion.cpp
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_OptFlowFusion.cpp
+@@ -343,6 +343,7 @@ void NavEKF3_core::FuseOptFlow(const of_elements &ofDataDelayed, bool really_fus
+ 
+     // calculate range from ground plain to centre of sensor fov assuming flat earth
+     ftype range = constrain_ftype((heightAboveGndEst/prevTnb.c.z),rngOnGnd,1000.0f);
++    probeFlowHagl = heightAboveGndEst;
+ 
+     // correct range for flow sensor offset body frame position offset
+     // the corrected value is the predicted range from the sensor focal point to the
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_core.h b/libraries/AP_NavEKF3/AP_NavEKF3_core.h
+index 855d3c41f6..d6c800612c 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_core.h
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_core.h
+@@ -1382,6 +1382,7 @@ private:
+     ftype R_LOS;                    // variance of optical flow rate measurements (rad/sec)^2
+     ftype auxRngTestRatio;          // square of range finder innovations divided by fail threshold used by main filter where >1.0 is a fail
+     Vector2F flowGyroBias;          // bias error of optical flow sensor gyro output
++    ftype probeFlowHagl;            // PROBE: height used for flow scaling
+     bool rangeDataToFuse;           // true when valid range finder height data has arrived at the fusion time horizon.
+     bool baroDataToFuse;            // true when valid baro height finder data has arrived at the fusion time horizon.
+     bool gpsDataToFuse;             // true when valid GPS data has arrived at the fusion time horizon.
