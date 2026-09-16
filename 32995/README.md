@@ -22,6 +22,10 @@ hex/UF2 address) was pushed without an entry here. Local safety refs
   the tester chasing OSD and RC input problems on analog video: what the data
   has to separate, the overlay that builds it, and what to pull off the board
   before power-off.
+- [field-test-2026-09-16-results.md](field-test-2026-09-16-results.md) - the
+  first two flights with that build: core1 ~98% busy in flight, the XIP
+  profiler itself ~13% of it, raw gyro logging dropping 76% of the log, and
+  the counters the next build needs.
 
 ## Status (one line)
 
