@@ -29,6 +29,9 @@ hex/UF2 address) was pushed without an entry here. Local safety refs
 - [field-test-round2.md](field-test-round2.md) - the second field build
   (`35e92d8b2e`): OSD late-block and PIO UART error counters in the 10 s
   report, no XIP profiler, and what to fly.
+- [bench-2026-09-16.md](bench-2026-09-16.md) - props-off bench runs on Andy's
+  quad: arming takes core1 from 55% to 96% and blanks 95% of OSD blocks;
+  best guess is per-motor notch updates at 1604 Hz plus logging from core1.
 
 ## Status (one line)
 
