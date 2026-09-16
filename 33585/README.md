@@ -1256,3 +1256,20 @@ Data: `data/uneven-ground-2026-09-16/`, containing `probe.diff`,
 `run_uneven.sh`, `analyse_uneven.py`, `results.txt` (analysis of every run
 cited) and three gzipped SITL logs: `b_v1_falllow_r0` (terrain withheld),
 `b_v1t_falllow_r0` (terrain allowed) and `b_v2_falllow_r0` (today, origin set).
+
+### Uneven ground result posted to rmackay9 (2026-09-16)
+
+Posted 19:15Z (https://github.com/ArduPilot/ardupilot/pull/33585#issuecomment-5703152857):
+the end-of-traverse table above, that bit 5 removes the failsafe rather than
+changing flow fusion (the frozen offset already scales flow on master), and the
+proposal that the default becomes the terrain database path when there is an
+origin and coverage, with the flat-ground assumption kept opt-in behind bit 5.
+The untested "trust the frozen offset only within a few heights of the last
+range reading" middle ground is mentioned as an option.
+
+Consequence for #34380, stated in the same comment: with the terrain path as
+the default, a vehicle with an origin, no terrain coverage and bit 5 clear
+would climb past the range and failsafe-land from height once the limit is
+removed (the removal measurement: failsafe at 51.4 m where the limit holds
+27.1 m). #34380 is held until the default is agreed; rmackay9 is asked
+whether to keep the limit for that one case or accept the failsafe there.
