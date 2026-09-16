@@ -16,6 +16,13 @@ hex/UF2 address) was pushed without an entry here. Local safety refs
 `backup/rp2350-pre-cleanup-20260911` (the original 179 at `164ac005d5`) and
 `backup/rp2350-pre-gitmodules-drop`.
 
+## Companion notes
+
+- [field-test-osd-rcin.md](field-test-osd-rcin.md) - the profiling build for
+  the tester chasing OSD and RC input problems on analog video: what the data
+  has to separate, the overlay that builds it, and what to pull off the board
+  before power-off.
+
 ## Status (one line)
 
 CI's six deterministic autotest failures are fixed and the conventions check
