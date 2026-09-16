@@ -1,0 +1,159 @@
+diff --git a/Tools/autotest/arducopter.py b/Tools/autotest/arducopter.py
+index e5f02e3ff7..199b9c11ac 100644
+--- a/Tools/autotest/arducopter.py
++++ b/Tools/autotest/arducopter.py
+@@ -4861,6 +4861,94 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
+             raise NotAchievedException("Climb stopped at %.1fm; nothing should limit it" % max_alt)
+         self.reboot_sitl(force=True)
+ 
++    def FlowLandProbe(self):
++        '''PROBE: optical flow LAND after a climb (local only)'''
++        import os
++        import shutil
++        climb = float(os.environ.get("PROBE_CLIMB", "60"))
++        tag = os.environ.get("PROBE_TAG", "probe")
++        out = os.environ.get("PROBE_OUT", "/tmp")
++        params = {
++            "SIM_FLOW_ENABLE": 1,
++            "FLOW_TYPE": 10,
++            "SIM_GPS1_ENABLE": 0,
++            "SIM_TERRAIN": 0,
++            "EK3_OPTIONS": int(os.environ.get("PROBE_EK3_OPTIONS", "32")),
++            "LOG_DISARMED": 0,
++        }
++        if "PROBE_AVOID" in os.environ:
++            params["AVOID_ENABLE"] = int(os.environ["PROBE_AVOID"])
++        if "PROBE_FXSCALER" in os.environ:
++            params["FLOW_FXSCALER"] = int(os.environ["PROBE_FXSCALER"])
++            params["FLOW_FYSCALER"] = int(os.environ["PROBE_FXSCALER"])
++        if "PROBE_HGT_MIN" in os.environ:
++            params["FLOW_HGT_MIN"] = float(os.environ["PROBE_HGT_MIN"])
++        if "PROBE_WIND_SPD" in os.environ:
++            params["SIM_WIND_SPD"] = float(os.environ["PROBE_WIND_SPD"])
++            params["SIM_WIND_DIR"] = float(os.environ.get("PROBE_WIND_DIR", "90"))
++            params["SIM_WIND_TURB"] = float(os.environ.get("PROBE_WIND_TURB", "0"))
++        self.set_parameters(params)
++        self.configure_EKFs_to_use_optical_flow_instead_of_GPS()
++        self.set_analog_rangefinder_parameters()
++        if "PROBE_RNG_MIN" in os.environ:
++            self.set_parameter("RNGFND1_MIN", float(os.environ["PROBE_RNG_MIN"]))
++        self.reboot_sitl()
++
++        self.takeoff(altitude_min=5, mode='ALT_HOLD', require_absolute=False, takeoff_throttle=1800)
++        self.change_mode('LOITER')
++        self.delay_sim_time(10, reason="settle in loiter")
++        if climb > 6:
++            self.set_rc(3, 1900)
++            tstart = self.get_sim_time()
++            while self.get_sim_time_cached() - tstart < 120:
++                m = self.assert_receive_message('GLOBAL_POSITION_INT')
++                if m.relative_alt * 0.001 >= climb:
++                    break
++            self.set_rc(3, 1500)
++            self.delay_sim_time(float(os.environ.get("PROBE_HOLD", "25")), reason="hold at altitude")
++        move = float(os.environ.get("PROBE_MOVE_S", "0"))
++        if move > 0:
++            self.set_rc(1, int(os.environ.get("PROBE_MOVE_RC1", "1700")))
++            self.delay_sim_time(move, reason="translate before landing")
++            self.set_rc(1, 1500)
++            if os.environ.get("PROBE_LAND_MOVING", "0") != "1":
++                self.delay_sim_time(5, reason="stop before landing")
++        if "PROBE_RNG_MIN_AIR" in os.environ:
++            self.set_parameter("RNGFND1_MIN", float(os.environ["PROBE_RNG_MIN_AIR"]))
++        self.change_mode('LAND')
++        tland = self.get_sim_time()
++        disarmed = False
++        tdisarm = None
++        land_rc1 = os.environ.get("PROBE_LAND_RC1")
++        release_alt = float(os.environ.get("PROBE_LAND_RELEASE_ALT", "0.3"))
++        if land_rc1 is not None:
++            self.set_rc(1, int(land_rc1))
++        released = land_rc1 is None
++        while self.get_sim_time_cached() - tland < float(os.environ.get("PROBE_LAND_TIMEOUT", "150")):
++            if not released:
++                m = self.assert_receive_message('GLOBAL_POSITION_INT')
++                if m.relative_alt * 0.001 < release_alt:
++                    self.set_rc(1, 1500)
++                    released = True
++                    self.progress("PROBE released reposition at %.2fm" % (m.relative_alt * 0.001))
++                continue
++            self.assert_receive_message('HEARTBEAT')
++            if not self.armed():
++                disarmed = True
++                tdisarm = self.get_sim_time_cached() - tland
++                break
++        self.progress("PROBE RESULT tag=%s disarmed=%s t_disarm=%s" % (tag, disarmed, tdisarm))
++        if not disarmed:
++            self.disarm_vehicle(force=True)
++        path = self.current_onboard_log_filepath()
++        self.delay_sim_time(2, reason="flush the log")
++        try:
++            shutil.copy(path, os.path.join(out, tag + ".BIN"))
++            self.progress("PROBE LOG %s" % os.path.join(out, tag + ".BIN"))
++        except Exception as e:
++            self.progress("PROBE LOG copy failed: %s" % e)
++        self.reboot_sitl(force=True)
++
+     def LoiterNoCompassYaw(self):
+         '''Loiter indoors with optical flow and no GPS, compass not an EK3 yaw source'''
+         # Indoor case: position from optical flow + rangefinder, no GPS. The
+@@ -17466,6 +17554,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
+              self.OpticalFlow,
+              self.OpticalFlowLocation,
+              self.OpticalFlowLimits,
++             self.FlowLandProbe,
+              self.LoiterNoCompassYaw,
+              self.LoiterNoCompassYawGPS,
+              self.LoiterFlowBrakeOvershoot,
+diff --git a/Tools/autotest/pysim/util.py b/Tools/autotest/pysim/util.py
+index acdff5fc21..20018dc3a1 100644
+--- a/Tools/autotest/pysim/util.py
++++ b/Tools/autotest/pysim/util.py
+@@ -727,7 +727,7 @@ def start_SITL(binary,
+             cmd.append("--rc-in-port=uds:APM-UDS-rcin")
+         else:
+             # somewhere for MAVProxy to connect to:
+-            cmd.append('--serial1=tcp:2')
++            cmd.append('--serial1=tcp:%s' % os.environ.get('PROBE_SERIAL1_TCP', '2'))
+         if enable_fgview:
+             cmd.append("--enable-fgview")
+ 
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_OptFlowFusion.cpp b/libraries/AP_NavEKF3/AP_NavEKF3_OptFlowFusion.cpp
+index 9a0783aba1..87fee4e045 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_OptFlowFusion.cpp
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_OptFlowFusion.cpp
+@@ -8,6 +8,7 @@
+ 
+ #include <GCS_MAVLink/GCS.h>
+ #include <AP_DAL/AP_DAL.h>
++#include <AP_Logger/AP_Logger.h>
+ 
+ /********************************************************
+ *                   RESET FUNCTIONS                     *
+@@ -98,6 +99,26 @@ void NavEKF3_core::SelectFlowFusion()
+         // Fuse the optical flow X and Y axis data into the main filter sequentially
+         FuseOptFlow(ofDataDelayed, fuse_optflow);
+     }
++    // PROBE flow landing (local only)
++    {
++        ftype hagl = MAX((terrainState - stateStruct.position.z), rngOnGnd);
++#if EK3_FEATURE_OPTFLOW_AGL_KF
++        if (frontend->option_is_enabled(NavEKF3::Option::AglKfForOptflow) && aglKfValid) {
++            hagl = MAX(aglKfH, rngOnGnd);
++        }
++#endif
++        AP::logger().Write("PRFL", "TimeUS,C,F,IX,IY,TX,TY,MX,MY,PN,PE,HG,RG,RA,SP,SV",
++                           "QBBffffffffffIff",
++                           AP_HAL::micros64(), core_index,
++                           uint8_t((flowDataToFuse ? 1 : 0) | (tiltOK ? 2 : 0)),
++                           float(flowInnov[0]), float(flowInnov[1]),
++                           float(flowTestRatio[0]), float(flowTestRatio[1]),
++                           float(ofDataDelayed.flowRadXYcomp.x), float(ofDataDelayed.flowRadXYcomp.y),
++                           float(stateStruct.position.x), float(stateStruct.position.y),
++                           float(hagl), float(rangeDataDelayed.rng),
++                           uint32_t(imuSampleTime_ms - rngValidMeaTime_ms),
++                           float(sqrtF(P[7][7] + P[8][8])), float(sqrtF(P[4][4] + P[5][5])));
++    }
+ }
+ 
+ /*
