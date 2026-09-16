@@ -8,10 +8,11 @@ tells us which cause it is, instead of another round of guessing.
 Read [README.md](README.md) for the state of the PR itself.
 
 **Superseded in part by the first flights** - see
-[field-test-2026-09-16-results.md](field-test-2026-09-16-results.md).
+[field-test-2026-09-16-results.md](field-test-2026-09-16-results.md), and
+fly [field-test-round2.md](field-test-round2.md) next.
 `AP_XIP_PROFILER_ENABLED` below cost ~13% of core1 in flight and must be
-dropped, and the log does not carry the full 10 s report: MSG text is capped
-at 64 bytes.
+dropped, and this build's log does not carry the full 10 s report: the log
+keeps only the first 50 characters of each line.
 
 ## What the data has to separate
 

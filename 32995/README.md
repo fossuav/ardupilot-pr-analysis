@@ -26,6 +26,9 @@ hex/UF2 address) was pushed without an entry here. Local safety refs
   first two flights with that build: core1 ~98% busy in flight, the XIP
   profiler itself ~13% of it, raw gyro logging dropping 76% of the log, and
   the counters the next build needs.
+- [field-test-round2.md](field-test-round2.md) - the second field build
+  (`35e92d8b2e`): OSD late-block and PIO UART error counters in the 10 s
+  report, no XIP profiler, and what to fly.
 
 ## Status (one line)
 
