@@ -435,3 +435,94 @@ was rewritten the same day: the fall-back guard described without the old
 per-cycle test, a paragraph on why the states are not reset, the corrected
 bit-identical sentence, and the new test. `AIReview` was already on; the
 2026-09-12 round is stale from the push.
+
+## Round 3: drag dead reckoning and the ExtNav bounce (2026-09-17)
+
+The 2026-09-15 automated round at `9e04d0e0a7` found two regressions from the
+new ABS->REL edge, both reproduced here in SITL (tier 2), both fixed.
+Not pushed. Working branch `pr-flow-aiding` at `ef6bab1803`; the tidied
+branch for pushing is `pr-flow-aiding-tidy` at `816db9a9b0`, tree
+byte-identical to `ef6bab1803`, same base `bf08027404`.
+
+Rig (probe on local branch `r3-probe-33568`, never pushed): the PR's flow
+source set (SRC2 POSXY none, VELXY flow, POSZ baro, YAW compass, RC8 switch),
+analog range finder, FS_DR_ENABLE 0 and FS_EKF_ACTION 0 so the EKF is seen
+raw, take off 10 m in LOITER, 30 s on GPS, then ALT_HOLD moving at pitch
+1400. Error is GLOBAL_POSITION_INT against SIMSTATE. Variants: head
+(`9e04d0e0a7`), edge disabled (`false &&` on the transition, master
+behaviour), `fix1` (drag and airspeed check only), `fix2` (everything below).
+The harness needed SERIAL1 moved to tcp:4 locally: port 5762 is held on the
+Windows side.
+
+### Drag dead reckoning thrown away
+
+Drag coefficients 9.5/9.5, MCOEF 0.082. Error 40 s after flow stops:
+
+| scenario | head | edge disabled | fix1 | fix2 |
+|---|---|---|---|---|
+| flow stops 5 s after the GPS->flow switch | 45.7, 45.5 m (REL then NONE) | 29.2 m (ABS) | 31.9, 29.0 m (ABS) | 31.6 m (ABS) |
+| flow stops 15 s after the switch | 47.7, 46.4 m (REL then NONE) | 27.1 m (ABS) | 26.3, 27.7 m (ABS) | 26.2 m (ABS) |
+
+With drag coefficients zero, fix1 behaves as head (45.5 m, REL then NONE),
+so the change only affects drag or airspeed vehicles. Noted, not changed:
+with no drag the edge-disabled build ended at 18.7 m against 45.1 m for fix2,
+because master stays ABS on inertial dead reckoning until the attitude aiding
+timeout while REL drops to NONE after 5 s of stale flow. SITL's IMU is near
+ideal, so master's number flatters it.
+
+### ExtNav bounce
+
+SRC2 POSXY ExtNav (SIM vicon on serial5), VELXY flow, drag off. It only
+reproduces with no GPS fix (SIM_GPS1_LCKTIME 30000 after the switch;
+SIM_GPS1_ENABLE 0 stalled the harness for 11 minutes) and no ExtNav velocity
+(SIM_VICON_TMASK 1), because `ResetVelocity()` otherwise resets to GPS or
+ExtNav velocity and nothing visible happens. 1000 m glitch applied at
+111.35 s moving at 2.6 m/s:
+
+| build | transition | largest XKF1 speed step |
+|---|---|---|
+| head | REL at 121.41 s, ExtNav again at 121.44 s | 2.63 m/s (to 0.00) |
+| edge disabled | none | 0.01 m/s |
+| fix2 | none | 0.01 m/s |
+
+The position follows the glitched fix (~1007 m error) in all three, as on
+master. The beacon half of the guard is by reading only (tier 3).
+
+### posTimeout on the edge
+
+By reading: NONE->REL clears posTimeout through `ResetPosition()`; the edge
+skipped the reset, so posTimeout and velTimeout stayed set and a flow dropout
+cleared `horiz_vel`. Measured, a 2.5 s flow dropout after the fall back (drag
+off), EKF_STATUS_REPORT horizontal velocity flag clear over the dropout plus
+5 s: head 5 of 29, fix2 0 of 28, edge disabled 0 of 30 (stays ABS).
+
+### The fix, and the new test
+
+`b98e7b1da2` (squashing `cb29b3b4c1`, `9e04d0e0a7` and the two new guard
+commits `b8e3cb25ef`, `9792ce3d0f`): the edge now needs no GPS, ExtNav or
+beacon source configured for position that delivered a measurement within
+gpsNoFixTimeout_ms (2 s), flow or body odometry used, and neither drag nor
+airspeed used. `8a9d37773c` (squashing `bdef1ff967` and `1f80b12bac`) also
+clears posTimeout on the edge.
+
+`OpticalFlowFallbackKeepsAbsolute` (`816db9a9b0`): a 20 s stepped GPS glitch
+with EK3_SRC_OPTIONS 1, then a drag leg with flow stopping 5 s after the
+switch; both legs must never reach AID 2 after the first AID 0. Revert
+evidence: head fails the drag leg; a build with `readyToUseGPS()` back in the
+condition fails the GPS leg; fix2 passed 3 of 3, about 13 s wall. Two traps
+met writing it: the filter can start in relative aiding on flow before GPS is
+ready, and XKF4 logs AID 0 before the filter initialises, so the check starts
+only after the first absolute sample that follows a non-zero one.
+
+Tests at `ef6bab1803`: OpticalFlowGPSLossAiding, OpticalFlowFallbackKeepsAbsolute,
+OpticalFlowLimits, OpticalFlow, DeadReckoningInWind, PAUSE_CONTINUE_GUIDED,
+BeaconPosition, GPSViconSwitching, VisionPosition all pass; copter and plane
+build; every AP_NavEKF3 commit on the tidied branch builds on its own; the
+mechanical gate is clean on the tidied branch.
+
+Minor items from the round: the stray `do_RTL(timeout=120)` change is gone
+(folded into `202da19a57`); the first commit's message no longer describes the
+superseded `readyToUseGPS` guard. Not acted on: the height limit still
+engaging on the fall back (#34380, on hold on #33585).
+
+Reply draft and body update are in the session scratchpad, not posted.
