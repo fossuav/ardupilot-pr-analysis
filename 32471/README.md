@@ -808,3 +808,35 @@ Result posted on the PR 2026-09-15 13:34Z
 the arm-release table, the platform case with its spread and the one run that
 learned the platform acceleration after arming, the acro-exit numbers, and the
 1/16 variant rejected. No code change.
+
+## Review round of 2026-09-15 13:52Z: the learner saved one accel's bias under another (2026-09-17)
+
+The round found `getAccelBiasForIMU()` matching a core on `coreImuIndex[i]`,
+the IMU it was set up with, while `readIMUData()` moves a core onto
+`get_first_usable_accel()` when its own accel is unusable. The hover learner
+then read the other accel's bias and saved it under the unusable accel.
+
+Reproduced in SITL at `bb0a818b52` (local, not pushed), EK3_IMU_MASK 3,
+SIM_ACC2_BIAS_Z 0.3, SIM_ACC_VRF_Z 0.15, ACC_ZBIAS_LEARN 3, INS_USE 0, 30 s
+hover, as a new leg of VibrationRectificationBiasLearning:
+
+| code | INS_ACC_VRFB_Z | INS_ACC2_VRFB_Z |
+|---|---|---|
+| `bb0a818b52` | 0.430 | 0.430 (leg fails) |
+| `f09abf42bc` | 0.000 | 0.430 (leg passes) |
+
+Fix `f09abf42bc`: match the core's active accel (`getAccelIndex()`, new core
+accessor for `accel_index_active`) and return false for an accel that is not
+usable. Chosen over returning `inactiveBias[imu_index]`, which would have
+started saving values for hot-spare accels no core runs on, against the
+learner's "only save for an IMU some EKF core is actually using". Derived
+from the source, not measured: the hover correction the learner adds back is
+the same accel's, so the sum stays consistent.
+
+Test `7a61baa62e`. VibrationRectificationBiasLearning, AccelBiasMovingPlatform
+and Replay pass; copter and plane build; gate clean. Both commits are on
+local `pr-vrf-core`, not pushed. The covariance-restore maintainer look the
+round asks for is outside our control. Reply drafted.
+
+SITL here needed a local, uncommitted harness change moving SERIAL1 from
+tcp:2 to tcp:4, because port 5762 is held on the Windows side.

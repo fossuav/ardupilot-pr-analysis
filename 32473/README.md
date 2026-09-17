@@ -379,3 +379,41 @@ Result posted on the PR 2026-09-15 13:34Z
 and the body's "Still open" bullet on the restore replaced with the repeated
 numbers, including that no acro inhibit is better at the exit (1.98 against
 4.70 m) and worse afterwards (1.13 against 0.33 m).
+
+## Review round of 2026-09-15 13:52Z: throttle cuts and flips released the inhibit (2026-09-17)
+
+The round found the acro condition keyed on THROTTLE_UNLIMITED: without air
+mode a 400 ms throttle cut makes acro request ground idle in the air, so the
+1 Hz writer released and re-set the inhibit, and each release fired #32471's
+covariance restore.
+
+Measured in SITL (LOG_REPLAY on to see the DAL events), bit 3 set, 0.5 m/s/s
+Z step, then three 1 s throttle cuts each followed by a climb to arrest the
+descent:
+
+| gate | REV3 events in the acro segment | XKF2.AZ movement |
+|---|---|---|
+| spool state (`fc67be977d`) | SET, then UNSET/SET at every cut | 0.58 m/s/s (test fails) |
+| armed and not landed | SET, UNSET on leaving acro | 0.00 (test passes) |
+
+A first attempt with six 0.9 s cuts and hover throttle between them put the
+vehicle from 40 m into the ground: the harness ran the cut for about 1.5 s of
+sim time and hover throttle could not arrest 13.6 m/s. Hence the climb after
+each cut.
+
+FLIP started from acro: before, UNSET on entering FLIP and SET on the return
+to ACRO; with `mode_flip.orig_mode_number() == ACRO` included, the inhibit
+holds through and XKF2.AZ moved 0.000 across the flip (probe only, not in
+the test).
+
+Parameter text: the "learns in flight regardless" sentence qualified for bit
+3, a note that bits 0-1 need a reboot and bits 2-3 are live, and a line that
+taking off in acro with bit 3 holds the ground-learned bias.
+
+Commits on `pr-acro-bias-inhibit` (local): `6493b6c6aa` (Copter gate, flip,
+param text), `603dc42be1` (test). Restacked as local
+`pr-acro-bias-inhibit-restacked` on #32471's `7a61baa62e`: `5f9f8f9a60`
+(bit 3 commit with the gate fix folded in) and `59c2705a71` (test folded).
+On it AccelBiasLearningInhibitedInAcro, VibrationRectificationBiasLearning
+and AccelBiasMovingPlatform pass, copter and plane build, gate clean. Not
+pushed. Reply and body update drafted.
