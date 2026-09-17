@@ -526,3 +526,16 @@ superseded `readyToUseGPS` guard. Not acted on: the height limit still
 engaging on the fall back (#34380, on hold on #33585).
 
 Reply draft and body update are in the session scratchpad, not posted.
+
+### Pushed and answered (2026-09-17)
+
+Force-pushed `9e04d0e0a7` -> `816db9a9b0` (five commits, tree byte-identical
+to the local `ef6bab1803`): `b98e7b1da2` the edge with the drag/airspeed and
+delivering-source guards folded in, `8aa8cc059b` XKF4 AID, `8a9d37773c` no
+resets on the edge plus posTimeout, `202da19a57` OpticalFlowGPSLossAiding
+without the stray `do_RTL` hunk, `816db9a9b0` OpticalFlowFallbackKeepsAbsolute.
+PR body updated. Reply posted 09:15Z
+(https://github.com/ArduPilot/ardupilot/pull/33568#issuecomment-5711934655),
+which also states the unchanged no-drag case: flow lost after the switch
+still reaches no aiding sooner than master (45.1 m against 18.7 m at 40 s in
+SITL, where the near-ideal IMU flatters master).
