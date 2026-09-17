@@ -1184,6 +1184,17 @@ leaves the last sample near the maximum. A vehicle below the floor at takeoff
 does not start a hold from OutOfRangeLow alone, because there has been no
 descent through the floor.
 
+#### Superseded 2026-09-17 by a SITL run (the traverse repro in round 3 below)
+
+"The carried height separates a sensor lost at height (carried height stays
+high)" is true only over flat ground. Over ground that falls away the carried
+height reads the old ground: climb to 30 m above an 8 m range finder, fly 1 km
+over ground falling 13 m, descend, and the hold starts at 13.1 m true height
+with the carried height at 0.24-0.27 m (range 266 s old), holding flow off up
+to 31 s. The paragraph above was an inspection claim, not measured; it is left
+in place because it is still what happens over flat ground. The 5 s bound in
+round 3 is the fix.
+
 ### In-flight side effects, SITL, master-based
 
 Probe branches `fl34292-old` (`0374a23d84`) and `fl34292-new` (`48c843a5ce`),
@@ -1239,6 +1250,9 @@ Why it was 0, answered:
 - the 2026-09-12 round's note that latching on a stale range "could withhold
   flow indefinitely": the hold is bounded by a fresh sample, the carried height
   and takeoff detection, and only a descent through the floor starts it.
+  **Superseded 2026-09-17:** the carried height is not a bound when the ground
+  under the vehicle has changed; the 2026-09-12 concern was right. See round 3
+  below: the hold now trusts a carried height for 5 s only.
 
 What changed the answer: the landing failure is not at a focus height. It
 starts where EKF3's range clamp bites, at the range finder ground clearance, and
@@ -1306,6 +1320,235 @@ the no-hysteresis note at the floor, the ROFM units note, the wiki note, and
 the test message `high and len(high)` at `Tools/autotest/arducopter.py:15167`,
 which raises TypeError instead of the intended NotAchievedException when
 `high` is empty (one-line fix, `len(high)`).
+
+## Round 3: rebase, the staleness bound, and the review items (2026-09-17)
+
+Local branch `pr-flow-hgt-min-rebased` at `d8646651c2`, 17 commits on
+upstream master `af8525911b`, not pushed. The pushed `pr-flow-hgt-min`
+(`29cfdb6ddc`, 21 commits) is untouched. It was built by cherry-picking; no
+rebase, reset or amend. Two intermediate local builds of the same tree
+(`b074c1e98c`, `e7bc82096a`) were renumbered only to rewrap one message and
+shorten three subjects, and each was checked by an empty `git diff`, so tests
+run on them count for `d8646651c2`.
+
+Answering the AP-Review round of 2026-09-16 23:27Z at `29cfdb6ddc` (REQUEST
+CHANGES), plus peterbarker's "Just remove = 0.0", rmackay9's HAGL question
+and tridge's flowDataValid question. Nothing posted yet.
+
+| new | pushed commits it carries | what changed |
+|---|---|---|
+| `faf196c7f8` | `7a21adc9b7` | - |
+| `5ff8e6d955` | `6cc360296e` | - |
+| `7ab39bbf9e` | `8f9cc3def6` | subject shortened |
+| `a5fc1f5613` | `1d611f8200` + `da78928a9b` | ROFM at the end of the list; HgtMin units `m`/`0`, @Field gives the unit; no `minHeight` default |
+| `55974f2bb8` | `0fe236c37d` | no default |
+| `6a7ca4e6d8` | `b663d6a39e` + `c08eaf0e43` | zero and discard folded into one "discard" commit; no defaults |
+| `ffd889251e` | `fce7aeb7cd` | no default |
+| `4df235f773` | `381f63065f` + `1059db3b0f` + `7719b7e78c` | parameter description fixups folded |
+| `3905197b1d` | `d840c82089` | moved after the signature chain |
+| `0629e79be5` | `c26e69f3f7` + `3ff05c761a` + `a204212074` | test note and the Replay FLOW_HGT_MIN folded |
+| `7dfa4fd76a` | `0374a23d84` | `len(high)` (was a TypeError); AFI comment; master conflict (adjacent new test) resolved keeping both |
+| `165624875d` | `8f736ce1f0` | 5 s bound; carry used while fresh too; out of range low time per range finder; `flowFocusAbove` removed |
+| `f484800eac` | `5aeccff68e` | landing subtest sits armed on the ground about 12.5 s |
+| `abf88bed84` | `8325d8d337` | resolved onto the new gate |
+| `024a434b71` | `29cfdb6ddc` | description covers the bound |
+| `eebffab54b` | new | RNGFNDx_GNDCLR description names the flow floor |
+| `d8646651c2` | new | old-range subtest |
+
+Without the defaults, `a5fc1f5613`, `55974f2bb8`, `6a7ca4e6d8` and
+`ffd889251e` do not build alone (measured: `./waf copter` at each commit).
+The DAL and the estimators call each other, so no per-subsystem order
+compiles. Every other commit builds. Upstream took the same shape for
+heightOverride, `5d3e636d71`..`abcacec25f`. Mechanical gate at the tip: 0
+findings above note after the subject and wrap fixes.
+
+### The staleness bug, reproduced
+
+SITL on the #34380 stack (the flight needs the height limit removed),
+flow-only copter, 8 m analog range finder, CMAC terrain, `FLOW_HGT_MIN` 0.3.
+The local StaleHoldProbe climbs to 30 m, flies GUIDED 1 km at bearing 30 deg,
+where the ground falls about 13 m, descends to 0.25 m by the EKF, hovers 20 s
+and LANDs. Gate as pushed (`29cfdb6ddc`):
+
+| run | first false hold | carried height | last range, age | longest hold above 1 m true | aiding |
+|---|---|---|---|---|---|
+| r0 | 13.12 m true | 0.27 m | 7.91 m, 265.7 s | 30.9 s | stopped every 5 s |
+| r2 | 13.14 m true | 0.24 m | 7.91 m, 266.4 s | 31.3 s | stopped every 5 s |
+
+r1 stalled in SITL and is not counted. LAND after the traverse does not disarm
+in this rig. The vehicle sits at 0.56 m true height on the terrain, a SITL
+terrain artefact, so near-ground cases were measured on flat ground instead.
+
+### Options (tier 2, one run per cell unless stated)
+
+| gate | traverse | 1 s out of range low injected at the low hover | range finder killed at 0.6 m in LAND (flat) | killed at 5 m, then LAND (flat) |
+|---|---|---|---|---|
+| as pushed | holds, above | not run | 5 fused below 0.3 m true, then held | 0 fused, held |
+| (a) out of range low to start | 0 held above 1 m | 32.8 s hold, aiding stopped every 5 s | 28 fused | 27 fused |
+| (b) carried height valid 5 s | 0 held | 0 held | 4 fused, then held | 28 fused |
+| (a)+(b) | 0 held | 0 held | 27 fused | 27 fused |
+| final (b + carry while fresh + per-sensor time, no `flowFocusAbove`) | 0 held (2 runs) | 0 held | 1 fused, then held | 28 fused |
+
+27-28 matches the pre-hold gate's 27 from round 2. In one final run and one
+injection run, 6-7 held rows sit at 3.5-7.3 m true height. Both are the SITL
+terrain collision: true height went to -9 m in one sample and the range read
+0, so these are not gate faults.
+
+Chosen: (b). (a) alone fails the injection. (a)+(b) differs from (b) only by
+refusing starts without out of range low. That loses the hold for a range
+finder lost within 5 s of the floor, and for drivers that map a lost return
+to out of range high (Benewake, LightWare: derived from the driver source, not
+measured on hardware).
+
+### Carry while fresh (new, tier 2)
+
+The 500 ms fresh path compared the last recalled range. That range lags
+behind the median of three, so the carried height is now used there too.
+
+- ALT_HOLD touchdown at about 2.5 m/s, subtest rig: without the carry, 4, 4
+  and 5 XKF5 flow updates after out of range low (3 runs); with it, 0, 0, 1,
+  0, 0 (5 runs).
+- Stuck-landing repro, RNGFND1_MIN 0.3 (5 runs): fused below the 0.15 m floor
+  2-3 on (b), 2 on final-without-carry, 1-2 with carry. Innovations over
+  0.5 rad/s near touchdown: 2 of 5 runs had one on (b), 0 of 5 with carry.
+
+### Tests at the tip (fl34292-test worktree, plus the local serial port switch)
+
+- OpticalFlowFocusHeight 5 of 5 pass:
+  - landing subtest: about 12.5 s armed on the ground after out of range
+    low, 0 updates;
+  - old-range subtest: 83 updates in 8.4 s.
+- Mutants (landing subtest measured at `27eb15bf9b`, same gate):
+  - bound also applied to out of range low: 74 updates, fail;
+  - hold reverted: 118, fail;
+  - no 5 s bound: old-range subtest 0 updates, fail (2 of 2).
+- FlowHeightMinTerrainPath (AFI low 0, high 62), OpticalFlow, OpticalFlowLimits,
+  LoiterNoCompassYaw, OpticalFlowCalibration, Replay (155 s) all pass. Copter,
+  plane and Replay build.
+
+Stuck-landing repro (60 m flow climb, LAND, 6 m/s wind at 90, 90 turb 1, 45,
+135, 0 deg), final gate on the #34380 stack:
+
+| settings | disarmed, after touchdown | innovations over 0.5 rad/s fused | ground lean |
+|---|---|---|---|
+| FLOW_HGT_MIN 0.3, RNGFND1_MIN 0.2 | 5 of 5, 2.1-2.2 s | 0 | 1.3-3.8 deg |
+| RNGFND1_MIN 0.3 (floor 0.15) | 5 of 5, 2.1 s | 0 | 1.0-5.1 deg |
+| no settings | 5 of 5, 2.1 s | 0 | 0.6-4.0 deg |
+| RNGFND1_GNDCLR 0.3 (3 runs) | 3 of 3, 2.0-2.1 s | 0 | 2.1-3.4 deg |
+
+### Low hover and hysteresis (tier 2)
+
+Local LowHoverProbe: GUIDED hover for 15 s, `SIM_BARO_RND` 0,
+`SIM_SONAR_RND` 0.05 (uniform +/-5 cm). "Fused" counts flow samples, about 153
+in the window.
+
+| gate | GNDCLR 0.10 (floor 0.15): 15 / 18 / 20 cm fused | transitions | GNDCLR 0 (floor 0.10): 15 / 18 / 20 cm | aiding stops |
+|---|---|---|---|---|
+| (b) no band | 54 / 107 / 131 | 38 / 34 / 21 | 129 / 152 / 152 | none |
+| (b) + release 2 cm above floor | 14 / 99 / 130 | 7 / 20 / 8 | 135 / 155 / - | 2 at 15 cm, GNDCLR 0.10 |
+| (b) + start 2 cm below floor | 69 / 145 / 154 | 26 / 4 / 0 | 151 / 156 / - | none |
+| final | 53 / 99 / 144 | 36 / 37 / 14 | 139 / 154 / 153 | none |
+
+Without noise at 18 cm: 156 of 156 fused. Not adopted. A band above the floor
+loses aiding in a 15 cm hover. A band below it is the floor moved down on the
+way in. The chatter costs samples, not aiding.
+
+### HAGL against the carried range (rmackay9, tier 2 plus source)
+
+Final gate logs, HAGL is `MAX(terrainState - posD, rngOnGnd)`, no AGL KF option.
+
+- LAND at 0.5 m/s, 18 runs over four configurations: the floor is crossed
+  +0.07 to +0.12 s after truth by the carried range and +0.07 to +0.10 s by
+  HAGL.
+- Armed 12 s on the ground, GNDCLR 0.10:
+  - HAGL 0.100-0.131, carried 0.06-0.12;
+  - with RNGFND1_MIN 0.2, carried -0.006 to 0.071.
+- Armed 12 s on the ground, GNDCLR 0: HAGL 0.050-0.081 against floor 0.10,
+  carried 0.025-0.068.
+- After the LAND runs, HAGL on the ground peaks at 0.131-0.141 across 15 runs.
+- With GNDCLR 0.3: HAGL 0.333 and carried 0.31-0.32, floor 0.40.
+- Noisy hover, share of rows below the floor:
+
+  | hover | range | HAGL | truth |
+  |---|---|---|---|
+  | 18 cm, GNDCLR 0.10 | 35% | 0% | 0% |
+  | 15 cm, GNDCLR 0.10 | 66% | 58% | 85% |
+  | 15 cm, GNDCLR 0 | 11% | 0% | 0% |
+
+- Range as the height source (`EK3_RNG_USE_HGT` 70, or `EK3_SRC1_POSZ` 2):
+  HAGL still tracked, 0.174-0.226 in an 18 cm hover and 0.100-0.130 on the
+  ground.
+- Derived from the source, not measured: with the range stale and nav flow,
+  `EstimateTerrainOffset` is not called, so HAGL is the same dead reckoning.
+  terrainState is fused from flow only on the `EK3_FLOW_USE=2` path, where
+  gating on it would be circular.
+
+Kept the range. The comment at `AP_NavEKF3_OptFlowFusion.cpp:54-57`
+overstates both of its reasons: the first applies only to the terrain path,
+and the second is true but measured harmless. The reply draft says so and
+offers to reword it.
+
+### flowDataValid (tridge, tier 2 plus source)
+
+Set at `:40` from sample arrival (`Measurements.cpp:235`) and forced at `:51`.
+Read by:
+
+- `updateFilterStatus()` (horiz_vel, horiz_pos_rel);
+- `getHeightControlLimit()` (removed by #34380);
+- `getTerrainAltVariance()`.
+
+Setting it false inside the limit does not change fusion. Latched while held:
+
+- horiz_pos_rel true 46 of 152 samples in a 15 cm hover (148 of 148 now);
+- with an EKF origin set, "EKF variance: position lost" and an EKF failsafe
+  to LAND 12 s in, and EKFCHECK/EKFINAV errors while armed on the ground.
+
+Set only on the discarded sample, the flag flickers (116 of 146). LAND results
+are unchanged. Not adopted. Brief for Andy written, no drafted reply.
+
+With the current code horiz_pos_rel stays true through a 12 s ground hold
+(105 of 105). The aiding timeout restarts relative aiding every 5 s on sample
+arrival. That is pre-existing.
+
+### Measured and rejected (this round)
+
+| change | argument for | measured | why rejected |
+|---|---|---|---|
+| (a) out of range low required to start the hold | a start needs the sensor to say it is low; suggested by AP-Review | a 1 s spurious out of range low after the traverse held 32.8 s | the sustain rule then carries the stale height indefinitely |
+| (a)+(b) | strictest start | same fixes as (b); range finder dead at 0.6 m fused 27 where (b) held | gives up starts without out of range low that are right |
+| hysteresis, 2 cm release band above the floor | stops sample-by-sample chatter (AP-Review) | 15 cm hover at the 0.15 floor: 14 of ~153 fused, aiding stopped twice | the log58-style low hover loses aiding |
+| hysteresis, 2 cm start band below the floor | less chatter, more flow in a noisy hover | 18 cm: 145 fused against 107, 4 transitions against 34 | it is the floor lowered by 2 cm on the way in |
+| gate on HAGL instead of the range | filters range noise (rmackay9) | 18 cm noisy hover: 0% below floor against 35%; on the ground 1-2 cm under the default floor against 3-12 cm | ground margin, same dead reckoning when stale, circular on the terrain path |
+| flowDataValid false while held | tridge's reading of `:51` | EKF failsafe in a 15 cm hover and on the ground with an origin set; landings unchanged | status consumers fail with no fusion gain |
+| log the hold state | AP-Review note | not built | XKF4.TS is a timeout bitmask; a new XKF5 field changes the format |
+
+### Cross-check against the flights (2026-09-17, tier 3)
+
+On the log67 airframe (GNDCLR 0) the default floor is 0.10 m, the flown
+value, so the same samples are gated with no parameter set. The hold is inert
+there while the DroneCAN rangefinder reads Good to 1 cm. The staleness bound
+must not end a hold sustained by out-of-range-low, or the log65/66
+floor-dwell phase re-fuses unfocused flow. Discard has not been flown; before
+merge, fly a 15-20 cm hover over 10 s and an armed floor dwell over 5 s, at
+default and real GNDCLR. Details in
+../../analysis/topics/optflow_horizontal_velocity_lockout.md.
+
+The bound as built satisfies the dwell constraint. The landing subtest sits
+armed 12.5 s on the ground with 0 updates, and the mutant that bounds out of
+range low too fuses 74.
+
+### Open
+
+- Push: needs a force-push grant for `pr-flow-hgt-min`, pushing
+  `pr-flow-hgt-min-rebased` to it. Then post the replies, patch the body
+  (Summary "zero motion", the not-flown sentence, the design paragraph) and
+  refresh this record's head.
+- Replay of log65/66/67 through `d8646651c2` is owed. The logs are on the
+  primary machine; REPLAY_LOGS.md row not yet updated.
+- Flight: a 15-20 cm hover for over 10 s, and a landing that sits armed on
+  the floor for over 5 s, at default and real GNDCLR.
+- Wiki page for FLOW_HGT_MIN and the floor: follow-up PR.
+- tridge's thread: Andy to answer in person.
 
 ## Round of 2026-09-17 (AP-Review at d8646651c2), answered 2026-09-18
 
