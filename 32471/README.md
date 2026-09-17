@@ -840,3 +840,11 @@ round asks for is outside our control. Reply drafted.
 
 SITL here needed a local, uncommitted harness change moving SERIAL1 from
 tcp:2 to tcp:4, because port 5762 is held on the Windows side.
+
+### Pushed and answered (2026-09-17)
+
+Fast-forward `bb0a818b52` -> `7a61baa62e`: `f09abf42bc` (getAccelBiasForIMU()
+matches the accel a core is actually using) and `7a61baa62e` (the INS_USE 0
+leg in VibrationRectificationBiasLearning). Reply posted 08:56Z
+(https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-5711708721).
+The EKF3 maintainer look at the covariance restore remains the open item.
