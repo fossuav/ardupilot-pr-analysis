@@ -899,6 +899,16 @@ TouchdownGroundEffectAlt pass at `bf75e34d8f`; copter and plane build.
 
 Reply draft and body update are in the session scratchpad, not posted.
 
+### Pushed and answered (2026-09-17)
+
+Force-pushed `1aca58844c` -> `97506a8e76`, same base: `5fde007d6a`
+(AP_NavEKF3, now with the "terrain offset reset from baro" status text) and
+`97506a8e76` (the reproducer reading the armed log, a settled baseline and a
+measured dwell bound of 0.6-1.2 m). The commit message and PR body now say
+the dwell settles at 0.75-0.9 m, not the 1.2 m asked of takeoff(). Reply
+posted 08:56Z
+(https://github.com/ArduPilot/ardupilot/pull/32553#issuecomment-5711709043).
+
 ## SIM_TERRAIN 0 (2026-09-18)
 
 A terrain tile for home left in the run directory by an earlier test puts the

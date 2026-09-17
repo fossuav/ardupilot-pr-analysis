@@ -417,3 +417,12 @@ param text), `603dc42be1` (test). Restacked as local
 On it AccelBiasLearningInhibitedInAcro, VibrationRectificationBiasLearning
 and AccelBiasMovingPlatform pass, copter and plane build, gate clean. Not
 pushed. Reply and body update drafted.
+
+### Pushed and answered (2026-09-17)
+
+Force-pushed `fc67be977d` -> `59c2705a71`, restacked on #32471's
+`7a61baa62e`: `5f9f8f9a60` (bit 3 with the armed-and-not-landed gate and the
+flip hold folded in) and `59c2705a71` (throttle cuts in the test). The PR
+body updated to "flying in acro, including through throttle cuts and flips
+started from acro" and the test description. Reply posted 08:56Z
+(https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-5711708890).
