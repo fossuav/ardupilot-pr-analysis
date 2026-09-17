@@ -824,6 +824,81 @@ same day with the template sections and a status list pointing at the
 formula, non-ASCII arrows and tool attribution are gone. `AIReview` was
 already on.
 
+## Round 4: the recorded test, the dwell height and the minor items (2026-09-17)
+
+Answering the 2026-09-16 automated round at `1aca58844c`. Local only, not
+pushed: working branch `pr-terrain-reset-ge-squashed` gained `dbd3fcd97b`,
+`bf75e34d8f` and `fc67774a50`; the tidied branch
+`pr-terrain-reset-ge-round4` folds them into `5fde007d6a` (AP_NavEKF3) and
+`97506a8e76` (autotest) on the same base `37ea692edb`, tree byte-identical to
+`fc67774a50`. Rig branches `r4-edge-base`, `r4-edge-move`, `r4-master-ekf` are
+not for the PR. SITL runs used a local, uncommitted move of SERIAL1 to 5764
+because 5762 is held on the Windows side.
+
+### The precondition abort was not reproduced, and both routes to it are closed
+
+The review saw `insufficient on-ground XKF5 samples (6)` in 10 of 10 runs.
+Here the unmodified test reached its measurement on a release build and on a
+debug build (baseline +0.100 m, mean +0.213 and +0.211 m). Two ways it could
+abort elsewhere, derived from the source, not measured:
+
+- `airborne` was HAGL first exceeding 0.5 m, so an initialisation transient
+  before arming ends the on-ground window early.
+- `dfreader_for_current_onboard_log()` takes the newest file, and with
+  `LOG_FILE_DSRMROT` the disarm opens a new one.
+
+The test now reads the log noted while armed and takes the baseline from the
+XKF5 samples in the second after the ARM event, checked against
+MAX(`RNGFND1_GNDCLR`, 0.05). On the logs here that window reads exactly 0.100 m;
+the pre-arm samples drift to 0.15 m and the spool-up samples rise to 0.19 m,
+so neither the old whole-ground median nor a later window is the right one.
+
+### The dwell was never at 1.2 m
+
+The 2026-09-12 and 2026-09-15 sections describe a "25 s hover at 1.2 m".
+Measured on the rangefinder with the unmodified test at `1aca58844c`, the
+dwell was 0.91 m mean (0.80 to 1.18 m): `takeoff(1.2)` only requires 0.2 m and
+ALT_HOLD then holds a height the ground effect has already disturbed. The
+recorded numbers stand for the dwell they were taken at, which is about
+0.9 m, not 1.2 m.
+
+The depth matters, measured: a dwell climbed to on the rangefinder and then
+held by ALT_HOLD at 1.42 m passed at +0.062 m (one run, 2 resets); a
+bang-bang throttle hold at 0.93 to 1.46 m passed at +0.046 m but fired the
+reset 16 times as the ground effect flags toggled; and centring the stick at
+0.8 m let ALT_HOLD sink to 0.42 m. So the test keeps the original takeoff and
+measures and bounds the dwell (0.6 to 1.2 m) instead of pinning it.
+
+With the fixed test, release build, 2026-09-17:
+
+| build | dwell mean (m) | terrain offset mean above 5 m (m) | resets per run |
+|---|---|---|---|
+| master EKF3 (`77f6ddc3df`, 3 runs) | 0.78, 0.90, 0.79 | +0.251, +0.205, +0.248 | 0 |
+| PR (`bf75e34d8f`, 4 runs) | 0.89, 0.83, 0.79, 0.85 | +0.217, +0.236, +0.243, +0.225 | 2 |
+
+Debug build, PR, one run: dwell 0.75 m, +0.260 m. Still fails by design and
+still does not separate the PR from master. TakeoffGroundEffectAlt and
+TouchdownGroundEffectAlt pass at `bf75e34d8f`; copter and plane build.
+
+### Minor items
+
+- **Stale-range branch leaves the latch set:** not changed (derived from the
+  source, not measured). The stale reset re-initialises from PD plus range,
+  and PD is what ground effect disturbs; the latched baro reset applying on a
+  later cycle is what the latch is for.
+- **Edge tracking skipped while `inhibitGndState` is set:** measured on the
+  flown-config rig (`EK3_RNG_USE_HGT` 3, `RNGFND1_MAX` 60, one run each).
+  Tracking the edge before the inhibit check (`r4-edge-move`) makes the reset
+  fire once per core where it otherwise never fires, and changes nothing:
+  climb-out hold error +0.45 / +0.82 / +1.33 m without, +0.40 / +0.86 /
+  +1.29 m with, at 2 / 3 / 4 m of ground effect; still hover -0.25 / -0.24 /
+  -0.11 against -0.27 / -0.26 / -0.22 m. Not adopted.
+- **Not logged:** `bf75e34d8f` (folded into `5fde007d6a`) sends "EKF3 IMU%u
+  terrain offset reset from baro" when the reset is applied. XKF5 is at 15 of
+  16 format characters and widely parsed, so no field was added.
+
+Reply draft and body update are in the session scratchpad, not posted.
+
 ## SIM_TERRAIN 0 (2026-09-18)
 
 A terrain tile for home left in the run directory by an earlier test puts the
