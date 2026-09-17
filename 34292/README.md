@@ -1550,6 +1550,25 @@ range low too fuses 74.
 - Wiki page for FLOW_HGT_MIN and the floor: follow-up PR.
 - tridge's thread: Andy to answer in person.
 
+### Round 3 pushed and answered (2026-09-17)
+
+Force-pushed `29cfdb6ddc` -> `d8646651c2` (17 commits, rebased onto master
+`af8525911b`; GitHub reports it mergeable). PR body: summary says discarded
+not zero-motion, testing notes the unflown discard/hold/floor and the 0.10 m
+vs 0.15 m floor, description explains the carried height and its 5 s trust.
+Posted 12:27Z:
+
+- the round-3 reply to AP-Review, including the correction of the
+  2026-09-16 "lost at height starts nothing" claim
+  (https://github.com/ArduPilot/ardupilot/pull/34292#issuecomment-5714340890);
+- peterbarker's defaults thread (https://github.com/ArduPilot/ardupilot/pull/34292#discussion_r4036797099);
+- rmackay9's HAGL question, range kept with measurements and an offer to
+  reword the :54-57 comment
+  (https://github.com/ArduPilot/ardupilot/pull/34292#issuecomment-5714341564).
+
+tridge's flowDataValid thread is left for Andy's own reply (tridge asked for a
+non-AI reply); the facts brief was prepared locally and is not in this repo.
+
 ## Round of 2026-09-17 (AP-Review at d8646651c2), answered 2026-09-18
 
 - Blocker, `rngOutOfRangeLowTime_ms` unguarded: guarded with
