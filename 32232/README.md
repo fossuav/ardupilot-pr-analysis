@@ -426,3 +426,41 @@ next round does not pay for the clone and submodules again.
   are addressed, the `optFlowTakeoffDetected` rename was answered by going the
   other way.
 - The four defects under "Open defects" are untouched.
+
+## EK3_RNG_USE_HGT and the baro offset: measured, and moved to its own PR (2026-09-18)
+
+Answers the 2026-09-12 review's ISSUE (the substitution enables the
+EK3_RNG_USE_HGT switch for an out-of-range-low sensor). Tier 2, SITL.
+
+On Copter the range finder is the height source only while
+`is_taking_off() || is_landing()` (`set_terrain_hgt_stable()`), so an
+ALT_HOLD takeoff (PILOT_TKO_ALT_M 0) switches back to baro at liftoff, still
+in ground effect. With SIM_BARO_GEFF_M 3, EK3_RNG_USE_HGT 50, RNGFND1_MIN
+0.05: EKF height +2.50 m above 5 m at `8bec444e50`, +3.13 m with SIM_BARO_RND
+0.2. Master with the same sensor: +0.02 m (never fresh on the ground). Master
+with RNGFND1_MIN 0 (reads Good on the ground): +2.49 m. So the mechanism is
+master's; #32232 widens it to out-of-range-low sensors. The fix went to its
+own PR (branch `pr-baro-offset-gnd-effect`), not onto this branch.
+
+Variants measured on this branch (6 scenarios, one run each): no fix (N),
+freeze offset + skip reset (A), dead zone on negative offset error (B),
+offset floored at its value when the flag rose (C). ALT_HOLD takeoff with
+ground effect: N +2.50, A/B/C 0.00. With SIM_BARO_RND 0.2 and a 10 s armed
+wait: N +3.13, A -0.01, B -0.07, C -0.01. B's ratchet on noise is the
+mechanism both reviewers derived (modelled +0.17 m at sigma 0.1 over 10 s).
+A was chosen: stateless, no ratchet, and C needs a floor reset wherever
+the offset is reset (#32768 re-inits it at arming).
+
+The first write-up said the vehicle "flew 2.5 m above its EKF height". The
+sign was wrong: the EKF read high, the vehicle flew below it.
+
+### The pinned climb is carried into the flight
+
+POSZ=RANGEFINDER, RNGFND1_MIN 50 / MAX 60 (never in range), ALT_HOLD at
+throttle 1800 to 10 m true, 10 s hover. Mean EKF - truth above 5 m at
+`8bec444e50`: -1.48, -1.44 (SIM_BARO_RND 0.3), -1.39 (baro drift 0.01 m/s
+over a 30 s armed wait). The lag between the pinned height and the climb
+before the detector releases goes into the baro offset and the fallback to
+baro keeps it. Leg 3 measures the climb after the release and cannot see it.
+Every offset variant above leaves it (A -1.19 to -1.28, B/C -1.41 to -1.53).
+Added to the PR's known issues; not fixed.
