@@ -1137,3 +1137,28 @@ Data in `data/flow-landing-2026-09-16/`: `c_hm0_r2` (default 0, stuck),
 stuck), `probe.diff`, `stale5s.diff`, `run_fl.sh`, `analyse_fl.py`,
 `dump_window.py`. Branches are local only (`fl-control`, `fl-hgtmin`,
 `fl-hgtmin-stale5s`, `fl-master`).
+
+## Round of 2026-09-17 (AP-Review at d8646651c2), answered 2026-09-18
+
+- Blocker, `rngOutOfRangeLowTime_ms` unguarded: guarded with
+  `EK3_FEATURE_RANGEFINDER_MEASUREMENTS` (declaration and memset), and the flow
+  block's `AP_RANGEFINDER_ENABLED` changed to match. Folded into the commits
+  that added them. SITL copter with `define AP_RANGEFINDER_ENABLED 0`: fails at
+  the old head with the CI error, builds at the new one.
+- `flowFocusRngPosD` across height resets: moved by the reset step in
+  `ResetPositionD()`, `ResetHeight()` and the AID_NONE entry (Codex found the
+  third). Not cleared as suggested: clearing drops the landing hold on any reset
+  while held on the floor. Tier 3 (exact by construction); not flown end to end.
+- Out of range high sustain: named in the FLOW_HGT_MIN description, not fixed.
+- The :54-57 comment reworded to the reasons in the reply to rmackay9.
+- tridge's flowDataValid question: he asked for a non-AI reply. The answer is
+  under "what does flowDataValue do??" above; left for Andy to post.
+- New commit from the SFD refresh6 stack: flow held off counts as not ready in
+  `readyToUseOptFlow()`. FlowFocusHoldAfterLanding fails without it on the
+  master base ("Relative aiding restarted while held below the focus floor").
+  Restart heights 0.3-0.6 m over 4 runs; the lower bound moved from 0.25 m to
+  the 0.15 m floor after a 0.3 m run, and a 2 m upper bound added (Codex).
+- 10 of 10 at the new head: OpticalFlowFocusHeight, FlowHeightMinTerrainPath,
+  FlowFocusHoldAfterLanding, OpticalFlow, OpticalFlowLocation,
+  OpticalFlowLimits, OpticalFlowCalibration, EK3_RNG_USE_HGT,
+  LoiterNoCompassYaw, Replay.
