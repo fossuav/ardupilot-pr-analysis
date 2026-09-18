@@ -823,3 +823,12 @@ same day with the template sections and a status list pointing at the
 13:51Z findings comment; the old body's "22 indoor flights", raw-baro
 formula, non-ASCII arrows and tool attribution are gone. `AIReview` was
 already on.
+
+## SIM_TERRAIN 0 (2026-09-18)
+
+A terrain tile for home left in the run directory by an earlier test puts the
+SITL ground 0.55 m below home, so the preconditions failed by test order. With
+SIM_TERRAIN 0 the test reaches its measurement every run and fails for its
+designed reason: +0.211, +0.225 m at `3216b0579e`. Not yet taken up: the
+2026-09-17 review's suggestion to assert on HAGL against the range finder
+during the dwell, where it measured a 1.8x RMS separation (0.22 vs 0.40 m).
