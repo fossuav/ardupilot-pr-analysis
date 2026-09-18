@@ -718,3 +718,12 @@ answering the AP-Review round and rmackay9. PR body updated the same day: the
 gyro bias check paragraph, the new test description and table, and both
 autotests in the checklist; the old "guard on the configured yaw source" row
 is gone from the body but remains in the 2026-09-15 reply.
+
+## Test-only update for #34292's landing floor (2026-09-18)
+
+With #34292 the flow is not fused on the ground after touchdown and aiding
+stops once before disarm; FlowGyroZBiasNoYawReference counted it. The PR
+version counts stops only between EV NOT_LANDED (28) and LAND_COMPLETE (18)
+(Codex: the first version counted from arming). At the new head: 0 stops,
+max |GZ| 0.01 deg/s in all three cases; FlowAidingRestartsWithoutYawFusion
+passes.
