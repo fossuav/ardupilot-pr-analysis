@@ -1139,3 +1139,17 @@ respectively.*
 that line and the `Location(...)` beside it. Master's `Location` does have the
 method. That adaptation is recorded in the SFD refresh notes and belongs
 nowhere near this PR.
+
+## Log flush wait, and what is still unanswered (2026-09-18)
+
+`51afc9c222` (test only): AmslAltPreservedOnRearmAtDifferentElevation read the
+log while SITL held it open and saw one EKF_ALT_RESET of two; a 5 s wait fixes
+it. Passes 2 of 2, HeightDatumKeptOnMidairRearm passes.
+
+Unanswered in the thread: the 2026-09-12 review's two findings (the
+BARO_ALT_OFFSET frame at AID_NONE entry, `Control.cpp:430`, one-line fix
+suggested; and the new datum reset in the home-set branch for a first-ever
+airborne arm) and peterbarker's 2026-09-16 note that it was dropped from
+DevCallEU as stale. The booted-in-air seed was rejected above (moving
+platform); a gate on EKF |vz| > 1 m/s at arm would address "zeroes a real
+descent rate" without that objection. Not measured.
