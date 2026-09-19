@@ -16,6 +16,51 @@ hex/UF2 address) was pushed without an entry here. Local safety refs
 `backup/rp2350-pre-cleanup-20260911` (the original 179 at `164ac005d5`) and
 `backup/rp2350-pre-gitmodules-drop`.
 
+Local tip is `4f982aea88` as of 2026-09-17, nine commits past the eighth-round
+`d0106975ee`: the sampler entry-point declaration, the bootloader hex and UF2
+address fixes (`b8ebd9fc66`..`bc30cce141`), the round-two field
+instrumentation (`3729215583`..`35e92d8b2e`) and the round-three OSD work
+(`5a937f35cf`..`4f982aea88`). None of it is pushed, and the pushed head
+`638efaa5d0` is not an ancestor of it - the eighth-round rebase rewrote those
+commits, so the next push is a force push.
+
+2026-09-18: local tip `43b818a69c`, adding the relay-read fix `5fc3f9a1ff`
+and a ChibiOS bump to `4723972c44`, which is on the local submodule branch
+`rp2350-clean-v7-padmode` and not yet on `origin/rp2350-clean-v7` - it has
+to be pushed there before this branch is, or CI cannot fetch the pin. Why,
+in [field-test-2026-09-17-video.md](field-test-2026-09-17-video.md): the
+video losses are camera reboots, and a relay read could float a regulator
+enable.
+
+Later on 2026-09-18 the branch was rebased onto master `9165d22419` (281
+commits, local tip `49b1131ca0`): the relay fix is now `e3f489bc73` and the
+bump `49b1131ca0`, pin still `4723972c44`, now fast-forwarded onto the local
+`rp2350-clean-v7` (unpushed). The relay fix exists on two branches: it is
+also `1b28d11595` on `pr-relay-read-no-pinmode`, cut from the same master
+for its own PR, and this branch drops its copy once that merges.
+**Superseded the same day:** that PR went through three `/pr-review` rounds
+and was opened as [#34430](../34430/) at `31df8dcb47` with a different
+design; the RP2350 branch now carries the identical patch as `6d2ba24fc3`
+(bump replayed as `570a564a8e`, pin unchanged, 280 other commits unchanged
+by `git range-diff`; backup `pre-relay-swap/rp2350-20260918-1321` at
+`49b1131ca0`). Both pushed by Andy 2026-09-18: #32995 head `570a564a8e`,
+ChibiOS#113 head `4723972c44`. The pad-mode fix also went to ChibiOS trunk
+as [ChibiOS/ChibiOS#83](https://github.com/ChibiOS/ChibiOS/pull/83)
+(`635c7d1b86` on trunk `fd2e59c34`, whose copy of the file was identical to
+ours before the fix). The
+ChibiOS fix stays a separate commit on #113 rather than folded into
+`9f37253c1b`: that commit imports ChibiOS trunk's RP2350 support, and trunk
+has the same OE release, while ArduPilot/ChibiOS master's RP2040 setter
+never releases an output - so there is nothing to fix on master alone.
+
+2026-09-19: local tip `5e55b17873`, seven commits past the pushed
+`570a564a8e`, not pushed: the OSD standard re-detection (`b95f6d6ef7`,
+`202f47e8bb`), the notch coefficient leaf in SRAM (`0d16573e5c`), the rate
+thread honouring the notch loop-rate option and its docs (`caebec43a7`,
+`982b41d3fe`, upstream as [#34436](../34436/)), float angle shaping
+(`cc87a7b9c7`, upstream as [#34437](../34437/)) and the RC input chain in
+SRAM (`5e55b17873`). Measured in [bench-2026-09-19.md](bench-2026-09-19.md).
+
 ## Companion notes
 
 - [field-test-osd-rcin.md](field-test-osd-rcin.md) - the profiling build for
@@ -32,6 +77,16 @@ hex/UF2 address) was pushed without an entry here. Local safety refs
 - [bench-2026-09-16.md](bench-2026-09-16.md) - props-off bench runs on Andy's
   quad: arming takes core1 from 55% to 96% and blanks 95% of OSD blocks;
   best guess is per-motor notch updates at 1604 Hz plus logging from core1.
+- [field-test-2026-09-17-video.md](field-test-2026-09-17-video.md) - the
+  round-three build flying, measured out of the tester's two OSD videos
+  because no log came back: about one late block per field left, the losses
+  proved block-aligned, and the DCM decimation (F8) showing up as a pre-arm
+  failure that grows to 33 deg while the aircraft sits still.
+- [bench-2026-09-19.md](bench-2026-09-19.md) - props-off bench with SWD
+  profiling of both cores: the OSD standard fix confirmed, armed core1 from
+  82% to 56.5% (notch leaf in SRAM, then the loop-rate option), core0 in
+  ALT_HOLD and LOITER with a fake GPS, and the RC input chain into SRAM
+  (core0 88.5% to 85.4%).
 
 ## Status (one line)
 
@@ -716,7 +771,14 @@ rest is not:
   part the same night: tridge's review of `fea5156687` shows the skipped
   updates lose rotation, confirmed from the source (see the fourth round). The define
   from `971182202a` leaves it at 16 on all three RP2350 boards; the RPI_UAVFC
-  binary at `00d07c8f34` still skips DCM while the count is 15 or below
+  binary at `00d07c8f34` still skips DCM while the count is 15 or below.
+  **2026-09-17: it is in the arming path in the field.** The tester's OSD
+  video has the aircraft sitting still, reporting "PreArm: DCM Roll/Pitch
+  inconsistent" at 3 deg and then 33 deg
+  ([field-test-2026-09-17-video.md](field-test-2026-09-17-video.md)). The
+  board has one IMU, so EKF3 runs one core, so `attitudes_consistent()`
+  compares DCM against the primary rather than skipping the check. Settle it
+  with a bench build at `AP_AHRS_DCM_BACKUP_DECIMATION 1` before deciding F8
 - F13: PR size (185 files at `c1c8709823`, 178 now)
 - Core1 watchdog coverage is only indirect (`rp2350_core_affinity.h`)
 - The RAMFUNC2 section script is silent about registry misses outside
