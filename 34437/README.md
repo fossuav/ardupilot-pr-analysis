@@ -25,7 +25,8 @@ Found in #32995's core0 profile (see
 about 0.1% of core0 there, estimated from the call rate - and most of the
 software double cost on that board is legitimate position arithmetic. The
 same patch is `cc87a7b9c7` on the RP2350 branch (`b4651e30e4` since its
-2026-09-19 rebase onto `368dc0c428`).
+2026-09-19 rebase onto `368dc0c428`, `aac2547869` since the squash that
+evening).
 
 ## Evidence
 

@@ -77,24 +77,63 @@ range-diff` finds the other 287 commits unchanged. Backup
 `pre-drop-dcm/rp2350-2056` at `4805b3343c` is the rebased branch with the
 DCM commit, before the drop. Hashes cited above, renumbered:
 
-| was | now | commit |
-|---|---|---|
-| `6d2ba24fc3` | `33228ce5a8` | relay read fix, also [#34430](../34430/) |
-| `570a564a8e` | `1b00d4db8d` | ChibiOS bump, pin `4723972c44` unchanged |
-| `d94c26ee20` | `44f49e51c7` | notch coefficient-update chain in SRAM |
-| `b95f6d6ef7` | `207f42afc1` | OSD video standard re-detection |
-| `202f47e8bb` | `e8147b7865` | OSD standard re-check while disarmed |
-| `0d16573e5c` | `d7645ce123` | notch coefficient leaf in SRAM |
-| `caebec43a7` | `d9652ca650` | notch loop-rate option, also [#34436](../34436/) |
-| `982b41d3fe` | `706f76e33f` | its option docs |
-| `cc87a7b9c7` | `b4651e30e4` | float angle shaping, also [#34437](../34437/) |
-| `5e55b17873` | `49b4501ac1` | RC input chain in SRAM |
-| `c86b75980c` | `cd62494f12` | SMP thread stats reset |
-| `d403dceaa5` | `4a4be74999` | worst-slice mark, also [#34438](../34438/) |
-| `b0a6e0ef94` | `bdefe5d54d` | run test, also [#34438](../34438/) |
+| was | now | after the squash | commit |
+|---|---|---|---|
+| `6d2ba24fc3` | `33228ce5a8` | `b302c1d5b6` | relay read fix, also [#34430](../34430/) |
+| `570a564a8e` | `1b00d4db8d` | `55d6a1bb97` | ChibiOS bump, pin `4723972c44` unchanged |
+| `d94c26ee20` | `44f49e51c7` | `65edd9aeba` | notch coefficient-update chain in SRAM |
+| `b95f6d6ef7` | `207f42afc1` | `3c6fe683ca` | OSD video standard re-detection |
+| `202f47e8bb` | `e8147b7865` | `d972b92517` | OSD standard re-check while disarmed |
+| `0d16573e5c` | `d7645ce123` | `b674e33251` | notch coefficient leaf in SRAM |
+| `caebec43a7` | `d9652ca650` | `e77a6a1723` | notch loop-rate option, also [#34436](../34436/) |
+| `982b41d3fe` | `706f76e33f` | `c3a72b85be` | its option docs |
+| `cc87a7b9c7` | `b4651e30e4` | `aac2547869` | float angle shaping, also [#34437](../34437/) |
+| `5e55b17873` | `49b4501ac1` | `aa7ca064ee` | RC input chain in SRAM |
+| `c86b75980c` | `cd62494f12` | `c25b2a761f` | SMP thread stats reset |
+| `d403dceaa5` | `4a4be74999` | `666f11f890` | worst-slice mark, also [#34438](../34438/) |
+| `b0a6e0ef94` | `bdefe5d54d` | `841e7c8109` | run test, also [#34438](../34438/) |
+| | `920c2883a4` | `fade5bccc1` | build RP2350 without DCM |
+| | `0ccbd15f2c` | `d3a6c77e31` | DCM notes in `RPI_UAVFC/DEVELOPMENT.md` |
 
-Numbers keep the hash of the build they were taken on. The pushed PR head
-is still `570a564a8e`.
+Numbers keep the hash of the build they were taken on. Andy pushed
+`0ccbd15f2c` the same evening, replacing PR head `570a564a8e`.
+
+Then squashed from 289 commits to 248, local tip `d3a6c77e31`, not pushed
+(backup `pre-squash/rp2350-2140` at `0ccbd15f2c`); the tree is identical
+to `0ccbd15f2c`. Dropped: eight add-then-revert pairs whose later commit
+exactly reverses the earlier one (AP_AHRS pre-arm wording, AP_Baro DPS280,
+the AP_NavEKF3 and AC_AttitudeControl `-O2` pragmas, AP_Common NOINLINE,
+the AP_Vehicle XIP print, AP_Param uint16_t counters, AP_ESC_Telem bidir
+DShot). No commit touches AP_AHRS, AP_Baro, AP_NavEKF3,
+AC_AttitudeControl, AP_Vehicle or AP_ESC_Telem any more; AP_Common keeps
+the `reserve()` pair and AP_Param the `@READONLY` change. Folded: 25
+fixups into the commits whose own lines they change, two of which were
+retitled because what was left changed ("GCS_MAVLink: wake the FTP worker
+on a semaphore and report FTP failures", "AP_Logger: refresh the IO
+heartbeat through start_new_log()"). Candidates came from blaming the
+lines each commit changes; each was replayed through the whole branch with
+exact-context patches, and rejected where it did not apply or where a
+commit in between uses what it moves: `ExpandingString::reserve()` has
+callers until the @SYS rework, the PC sampler `#if` by value would move
+ahead of its default under `-Werror=undef`, and the blank-block report
+reads a counter a later commit adds.
+
+Compile checks at the rewritten commits: SITL copter at `7e9d452505`
+(FTP) and Pico2 copter at `de4189c281`, `840efe0a9f` and `79e7ed494f`
+(the last before `HAL_WITH_ESC_TELEM` is set, so the dropped ESC pair)
+build with no warnings. Three positions cannot be checked by building,
+because intermediate commits there were already broken before the squash:
+
+- Every ChibiOS build, STM32 included, fails from `b8853475de` (#1) until
+  `6440d223cb` (#115): #1 sets `_CHIBIOS_RT_CONF_VER_8_0_` in the shared
+  `chconf.h` and the pinned ChibiOS wants 7.0. The bootloader fold into
+  #9 was checked instead by finding every identifier it uses in that tree;
+  the RPI_UAVFC fold into #83 configures.
+- SITL copter fails from `b75fc95b04` (#42) until `ac5f627f31` (#144) on
+  an unused `last_c1_report_ms` in `rate_thread.cpp`. At the AP_Logger
+  fold (#59) AP_Logger and AP_Param compile clean before that error.
+
+Both windows are the same in the pushed `0ccbd15f2c`; not fixed.
 
 ## Companion notes
 
