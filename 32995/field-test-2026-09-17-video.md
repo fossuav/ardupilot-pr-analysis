@@ -207,6 +207,16 @@ it is cheap and worth doing before deciding F8: build RPI_UAVFC with
 `AP_AHRS_DCM_BACKUP_DECIMATION 1` and see whether the pre-arm difference
 still grows on a bench that is not moving.
 
+### 2026-09-19: DCM built out, F8 decided without the bench check
+
+The decimation-1 build was never run. DCM is built out of RP2350 instead
+(`AP_AHRS_DCM_ENABLED` 0, `920c2883a4`) and the decimation commits are
+dropped, so this pre-arm check no longer exists on the board and a filter
+fault stays on EKF3. The mechanism above is left as it was: it is still
+unmeasured, and it explains the video only if the decimation was the
+cause. Costs and savings in
+[bench-2026-09-19.md](bench-2026-09-19.md) section 6.
+
 ## The video losses are the camera rebooting (added 2026-09-18)
 
 The lost fields are two different things. Snow (lum 100, heavy noise) is
@@ -303,7 +313,8 @@ VID rail (README GPIO18; DEVELOPMENT.md and the hwdef pin names GPIO19).
 ## What this says to do next
 
 1. F8 is now a user-visible arming failure, not a performance trade-off.
-   The decimation-1 bench check above, then the decision.
+   The decimation-1 bench check above, then the decision. Decided
+   2026-09-19: DCM built out, see above.
 2. Get the report counters somewhere the tester can reach without a log
    (pace the burst, or reorder it, or a panel).
 3. Ask again for a `.bin` log. Both of these flights had one on board; the

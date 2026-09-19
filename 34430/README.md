@@ -25,8 +25,9 @@ It came out of #32995's RP2350 field testing, where two relays are the
 video and 5V regulator enables; see
 [../32995/field-test-2026-09-17-video.md](../32995/field-test-2026-09-17-video.md)
 for the investigation, the three `/pr-review` rounds and the table of
-rejected designs. The same patch is `6d2ba24fc3` on the RP2350 branch,
-which drops its copy once this merges.
+rejected designs. The same patch is `6d2ba24fc3` on the RP2350 branch
+(`33228ce5a8` since its 2026-09-19 rebase onto `368dc0c428`), which drops
+its copy once this merges.
 
 ## Evidence
 
