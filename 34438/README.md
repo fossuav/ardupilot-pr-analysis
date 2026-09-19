@@ -24,7 +24,9 @@ Found on #32995, where the RP2 SMP port's counter is a 1 MHz timer against a
 idle threads as `LOAD= 0.0%*`. The branch carries these as `d403dceaa5` (plus
 the RP2 1 MHz case) and `b0a6e0ef94` (plus the SMP per-core loop), alongside
 `c86b75980c`, which is SMP-only: the stats reset zeroed `last`, crediting a
-thread running on the other core with the whole uptime.
+thread running on the other core with the whole uptime. Since the branch's
+2026-09-19 rebase onto `368dc0c428` the three are `4a4be74999`,
+`bdefe5d54d` and `cd62494f12`.
 
 ## Evidence
 

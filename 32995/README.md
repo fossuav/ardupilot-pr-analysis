@@ -64,6 +64,38 @@ Then the `threads.txt` fixes: `c86b75980c` (the SMP stats reset),
 `d403dceaa5` and `b0a6e0ef94` (the worst-slice mark and run test, upstream as
 [#34438](../34438/)); local tip `b0a6e0ef94`, still not pushed.
 
+Later on 2026-09-19 Andy rebased the branch onto master `368dc0c428`, and
+DCM was then built out of RP2350 to settle F8 (see "Open after
+2026-09-14"): local tip `0ccbd15f2c`, 289 commits, not pushed, so the next
+push is a force push. `920c2883a4` sets `AP_AHRS_DCM_ENABLED` 0 in
+`PICO2.py` and drops the three DCM registry entries; `0ccbd15f2c` closes
+the DCM notes in `RPI_UAVFC/DEVELOPMENT.md`. The four AP_AHRS decimation
+commits are dropped (`f03b69ab06`, `e5ef0b425e`, `680244b7f3`,
+`3470687bcb` before the rebase), so `git diff 368dc0c428 HEAD --
+libraries/AP_AHRS` is empty: the PR no longer touches AP_AHRS. `git
+range-diff` finds the other 287 commits unchanged. Backup
+`pre-drop-dcm/rp2350-2056` at `4805b3343c` is the rebased branch with the
+DCM commit, before the drop. Hashes cited above, renumbered:
+
+| was | now | commit |
+|---|---|---|
+| `6d2ba24fc3` | `33228ce5a8` | relay read fix, also [#34430](../34430/) |
+| `570a564a8e` | `1b00d4db8d` | ChibiOS bump, pin `4723972c44` unchanged |
+| `d94c26ee20` | `44f49e51c7` | notch coefficient-update chain in SRAM |
+| `b95f6d6ef7` | `207f42afc1` | OSD video standard re-detection |
+| `202f47e8bb` | `e8147b7865` | OSD standard re-check while disarmed |
+| `0d16573e5c` | `d7645ce123` | notch coefficient leaf in SRAM |
+| `caebec43a7` | `d9652ca650` | notch loop-rate option, also [#34436](../34436/) |
+| `982b41d3fe` | `706f76e33f` | its option docs |
+| `cc87a7b9c7` | `b4651e30e4` | float angle shaping, also [#34437](../34437/) |
+| `5e55b17873` | `49b4501ac1` | RC input chain in SRAM |
+| `c86b75980c` | `cd62494f12` | SMP thread stats reset |
+| `d403dceaa5` | `4a4be74999` | worst-slice mark, also [#34438](../34438/) |
+| `b0a6e0ef94` | `bdefe5d54d` | run test, also [#34438](../34438/) |
+
+Numbers keep the hash of the build they were taken on. The pushed PR head
+is still `570a564a8e`.
+
 ## Companion notes
 
 - [field-test-osd-rcin.md](field-test-osd-rcin.md) - the profiling build for
@@ -89,7 +121,8 @@ Then the `threads.txt` fixes: `c86b75980c` (the SMP stats reset),
   profiling of both cores: the OSD standard fix confirmed, armed core1 from
   82% to 56.5% (notch leaf in SRAM, then the loop-rate option), core0 in
   ALT_HOLD and LOITER with a fake GPS, and the RC input chain into SRAM
-  (core0 88.5% to 85.4%).
+  (core0 88.5% to 85.4%); later the same day, what building DCM out costs
+  and saves.
 
 ## Status (one line)
 
@@ -297,6 +330,10 @@ generator emits as `#ifndef` blocks into `hwdef.h`:
 | `HAL_INS_RATE_LOOP`, `__FASTRAMFUNC__` | as master | set in `PICO2.py` | RP2350 branches in `board/chibios.h` and `AP_HAL_Boards.h` |
 | `HAL_WITH_ESC_TELEM` | master | 1 in `PICO2.py` | RP2350 branch in `AP_ESC_Telem_config.h` |
 | `AP_RP2350_DEBUG_REPORT_ENABLED` | 0 | 1 in Laurel and Pico2 `hwdef.dat` (RPI_UAVFC already set 0) | chip check in `AP_HAL_Boards.h` |
+
+2026-09-19: `AP_AHRS_DCM_BACKUP_DECIMATION` no longer exists. RP2350
+builds DCM out instead (`AP_AHRS_DCM_ENABLED` 0, `920c2883a4`), and
+`AP_AHRS.cpp` is master's text.
 
 Reverted to master, or cut down to an RP2350-only block (tridge's items in
 brackets):
@@ -729,6 +766,10 @@ the factor 16 still has no measured cost behind it, the back-pressure
 removal is still unexplained, and neither define has been put to Thomas or
 Peter yet.
 
+2026-09-19: the `AP_AHRS.cpp` one is gone. DCM is built out of RP2350
+(`920c2883a4`) and the branch leaves `libraries/AP_AHRS` at master, so
+two checks remain, both in `GCS_FTP.cpp`.
+
 **Precursor PRs (blocks Peter's `mode.cpp` and `AP_AHRS_NavEKF3.cpp`
 "similarly elsewhere" threads).** Unrelated changes still in, descending size:
 
@@ -782,6 +823,18 @@ rest is not:
   board has one IMU, so EKF3 runs one core, so `attitudes_consistent()`
   compares DCM against the primary rather than skipping the check. Settle it
   with a bench build at `AP_AHRS_DCM_BACKUP_DECIMATION 1` before deciding F8
+  **2026-09-19: decided without that check - DCM is built out.** Andy's
+  call: DCM gains this board nothing but CPU load. `920c2883a4` sets
+  `AP_AHRS_DCM_ENABLED` 0 for all three RP2350 boards and the decimation
+  commits are dropped, so AP_AHRS is master's. Copter forces
+  `FLAG_ALWAYS_USE_EKF`, so DCM was only the attitude before EKF3 starts,
+  the `filter_faults` fallback and the `attitudes_consistent()` pre-arm
+  check. Without it `fallback_active_EKF_type()` returns EKF3, so a filter
+  fault stays on EKF3, and the check that failed in the video is gone
+  (derived from the source, not measured). What it cost at 1/16 and what
+  building it out saves: [bench-2026-09-19.md](bench-2026-09-19.md)
+  section 6. Not yet booted: the three boards build with no warnings and
+  no DCM symbols
 - F13: PR size (185 files at `c1c8709823`, 178 now)
 - Core1 watchdog coverage is only indirect (`rp2350_core_affinity.h`)
 - The RAMFUNC2 section script is silent about registry misses outside
@@ -809,7 +862,7 @@ PR head before replying. Remaining:
 
 | who | file | comment | why still open |
 |---|---|---|---|
-| tpwrules | `AP_AHRS.cpp` | "Why?" | DCM skip still there, pending decision |
+| tpwrules | `AP_AHRS.cpp` | "Why?" | DCM skip still there, pending decision. 2026-09-19: gone, the file is master's and RP2350 builds DCM out; reply owed at the next push |
 | tpwrules | `stm32_util.h` | "Surely this should be fixed in ChibiOS?" | about the `PAL_LINE` override, not `STM32_HW` (corrected 2026-09-14, see the third round); fixed in ChibiOS#113, override gone since `7fd63d181b`; replied 2026-09-14, not resolved |
 | tpwrules | `Laurel/images/*.jpg` | "These pictures can be scaled down, 1MB is large ... Do we need the board at all?" | new 2026-09-14, not answered |
 | tpwrules | `bl_protocol.cpp` | "How does the board run reliably in this case?" | answered in-thread, code stands |
