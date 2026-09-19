@@ -129,11 +129,62 @@ because intermediate commits there were already broken before the squash:
   `chconf.h` and the pinned ChibiOS wants 7.0. The bootloader fold into
   #9 was checked instead by finding every identifier it uses in that tree;
   the RPI_UAVFC fold into #83 configures.
-- SITL copter fails from `b75fc95b04` (#42) until `ac5f627f31` (#144) on
+- SITL copter fails from `b75fc95b04` (#42) until `390ace7cde` (#98) on
   an unused `last_c1_report_ms` in `rate_thread.cpp`. At the AP_Logger
   fold (#59) AP_Logger and AP_Param compile clean before that error.
+  **Corrected 2026-09-19:** this was first written as ending at
+  `ac5f627f31` (#144), the commit that deletes the variable. That was read
+  off a `git log -S` of the name and never checked: #98 already guards the
+  declaration with `AP_RP2350_DEBUG_REPORT_ENABLED`, and SITL builds from
+  there.
 
-Both windows are the same in the pushed `0ccbd15f2c`; not fixed.
+Both windows are the same in the pushed `0ccbd15f2c`. Both, and the others
+the every-commit builds then found, are fixed; see "Making every commit
+build" below.
+
+## Making every commit build
+
+Andy's call on 2026-09-19, after the squash: fix the windows so the series
+bisects. Ready as `refs/scratch/buildfix7` (`37b8135640`), 247 commits,
+tree byte-identical to the pushed `0ccbd15f2c`, **not yet applied to the
+branch**.
+
+Building every commit found three more causes on top of the two above. All
+five were in shared code, and all had been fixed later in the series, so
+each fix moves to the commit that introduced the defect rather than being
+written fresh:
+
+| what broke | window | where the fix comes from |
+|---|---|---|
+| `chconf.h` says `_CHIBIOS_RT_CONF_VER_8_0_`, the pinned ChibiOS wants 7.0 | every ChibiOS build, #1-#114 | #115, with `mem_available()`'s `chCoreGetStatusX()` and the `stm32_util.h` typedefs |
+| `chibios_board.mk` compiles a `fatfs_diskio_ap.c` that exists in no tree | every ChibiOS build, #1-#17 | #18, with the `cpu_id_ptr` fix in `usbcfg_common.c` |
+| two statements before a `/* Falls into */` comment in `usbcfg_dualcdc.c`, which that makefile compiled everywhere | every ChibiOS build, #2-#109 | #110 |
+| `hal_icu_cfg` appended outside the ICU block: a stray backslash in every STM32 `hwdef.h` | every STM32 build once the above clear | #110's generator hunk |
+| the crashdump SPI path's `STM32_SPI_USE_SPIn` tests are STM32-only | Pico2, #115-#126 | #127 |
+| `sdcard.cpp`'s local `tries` shadows the parameter (`-Werror=shadow`) | RPI_UAVFC, #115-#126 | #127, as a tree transform over #1-#126 because #57 also edits those lines |
+| the pinned ChibiOS calls `spiExchangeHook`, defined only later | RPI_UAVFC, #115 | #116 |
+| `bin2uf2.py` not executable when waf starts calling it | Pico2 and RPI_UAVFC, #224 | created executable at #223, so #225 empties and drops: 248 commits to 247 |
+| the ChibiOS `override` precedes the AP_HAL declaration it overrides | every ChibiOS build, #18-#22 | the AP_HAL commit moves ahead of it |
+| unused `last_c1_report_ms` on non-RP2350 | SITL, #42-#97 | a guard at #42 that #98 then narrows |
+
+Verification, 634 builds and no failures: sitl copter 69, CubeOrange copter
+182, MatekF405 bootloader 137, Pico2 copter 122, RPI_UAVFC copter 124. Each
+commit was built for every target its changed files can feed, and each
+target's first and last commit always. The sweeps ran on the intermediate
+chains; the last round changed only `sdcard.cpp` and `spi_hook.h`, so
+#114-#119 was rebuilt on all four boards and CubeOrange spot-checked at
+#1-#3 and #57-#60.
+
+Method, in the session scratch: candidates from blaming the lines each
+commit changes, then a replay of the whole series with exact-context
+patches, which fails loudly rather than merging, and a final check that the
+tree equals `0ccbd15f2c`. No branch was touched until the result was built.
+
+Limits. Laurel is not verified, being the third RP2350 board. RP2350 boards
+cannot build before #115 whatever is moved: the kernel pin lands at #15,
+the RT 7 conversion of the SMP code at #115, the waf support in between.
+Authors are preserved; only #1 grows, absorbing about 250 lines that later
+commits used to make.
 
 ## Companion notes
 
