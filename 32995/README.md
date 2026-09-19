@@ -60,6 +60,9 @@ thread honouring the notch loop-rate option and its docs (`caebec43a7`,
 `982b41d3fe`, upstream as [#34436](../34436/)), float angle shaping
 (`cc87a7b9c7`, upstream as [#34437](../34437/)) and the RC input chain in
 SRAM (`5e55b17873`). Measured in [bench-2026-09-19.md](bench-2026-09-19.md).
+Then the `threads.txt` fixes: `c86b75980c` (the SMP stats reset),
+`d403dceaa5` and `b0a6e0ef94` (the worst-slice mark and run test, upstream as
+[#34438](../34438/)); local tip `b0a6e0ef94`, still not pushed.
 
 ## Companion notes
 
