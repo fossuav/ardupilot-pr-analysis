@@ -26,7 +26,8 @@ the RP2 1 MHz case) and `b0a6e0ef94` (plus the SMP per-core loop), alongside
 `c86b75980c`, which is SMP-only: the stats reset zeroed `last`, crediting a
 thread running on the other core with the whole uptime. Since the branch's
 2026-09-19 rebase onto `368dc0c428` the three are `4a4be74999`,
-`bdefe5d54d` and `cd62494f12`.
+`bdefe5d54d` and `cd62494f12`, and since the squash that evening
+`666f11f890`, `841e7c8109` and `c25b2a761f`.
 
 ## Evidence
 

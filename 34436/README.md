@@ -19,7 +19,8 @@ The option is `@RebootRequired`, so reading it once in
 It came out of #32995's bench work: on RPI_UAVFC, 36 per-motor notch
 coefficient sets at 1608 Hz. The same patches are `caebec43a7` and
 `982b41d3fe` on the RP2350 branch (`d9652ca650` and `706f76e33f` since its
-2026-09-19 rebase onto `368dc0c428`). Measurements in
+2026-09-19 rebase onto `368dc0c428`, `e77a6a1723` and `c3a72b85be` since
+the squash that evening). Measurements in
 [../32995/bench-2026-09-19.md](../32995/bench-2026-09-19.md).
 
 ## Evidence
