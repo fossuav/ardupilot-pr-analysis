@@ -145,9 +145,14 @@ build" below.
 ## Making every commit build
 
 Andy's call on 2026-09-19, after the squash: fix the windows so the series
-bisects. Ready as `refs/scratch/buildfix7` (`37b8135640`), 247 commits,
-tree byte-identical to the pushed `0ccbd15f2c`, **not yet applied to the
-branch**.
+bisects. Applied 2026-09-20: local tip `37b8135640`, 247 commits, tree
+byte-identical to the pushed `0ccbd15f2c`, not pushed, so the next push is
+a force push. Backup `pre-buildfix/rp2350-0020` at `d3a6c77e31`, the
+squashed branch before the fix. The hashes in the table above are now, in
+order: `3f57678b16`, `c92f5623c7`, `61a347c028`, `698fa8ea2c`,
+`021faafe76`, `d10b8c9af3`, `edeb986662`, `480cdfaa10`, `dbf7498fdf`,
+`60e2ff415d`, `2cc60a071e`, `edd326d9c2`, `de7f738ccd`, `f43c0d691e` and
+`37b8135640`.
 
 Building every commit found three more causes on top of the two above. All
 five were in shared code, and all had been fixed later in the series, so
