@@ -1053,6 +1053,75 @@ Refuted, with what was checked:
   and the tracking table in the bench note is the combined effect. #34436's
   description now states it instead.
 
+## The 2026-09-20 automated review at `ecf9de3051`
+
+Re-reviewed after the DCM reversal: of 22 findings, 14 resolved, 5 dropped
+("because you are right"), 6 open. All three previously admitted ChibiOS gaps
+closed in our favour once `modules/ChibiOS` was checked out, including the
+`THREAD_STATS_COUNTER_HZ` SMP test and the `chTMObjectInit()` reading.
+
+Items 3-9 were done as eight commits. Item 1 (two commit prefixes) and item 2
+(the six board-validation items that actually block CI: a missing
+`RPI_UAVFC-SimOnHardWare/README.md`, nine `SERIALn_*` lines in `defaults.parm`
+that `test_new_boards.py` wants as `define DEFAULT_SERIALn_*`, and Laurel's
+unreferenced JPEGs) are deferred by Andy.
+
+- `c493fb6e39` **Pico2 reported 375 MHz for a part running at 250.**
+  `MCU_CLOCKRATE_MHZ` was absent, so `HAL_EXPECTED_SYSCLOCK` fell back to
+  `PICO2.py`'s 375 MHz - a rate no board runs - and `@SYS/threads.txt` and
+  CPUInfo divided by it. The fallback is now the stock 150 MHz.
+- `57200be57d` and the structural half the review suggested: `RP_PLL_SYS_CLK`
+  is a compile-time expression, so `system.cpp` can `static_assert` the
+  declared rate against the PLL dividers the way it does for STM32. That
+  turns this whole class of mistake into a build error.
+- `da4dd16ddb` **the 8E2 SBUS program was selected on `OPTION_RXINV` alone**,
+  so FPort - inverted but 8N1, and recommended with `SERIAL3_OPTIONS 15` in
+  our own README - got a parity-skipping receiver. Gated on the same
+  inverted-at-100000-baud test the byte assembler already used, which now
+  reads one flag rather than repeating the test. The same commit answers the
+  footer-whitelist finding: alignment is enforced with a 2 ms frame-gap test
+  in the PIO layer, because that is the last layer that knows the wire timing.
+  A batched port has none left by the time the bytes reach the decoder, which
+  is exactly what #33057 is for, so the two are consistent rather than in
+  tension.
+- `87430fdc70` **the FTP semaphore leaked on every failed `init()`**, and a
+  remote peer paced the retry: `handle_file_transfer_protocol()` calls
+  `init()` per packet, so each one allocated another and dropped the pointer,
+  in exactly the low-memory state that made `thread_create()` fail.
+- `0b3402796a` `hrt_micros64()` and the ADC error callback took the ARMv8-M
+  port lock inline without `__dbg_check_lock()`, so an asserts build halts in
+  `chSysHalt()`. Release firmware was never affected, which is why it flies.
+- `71a7ae3872` **`HAL_GPIO_INIT_LEVELS` only covered pins with a `GPIO()`
+  number**, so an OUTPUT pin without one had its `HIGH`/`LOW` silently
+  dropped - and `board_rp2350.c`'s leftover `palClearLine(BEC_9V_EN)` then ran
+  *after* the table and undid the HIGH it had just applied. On RPI_UAVFC the
+  9V rail only came up because RELAY3 raised it later. The table now takes the
+  level from the pin's own qualifier, and only an explicit one, since
+  `get_ODR_value()` defaults to HIGH. Laurel's 9V enable is declared LOW to
+  match its own hwdef comment and README.
+- `bbaf70a578` the doc figures: Laurel still said 375 MHz / VSEL 15 / CLKDIV 6
+  in four files, Pico2 still said 150 MHz in three, and `DEVELOPMENT.md` still
+  claimed `MAIN_STACK` had had to be raised, which was the free-stack misread
+  and was reverted.
+
+**Item 5 was answered with a sentence rather than a VSEL.** Pico2 runs a 1.67x
+overclock with no `RP_VREG_VSEL`, so `rp2350_vreg_init()` is compiled out and
+the core stays at 1.1 V, where Laurel and RPI_UAVFC raise it to 1.15 V for a
+slower 225 MHz. Laurel's own record has a 300 MHz LOCKUP at 1.1 V. There is no
+Pico2 on the bench, and raising the core voltage of a board nobody can test is
+not better than disclosing that it is uncharacterised. The hwdef says so now,
+and names VSEL as the first thing to try.
+
+**ISSUE 2's remainder is answerable from the source and needs no code change.**
+The review's worry is that gating `rate_controller_filter_update()` decimates
+the backend coefficient push along with the re-centre, taking a 100->200 Hz
+step from 7.0 ms to 35 ms. But `AP_InertialSensor::update()` calls every
+backend's `update()` each main loop, and that reaches `update_gyro_filters()`
+and the same `notch.update_params()` (`AP_InertialSensor_Backend.cpp:844`),
+rate thread or not. So the push still happens every main loop, exactly as on a
+vehicle with no rate thread; what is gated is the *extra* push the rate thread
+was making on top. #34436's description now says this.
+
 ## Open review threads (8 of 41)
 
 Closed this session: 12, each verified against the tree **and** against the
