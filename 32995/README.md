@@ -774,10 +774,16 @@ Build and flash notes:
 - A stuck app ignores the uploader's MAVLink reboot; start the uploader
   first and power-cycle the board so it catches the bootloader
 - OpenOCD from WSL: `cd /opt/openocd-0.12.0+dev-x64-win && ./openocd.exe -s
-  scripts -f interface/cmsis-dap.cfg -f target/rp2350.cfg -c "gdb port
-  50000" -c "tcl port 50001" -c "telnet port 50002"`; tcl `read_memory`
-  and `rp2350.cmN read_memory 0xE000101C 32 1` (PC samples) do not halt.
+  "$(wslpath -w /opt/openocd-0.12.0+dev-x64-win/scripts)" -f
+  interface/cmsis-dap.cfg -f target/rp2350.cfg -c "gdb port 50000" -c "tcl
+  port 50001" -c "telnet port 50002" -c "adapter speed 5000"`; tcl
+  `read_memory` and `rp2350.cmN read_memory 0xE000101C 32 1` (PC samples) do
+  not halt. The scripts path has to be the Windows form or it cannot find its
+  own configs, and without the speed line sampling runs at a few hundred Hz.
   Shut it down before any flash or reboot
+- When the probe answers DPIDR but no AP enumerates and every memory read
+  fails, suspect the WSL host side before the board: BOOTSEL cleared the
+  firmware as a cause on 2026-09-19 and a host reboot fixed it
 
 Still to decide before any push: F8 (tridge shows
 the 1/16 decimation loses rotation), and tridge's other findings from the
