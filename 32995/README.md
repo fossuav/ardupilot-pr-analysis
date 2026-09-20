@@ -961,7 +961,15 @@ rest is not:
   that accessor and survived. DCM is back at full rate with its three
   functions in the SRAM registry; the decimation stays gone. The cost and
   what is still unmeasured: [bench-2026-09-19.md](bench-2026-09-19.md)
-  section 6
+  section 6.
+  **2026-09-20: measured on the board, and it closes F8.** Full-rate DCM is
+  1.53% of core0 (460,000 PCSR samples, disarmed) and nothing at all on core1,
+  where the margin is tight. The 2.0-2.7% carried above was the 1/16 figure
+  scaled by 16 and it was too high: `get_results` never was decimated. More to
+  the point, DCM now tracks the EKF3 primary to 0.02 deg in roll/pitch against
+  the 10 deg pre-arm limit, with `_error_rp` around 0.001, where the video had
+  it failing at 3 and then 33 deg. The decimation was the fault, not DCM.
+  [bench-2026-09-19.md](bench-2026-09-19.md) section 7
 - F13: PR size (185 files at `c1c8709823`, 178 now)
 - Core1 watchdog coverage is only indirect (`rp2350_core_affinity.h`)
 - The RAMFUNC2 section script is silent about registry misses outside
