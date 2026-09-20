@@ -948,7 +948,20 @@ rest is not:
   (derived from the source, not measured). What it cost at 1/16 and what
   building it out saves: [bench-2026-09-19.md](bench-2026-09-19.md)
   section 6. Not yet booted: the three boards build with no warnings and
-  no DCM symbols
+  no DCM symbols.
+  **2026-09-20: reversed, and the removal was wrong.** The automated review
+  on the PR found it first (ISSUE 0): `COMPASS_CAL_ENABLED` is
+  `AP_COMPASS_ENABLED && AP_AHRS_DCM_ENABLED`, because
+  `CompassCalibrator::AttitudeSample::set_from_ahrs()` reads attitude through
+  `AP_AHRS::get_DCM_rotation_body_to_ned()`, which lives inside
+  `#if AP_AHRS_DCM_ENABLED`. Building DCM out therefore compiled out
+  interactive compass calibration - the `MAG_CAL` command handling, the
+  calibrator, its pre-arm check and the aux function - on a board with no
+  compass of its own. Fixed-yaw calibration and `COMPASS_LEARN` do not touch
+  that accessor and survived. DCM is back at full rate with its three
+  functions in the SRAM registry; the decimation stays gone. The cost and
+  what is still unmeasured: [bench-2026-09-19.md](bench-2026-09-19.md)
+  section 6
 - F13: PR size (185 files at `c1c8709823`, 178 now)
 - Core1 watchdog coverage is only indirect (`rp2350_core_affinity.h`)
 - The RAMFUNC2 section script is silent about registry misses outside
