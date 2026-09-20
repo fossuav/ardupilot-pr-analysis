@@ -1144,6 +1144,24 @@ could be the one that followed the silence, and letting a leading noise byte
 spend it cost the real header behind it. The gap is now consumed only when a
 frame actually starts.
 
+### The commit prefixes, and the CI failure behind them
+
+Fixed by rewording two commits, which is all the failing check ever wanted.
+`Tools/scripts/allowed_subsystems.py` maps `Tools/ardupilotwaf/chibios.py` to
+`waf` alone and `AGENTS.md` to `Tools` alone, so "ardupilotwaf: build a UF2 for
+RP2350 firmware" became "waf: ardupilotwaf: ..." - matching four sibling
+commits already on the branch - and "AGENTS.md: list RPI_UAVFC in the board
+table" became "Tools: list RPI_UAVFC in the AGENTS.md board table". Master's
+own history carries plenty of bare `ardupilotwaf:` and `AGENTS.md:` subjects;
+the checker is newer than they are.
+
+Done non-interactively, with `GIT_SEQUENCE_EDITOR` marking exactly those two
+commits for reword and `GIT_EDITOR` rewriting a subject only when it matches
+one of the two strings, so nothing else could be touched by accident. 47
+commits replayed, the tree verified identical to a backup ref afterwards, and
+all 270 branch commits now pass the mapping. Rewriting at depth 47 means the
+next push of this branch is a force push.
+
 ### The 9V rail finding, and what the history actually says
 
 Reported as "the 9V rail now comes up enabled at boot on RPI_UAVFC", from the
