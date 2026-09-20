@@ -1122,6 +1122,55 @@ rate thread or not. So the push still happens every main loop, exactly as on a
 vehicle with no rate thread; what is gated is the *extra* push the rate thread
 was making on top. #34436's description now says this.
 
+## The 2026-09-20 follow-up review at `bbaf70a578`
+
+Two resolutions (the clock constant, checked across all seven RP2350
+configurations including the three bootloaders; and the FTP semaphore), three
+new findings, and the two commit prefixes still named as the entire CI
+failure.
+
+**The frame-gap test was broken in a way worth remembering.** `_service_irq()`
+is the shared vector for both directions, and TXNFULL is true whenever the TX
+FIFO has room, so timestamping every entry to `_service_rx_fifo()` refreshed
+`last_byte_us` continuously while the port had anything to send. The 2 ms of
+silence could then never be observed, no `0x0F` was ever accepted, and SBUS
+would not have synced at all on a port that also transmits. The comment three
+lines above the bug says TXNFULL "never stops firing"; the code was written
+anyway. `6011171ede` takes the timestamp from a byte that actually arrived.
+
+The same commit takes the reviewer's ISSUE: a discarded byte no longer
+consumes the gap. All bytes in a batch share one timestamp, so any of them
+could be the one that followed the silence, and letting a leading noise byte
+spend it cost the real header behind it. The gap is now consumed only when a
+frame actually starts.
+
+### The 9V rail finding, and what the history actually says
+
+Reported as "the 9V rail now comes up enabled at boot on RPI_UAVFC", from the
+hwdef comment saying the rail is "held off until the power tree is validated".
+Half right, and the half that matters was already settled here:
+
+- **Polarity is active HIGH.** Each enable drives an MP4334 EN through a
+  pull-down, so LOW or floating is off. The rail being observed on does *not*
+  make it active-low, and DEVELOPMENT.md already says not to touch
+  `RELAY3_INVERTED` on that basis.
+- **Pin mapping on the supported final revision is PA18 = 5V, PA19 = 9V.** The
+  earlier revision had them swapped, which is where every wrong mapping in the
+  notes came from. The hwdef *labels* were right; its own comment and the
+  bootloader hwdef were the ones disagreeing, so a reader had three mappings
+  to choose from.
+- **The rail was already being enabled.** `RELAY3_FUNCTION 1` with
+  `RELAY3_DEFAULT 1` means `AP_Relay::init()` drives GPIO 82 ON
+  (`AP_Relay.cpp:387-398`, `DefaultState::ON == 1`). Removing the leftover
+  `palClearLine()` removed the brief low period between board init and relay
+  init, not the enable. The stale text was the "held off" sentence, written
+  when both relay defaults were 0.
+
+So `8380799f31` corrects the comment and the bootloader labels and leaves the
+level alone. Turning the rail off at boot would mean `RELAY3_DEFAULT 0` as
+well, which is a behaviour change on a board whose VTX runs off that rail, and
+is Andy's call rather than a reviewer's.
+
 ## Open review threads (8 of 41)
 
 Closed this session: 12, each verified against the tree **and** against the
