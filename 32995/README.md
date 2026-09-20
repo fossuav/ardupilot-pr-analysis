@@ -982,6 +982,63 @@ rest is not:
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
 
+## The 2026-09-19 automated review, and 2026-09-20's answers
+
+AP-Review's pass over the delta between the two pushed heads: 1 of 22 earlier
+findings resolved, 21 untouched, six new. What was done, and what was refuted
+so it is not raised again.
+
+Acted on: ISSUE 0, the compass calibration that went with DCM - the strongest
+finding of the round, and the DCM entry above has it. ISSUE 1 falls out of the
+same change. NOTE 6, the split-out PRs missing from the table, was already
+fixed that morning. Then, as commits on the branch:
+
+- `d2ad05e614` the RAMFUNC2 size annotations. 38 of 207 were stale, not the six
+  the review named; two were out by more than 10x. Refreshed from the RPI_UAVFC
+  binary, which is what the heap-budget argument is made from.
+- `80bdaddd00` FLASHING.md. Laurel's app offset is `0x10010000`, not RPI_UAVFC's
+  `0x10020000`; and the parameter loss after a `_with_bl.hex` flash is the hex
+  itself, measured at 65,536 bytes of `0xff` across `0x10010000-0x1001fff0` on
+  the RPI_UAVFC image, not the firmware that was there before.
+- `c1a04fe43a` the OSD publish: a block rendered while a late one went out was
+  published anyway. Also the interrupt rate, which was still an eight-line
+  block's.
+- `ee5a400928` SBUS drop accounting, and `ecf9de3051` the footer whitelist -
+  five accepted byte values, so a receiver outside the set loses every frame.
+  Upstream took the same list out in #33057 for the same reason; that one was
+  found here rather than by the review.
+- `21f63a7f93` CPUInfo's fixed 375 MHz, against 225 on two of the three boards.
+- `2b7826d011` AP_Relay. Behind the `Bitmask<256>` note is a real defect:
+  `ensure_output()` took a `uint8_t` while the API takes `int16_t`, so a GPIO
+  above 255 tested another pin's bit and then set the mode on the truncated
+  number.
+- `7c9ba203cb`, `0674c732aa`, `e546e8dfd3` the smaller notes.
+
+Refuted, with what was checked:
+
+- **`advance_to()` "early-returns on a blank block without draining".** The drop
+  loop discards any queued block whose tag is not the current one. After a run
+  of blank blocks the queue legitimately holds *future* blocks, so draining
+  there would throw away work already rendered. The early return is right.
+- **`PICO2.py:49`'s 375 MHz is not stale.** It is the live default, and Pico2
+  generates `HAL_EXPECTED_SYSCLOCK 375000000` from it; RPI_UAVFC and Laurel
+  override with `MCU_CLOCKRATE_MHZ 225`. Only CPUInfo's copy was wrong.
+- **NOTE 3's "keying on `defined(RP2350)` alone would be safe either way" is
+  wrong**, and would under-report by 225x on a non-SMP RP2350 build. Only the
+  SMP RP2 port reads the 1 MHz TIMER0
+  (`ARMv8-M-ML-ALT/smp/rp2/chcoresmp.h:202`); the non-SMP ARMv8-M port a
+  single-core build would use takes DWT CYCCNT at the core clock
+  (`ARMv8-M-ML-ALT/chcore.h:1330`). The review said it could not check this
+  without the submodule checked out.
+- **ISSUE 2, in its remedy rather than its observation.** It is right that
+  `rate_controller_filter_update()` also calls `ins.update_backend_filters()`,
+  so the gate covers more than the commit message says. But leaving that half
+  at gyro/2 would hand back most of the saving: `update_gyro_filters()` calls
+  `notch.update_params()` for every enabled notch, which is where the
+  coefficients are recomputed. The 66% to 56.5% was measured with both gated,
+  and the tracking table in the bench note is the combined effect. #34436's
+  description now states it instead.
+
 ## Open review threads (8 of 41)
 
 Closed this session: 12, each verified against the tree **and** against the
