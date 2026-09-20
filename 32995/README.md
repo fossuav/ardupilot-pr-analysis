@@ -1162,6 +1162,36 @@ commits replayed, the tree verified identical to a backup ref afterwards, and
 all 270 branch commits now pass the mapping. Rewriting at depth 47 means the
 next push of this branch is a force push.
 
+### The board-validation items
+
+Five of the six cleared; the sixth is a decision rather than a fix.
+
+- **The nine `SERIALn_*` lines** are now `DEFAULT_SERIALn_*` defines in the
+  hwdefs. Worth doing on its own merits: both hwdefs were disabling ports that
+  defaults.parm then enabled, so you had to read two files to know what a port
+  did. Laurel's hwdef said SERIAL4 was off while its defaults.parm ran it at
+  MAVLink2, and Pico2's said SERIAL1 and SERIAL2 were off while its
+  defaults.parm ran both. The defines now carry the effective values, so
+  nothing moves at runtime, and all three boards build with
+  `AP_SERIALMANAGER_DEFAULTS_CHECKS_ENABLED`, which is what the script turns on.
+  One loss: Laurel's `SERIAL2_BAUD 115 @READONLY` cannot stay read-only as a
+  define. The default is unchanged, the lock is gone.
+- **Laurel and Pico2 READMEs** now reference the images their directories were
+  already carrying, and Laurel's two 3000x4000 photos went from 2.2 MB to
+  591 KB, which is what tpwrules asked for on 2026-09-14.
+- **`RPI_UAVFC-SimOnHardWare/README.md`** exists now. Master's own
+  `*-SimOnHardWare` directories carry no README at all; they predate the check.
+- **The image for RPI_UAVFC is not solved.** There is no photo of that board
+  anywhere in the repo or any branch, so `check_new_board_readme()` fails for
+  it and for the SimOnHardWare variant, which would reference the same file.
+  Andy's call on 2026-09-20 was to leave it failing rather than substitute a
+  generated diagram. One photo dropped into `RPI_UAVFC/images/` closes both.
+
+Note that running the script locally is misleading unless the local `master`
+ref is current: it takes the merge-base against `master`, so a stale ref pulls
+in dozens of boards that came from upstream and reports their failures as
+yours. `HCR-523` and `ModalAI-VOXL3` both fail this check in master today.
+
 ### The 9V rail finding, and what the history actually says
 
 Reported as "the 9V rail now comes up enabled at boot on RPI_UAVFC", from the
