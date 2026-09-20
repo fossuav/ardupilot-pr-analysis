@@ -287,6 +287,25 @@ and `AP_HAL_ChibiOS`, so for the four commits that touch hwdef plus
 Splitting `220bb78f2a` ("enable SMP dual-core") would have left a
 non-compiling intermediate commit.
 
+**SBUS is supported, and the feature table said otherwise until
+2026-09-20.** The PIO UART has a dedicated 8E2 receive program, inverts the
+pad through `INOVER`, assembles whole 25-byte frames and debounces the
+failsafe flag; the PL011 path sets parity, stop bits and `INOVER` too. What
+was missing is upstream: `AP_RCProtocol_SBUS::_process_byte` will not start
+a frame unless the header arrives `HAL_SBUS_FRAME_GAP` (2 ms) after the
+previous byte, and on a batched port those timestamps are service times, so
+a service carrying two frames loses framing and master discards the buffer
+rather than resyncing. ArduPilot/ardupilot#33057 fixes that and Andy measured
+continuous frame drops without it, so treat it as required rather than
+nice-to-have. Not yet run against a receiver on an RP2350 board; CRSF is
+what has flown. The dedicated GPIO41 pad stays unbound for two independent
+reasons, both worth not re-deriving: its only hardware-UART function is
+`UART1_RX`, which the GPS owns on GPIO36/37, and the PIO UART instance
+table hard-maps instances 0-1 to PIO0 (all four state machines) and 2-3 to
+PIO1, which `pio1_claim(PIO1Owner::OSD)` takes on RPI_UAVFC - so a third
+PIO UART costs the analog OSD. SBUS therefore goes to the RADIO pad,
+SERIAL3, with `SERIAL3_OPTIONS` 1.
+
 **ChibiOS submodule: the only remaining red check, and it is not fixable
 here.** `check_submodule_references_exist` requires the SHA to be reachable
 from **master** in the canonical repo, accepting only compare status `behind`
