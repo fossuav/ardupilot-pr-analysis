@@ -1122,6 +1122,65 @@ rate thread or not. So the push still happens every main loop, exactly as on a
 vehicle with no rate thread; what is gated is the *extra* push the rate thread
 was making on top. #34436's description now says this.
 
+## The MSP DisplayPort fault: the port was never transmitting (2026-09-21)
+
+Diagnosed live over SWD on a running board, no halting, no instrumented build.
+Root cause: SERIAL1 had no UART thread, so it had never transmitted a byte.
+`UARTDriver.cpp:645` - RP2350-specific code in this PR - defers `thread_init()`
+for a non-USB port whose `begin()` runs before the scheduler is initialised,
+and SERIAL1 is opened early by MSP and OSD init. The three lazy retries meant
+to catch that up all sit behind a write, and `msp.cpp:35` stops calling
+`write()` once the buffer is full, so the retry inside `_write()` is
+unreachable. Deadlock. Fixed by `start_deferred_threads()` from
+`Scheduler::set_system_initialized()`.
+
+Before: `uart_thread_ctx` NULL, thread name buffer empty (so `thread_init()`
+was never entered at all), `_writebuf` pinned at 1022/1024 with `head` unmoved
+over ten minutes, zero bytes transmitted against 3621 on the GPS port, and
+every queued frame `$M>` cmd 182 with no replies. After: thread `UART0`,
+298,466 bytes transmitted, ring cycling, DisplayPort frames plus `$M>` replies
+to all eleven polled commands. Andy: "OSD is working again".
+
+### What I got wrong on the way, and what the evidence actually said
+
+- **I proposed the wrong fix first.** The peer polls a DJI-style telemetry set
+  and never asks for `MSP_OSD_CANVAS`, `MSP_OSD_CONFIG` or `MSP_FC_VARIANT`,
+  cold or warm, so I concluded it was not a DisplayPort peer and recommended
+  `OSD_TYPE 3` / `SERIAL1_PROTOCOL 33`. It is a DisplayPort peer: it renders
+  the pushed cmd 182 frames without ever requesting a canvas. Andy pushed back
+  that it felt more fundamental than a mode mismatch, and he was right.
+- **I also guessed it had pruned commands that went unanswered.** It polls the
+  same eleven now that it is being answered, so that was never true.
+- **Three "no gap" captures were worthless** because my windows expired before
+  he reached the bench. The lesson is to run the capture until told to stop and
+  timestamp it in wall clock, not to pick a duration and hope.
+- **A claim of mine about the CPU cost of dropping #34436 was wrong** and he
+  caught it: with `INS_HNTCH_OPTS` bit 2 set, which is how the board flies, the
+  commit changes neither behaviour nor load.
+
+### What it corrects in the board notes
+
+The old section's central claim - "both directions of that connector work" -
+was wrong. Only receive did. The `UART` log figure of 5378 B/s tx that it
+rested on needs re-reading before it is cited again. The intermittency is
+explained too: whether `begin()` lands before or after system init is a race,
+so the overlay worked on some boots. Two of the probe steps in open item 8
+would have misled - an idle TX pin on a scope reads as a mux or DMA fault, and
+`tx_dma_enabled` was 0 so the `txdma` check was aimed through the wrong
+mechanism.
+
+### Method
+
+Addresses from the ELF, since the build ships no DWARF types:
+`AP_MSP::_singleton` and `UARTDriver::serial_drivers` for the objects, field
+offsets from disassembling the functions that touch them -
+`msp_parse_received_data()` gives `cmd_msp` at +210, `write_pending_bytes_NODMA()`
+gives `_writebuf` at +0x6c, `thread_init()` gives `uart_thread_ctx` at +0x28.
+Sampling `cmd_msp` at ~1.9 kHz recovers the peer's command stream; unplugging
+the cable and watching the stream stop is what proved which device was talking;
+diffing the stuck port's object against the working GPS port's is what found
+the null thread pointer.
+
 ## #34436 dropped from the branch (2026-09-21)
 
 Andy's call: carry only what the port needs to be tested. Of the five PRs he
