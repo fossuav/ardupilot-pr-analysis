@@ -1,7 +1,7 @@
 # EKF3: select the lane that runs the source set being asked for
 
-**Not yet opened.** Rename this directory to the PR number when it is, and move
-the row in the root README with it.
+**Open as [#34456](https://github.com/ArduPilot/ardupilot/pull/34456)**,
+opened 2026-09-21 from `pr-srcset-selects-lane` at `de049bb620`.
 
 Ten commits on `andyp1per/pr-srcset-selects-lane`, which want squashing to four
 before the PR is opened: `952292212e` (AP_NavEKF, a public accessor),
