@@ -4,8 +4,8 @@
 the row in the root README with it.
 
 Two commits on `SmallFastDrone-4.7.1-beta`, to be lifted onto master:
-`8461433db6` (AP_NavEKF3, the fix) and `7433f71001` (autotest). It is a master PR and not one of the AGL KF
-stack in flight: the clamp came in with the AGL KF itself, which the SFD base
+`8461433db6` (AP_NavEKF3, the fix) and `7433f71001` (autotest). It is a master
+PR and not one of the AGL KF stack in flight: the clamp came in with the AGL KF itself, which the SFD base
 carries as a merged upstream PR, and #33359, #33478 and #33507 all stack on top
 of it. Numbers below were taken at `8461433db6` unless another commit is named.
 
