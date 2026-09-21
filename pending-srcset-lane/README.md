@@ -73,6 +73,35 @@ three ways on this airframe (0.88 forward-axis from log9's flow calibration, 0.9
 to 0.98 by height on log11, 0.94 on the lane that flew) and is a sensor
 calibration matter, not this PR's.
 
+#### Superseded 2026-09-21 by the log15 calibration
+
+The under-read is now measured per axis on a flight flown for it - log15, 5644
+usable samples, 3265 forward and 2352 strafe, range finder Good 99.5 %, mean
+height 9.47 m with 4 % near the 15 m cap so no truncation bias:
+
+| axis | flow/ideal | corr | cross-axis | was | fitted |
+|---|---|---|---|---|---|
+| X (sideways) | 0.97 | 0.99 | 1 % | `FLOW_FXSCALER` -88 | -60 |
+| Y (forward) | 0.90 | 0.99 | 3 % | `FLOW_FYSCALER` -148 | -50 |
+
+The sensor-rate check passes on both axes (+1.00 and +0.99, corr 0.99 and 0.98),
+so the node's output rate and `FLOW_ORIENT_YAW` are right and no `FLOW_HF_RATEF`
+correction is wanted; cross-axis at 1 % and 3 % against a 15 % threshold rules
+out a rotated flow frame.
+
+`flow/ideal` is ambiguous between flow scale and height, and both halves are
+closed here. A height error scales **both** axes equally, so the seven-point gap
+between X and Y can only be flow scale. And the height itself checks out
+independently: `dRFND/dt` against GPS-Doppler climb rate gives slope 0.965,
+intercept +0.01 m/s, corr 0.993 over 952 samples, with the residual consistent
+with the 1 s differentiation baseline attenuating a changing climb rate.
+
+The finding above is left in place because the three numbers in it are what made
+the deficit credible before a flight was flown for it, and because the 0.94 it
+records is the figure for **this** flight - log14 flew the old scalers. Any
+re-measurement of the drift has to be on a flight flown with the fitted values,
+which is a different measurement, not a correction of this one.
+
 ## The objection this PR has to meet
 
 Source sets and cores are orthogonal concepts and should stay that way; the EKF3
