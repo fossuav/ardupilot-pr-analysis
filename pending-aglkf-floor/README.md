@@ -149,14 +149,20 @@ before reading a flight as a control.
 
 ## Still owed
 
-- **The test's helpers are a prerequisite, not the SITL knob.** An earlier note
-  here called `SIM_SONAR_OFFSET` a prerequisite; that is wrong for a master PR.
-  Master defines it already (`AP_GROUPINFO("SONAR_OFFSET", 57, SIM, sonar_offset,
-  0)`); the branch carries `4afd3b3524` only because the 4.7 base predates it.
-  What master does **not** have is `xkfa_recent_mean` and `xkfa_peak_abs`, which
-  arrived with `OpticalFlowAGLKalmanFilter` in #33507's stack. The test either
-  stacks on that or reads XKFA itself; self-contained is preferred, so the PR
-  does not wait on an unmerged one.
+- ~~The test's helpers are a prerequisite~~ - settled by stacking on #33507.
+  `SIM_SONAR_OFFSET` is **not** a prerequisite, contrary to an earlier note here:
+  master defines it (`AP_GROUPINFO("SONAR_OFFSET", 57, SIM, sonar_offset, 0)`)
+  and the branch carries `4afd3b3524` only because the 4.7 base predates it. What
+  master lacks is `xkfa_recent_mean` and `xkfa_peak_abs`, which arrive with
+  #33507's range finder excursion test and need its bias-state code to pass.
+  Rather than duplicate them, the PR branch carries #33507's seven commits
+  cherry-picked **patch-identical**, so whichever merges first the duplicates
+  drop out when the branch is replayed onto master. Verified rather than
+  assumed: all seven patch-ids match the upstream originals (`72da83dea5ce`,
+  `3d232028922a`, `2d7f8c8b3d39`, `526114696b0d`, `51fa15d07ed8`,
+  `78f8068e1242`, `3e3f77500555`), which is the comparison git itself makes.
+  #33507 already uses this pattern for its own decay commit against #33478's
+  copy.
 - **The ground-effect release timing is unmeasured by Replay**, which feeds the
   recorded `takeoff_expected` and so never exercises the release path at all.
   log10's "terrain offset reset from baro" fires 2.0 s after NOT_LANDED, exactly
