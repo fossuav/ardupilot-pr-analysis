@@ -1122,6 +1122,49 @@ rate thread or not. So the push still happens every main loop, exactly as on a
 vehicle with no rate thread; what is gated is the *extra* push the rate thread
 was making on top. #34436's description now says this.
 
+## Review round at `5c7814430a`, and a pattern worth naming (2026-09-21)
+
+Verdict COMMENT. Two new findings, both against yesterday's UART fix, both
+correct; five carried, four of them mine.
+
+- **The fix had a race I introduced.** `start_deferred_threads()` ran *after*
+  `_initialized = true`, and every other caller of `thread_init()` is gated on
+  that flag while `thread_init()`'s own null check is check-then-act. A writer
+  could have created a second thread for one port. Moved above the flag.
+- **The `txdma` null-deref is real and I had half-dismissed it.** Recording
+  that `tx_dma_enabled` was 0 on the failing board was right, and closing the
+  DisplayPort investigation did not close this: the RX path clears
+  `rx_dma_enabled` when both allocations fail, the TX path had no such branch.
+- **Two genuine PIOUART bugs**, neither from this PR's recent work:
+  `_drain_tx_fifo()` reads a byte then writes it and runs from both `_write()`
+  and the ISR, so an interrupt in that window reorders the wire; and
+  `txspace()` returned a constant 512 whenever the hardware FIFO had a slot,
+  against 511 actually accepted on an empty ring, which MAVLink reads as a
+  promise.
+- **Open by choice:** the RP2350 `thread_init()` gate itself. The reviewer is
+  right that removing it would delete the bug class and the scaffolding around
+  it, but `git log -S` puts it in the original port commit with no recorded
+  rationale, and it changes when every non-USB port starts its thread. Bench
+  it rather than guess.
+
+### The pattern: I keep fixing the file instead of the claim
+
+All four carried findings that were mine are the same mistake. Turning Pico2's
+SMP off corrected two table rows and left the file header calling it "the
+current SMP branch", the prose still saying SMP was re-enabled and the
+dispatcher was "not the default", one table cell carrying both accounts at
+once because the new sentence was prepended to the old, and `c1_main.c` still
+calling SMP "the default" - on the board whose `c1_main.c` is the reason it is
+off. Correcting the `SIM_RATE_HZ` claim in a README left the same claim in
+`defaults.parm`, written by me two commits earlier.
+
+These files state the same fact in several registers - status table, prose,
+code comment, parameter file - so a half-corrected tree reads as
+self-contradicting and costs a review round every time. Andy caught it before
+the bot did. The rule now: after changing a stated fact, grep for the old
+claim's distinctive words and for the define it rests on, and fix every hit
+before committing.
+
 ## The MSP DisplayPort fault: the port was never transmitting (2026-09-21)
 
 Diagnosed live over SWD on a running board, no halting, no instrumented build.
