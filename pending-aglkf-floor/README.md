@@ -90,7 +90,38 @@ samples. Unfixed, that bias integrates to **-7.5 m/s**.
 
 log10 and log14 also carry the fix with no wind-up and no height step.
 
-### 4. Not a recent regression (tier 1)
+### 4. What the fix does not do: in-flight aiding churn (tier 1b, Replay of log17)
+
+log17 is an acro flight on the fixed build whose raw numbers invite a wrong
+claim: flow aiding stop/start pairs fell from log9's 16 to 4 and flow velocity
+resets from 7 to 1. That is the flight profile, not the fix. log17 spent 39.4 %
+of its acro past the flow tilt limit against log9's 66.7 %, at a median 17.8 m
+against 26.3 m, with 73.6 % above the 15 m range finder cap against 90.1 %.
+
+Replaying log17 through both code versions removes the profile entirely - and
+log17 flew with `EK3_PRIMARY` 0, so the flow lane was a passenger and the
+trajectory was GPS-driven, which is the condition Replay needs to be exact:
+
+| on log17's own sensor stream | without the fix | with it |
+|---|---|---|
+| AGL KF floor velocity, core 0 / core 1 | **-5.92 / -6.00 m/s** | **-0.06 / -0.06** |
+| samples on the floor below -1 m/s | 831 / 769 | **0 / 0** |
+| optical flow velocity resets | 3 | **1** |
+| aiding-mode transitions, core 0 / core 1 | 2 / 6 | 2 / 6 |
+| AID_RELATIVE / AID_NONE, core 1 | 88.5 % / 11.1 % | 88.5 % / 11.1 % |
+| AGL KF valid, core 1 | 70.8 % | 70.8 % |
+| peak excursion, core 1 | 285.0 m | 286.8 m |
+
+**The aiding-mode transitions are identical**, and so is how much of the flight
+the flow lane spent relative-aided. The churn in acro is the flow tilt limit and
+the range finder ceiling, which this change does not touch, and the PR must not
+claim it. What moves is the ground wind-up, which is what the fix is for, and the
+flow velocity resets - 3 to 1 here, 7 to 5 on log9.
+
+`aglKfValid` is unchanged because it tracks range finder fusion recency, not the
+velocity state.
+
+### 5. Not a recent regression (tier 1)
 
 log6 and log7, on firmware `797f6854`, reach `XKFA.VAgl` -6.5 m/s. The behaviour
 is as old as the AGL KF.
