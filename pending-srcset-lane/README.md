@@ -102,6 +102,25 @@ records is the figure for **this** flight - log14 flew the old scalers. Any
 re-measurement of the drift has to be on a flight flown with the fitted values,
 which is a different measurement, not a correction of this one.
 
+**Verified on log16**, flown with the fitted values. The flow lane's speed ratio
+against GPS is **1.002** (n=493) where log14 on the old scalers read 0.935
+(n=507): the systematic under-read is gone. Velocity error RMS reads 0.26 m/s on
+log14 and 0.36 on log16, which is not a regression and not comparable - log16 was
+flown faster and with more tilt (199 of 493 moving samples near level, against
+381 of 446 on log15) - so the ratio is the calibration number and the RMS is not.
+
+The helper reported X cross-axis at 20 % on log16 against 1 % on log15, which
+reads as a rotated flow frame and is not one. Each sample is assigned to
+whichever body axis its motion dominates, and log16 flew its middle six legs at
+34 to 55 degrees off the nose, so those land in one axis' bucket while carrying
+most of their motion on the other. Binning the off-axis flow by course relative
+to the nose separates it: within 20 degrees of 0, 90 and 180 the leakage is 5-7 %
+on **both** flights, and only the 25-65 degree buckets are high. An orientation
+error also cannot appear between two sorties twenty minutes apart with nothing
+touched. The helper's further suggestions from that fit, FXSCALER -40 and
+FYSCALER -65, are chasing two points on a contaminated axis assignment and should
+be ignored.
+
 ## The objection this PR has to meet
 
 Source sets and cores are orthogonal concepts and should stay that way; the EKF3
