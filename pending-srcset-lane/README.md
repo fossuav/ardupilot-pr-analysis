@@ -181,6 +181,35 @@ compares base core *N* to replay core *N*+100 and would raise `KeyError` on a
 core the base never logged. The faithful alternative, new `AP_DAL::Event` values
 that record the intent, is noted for a maintainer rather than taken here.
 
+## Known and deliberately not fixed here
+
+Name these in the PR description. A reviewer who finds them first will assume
+they were missed.
+
+**Automatic lane switching changes the source set, unguarded and on by default.**
+This is the same conflation the PR fixes, running the other way. Under
+`SRC_PER_CORE` each core fuses the set with its own index, so whenever the
+error-score selector at `AP_NavEKF3.cpp:978` moves `primary` it also changes
+which sources are steering the vehicle - with no operator involvement and no
+statustext saying the sources changed. `EK3_SRC_OPTIONS` bit 3 and `EK3_OPTIONS`
+bit 1 are independent, so this is the default configuration for a bit-3 vehicle.
+Fixing it means deciding whether a health-driven lane change may silently
+re-source the vehicle, which is a larger question than this PR.
+
+**No health gate on the selected lane.** `switchLane()` checks only
+`new_lane_index >= num_cores`, so an RC switch or a MAVLink command can make an
+unaligned or diverged lane primary in flight. Left alone on purpose:
+`EK3_OPTIONS` bit 1's own description already promises "no health checks will be
+performed on the selected lane", and silently refusing the request would
+recreate the reported-success-with-no-effect bug this change exists to remove.
+The disarmed route (`:1028`) does check `healthy()`, so a disarmed selection to
+an unhealthy lane is a silent no-op - pre-existing, and not made worse here.
+
+**`get_posvelyaw_source_set()` still reports a set that describes no core.**
+`NavEKF3::get_active_source_set()` returns `sources.active_source_set`, which
+under `SRC_PER_CORE` is not what any core is running. The shipped `ahrs-source`
+applets do a set-then-read-back against it. Same defect class, untouched.
+
 ## The objection this PR has to meet
 
 Source sets and cores are orthogonal concepts and should stay that way; the EKF3
