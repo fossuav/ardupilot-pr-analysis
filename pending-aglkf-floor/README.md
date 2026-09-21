@@ -149,10 +149,14 @@ before reading a flight as a control.
 
 ## Still owed
 
-- **`SIM_SONAR_OFFSET` is a prerequisite.** The regression test uses it, as three
-  existing tests in this file already do, and it is not upstream - it came in on
-  the SFD branch (`4afd3b3524`). A master PR has to carry that SITL knob or stack
-  on whatever PR does.
+- **The test's helpers are a prerequisite, not the SITL knob.** An earlier note
+  here called `SIM_SONAR_OFFSET` a prerequisite; that is wrong for a master PR.
+  Master defines it already (`AP_GROUPINFO("SONAR_OFFSET", 57, SIM, sonar_offset,
+  0)`); the branch carries `4afd3b3524` only because the 4.7 base predates it.
+  What master does **not** have is `xkfa_recent_mean` and `xkfa_peak_abs`, which
+  arrived with `OpticalFlowAGLKalmanFilter` in #33507's stack. The test either
+  stacks on that or reads XKFA itself; self-contained is preferred, so the PR
+  does not wait on an unmerged one.
 - **The ground-effect release timing is unmeasured by Replay**, which feeds the
   recorded `takeoff_expected` and so never exercises the release path at all.
   log10's "terrain offset reset from baro" fires 2.0 s after NOT_LANDED, exactly
