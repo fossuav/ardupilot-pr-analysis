@@ -1122,6 +1122,62 @@ rate thread or not. So the push still happens every main loop, exactly as on a
 vehicle with no rate thread; what is gated is the *extra* push the rate thread
 was making on top. #34436's description now says this.
 
+## The 2026-09-21 review at `955a2b84b9`, and two boards that could not boot
+
+Closed: the commit prefixes (273 commits, all passing), the nine `SERIALn_*`
+lines - checked behaviourally rather than just moved - and the Laurel and Pico2
+README images. The one red CI job is now the submodule gate, which is the
+normal state for a PR carrying an unmerged ChibiOS change.
+
+**Two findings in this round were the same shape: a board configured for
+something it does not implement.** Both were raised before and neither could be
+confirmed without checking the build.
+
+- **Pico2 had SMP on with no `ch1`.** `CH_CFG_SMP_MODE TRUE` in the hwdef, but
+  its own `c1_main.c` only implements the bare-metal FIFO dispatcher, where
+  Laurel's and RPI_UAVFC's call `chInstanceObjectInit(&ch1, ...)`. Meanwhile
+  `rp2350_core_affinity.h` pins RCOUT and SPI0 to core 1 for every RP2350 SMP
+  board, and `Scheduler.cpp:140` and `:861` create those threads against
+  `&ch1`. The instance is `.data`, so they would have been enqueued into a
+  zeroed ready list. Andy's call was to declare the board non-SMP rather than
+  port ~60 lines of boot code that nobody can test, so `CH_CFG_SMP_MODE` is
+  FALSE and the hwdef now says what is needed before it goes back on. Three
+  ChibiOS registry entries are only out-of-line under SMP and took the
+  `[needs CH_CFG_SMP_MODE]` marker the strict check already understood.
+- **Pico2's scratch RAM was never initialised.** `RP2350_CRT0_AREAS_NUMBER = 0`
+  in its board makefile, justified by a comment saying the Pico2 linker script
+  defines no extra RAM areas. It links the same `common_rp2350_smp.ld` as the
+  other two, and its ELF carries 3432 B of `.ram4_init` and 1880 B of
+  `.ram5_init` - `AP_Scheduler::run`, `attitude_controller_run_quat`,
+  `NotchFilter::apply` and two interrupt vectors. At 0, `crt1.c` compiles
+  `__init_ram_areas()` to a bare `bx lr`, which the disassembly confirms
+  against Laurel's six-area loop, so none of it was copied from flash. The
+  override is gone. **Watch the rebuild:** the ChibiOS library does not rebuild
+  when only a board makefile changes, and the first build after the fix still
+  had the `bx lr`. `build/<board>/modules/ChibiOS` has to be removed.
+
+The lesson for the rest of the port: the previous round listed both of these as
+"could not settle", and the answer to each was one `objdump` away. A claim about
+what a build does is answerable from the build.
+
+### Also this round
+
+- **The SBUS failsafe debounce is gone.** It needed three consecutive flagged
+  frames and any clean one reset the count, so an alternating receiver cycled
+  1, 2, 0 forever and had its failsafe stripped indefinitely - the marginal
+  link where the flag matters most. A HAL UART driver editing a protocol
+  payload was the other half of the objection.
+- **The SimOnHardWare README promised something it does not deliver.** It said
+  the rate thread runs as it does in flight; `FSTRATE_ENABLE` compiles in as 0
+  and only `RPI_UAVFC/defaults.parm` sets it, which a derived board does not
+  inherit - the very mechanism the README explains three paragraphs later.
+  Corrected rather than papered over, along with a one-directional claim about
+  `SIM_RATE_HZ`.
+- **The serial defines were trimmed** to those that differ from
+  `AP_SerialManager`'s own defaults, per the hwdef playbook's rule against
+  restating a default. Pico2's SERIAL1/2 MAVLink2 and SERIAL5 None were
+  redundant; SERIAL3 and SERIAL4 still override the GPS default.
+
 ## The 2026-09-20 follow-up review at `bbaf70a578`
 
 Two resolutions (the clock constant, checked across all seven RP2350
