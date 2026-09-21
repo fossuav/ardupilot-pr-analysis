@@ -1,7 +1,7 @@
 # AGL KF: clear the velocity when the height rests on its floor
 
-**Not yet opened.** Rename this directory to the PR number when it is, and move
-the row in the root README with it.
+**Open as [#34457](https://github.com/ArduPilot/ardupilot/pull/34457)**,
+opened 2026-09-21 from `pr-aglkf-floor-velocity` at `9b74c85f80`.
 
 Two commits on `SmallFastDrone-4.7.1-beta`, to be lifted onto master:
 `8461433db6` (AP_NavEKF3, the fix) and `7433f71001` (autotest). It is a master
