@@ -3,8 +3,8 @@
 **Not yet opened.** Rename this directory to the PR number when it is, and move
 the row in the root README with it.
 
-Three commits on `SmallFastDrone-4.7.1-beta`, to be lifted onto master:
-`8461433db6` (AP_NavEKF3, the fix). It is a master PR and not one of the AGL KF
+Two commits on `SmallFastDrone-4.7.1-beta`, to be lifted onto master:
+`8461433db6` (AP_NavEKF3, the fix) and `7433f71001` (autotest). It is a master PR and not one of the AGL KF
 stack in flight: the clamp came in with the AGL KF itself, which the SFD base
 carries as a merged upstream PR, and #33359, #33478 and #33507 all stack on top
 of it. Numbers below were taken at `8461433db6` unless another commit is named.
@@ -35,9 +35,9 @@ behaviour the upward side already had.
 
 ## Conclusion
 
-Confirmed on four real flights and by Replay of the flight that exposed it. The
-fix is measured and the mechanism is understood on both sides. The one thing
-still owed before opening is a regression test.
+Confirmed on four real flights, by Replay of the flight that exposed it, and by
+a regression test that fails without it. Ready to open once the SITL prerequisite
+below is settled.
 
 ## Key findings
 
@@ -118,15 +118,10 @@ before reading a flight as a control.
 
 ## Still owed
 
-- **A regression test.** There is none, and it is the only blocker.
-  `OpticalFlowAGLKalmanFilter`'s own comment already records that the on-ground
-  clamp kills the innovation, but reasons about the bias state only. Provoking
-  the wind-up in SITL needs a persistent `aglKfB` against `velDotNED.z` mismatch
-  *of the sign that pushes the height into the floor*, which a clean simulated
-  accel does not give; `SIM_ACC1_BIAS_Z` alone is not enough because the main
-  filter learns it back out of `velDotNED`. The promising provocation is that
-  injection with `EK3_ABIAS_P_NSE` cut right down, so the learning is slow enough
-  for the AGL KF to integrate the residual.
+- **`SIM_SONAR_OFFSET` is a prerequisite.** The regression test uses it, as three
+  existing tests in this file already do, and it is not upstream - it came in on
+  the SFD branch (`4afd3b3524`). A master PR has to carry that SITL knob or stack
+  on whatever PR does.
 - **The ground-effect release timing is unmeasured by Replay**, which feeds the
   recorded `takeoff_expected` and so never exercises the release path at all.
   log10's "terrain offset reset from baro" fires 2.0 s after NOT_LANDED, exactly
@@ -136,8 +131,24 @@ before reading a flight as a control.
 
 ## Tests
 
-The thirteen Copter flow, AGL KF and ground effect tests pass unchanged at
-`8461433db6`: `OpticalFlowAGLKalmanFilter`, `OpticalFlowFocusHeight`,
+`OpticalFlowAGLKfFloorVelocity` (`7433f71001`) is the regression test. It settles
+the AGL KF on the ground, steps the reported range up 3 m and back down, and
+asserts the velocity has not latched downward once the height returns toward the
+floor.
+
+**It fails without the fix**: -1.361 m/s against -0.0007 with it, so the -0.5
+bound has an order of magnitude either side. The assertion is one-sided, because
+an upward velocity lifts the height off the floor and corrects itself; a second
+assertion checks the height came back down, since the velocity proves nothing if
+the provocation never reached the clamp. The two builds differ only inside
+`if (aglKfH < rngOnGnd)`, so the difference is itself proof the branch was taken.
+
+Injecting an accelerometer bias was tried first and does not work: the main
+filter learns it back out of `velDotNED` through the on-ground zero-velocity
+fusion, so the residual the AGL KF would integrate disappears.
+
+Sixteen Copter flow, AGL KF, ground effect and source-set tests pass at
+`7433f71001`, including: `OpticalFlowAGLKalmanFilter`, `OpticalFlowFocusHeight`,
 `FlowFocusHoldAfterLanding`, `FlowHeightMinTerrainPath`, `FlowCeilingDoesNotBackUp`,
 `OpticalFlowLimits`, `OpticalFlowGPSLossAiding`, `OpticalFlowFallbackKeepsAbsolute`,
 `FlowGyroZBiasNoYawReference`, `FlowAidingRestartsWithoutYawFusion`, and the three

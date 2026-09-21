@@ -5,7 +5,7 @@ the row in the root README with it.
 
 Three commits on `SmallFastDrone-4.7.1-beta`, to be lifted onto master:
 `3294e6418a` (AP_NavEKF, a public accessor), `2cee4deebb` (AP_NavEKF3, the
-behaviour), `c718acdedb` (autotest). A master PR: `SRC_PER_CORE` came in with
+behaviour), `c718acdedb` (autotest), `7cc72ded89` (the `EK3_PRIMARY` description). A master PR: `SRC_PER_CORE` came in with
 `f172c2fd03`, which the SFD base carries as merged upstream. Numbers below were
 taken at `c718acdedb`.
 
@@ -136,12 +136,12 @@ clean and keeps a control that silently lies, which is what cost log11's sortie.
 
 ## Still owed
 
-- **`EK3_PRIMARY`'s `@Description`.** It says the parameter applies on startup
-  and while disarmed. Finding 2 shows it moving the lane in flight, which is
-  pre-existing behaviour this PR now exposes through a switch. Update the text
-  and re-run the parameter metadata check.
+- ~~`EK3_PRIMARY`'s `@Description`~~ - done at `7cc72ded89`. It now records that
+  the core is forced in flight under `EK3_OPTIONS` bit 1, and that a source set
+  selection sets it under `EK3_SRC_OPTIONS` bit 3. `param_parse.py` renders the
+  new text; its one error is a pre-existing duplicate in an unrelated Lua driver.
 - Build across vehicles. AP_NavEKF3 is shared with Plane, Rover, Sub and Heli;
-  only Copter has been built at `c718acdedb`.
+  only Copter has been built.
 
 ## Tests
 
