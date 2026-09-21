@@ -1122,6 +1122,42 @@ rate thread or not. So the push still happens every main loop, exactly as on a
 vehicle with no rate thread; what is gated is the *extra* push the rate thread
 was making on top. #34436's description now says this.
 
+## #34436 dropped from the branch (2026-09-21)
+
+Andy's call: carry only what the port needs to be tested. Of the five PRs he
+named - #33055, #33056, #33057, #33058, #34436 - **four contributed nothing to
+the diff already**. `git diff` against the merge-base touches neither
+`libraries/AP_Baro` nor `libraries/AP_RCProtocol` at all, and #33056's `d_name`
+memset is not there either, so the description's first table was accurate and
+there was nothing to remove for them.
+
+#34436 was the only one in the branch, as two adjacent commits at depth 39-40.
+Dropped, and the resulting tree differs from the pre-drop tip by exactly those
+two hunks: `rate_thread.cpp` back to
+`calc_gyro_decimation(rate_decimation, gyro_rate/2)` and
+`HarmonicNotchFilter.cpp` back to master's parameter text. What still differs in
+`rate_thread.cpp` is the RP2350 `cores_are_independent()` work, which is the
+port's own.
+
+**A CPU claim of mine was wrong and Andy caught it.** I said removing it would
+cost 9 points of core1, from 57% back to 66%. It does not:
+`LoopRateUpdate` is `1<<2`, so `INS_HNTCH_OPTS 22` sets it, and with the bit set
+#34436's loop finds a notch asking for loop rate and assigns exactly the
+expression the unpatched code used unconditionally. The 66% to 57% was the
+*option-cleared* case - a saving the commit makes available, not one it
+delivers. At the setting this board flies, behaviour and load are identical
+either way.
+
+Where it does change something is Laurel, whose `defaults.parm` sets
+`INS_HNTCH_OPTS 2` with no loop-rate bit: without #34436 that board re-centres
+at gyro/2 rather than at the main loop rate. Laurel is not flying, so it is a
+note rather than an objection.
+
+Two consequences. The reviewer's open ISSUE 2 - the `filter_rate` gate covering
+`update_backend_filters()` as well as the re-centre - leaves this PR with the
+commits, and is now #34436's business alone. And the description's second table
+lost a row: #34436 moved up to the split-out group, leaving four carried PRs.
+
 ## The 2026-09-21 review at `955a2b84b9`, and two boards that could not boot
 
 Closed: the commit prefixes (273 commits, all passing), the nine `SERIALn_*`
