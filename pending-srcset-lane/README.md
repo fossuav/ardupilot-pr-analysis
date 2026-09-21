@@ -3,11 +3,15 @@
 **Not yet opened.** Rename this directory to the PR number when it is, and move
 the row in the root README with it.
 
-Three commits on `SmallFastDrone-4.7.1-beta`, to be lifted onto master:
-`3294e6418a` (AP_NavEKF, a public accessor), `2cee4deebb` (AP_NavEKF3, the
-behaviour), `c718acdedb` (autotest), `7cc72ded89` (the `EK3_PRIMARY` description). A master PR: `SRC_PER_CORE` came in with
-`f172c2fd03`, which the SFD base carries as merged upstream. Numbers below were
-taken at `c718acdedb`.
+Ten commits on `andyp1per/pr-srcset-selects-lane`, which want squashing to four
+before the PR is opened: `952292212e` (AP_NavEKF, a public accessor),
+`d7d232da5a` + `b3141460e1` (AP_NavEKF3, the behaviour), `869228bb9c` (the
+`EK3_PRIMARY` description), `98ec335615` (AP_AHRS), `b4afcc05e7` (RC_Channel),
+`68660971d1` (GCS_MAVLink), `7486dc2840` + `48e5f44df7` (autotest),
+`76627aedf4` (a comment trim). A master PR: `SRC_PER_CORE` and
+`ManualLaneSwitch` are both upstream, confirmed by `git grep` against
+`upstream/master`. Numbers below were taken at `48e5f44df7` unless another
+commit is named.
 
 ## Summary
 
@@ -18,13 +22,16 @@ set therefore reached no core at all, while the RC switch, the Lua binding and
 `MAV_CMD_SET_EKF_SOURCE_SET` all reported success and logged
 `EK3_SOURCES_SET_TO_*`.
 
-The request now selects the lane that runs that set. `EK3_PRIMARY` is set rather
-than `switchLane()` called, so it goes through the path that already exists:
-immediate under `ManualLaneSwitch`, and the documented preference without it. It
-is not saved, because a switch selects for this flight and should not rewrite the
-boot lane. `UpdateFilter()` falls back to lane 0 when `EK3_PRIMARY` has no core,
-which is the safe direction but reads exactly like the set having been taken up,
-so a set with no lane warns.
+The request now selects the lane that runs that set, **for the operator-driven
+callers only** - the RC switch and `MAV_CMD_SET_EKF_SOURCE_SET`. `EK3_PRIMARY` is
+set rather than `switchLane()` called, so it goes through the path that already
+exists. It is not saved, because a switch selects for this flight and should not
+rewrite the boot lane.
+
+Two claims this file made until 2026-09-21 were wrong and are corrected in
+section 4: `EK3_PRIMARY` is **not** a preference the filter leans towards while
+armed without `ManualLaneSwitch` - it is inert - and lane 0 is **not** the safe
+direction for a set with no lane.
 
 ## Conclusion
 
@@ -121,6 +128,59 @@ touched. The helper's further suggestions from that fit, FXSCALER -40 and
 FYSCALER -65, are chasing two points on a contaminated axis assignment and should
 be ignored.
 
+### 4. What the review changed (tier 1b, SITL A/B)
+
+Three defects, two found independently by a cold Codex pass and a whole-diff
+reviewer, one by the caller survey.
+
+**A set with no lane moved the lane.** The warning did not `return`, so
+`_primary_core` was left holding an index with no core, which `UpdateFilter()`
+(`:965`) and `InitialiseFilterBootstrap()` (`:878`) both clamp to **0**. The
+earlier claim that this "falls back to lane 0, which is the safe direction" was
+reasoning, not measurement, and it was wrong: lane 0 is arbitrary, and reaching
+it discards the lane the vehicle was on. Measured by removing the fix and
+re-running `EK3_SourceSetSelectsLane`:
+
+```
+EKF3 lane switch 1             <- set 2 selected lane 1, correct
+EKF3 source set 3 has no lane  <- the warning says nothing happened
+EKF3 lane switch 0             <- the lane moved anyway
+EK3_PRIMARY = 2                <- naming a core that does not exist
+```
+
+The fix returns before the write. The test asserts `EK3_PRIMARY` directly and
+counts lane switches, and fails as above without it.
+
+**Armed without `EK3_OPTIONS` bit 1 the selection is inert.** `_primary_core`
+reaches `primary` by exactly two routes: the `ManualLaneSwitch` branch
+(`:967-973`), which runs whatever the arm state, and the disarmed force (`:1028`,
+gated on `!armed` and `core[user_primary].healthy()`). So the feature works on
+the ground either way and in flight only with bit 1 - which is the case an RC
+switch exists for. It now warns rather than reporting success, and the
+`EK3_PRIMARY` description says so.
+
+The motivating flight is unaffected: **SFD-O4 log14 flew `EK3_OPTIONS` = 62**,
+which carries bit 1, with `EK3_IMU_MASK` 3, `EK3_PRIMARY` 0 and
+`EK3_SRC_OPTIONS` 8. Checked rather than assumed, because the commit message's
+causal story depends on it.
+
+**Lua no longer moves the lane.** `ahrs:set_posvelyaw_source_set()` is used by the
+shipped `ahrs-source-extnav-optflow.lua` applet and three examples to switch sets
+*automatically on sensor health*. Under `SRC_PER_CORE` that would have become
+automatic lane switching, handing position and yaw discontinuities to the
+position controller, from a script that only asked for sources. The intent is now
+a defaulted parameter taken from the caller, so RC and MAVLink select a lane and
+Lua and Replay do not.
+
+Replay taking the default is deliberate and costs nothing measurable: the DAL
+event records the set, not the caller, so it cannot distinguish them, and
+`frontend->primary` has no effect on filter maths - its only consumers are
+`XKF4.PI` and the primary-only logging gates. Passing `true` there would instead
+break `check_replay.py` on any pre-change log from a bit-3 vehicle, which
+compares base core *N* to replay core *N*+100 and would raise `KeyError` on a
+core the base never logged. The faithful alternative, new `AP_DAL::Event` values
+that record the intent, is noted for a maintainer rather than taken here.
+
 ## The objection this PR has to meet
 
 Source sets and cores are orthogonal concepts and should stay that way; the EKF3
@@ -136,10 +196,14 @@ clean and keeps a control that silently lies, which is what cost log11's sortie.
 
 ## Still owed
 
-- ~~`EK3_PRIMARY`'s `@Description`~~ - done at `7cc72ded89`. It now records that
-  the core is forced in flight under `EK3_OPTIONS` bit 1, and that a source set
-  selection sets it under `EK3_SRC_OPTIONS` bit 3. `param_parse.py` renders the
-  new text; its one error is a pre-existing duplicate in an unrelated Lua driver.
+- ~~`EK3_PRIMARY`'s `@Description`~~ - done at `869228bb9c`, corrected at
+  `b3141460e1` to say that the parameter selects the lane while armed **only**
+  under `EK3_OPTIONS` bit 1. `param_parse.py` renders the new text; its one error
+  is a pre-existing duplicate in an unrelated Lua driver.
+- **Squash to four commits and reword `d7d232da5a`.** Its body still says
+  "the documented preference without it" and calls lane 0 "the safe direction",
+  both corrected above, and reads `XKFS.SS` as the tell when under `SRC_PER_CORE`
+  that field is just the core index. Needs a grant covering history rewriting.
 - Build across vehicles. AP_NavEKF3 is shared with Plane, Rover, Sub and Heli;
   only Copter has been built.
 
