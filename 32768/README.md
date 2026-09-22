@@ -1153,3 +1153,57 @@ airborne arm) and peterbarker's 2026-09-16 note that it was dropped from
 DevCallEU as stale. The booted-in-air seed was rejected above (moving
 platform); a gate on EKF |vz| > 1 m/s at arm would address "zeroes a real
 descent rate" without that objection. Not measured.
+
+## The two 2026-09-12 findings, fixed and measured (2026-09-22)
+
+Tier 2, SITL, each with a test that fails without its fix.
+
+### Airborne first arm (`ArduCopter/AP_Arming_Copter.cpp`)
+
+`disarmed_in_air` latches only from a mid-air disarm, so a vehicle armed in the
+air for the first time reached the reset with it clear. The guard now also
+refuses while the filter reports vertical movement, reusing the land detector's
+`AP::ahrs().get_velocity_D()` read and `LAND_DETECTOR_VEL_Z_MAX`. A failed read
+is left to the latch: refusing on it would drop the drift clearing wherever
+there is no vertical velocity estimate, which is the indoor case this PR is for.
+
+`HeightDatumKeptOnArmWhileMoving` shoves the disarmed vehicle up with
+`SIM_SHOVE_Z -30` and arms it climbing at over 1.5 m/s, with a ground arm first
+as the control. Without the guard: one `EKF_ALT_RESET` after the airborne arm
+(arming at 3.43 m climbing 6.32 m/s). With it: none.
+
+Rejected on measurement: driving the filter's vertical velocity with
+`SIM_BARO_DRIFT` instead of a shove. At 3 m/s of drift the filter reported
+-1.15 m/s, only 15% clear of the threshold; at 6 m/s it reported -0.17 m/s,
+because the filter rejects the faster ramp rather than tracking it. The shove
+gives real motion and a 3-6 m/s margin.
+
+### BARO_ALT_OFFSET frame at AID_NONE entry (`AP_NavEKF3_Control.cpp`)
+
+Height fusion works in the offset frame, `hgtMea = baro - baroHgtOffset`, but the
+AID_NONE entry adopted the raw baro, and the offset is non-zero from the arming
+reset on. Measured with `BARO_ALT_OFFSET` 5 m slewed in (logged `XKF5.BOf` 4.97),
+a 20 m ALT_HOLD hover and the GPS killed:
+
+| build | height at the aiding stop | worst after | step |
+|---|---|---|---|
+| without the fix | +19.45 m | +23.12 m | 3.67 m |
+| with the fix | +19.44 m | +19.44 m | 0.01 m |
+
+The first attempt at this probe measured 0.01 m on both arms and looked like a
+refutation. It was the probe: it set `BARO_ALT_OFFSET` before a reboot, which
+does not stick, and the log showed `BARO_ALT_OFFSET` 0.0 at boot and `XKF5.BOf`
+0.004. Setting it after boot and waiting out the 5 s slew, as
+`BaroDriftClearedWithAltOffset` does, reproduces the finding. The test asserts
+the offset before measuring the step, so it cannot pass on a filter that never
+took it.
+
+### Regression at the new head
+
+10 of 11 in one batch: the five BaroDrift tests, both new tests,
+HeightDatumKeptOnMidairRearm, AmslAltPreservedOnRearmAtDifferentElevation,
+Replay, and QuadPlane AmslAltPreservedAfterUpdateHomeAtDifferentElevation.
+`BaroDriftClearedAtArm` failed once in that batch on its own precondition
+(0.00 m of drift reported, wanted over 5 m) in a session that followed throwaway
+probes. It then passed 3 of 3 at the new head and 3 of 3 with both fixes
+reverted, so it is not attributable to this round.
