@@ -1122,6 +1122,69 @@ rate thread or not. So the push still happens every main loop, exactly as on a
 vehicle with no rate thread; what is gated is the *extra* push the rate thread
 was making on top. #34436's description now says this.
 
+## The round at `c29abfea7c`: two failures CI was hiding (2026-09-22)
+
+All five previous findings closed and the gate removal held up under review
+as new code - neither pass could find an ordering it broke, and the strongest
+argument for it was one neither had made: `thread_rx_init()` was already
+called unconditionally from the top of `_begin()` even with the gate in place,
+so the gate only ever deferred the TX thread. It was internally inconsistent.
+
+**REQUEST CHANGES, for two things not in the delta at all, both invisible in
+CI.** The workflow steps are sequential with no `if: always()`, so the
+`modules/ChibiOS` submodule gate going red first means everything after it -
+the submodule update, the cross toolchain, and the board compiles - never
+runs. The red tick we have been reading as "just the ChibiOS dependency" was
+concealing both of these, and both surface the moment ChibiOS#113 lands, which
+is the same moment the PR becomes mergeable.
+
+1. **`RPI_UAVFC-SimOnHardWare` did not build.**
+   `AP_RCProtocol_Backend::is_detected` is header defined and only gets an
+   out-of-line copy where enough callers exist; that board compiles a reduced
+   RC backend set - 24 `AP_RCProtocol` objects against 59 - and inlines it
+   away, which the strict registry check correctly read as a miss. Dropped the
+   entry: no define expresses "the compiler inlined it", so a `[needs ...]`
+   marker would key on something unrelated, and it is 26 B. Six other
+   header-defined entries in that registry could hit the same thing on a
+   future reduced build.
+2. **`test_new_boards.py` fails on the README image check** for both
+   `RPI_UAVFC` and `RPI_UAVFC-SimOnHardWare`. Andy is photographing the board.
+   One image referenced from both READMEs closes it, the variant's reference
+   pointing at `../RPI_UAVFC/images/`.
+
+### The DMA flag resurrection, and why the structural fix was right
+
+Both directions recompute their DMA flag in `_begin()` from a bounce buffer
+that is allocated once and never freed, so a flag cleared because no channel
+could be had comes back true with nothing behind it. On TX that turns the null
+dereference just fixed into a permanent silent stall, because the Shared_DMA
+handle still records us as owner so `lock()` never re-runs the allocator. On RX
+it stops receive outright.
+
+The reviewer's structural point was the good one: RX allocated its channel
+inside the one-shot `_device_initialised` guard while the flag is recomputed
+every time, so a port that first came up without RX DMA - `OPTION_NODMA_RX`,
+or a failed bounce buffer - could never get a channel afterwards, with no DMA
+exhaustion involved at all. Hoisting the allocation fixes both.
+
+Checking it turned up a detail neither of us had raised: `!was_initialised`
+also gates *starting* the DMA, so allocating on a later `begin()` without
+starting would leave a dead channel. Handled with an explicit "this call got
+the channel" flag. Behaviour is unchanged wherever it already worked.
+
+### Two corrections worth keeping
+
+- **The reviewer retracted its own severity claim.** It had argued the DMA
+  exhaustion was reachable because "all 12 RP2350 DMA channels" could be taken.
+  RP2350 has **16**; 12 is the RP2040 figure. Peak simultaneous demand on
+  RPI_UAVFC is 10, so the double-allocation failure cannot occur on any board
+  in this PR. The fix is hardening, not a blocker.
+- **My own comment was wrong in the safe direction.** It said
+  `dmaChannelFreeI()` "asserts on null". These boards build without
+  `HAL_CHIBIOS_ENABLE_ASSERTS`, so the `osalDbgCheck` is a no-op and a null
+  channel would **fault**. The guard is worth more than the comment claimed,
+  which is the better way round to be wrong but still wrong.
+
 ## The gate is gone, and the round at `3e2ec1b91d` (2026-09-22)
 
 Nine of eleven findings closed. Two carried over, and the one that came back
