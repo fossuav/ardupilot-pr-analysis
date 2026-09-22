@@ -1122,6 +1122,70 @@ rate thread or not. So the push still happens every main loop, exactly as on a
 vehicle with no rate thread; what is gated is the *extra* push the rate thread
 was making on top. #34436's description now says this.
 
+## The gate is gone, and the round at `3e2ec1b91d` (2026-09-22)
+
+Nine of eleven findings closed. Two carried over, and the one that came back
+was mine again.
+
+**The `txdma` fix was a level too low.** Clearing `tx_dma_enabled` inside
+`dma_tx_allocate()` does not help the caller that triggers it:
+`write_pending_bytes()` picks the DMA path on the flag,
+`write_pending_bytes_DMA()` takes the Shared_DMA lock, and *the lock is what
+runs* `dma_tx_allocate()` - so the first failure clears the flag and then walks
+straight into `dmaChannelDisableX(txdma)` with null. Only later calls were
+diverted. Fixed by re-testing after the lock and handing the handle back, the
+shape the contention branch above already used.
+
+Chasing that turned up a second null-deref I would have shipped: `Shared_DMA`
+records ownership even when the allocation failed, so the *next* user's
+`lock_core()` calls our `dma_tx_deallocate()` with nothing to free, and
+`dmaChannelFreeI()` opens with `osalDbgCheck(dmachp != NULL)`. The reviewer
+warned about it in one clause and it would have bitten. Worth noting the
+pattern: both halves of this were me fixing the place I was looking at rather
+than following the call chain.
+
+Also closed: the PIOUART drain lock (the reviewer *verified* the prerequisite
+rather than asserting it - PIO IRQs are priority 5, `CORTEX_MAX_KERNEL_PRIORITY`
+is 2 on the ARMv8-M-ML port, so `BASEPRI` really does mask them inside the lock
+zone), `txspace()` reporting the ring's free space, the deferred-thread
+ordering, and all four documentation findings.
+
+### Removing the gate
+
+Andy bench-tested the current code, then took the open question: delete the
+RP2350-only `(sdef.is_usb || hal.scheduler->is_system_initialized())` gate on
+`thread_init()`. That removed the gate, the three lazy retries and
+`start_deferred_threads()` together - net 65 lines - and put
+`Scheduler::set_system_initialized()` back to master's. One commit, so one
+revert if the bench said no.
+
+It did not. Bench evidence, all three UARTDriver ports:
+
+| port | proven by |
+|---|---|
+| SERIAL0 | USB enumerates, GCS connects |
+| SERIAL1 | OSD overlay up |
+| SERIAL2 | GPS reports configured |
+
+The GPS one is the useful trick when there is no debugger: `is_configured()`
+only clears once the UBX config messages are **ACKed**, so it needs transmit,
+and a port that cannot send sits on "GPS 1 still configuring this GPS"
+(`AP_Arming.cpp:780`) forever. Satellite count and lock are irrelevant to the
+question. SERIAL3 and SERIAL4 are PIOUARTs, a different driver class the change
+does not touch.
+
+**Still owed:** this was a boot-order race, so one boot cannot separate "fixed"
+from "got lucky". Three or four power cycles confirming the overlay each time
+is the evidence that matters, and it is free. The failure mode is at least loud
+now - `thread_init()` panics rather than leaving a port silent.
+
+**And the notes needed the same treatment.** Removing the mechanism made the
+`DEVELOPMENT.md` description of it stale, which is yesterday's lesson exactly.
+Grepping the tree for it this time turned up `OSD.md`, which already carried a
+note from the NeoPixel work saying `is_system_initialized()` is the wrong gate
+for anything that wants a parameter. The UART driver made the same mistake at
+greater cost; the two are now cross-referenced.
+
 ## Review round at `5c7814430a`, and a pattern worth naming (2026-09-21)
 
 Verdict COMMENT. Two new findings, both against yesterday's UART fix, both
