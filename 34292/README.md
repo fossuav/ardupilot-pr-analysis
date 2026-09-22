@@ -340,6 +340,23 @@ leaves it alone: samples really are still arriving below the focus height, and
 clearing it would take `doingFlowNav` down with it rather than letting the
 normal flow fusion timeout declare the loss.
 
+### Corrected 2026-09-22, re-derived at 54cd8177fa
+
+"Its three consumers are all reporting" is wrong about one of them.
+`getHeightControlLimit()` (`AP_NavEKF3_Outputs.cpp:94`) reaches
+`AC_Avoid::adjust_velocity_z` through `AP_AHRS::get_hgt_ctrl_limit`
+(`AC_Avoidance/AC_Avoid.cpp:459`), so it is the altitude limit the vehicle flies
+to under flow nav, not a report. Clearing `flowDataValid` while the focus hold
+is on would therefore switch that limit off at the moment flow is unusable,
+which is the wrong direction. The other two (`doingFlowNav` in
+`updateFilterStatus`, the range finder innovation report at `:587`) are
+reporting as stated, and the fusion path is unaffected either way: the focus
+check clears the local `flowDataToFuse`, and `flowDataValid` has no part in it.
+
+Also worth stating in any reply: while the hold is on, samples keep arriving and
+passing `writeOptFlowMeas`'s quality and rate gates, so the freshness flag stays
+true on its own. The status only goes false when aiding times out.
+
 ## SITL A/B 2026-09-10 (head 126cf753c7): discarding halves the collapse, and does not cure it
 
 Same shape as the A/B above and directly comparable: Copter SITL, flow-only
