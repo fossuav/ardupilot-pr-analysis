@@ -2,7 +2,7 @@
 
 Analysis archive for [ArduPilot/ardupilot#32768](https://github.com/ArduPilot/ardupilot/pull/32768).
 Branch `pr-baro-drift-minimum` (andyp1per fork), base `master`, head
-`0ca1c9e775`, 26 commits (2026-09-11). The 2026-09-07 dev-call review
+`568d5a2727`, 31 commits (2026-09-22). The 2026-09-07 dev-call review
 APPROVED at `d085579474`, contingent on `sitltest-copter-tests2b` and
 `sitltest-quadplane` reporting green; pushing the commit below moved the head
 past it, so that verdict is now stale and the PR needs a fresh round. All
@@ -719,9 +719,26 @@ field-elevation path can also fire the reset, and that was not measured); the
 30 s `accumulate_baro_drift()` delay stays a fixed delay because the drift it
 builds is the point.
 
-## PR description (last edited 2026-09-07 at `2b77b08835`)
+## PR description (rewritten 2026-09-22 at `568d5a2727`)
 
-The body now carries the rangefinder clause and its real mechanism, the terrain
+The body was rewritten in the shape recorded under "The description rewrite"
+at the end of this file. The original is archived verbatim in PR comment
+5784304183, in a collapsed block, so nothing below is lost from the thread.
+
+Above the detail heading the body now carries the drift as a pilot meets it,
+the two real-vehicle numbers, what master does with it at arm, why the origin
+no longer moves, and a ten-row table of configuration against master against
+this PR. Below it: the state table, five parts of the diff that look wrong
+without the reason, what the tests prove and the two bounds that move, the
+rejected alternatives, and what is left open.
+
+The state table survived the cut deliberately. It is the section that retired
+the `storedGPS` finding, and reviewers cannot see this archive, so a decision
+recorded only here gets re-found every round.
+
+### What the 2026-09-07 body carried (archived 2026-09-22)
+
+The body carried the rangefinder clause and its real mechanism, the terrain
 state A/B, the watchdog seed and its lack of a test, the Plane
 `update_home()`/`update_calibration()` note @tridge's follow-up should pick up,
 and a "tried and rejected" list with the number that rejected each: the
@@ -1207,3 +1224,54 @@ Replay, and QuadPlane AmslAltPreservedAfterUpdateHomeAtDifferentElevation.
 (0.00 m of drift reported, wanted over 5 m) in a session that followed throwaway
 probes. It then passed 3 of 3 at the new head and 3 of 3 with both fixes
 reverted, so it is not attributable to this round.
+
+## The description rewrite (2026-09-22)
+
+rmackay9's standing objection to the AI-assisted descriptions is that they are
+too long and carry unnecessary detail. Measured rather than argued: ten recent
+merged rmackay9 PRs run 47 to 447 words of prose, median 180, with no tables;
+seven of ours ran 471 to 3322, median 1126. This one was 3354.
+
+Three drafts were rejected before the shape was right, and each rejection named
+a rule the playbook did not have:
+
+- The first opened on `baroHgtOffset` and the origin. A reader who has worked
+  on this code for months could not follow the second paragraph.
+- The second explained the mechanism but never said what the bug costs a pilot.
+  Saying the error "carries" into the flight means nothing to a user.
+- The third read as a chat reply, because it kept "our own vehicles" and an
+  offer to expand on request.
+
+What worked is to open in the second person on what the user does ("If you
+leave a copter powered while waiting for a GPS lock..."), say what it costs
+them in terms they can see, give the change in those same terms, and hold the
+mechanism until after that. Third person from there on, first person nowhere.
+
+The first cut of that shape threw away every measured before/after pair, which
+was wrong in the other direction. A table is the densest form for a change that
+behaves differently across ten configurations, not the most verbose one, and it
+carries what a reviewer cannot reconstruct from the diff. The body now splits
+510 words above the "Detailed notes for reviewers" heading and 959 below,
+against 3354 unsplit.
+
+Nine items were restored into the notes section after diffing the two bodies.
+Four of them are what an automated pass flags first: the two existing test
+bounds that move (`Clamp` 0 to -0.2 m, heli `StabilizeTakeOff` 0.1 m to 1 m),
+the AP_Baro change with no stated reason, the `EK3_RNG_USE_HGT` allowance that
+looks like it contradicts the refusal two lines away, and the sticky mid-air
+record that looks like it should be a plain assignment. Left out deliberately:
+why the Kalaupapa check waits out `hgtRetryTimeMode0_ms`, why the mid-air test
+takes off to 250 m, and why `RudderDisarmMidair` reaches neither path are
+already comments in `arducopter.py`, which is where the next person to touch
+those tests will look.
+
+Two weak spots went up with it. The `EK3_RNG_USE_HGT` row of the configuration
+table carries no number, and the mid-air row's "15.6 to 0.4 m/s" is a velocity
+discontinuity that reads as a speed change unless you know the test. Both want
+a clean A/B pair.
+
+The rules are in the playbook at `../aap`: 1.7.18 for the user-first opening
+and the voice, 1.7.19 for when a table earns its place, 1.7.20 for keeping the
+detail under a heading in the body rather than in a PR comment, which no
+automated pass reads. rmackay9 was asked directly whether the shape works
+(comment 5784308890).
