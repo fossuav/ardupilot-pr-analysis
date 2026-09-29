@@ -10,6 +10,13 @@ upstream 2026-09-01, so this is a follow-up to a merged PR rather than a
 change to one in review. See `../32472/` for that PR's own record; the
 bullet about the HAGL path defeating `near_ground` is where this starts.
 
+### Head superseded 2026-09-29: rebased onto master, head `6b01d433b8`
+
+Rebased onto master on 2026-09-29; the GitHub head is now `6b01d433b8`.
+Nothing has been re-measured at this head. Every number below keeps the
+commit it was taken on, and any head named above is left as written
+because it is the code those numbers came from.
+
 ## Status (one line)
 
 Two defects in `AP_GroundEffect::update()`, both measured on one flight

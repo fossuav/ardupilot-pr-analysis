@@ -1,10 +1,24 @@
 # EKF3: select the lane that runs the source set being asked for
 
 **Open as [#34456](https://github.com/ArduPilot/ardupilot/pull/34456)**,
-opened 2026-09-21 from `pr-srcset-selects-lane` at `de049bb620`.
+opened 2026-09-21 from `pr-srcset-selects-lane` at `de049bb620`. Head now
+`0b1f1fb7ff` (pushed 2026-09-29, eleven commits, rebased onto master the
+same day). Record refreshed 2026-09-29; the review round that produced
+this head is "5. Refusing what cannot be done" below.
 
-Ten commits on `andyp1per/pr-srcset-selects-lane`, which want squashing to four
-before the PR is opened: `952292212e` (AP_NavEKF, a public accessor),
+At `0b1f1fb7ff`: `47c9438136` AP_NavEKF, `f082bc5ef1` + `2f71133d96`
+AP_NavEKF3, `2a5d3f1b36` + `242c23708d` AP_AHRS, `5b0d4e87ed` +
+`c90f039466` RC_Channel, `d7d74f8b33` + `3254490529` GCS_MAVLink,
+`bc1b6a26ed` + `0b1f1fb7ff` autotest. `de049bb620` carried six commits,
+the AP_NavEKF one and the first of each pair (then `18e87a0803`,
+`67acfbff2e`, `bac551e14e`, `976f42908d`, `0e92100c4f`, `de049bb620`,
+renumbered by the rebase).
+
+The paragraph below describes the branch before it was opened and is kept
+as written.
+
+Ten commits on `andyp1per/pr-srcset-selects-lane`, which want squashing to
+four before the PR is opened: `952292212e` (AP_NavEKF, a public accessor),
 `d7d232da5a` + `b3141460e1` (AP_NavEKF3, the behaviour), `869228bb9c` (the
 `EK3_PRIMARY` description), `98ec335615` (AP_AHRS), `b4afcc05e7` (RC_Channel),
 `68660971d1` (GCS_MAVLink), `7486dc2840` + `48e5f44df7` (autotest),
@@ -27,6 +41,13 @@ callers only** - the RC switch and `MAV_CMD_SET_EKF_SOURCE_SET`. `EK3_PRIMARY` i
 set rather than `switchLane()` called, so it goes through the path that already
 exists. It is not saved, because a switch selects for this flight and should not
 rewrite the boot lane.
+
+Since `0b1f1fb7ff` a selection that cannot move the lane is refused rather
+than warned about: no core runs that set, or it is armed without
+`EK3_OPTIONS` bit 1. The refusal happens before the DAL event and before
+the source set changes, and is returned to the caller: the RC switch does
+not print "Using EKF Source Set N" and the MAVLink command answers
+`MAV_RESULT_FAILED`. `EK3_PRIMARY` is written with `set_and_notify()`.
 
 Two claims this file made until 2026-09-21 were wrong and are corrected in
 section 4: `EK3_PRIMARY` is **not** a preference the filter leans towards while
@@ -151,6 +172,12 @@ EK3_PRIMARY = 2                <- naming a core that does not exist
 The fix returns before the write. The test asserts `EK3_PRIMARY` directly and
 counts lane switches, and fails as above without it.
 
+Still true at `0b1f1fb7ff`; the subtest also expects `MAV_RESULT_FAILED`
+now. A further lane switch count after the RTL, tried in the 2026-09-29
+round, was dropped before the push: the disarmed force changes the lane
+without printing "EKF3 lane switch", so it could not detect anything.
+The output above was taken at `48e5f44df7` and stands as taken.
+
 **Armed without `EK3_OPTIONS` bit 1 the selection is inert.** `_primary_core`
 reaches `primary` by exactly two routes: the `ManualLaneSwitch` branch
 (`:967-973`), which runs whatever the arm state, and the disarmed force (`:1028`,
@@ -158,6 +185,11 @@ gated on `!armed` and `core[user_primary].healthy()`). So the feature works on
 the ground either way and in flight only with bit 1 - which is the case an RC
 switch exists for. It now warns rather than reporting success, and the
 `EK3_PRIMARY` description says so.
+
+Superseded 2026-09-29: warning was not enough. The warned request still
+wrote `EK3_PRIMARY`, which the disarmed force then applied at landing, so
+the lane moved after the operator was told it would not. It is refused
+at `0b1f1fb7ff`; see section 5.
 
 The motivating flight is unaffected: **SFD-O4 log14 flew `EK3_OPTIONS` = 62**,
 which carries bit 1, with `EK3_IMU_MASK` 3, `EK3_PRIMARY` 0 and
@@ -180,6 +212,73 @@ break `check_replay.py` on any pre-change log from a bit-3 vehicle, which
 compares base core *N* to replay core *N*+100 and would raise `KeyError` on a
 core the base never logged. The faithful alternative, new `AP_DAL::Event` values
 that record the intent, is noted for a maintainer rather than taken here.
+
+### 5. Refusing what cannot be done (2026-09-29, tier 2, SITL A/B)
+
+Taken at `0b1f1fb7ff`, after an AP-Review round and a Claude plus Codex
+review of the pushed `de049bb620`.
+
+AP-Review ISSUEs, fixed in `2f71133d96`:
+
+- Armed without `EK3_OPTIONS` bit 1 the request warned and still wrote
+  `EK3_PRIMARY`; the disarmed force (`!armed` and `healthy()`) then moved
+  the lane at landing. Now refused.
+- `_primary_core.set()` changed a parameter without telling the GCS, so a
+  stale parameter table could put it back. Now `set_and_notify()`.
+
+Review BUG, fixed in `242c23708d`, `c90f039466`, `3254490529`: every
+caller reported success after a refusal. `NavEKF3::setPosVelYawSourceSet`
+and `AP_AHRS::set_posvelyaw_source_set` return bool (the AHRS one false
+also in a build without EKF3), the RC switch prints "Using EKF Source Set
+N" only on success, and `MAV_CMD_SET_EKF_SOURCE_SET` answers
+`MAV_RESULT_FAILED`.
+
+How the refusal works at `0b1f1fb7ff`, from the source
+(`AP_NavEKF3.cpp:1150-1181`): the checks run only with `select_lane` and
+`SRC_PER_CORE`, and only when the lane asked for is not already primary
+(`source_set_idx != primary`), so a repeated request is not refused and
+one for a different lane still warns every time. `core == nullptr` is
+refused as "has no lane". Both refusals return before the DAL
+`setSourceSet` event and before `sources.setPosVelYawSourceSet()`, so a
+refused request changes neither the sources nor the log. The `EK3_PRIMARY`
+description now says the selection is refused, and the parameter left
+unchanged, in both cases.
+
+`EK3_SourceSetSelectsLane` gained three checks: a `PARAM_VALUE` for
+`EK3_PRIMARY` arrives after a selection (checked before
+`assert_parameter_value`, whose own request would answer it), the no-lane
+request expects `MAV_RESULT_FAILED`, and an armed request with
+`EK3_OPTIONS` 0 expects `MAV_RESULT_FAILED` and leaves `EK3_PRIMARY` 0.
+
+| code under test | result |
+|---|---|
+| `set()` instead of `set_and_notify()` | fails, "EK3_PRIMARY changed without telling the GCS" |
+| without the armed refusal | fails, "want=0 got=1" |
+| without MAVLink `FAILED` | fails, "Expected MAV_RESULT_FAILED got MAV_RESULT_ACCEPTED" |
+| `0b1f1fb7ff` | passes |
+
+`EKF3SRCPerCore`, `ScriptingAHRSSource` and `MAV_CMD_SET_EKF_SOURCE_SET`
+also pass at `0b1f1fb7ff`. Every commit builds on its own.
+
+Rejected: a `healthy()` gate on the selected lane. AP-Review itself
+measured `healthy()` true for a lane that has just stopped aiding, so the
+gate would not stop the case it is meant for, and it would refuse the
+bit-1 selection whose description promises no health checks. See "No
+health gate" below.
+
+Documented, not fixed:
+
+- Replay recovers the selected lane from the `EK3_PRIMARY` PARM record
+  that `set_and_notify()` logs, and only builds with a GCS write that
+  record. Derived from the source, not measured.
+- The RC switch path has no automated test; the MAVLink path carries the
+  coverage.
+
+Owed: Replay against SFD-O4 log11 and log14 has not been re-run for the
+refusal change. log14 flew with bit 1 set, so its selection should not be
+refused, but that is a claim about `0b1f1fb7ff` until replayed.
+
+PR description rewritten 2026-09-29.
 
 ## Known and deliberately not fixed here
 
@@ -204,6 +303,13 @@ performed on the selected lane", and silently refusing the request would
 recreate the reported-success-with-no-effect bug this change exists to remove.
 The disarmed route (`:1028`) does check `healthy()`, so a disarmed selection to
 an unhealthy lane is a silent no-op - pre-existing, and not made worse here.
+
+Raised again in the 2026-09-29 review and rejected again, now with a
+number: AP-Review measured `healthy()` true for a lane that had just
+stopped aiding, so the gate does not catch the lane it is meant to. The
+refusals added at `0b1f1fb7ff` are for requests that cannot take effect
+at all, and are reported as failures, which is a different thing from
+refusing one that can.
 
 **`get_posvelyaw_source_set()` still reports a set that describes no core.**
 `NavEKF3::get_active_source_set()` returns `sources.active_source_set`, which
@@ -233,6 +339,10 @@ clean and keeps a control that silently lies, which is what cost log11's sortie.
   "the documented preference without it" and calls lane 0 "the safe direction",
   both corrected above, and reads `XKFS.SS` as the tell when under `SRC_PER_CORE`
   that field is just the core index. Needs a grant covering history rewriting.
+  Done before the PR was opened: `de049bb620` carried six commits, and the
+  behaviour commit's message (now `f082bc5ef1`) no longer says either.
+- Replay of log11 and log14 at `0b1f1fb7ff`, for the refusal change
+  (section 5).
 - Build across vehicles. AP_NavEKF3 is shared with Plane, Rover, Sub and Heli;
   only Copter has been built.
 
@@ -241,7 +351,7 @@ clean and keeps a control that silently lies, which is what cost log11's sortie.
 `EK3_SourceSetSelectsLane` (`c718acdedb`) flies the `EK3_PerCoreLogging`
 configuration - GPS on core 0, VICON on core 1, `ManualLaneSwitch` set - and
 asserts the lane follows the set both ways and that a set with no core warns
-rather than reporting success.
+rather than reporting success. Extended at `0b1f1fb7ff`; see section 5.
 
 **It fails without the change**, on the first wait, never seeing a lane switch.
 Verified by removing the hunk, rebuilding and re-running.

@@ -6,6 +6,13 @@ Branch `pr-hflow-scale` (andyp1per fork), base `master`, head `2326138c6a`
 (MatekH743, ARK Flow over DroneCAN, downward rangefinder, GPS carried as
 truth); no logs are committed.
 
+### Head superseded 2026-09-29: rebased onto master, head `54a6052088`
+
+Rebased onto master on 2026-09-29; the GitHub head is now `54a6052088`.
+Nothing has been re-measured at this head. Every number below keeps the
+commit it was taken on, and any head named above is left as written
+because it is the code those numbers came from.
+
 ## Status (one line)
 
 One-parameter driver fix, flight-validated (sensor rate slope 0.52 -> 1.00);

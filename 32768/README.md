@@ -9,6 +9,17 @@ past it, so that verdict is now stale and the PR needs a fresh round. All
 committed data is SITL; real-flight numbers are cited inline and their logs
 are not committed.
 
+### Head superseded 2026-09-29: rebased onto master, head `9bb371d054`
+
+Rebased onto master on 2026-09-29; the GitHub head is now `9bb371d054`.
+The rebase conflicted with #34432's ground effect guard in
+`AP_NavEKF3_PosVelFusion.cpp`; resolved keeping both. Note that the
+first-sample baro offset reset after the datum reset is not subject to
+#34432's guard (derived from the source, not measured).
+Nothing has been re-measured at this head. Every number below keeps the
+commit it was taken on, and any head named above is left as written
+because it is the code those numbers came from.
+
 ## Status (one line)
 
 Shipped design is **reset the EKF height datum once, at arm**. The reviewer

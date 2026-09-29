@@ -5,6 +5,16 @@ Branch `pr-copter-arm-delay`, head `904630fd82` after the 2026-09-12 redesign.
 One commit, on master of 2026-09-12. The previous head `2038b1c1d9` was three
 commits on a master from 17 March.
 
+### Head superseded 2026-09-29: rebased onto master, head `3552323d24`
+
+Rebased onto master on 2026-09-29; the GitHub head is now `3552323d24`.
+The Copter commit was split: the skyviper hwdef change is now its own
+`hwdef:` commit, first, because `config.h` `#error`s on the old define and
+the hwdef has to move before the Copter change for every commit to build.
+Nothing has been re-measured at this head. Every number below keeps the
+commit it was taken on, and any head named above is left as written
+because it is the code those numbers came from.
+
 ## Status (one line)
 
 Input renamed to `ARMING_DELAY_MS` so sub-second delays are expressible and a

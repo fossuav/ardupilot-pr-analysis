@@ -4,6 +4,15 @@ Analysis archive for [ArduPilot/ardupilot#32401](https://github.com/ArduPilot/ar
 Branch `pr-copter-pending-arm` (andyp1per fork), base `master`. No logs
 committed; the two field cases below are real drops.
 
+### Head superseded 2026-09-29: rebased onto master, head `4bc594f1c6`
+
+Rebased onto master on 2026-09-29; the GitHub head is now `4bc594f1c6`.
+The RC_Channel change was split into its own commit, the net of the
+Copter commit's addition and the follow-up's removal.
+Nothing has been re-measured at this head. Every number below keeps the
+commit it was taken on, and any head named above is left as written
+because it is the code those numbers came from.
+
 ## Status (one line)
 
 Open, changes requested. Depends on #32202. The mechanism works as designed

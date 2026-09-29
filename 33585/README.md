@@ -8,6 +8,13 @@ Branch `pr-optflow-flat-ground` (andyp1per fork). PR head `e18c7d6fc3`
 branch `pr-optflow-flat-ground-rebased` is the same work on current master
 and current #33478 - see the 2026-09-15 section at the end.
 
+### Head superseded 2026-09-29: rebased onto master, head `6a1200d267`
+
+Rebased onto master on 2026-09-29; the GitHub head is now `6a1200d267`.
+Nothing has been re-measured at this head. Every number below keeps the
+commit it was taken on, and any head named above is left as written
+because it is the code those numbers came from.
+
 ## Status (one line)
 
 `EK3_OPTIONS` bit 5 (`OptflowAssumeFlatGnd`) holds `horiz_pos_rel` above the

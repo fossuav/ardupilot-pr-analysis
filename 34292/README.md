@@ -1,6 +1,17 @@
 # PR #34292 - optical flow minimum focus height (FLOW_HGT_MIN)
 
 Analysis archive for [ArduPilot/ardupilot#34292](https://github.com/ArduPilot/ardupilot/pull/34292).
+
+**Read this before changing the code.** Changes that look right from the
+source and measured worse are in the "Measured and rejected" tables under
+round 3 (2026-09-17) and the round of 2026-09-29 at the end. Read both
+before touching the gate.
+
+Current head `2714d632d1` (branch `pr-flow-hgt-min`, andyp1per fork), 20
+commits rebased onto master on 2026-09-29; the previous head was
+`2f411ad1c4`. See "Round of 2026-09-29" at the end. The rest of this
+header is as of 2026-09-10.
+
 Branch `pr-flow-hgt-min` (andyp1per fork), base `master`, head
 `a204212074`, pushed 2026-09-10 18:40Z. The three commits that added,
 removed and then properly replaced the terrain-estimator flag were folded
@@ -41,6 +52,10 @@ rejected.
 The 2026-09-10 round's two code findings were both fixed the same evening, at
 `c08eaf0e43`, but the round itself has no reply, so the PR still reads as an
 open BUG. See "Automated round of 2026-09-10" at the end.
+
+2026-09-29: all open review threads answered at `2714d632d1`, including the
+2026-09-23 dev-call action on the AGL KF (measured and rejected) and the
+SITL split (now #34533). See "Round of 2026-09-29" at the end.
 
 A question raised on 2026-09-05 about whether the flown 0.1 m value sat under
 the EKF's rangefinder clamp was resolved the same day from log67: it did not,
@@ -152,6 +167,9 @@ below), so the one case with flight evidence is the case the doc gets wrong.
 
 - The `#endif` on the new block has no trailing `// AP_RANGEFINDER_ENABLED`
   where the same guard elsewhere in the library does.
+  Done 2026-09-29 at `2714d632d1`, as
+  `#endif  // EK3_FEATURE_RANGEFINDER_MEASUREMENTS` (the guard was changed on
+  2026-09-18), on peterbarker's suggestion.
 - The bare `500` literal matches an identical bare literal in
   `AP_NavEKF3_PosVelFusion.cpp` - consistent, but this is now the second
   copy and a shared named constant would be better.
@@ -176,6 +194,7 @@ below), so the one case with flight evidence is the case the doc gets wrong.
   traced.
 - `25c7364cb5` / `d70cb7a058` are the same patches as on #33484 under
   different SHAs; whichever lands second drops them.
+  2026-09-29: split out as #34533; see "Relationship to #33484".
 
 ### Verified clean on the current tree - do not re-raise
 
@@ -920,6 +939,13 @@ rebase will drop them by patch-id but they are not literally shared commits:
 Whichever lands second needs them dropped. This is noted in #34292's PR
 description and in `../33484/split-and-quality-gate.md`.
 
+### Split out as #34533 (2026-09-29)
+
+At the 2026-09-23 dev call the SITL changes were asked to be split out. The
+pair is now PR #34533 (branch `pr-sitl-flow-ofs`, head `c70437775c`, opened
+2026-09-29). #34292 (`b03e0fd0f9`, `f859564647` at `2714d632d1`) and #33484
+still carry them, patch-identical, until #34533 merges; then both drop them.
+
 ## Reproduce
 
 The SITL arms, from an ArduPilot checkout on `pr-flow-hgt-min`:
@@ -1392,6 +1418,17 @@ compiles. Every other commit builds. Upstream took the same shape for
 heightOverride, `5d3e636d71`..`abcacec25f`. Mechanical gate at the tip: 0
 findings above note after the subject and wrap fixes.
 
+#### Superseded 2026-09-29 by `2714d632d1`
+
+The `minHeight` argument of `writeOptFlowMeas` has a `= 0` default again in
+`AP_DAL.h`, `AP_NavEKF2.h`, `AP_NavEKF3.h` and `AP_AHRS.h`, so the four
+commits above (now the DAL, EKF2, EKF3 and AHRS commits) build alone.
+Measured: all 20 commits build. This reverses the "no default" column of the
+table above, which followed peterbarker's "Just remove = 0.0"; the table is
+left as it was built. A reviewer may ask why the default is back: the answer
+is bisectability, and it is `= 0`, the heightOverride convention, not
+`= 0.0`.
+
 ### The staleness bug, reproduced
 
 SITL on the #34380 stack (the flight needs the height limit removed),
@@ -1512,6 +1549,11 @@ Final gate logs, HAGL is `MAX(terrainState - posD, rngOnGnd)`, no AGL KF option.
   `EstimateTerrainOffset` is not called, so HAGL is the same dead reckoning.
   terrainState is fused from flow only on the `EK3_FLOW_USE=2` path, where
   gating on it would be circular.
+
+Note added 2026-09-29: this HAGL is `terrainState - position`, the main
+filter's terrain estimate. It is a different estimator from Rishabh's AGL KF
+(`EK3_OPTIONS` bit 3, `UpdateAglKf`), which was measured separately on
+2026-09-29 and is in that round's rejected table.
 
 Kept the range. The comment at `AP_NavEKF3_OptFlowFusion.cpp:54-57`
 overstates both of its reasons: the first applies only to the terrain path,
@@ -1682,3 +1724,89 @@ LoiterNoCompassYaw and Replay pass at the new head.
 Two of the round's notes went in with it: `resetHeightDatum()` moves
 `flowFocusRngPosD` (the last position.z discontinuity that did not), and the
 GNDCLR description now says a too-high value costs aiding rather than samples.
+
+## Round of 2026-09-29: rebase, the AGL KF check, and the review threads
+
+Head `2f411ad1c4` -> `2714d632d1`, rebased onto master (it was 215 commits
+behind), 20 commits. Four threads answered on 2026-09-29, plus the
+2026-09-23 dev-call action: check Rishabh's AGL KF (`EK3_OPTIONS` bit 3,
+`UpdateAglKf`, master `306d55abad`) for the height, and split out the SITL
+changes.
+
+### Code changes folded in
+
+- peterbarker's `#endif  // EK3_FEATURE_RANGEFINDER_MEASUREMENTS`
+  suggestion, applied; thread resolved.
+- A comment on the floor `rngOnGnd + 0.05` (peterbarker, "comment why this
+  is the right value"): 5 cm is clear of the jitter of a range finder
+  resting on the ground and below any hover height; the sensor's own limit
+  is FLOW_HGT_MIN.
+- `= 0` defaults on `minHeight` so every commit compiles; see "Superseded
+  2026-09-29" under round 3. The four intermediate commits that did not
+  build alone were a pre-existing split problem, not new.
+- Measured: all 20 commits build; plane builds; copter builds with
+  `AP_RANGEFINDER_ENABLED 0`.
+
+The gate itself is unchanged in logic. Re-read at `2714d632d1`
+(`AP_NavEKF3_OptFlowFusion.cpp`, `SelectFlowFusion`): fresh range under
+500 ms, compare the carried height with the floor; stale, the carried
+height counts for 5 s, and past that a hold continues only while the
+sensor reports out of range low and the carried height is within 0.5 m of
+the floor. That matches the round of 2026-09-22 above. The check still
+runs before `EstimateTerrainOffset()`.
+
+### Review threads answered
+
+| thread | answer |
+|---|---|
+| rishabsingh3003: avoid `stateStruct.position.z` when flying low? | While the range is fresh the check uses the range and never position.z. position.z only carries the last range across a dropout, for at most 5 s |
+| peterbarker: comment why `rngOnGnd + 0.05` is the right value | comment added, above |
+| peterbarker: how does this work with the terrain height estimator? | The check runs before `EstimateTerrainOffset()`, so a withheld sample is withheld from the terrain estimator too; `FlowHeightMinTerrainPath` covers it. Range rather than terrainState because on the `EK3_FLOW_USE` terrain path terrainState is fused from the same flow |
+| peterbarker: `#endif` comment | applied, resolved |
+| dev call 2026-09-23: use the AGL KF | measured and rejected, below |
+| dev call 2026-09-23: split out the SITL changes | #34533, see "Relationship to #33484" |
+
+### FlowFocusHoldAfterLanding rewritten (tier 2)
+
+The test now flies twice, `SIM_BARO_GEFF_M` 0 and 1.5, and checks the
+restart height against true height (`SIM_STATE.alt` minus its on-ground
+value) instead of `GLOBAL_POSITION_INT.relative_alt`. This is a different
+measurement from the 2026-09-18 restart heights (0.3-0.6 m over 4 runs) and
+the 2026-09-22 0.4 m, which were EKF relative altitude; those stand as
+taken.
+
+| run, at `2714d632d1` | restart, true height | floor |
+|---|---|---|
+| no ground effect | 0.35 m | 0.15 m |
+| `SIM_BARO_GEFF_M` 1.5 | 0.41 m | 0.15 m |
+
+On the ground the hold held: no restart through the 12 s dwell.
+
+Before the rewrite, under ground effect the old assertion failed ("Relative
+aiding restarted below the focus floor (-0.5 m)", and -0.9 m on another
+run). A test artefact, not a gate fault: the log showed the restart at
+0.24 m true with the range reading 0.19 m (status Good), while the EKF
+height read -1.42 m. The baro ground effect pulls the EKF height down, so
+relative_alt was the wrong observable.
+
+### Measured and rejected (2026-09-29)
+
+| change | argument for | measured | why rejected |
+|---|---|---|---|
+| the AGL KF height for the floor check when `EK3_OPTIONS` bit 3 is set (dev call 2026-09-23) | under bit 3 the flow is already scaled by `MAX(aglKfH, rngOnGnd)` (`heightAboveGndEst` in OptFlowFusion), and the AGL KF runs on its own vertical velocity, not position.z (Rishabh's concern) | at `2f411ad1c4` plus the change, SITL, "Landing below the range finder minimum" subtest of `OpticalFlowFocusHeight` with `EK3_OPTIONS` 8: flow innovation updates from range low to disarm 123 over 12.4 s (FAILED, "flow fused below FLOW_HGT_MIN after the range finder went out of range low"); 160 over 16.6 s with `SIM_BARO_GEFF_M` 1.5; the range gate (the PR) 0 | after the range drops out low the AGL KF stays `aglKfValid` for 5 s on IMU prediction alone and drifts above the floor, releasing the hold, which then never re-engages |
+| the AGL KF only while the range is fresh (under 500 ms) | keeps the AGL KF's filtering where it has a measurement, falls back to the range gate otherwise | same subtest and build: 5 updates leaked (FAILED), in both runs (no ground effect, `SIM_BARO_GEFF_M` 1.5) | still leaks at the dropout; the gate stays on the range |
+
+The mechanism in the first row is from the log, one run per arm; the
+counts are the measurement.
+
+### Tests at `2714d632d1` (tier 2)
+
+OpticalFlowFocusHeight, FlowHeightMinTerrainPath, FlowFocusHoldAfterLanding,
+FlowFocusHoldReleasesWithDeadRangeFinder and OpticalFlow pass.
+
+### Open
+
+- #34533 has to merge first, or #34292 and #33484 drop the SIM_FLOW_OFS
+  pair when they rebase.
+- The Replay of log65/66/67 and the flight items under round 3's "Open"
+  are unchanged by this round.

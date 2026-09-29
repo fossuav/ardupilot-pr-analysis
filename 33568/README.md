@@ -1,10 +1,12 @@
 # PR #33568 - Fall back to relative aiding when optical flow replaces lost GPS (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#33568](https://github.com/ArduPilot/ardupilot/pull/33568).
-Branch `pr-flow-aiding`. PR head `9e04d0e0a7` (pushed 2026-09-15, rebased
-onto master `bf08027404`); before that `4bb2ef3583`. Base master 23 Jun 2026,
-1364 commits behind on 2026-09-15 but `git merge-tree` against master is still
-clean.
+Branch `pr-flow-aiding`. PR head `02faf4127d` (pushed 2026-09-29, five
+commits, base still `bf08027404`, not rebased, 231 commits behind master on
+2026-09-29); before that `816db9a9b0` (2026-09-17), `9e04d0e0a7`
+(2026-09-15, rebased onto `bf08027404`) and `4bb2ef3583`. Record refreshed
+2026-09-29. Replay of the PR's real flight is **owed** at this head; see
+"Round 4".
 
 ## Status (one line)
 
@@ -21,6 +23,11 @@ resets on that edge and pushed as `9e04d0e0a7`. See the 2026-09-15 sections.
 when the fall back fires (21 m and 5.9 m/s steps at 5.4 m/s); the 2026-09-12
 runs hovered through it. Fixed locally in `05d1db1b9d`, and the per-cycle GPS
 guard in `8627ddedc6`. See "Moving through the fall back (2026-09-15)".
+
+**Superseded 2026-09-29:** the edge also stood aside for nothing when an
+external nav velocity was still fusing, so a GPS-plus-ExtNav-velocity
+vehicle that lost GPS and then flow went to no aiding. Fixed with
+`!gpsVelUsed` at `02faf4127d`. See "Round 4".
 
 ## The claimed BUG, and what the measurement says (2026-09-12)
 
@@ -505,6 +512,10 @@ gpsNoFixTimeout_ms (2 s), flow or body odometry used, and neither drag nor
 airspeed used. `8a9d37773c` (squashing `bdef1ff967` and `1f80b12bac`) also
 clears posTimeout on the edge.
 
+Superseded 2026-09-29: at `02faf4127d` the edge also needs no GPS or
+ExtNav velocity fused within `minTestTime_ms` (`!gpsVelUsed`). See
+"Round 4".
+
 `OpticalFlowFallbackKeepsAbsolute` (`816db9a9b0`): a 20 s stepped GPS glitch
 with EK3_SRC_OPTIONS 1, then a drag leg with flow stopping 5 s after the
 switch; both legs must never reach AID 2 after the first AID 0. Revert
@@ -539,3 +550,82 @@ PR body updated. Reply posted 09:15Z
 which also states the unchanged no-drag case: flow lost after the switch
 still reaches no aiding sooner than master (45.1 m against 18.7 m at 40 s in
 SITL, where the near-ideal IMU flatters master).
+
+## Round 4: external nav velocity (2026-09-29)
+
+### The finding (AP-Review, confirmed)
+
+The automated review at `816db9a9b0` reported that a continuing external
+nav velocity did not block the AID_ABSOLUTE -> AID_RELATIVE edge. It
+should: an ExtNav velocity keeps fusing in AID_RELATIVE, but that mode's
+timeout counts only flow and body odometry, so once flow stopped the
+filter dropped to AID_NONE and threw the velocity source away. Same shape
+as the drag case in round 3. The review's own measurement, quoted as its
+numbers and not re-run here: largest velocity step 2.625 m/s at
+`816db9a9b0` against 0.072 m/s with the edge disabled.
+
+### The fix
+
+`&& !gpsVelUsed` on the edge (`AP_NavEKF3_Control.cpp:431` at
+`02faf4127d`). `gpsVelUsed` is `lastVelPassTime_ms` within
+`minTestTime_ms`, which covers GPS and ExtNav velocity alike. The comment
+now reads "Drag, airspeed or external velocity dead reckoning also stays
+in AID_ABSOLUTE, where it keeps working", and the first commit's message
+gained a paragraph saying so and a fourth SITL bullet. Only the first
+commit changed: `b98e7b1da2` -> `9ae2d22855`; the other four differ from
+`8aa8cc059b`, `8a9d37773c`, `202da19a57`, `816db9a9b0` only by that
+two-line hunk in their trees (now `d2986a092f`, `cb6585f931`,
+`0be831270c`, `02faf4127d`). Not rebased.
+
+### The test
+
+New subtest in `OpticalFlowFallbackKeepsAbsolute`, "GPS position lost
+while external velocity fuses with flow": SIM vicon on serial5
+(`VISO_TYPE` 2), `EK3_SRC1_VELXY` 6, `EK3_SRC_OPTIONS` 1, the flow source
+set on SRC2, take off 8 m in LOITER, ALT_HOLD, `SIM_GPS1_ENABLE` 0 for
+15 s, then `SIM_FLOW_ENABLE` 0 for 15 s. Asserts no AID 2 **and** no AID 1
+after the first absolute sample (`forbid_none`, new argument to the
+existing helper).
+
+SITL A/B on `02faf4127d`, tier 2:
+
+| build | new subtest | OpticalFlowGPSLossAiding |
+|---|---|---|
+| without `!gpsVelUsed` | fails, "external velocity: EKF fell back to relative aiding" | not recorded |
+| `02faf4127d` | passes | passes |
+
+### Review notes, not fixed
+
+Recorded so the next pass has the answer; none of these was changed and
+none was measured here.
+
+- `gpsVelUsed` is also refreshed by paths that are not a velocity sensor:
+  `ResetVelocity()` writes `lastVelPassTime_ms`
+  (`AP_NavEKF3_PosVelFusion.cpp:69`) and so does the mode-change block
+  (`AP_NavEKF3_Control.cpp:526`); the reviewer adds synthetic zero-velocity
+  fusion. Any of them can hold the edge off for up to `minTestTime_ms`
+  (7 s). The two write sites are from the source at `02faf4127d`; the
+  zero-velocity path is the reviewer's claim, not re-checked. A delay,
+  not a wrong mode.
+- `OpticalFlowGPSLossAiding` reaches the edge by switching source set
+  rather than by losing GPS, so it does not exercise a GPS dropout on the
+  original set. The new subtests do (`SIM_GPS1_ENABLE` 0).
+- The beacon, body odometry and airspeed branches of the edge have no
+  automated coverage. Beacon is by reading (round 3); body odometry and
+  airspeed are untested.
+
+### Replay owed
+
+The first commit's message still says "Replay-validated on a flow
+flight". That run was made at an earlier head, and the flight is not
+named in this archive (see "Replay: is the velocity estimate
+bit-identical?"). `!gpsVelUsed` is an estimator change, so under
+`../CLAUDE.md` the replay against the PR's real flight is owed at
+`02faf4127d`, and the `REPLAY_LOGS.md` row for this PR should say so.
+Not re-run as of 2026-09-29.
+
+### PR description
+
+Updated 2026-09-29 with two sentences: the external nav velocity case
+now stays in absolute aiding, and the test covers three cases (rejected
+GPS, drag, external velocity).
