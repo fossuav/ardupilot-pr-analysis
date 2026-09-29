@@ -18,6 +18,45 @@ that passes the autotest under-tracks thermal drift on two airframes
 (0.1-0.3 flown; 0.3 flight-validated). The PR body and one code comment still
 describe Qbias in terms of `EK3_ABIAS_P_NSE`, which the third commit replaced.
 
+## Pushed 2026-09-29 at `b8ee18a23e`: the floor bias gate, and the test made to fail when it should
+
+Nine commits on newer master (`b832113b10`), force-pushed over `45e7d66369`.
+#34457 now stacks directly on this head rather than carrying copies.
+
+- **New: `129d602eb6`**, zero the bias gain while the AGL KF height and its
+  measurement both rest on the floor. tridge's "on-ground zero-innovation
+  trap, unproven reachable" is reachable: on SFD-O4 log19 (see
+  `../34457/README.md` section 6) the bias was fitted to a start-up transient
+  2-5 s after boot and its std fell 0.20 -> 0.016 on the ground with nothing
+  learned. Replay of log19 on its own firmware with the velocity clear of
+  #34457 taken out, so this change alone: flow-lane worst height gap 4.63 ->
+  1.43 m, RMS 2.34 -> 0.79 m, AGL KF level height error 0.61 -> 0.44 m; the
+  ground wind-up is still there (-3.8 m/s) and the freed bias absorbs it,
+  briefly at its +1.0 limit. That flight replays with XKFA, so the "flights
+  cannot show the bias state" limit below no longer holds for it.
+- **New: `b8ee18a23e`**, ground subtest: bias std after 15 s on the floor
+  0.1201 with the gate, 0.0175 without, 0.047 with #34457 on top; bound 0.03.
+- Excursion subtest: 3 s step, range finder must report the long readings
+  (90.2 m), height within 1 m of its start through the excursion (0.06 m
+  measured), height and bias back afterwards (0.06 m, 0.013). The helpers
+  require every averaged sample valid and finite. Without the covariance
+  cap change SITL dies with the floating point exception at 3 s too.
+- The test disarms on the simulator's touchdown report instead of waiting
+  for the land detector.
+- Commit messages and comments corrected: commit 1's velD comment, "not
+  anchored" (main-filter height is baro), and the thermal-drift justification
+  for the default, replaced by what the 2026-09-10 A/B showed.
+
+### Measured and rejected, 2026-09-29
+
+| Change | Why not |
+|---|---|
+| Clear `SIM_ACC1_BIAS_Z` before landing, to stop the land detector timing out | Worse: 2 of 2 timed out. The main filter has learned about +0.5 of the injected bias by then, so clearing it makes the filter wrong the other way. |
+| Blame the landing timeout on the floor gate | The failure is a flow-position step of about 1.3 m at the 0.47 m/s touchdown (else about 0.2 m), which leans the position controller on the ground and holds `LANDED` off; LDET shows only LARGE_ANGLE missing. Seen with the gate (2 of 5) and without it (1 of 3). Pre-existing; the step itself is not investigated. |
+| Match `@Range` 0.01-0.5 to the code's 0..1 clamp | House practice: `EK3_ABIAS_P_NSE` documents 0.00001-0.02 against the same 0..1 clamp. |
+| Fold the velocity decay into the covariance transition | The 2026-09-10 fix chose to gate the decay on a real dropout instead; the leftover mismatch is 0.5-5 s gaps only and would want its own A/B. |
+| Re-open the bias variance at liftoff as well as gating | Byte-identical Replay output on logs 18-21: with the gate the std is already 0.233 at liftoff. |
+
 ## Review 2026-09-10: the bias state absorbs climb rate, and this record's evidence for 0.3 does not isolate it
 
 The estimator algebra is sound - `F*P*F'` re-derived by hand term by term,
