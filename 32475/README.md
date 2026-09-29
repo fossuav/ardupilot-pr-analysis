@@ -206,6 +206,13 @@ change, not this one. The commit message of `e45c1a3cde` still says an
 upward throw keeps the position requirement and wants rewording at the
 squash.
 
+Pushed 2026-09-29 as `5f333a9acb`: the fixup squashed into `a12635f77f`
+(was `e45c1a3cde`) with its message reworded to match, then rebased onto
+master (444 behind), nine commits. Copter builds at every commit; all 13
+Throw* autotests pass at the head; mechanical gate clean. Nothing
+re-measured beyond that; the table above was taken at `8b5882e6d1` plus
+the change.
+
 ## What is here
 
 ```
