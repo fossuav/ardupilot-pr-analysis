@@ -8,6 +8,15 @@ opened 2026-09-21 from `pr-aglkf-floor-velocity` at `9b74c85f80`.
 (autotest). They answer section 4(a) of the 2026-09-22 automated review. See
 section 6. The PR description has not been updated for them yet.
 
+**Pushed 2026-09-29 at `5a086b2cd9`**, stacked directly on #33507 at
+`b8ee18a23e` (newer master, `b832113b10`). The floor bias gate and its test
+moved to #33507 before the push, where the bias state lives, as `129d602eb6`
+and `b8ee18a23e`; `d42f9dc86d` and `6bb08e8f98` below are those commits as
+they first stood here. This PR's own two commits are now `ee7a6b42d0` (the
+velocity clear, with the clamp made NaN-safe as `!(aglKfH >= rngOnGnd)`) and
+`5a086b2cd9` (the test). Description rewritten and the AP-Review round
+answered the same day.
+
 Two commits on `SmallFastDrone-4.7.1-beta`, to be lifted onto master:
 `8461433db6` (AP_NavEKF3, the fix) and `7433f71001` (autotest). It is a master
 PR and not one of the AGL KF stack in flight: the clamp came in with the AGL KF itself, which the SFD base
@@ -230,9 +239,11 @@ before reading a flight as a control.
   only if the active height source is baro at the clear edge, and log19 was near
   1 m then, around the 0.9 m `EK3_RNG_USE_HGT` threshold. log9, pinned at the
   floor on the range finder source through its climb, fits the same reading.
-- **Push `d42f9dc86d` and `6bb08e8f98`**, update the PR description, and answer
+- ~~**Push `d42f9dc86d` and `6bb08e8f98`**, update the PR description, and answer
   the review's 4(a) with section 6's numbers. The review's section 1 (the `if`
-  clamp dropped `MAX()`'s NaN sanitisation) is still unanswered.
+  clamp dropped `MAX()`'s NaN sanitisation) is still unanswered.~~ Done
+  2026-09-29: pushed at `5a086b2cd9` with the gate moved to #33507, section 1
+  fixed, description and reply posted.
 - The fix commit's last paragraph says "The test is written so a NaN..." and
   means the floor check, not the autotest. Reword before pushing.
 - Name log19 in REPLAY_LOGS.md alongside log9 (done 2026-09-29).
@@ -261,6 +272,14 @@ still teach the bias. With both commits, `OpticalFlowAGLKfFloorVelocity`,
 `OpticalFlowAGLKalmanFilter` (bias tracks the injected 0.338, excursion peak
 0.027), `EK3_AccelBiasZeroVelOptFlow`, `OpticalFlowLimits` and `OpticalFlow`
 pass.
+
+Re-measured 2026-09-29 at `5a086b2cd9`, where the test also requires the
+height to start on the floor and rise at least 2 m with the step, and reads
+only samples that are all valid: -0.0009 to -0.0011 m/s with the velocity
+clear and -3.53 to -3.61 without it, three runs each; rise 3.21 to 3.25 m.
+These are a different measurement from the -1.361 above, which was taken on
+the 4.7 base before the floor bias gate; the automated review measured -2.76
+to -2.84 at `9b74c85f80`.
 
 Injecting an accelerometer bias was tried first and does not work: the main
 filter learns it back out of `velDotNED` through the on-ground zero-velocity
