@@ -5,6 +5,13 @@ Branch `pr-ek3-noaid-xy-bias` (andyp1per fork), base `master`, head
 `27029f2ff5` (2026-09-04). Everything committed here is from SITL; the
 real-flight numbers are cited inline only.
 
+### Head superseded 2026-09-29: rebased onto master, head `a5fcdbf817`
+
+Rebased onto master on 2026-09-29; the GitHub head is now `a5fcdbf817`.
+Nothing has been re-measured at this head. Every number below keeps the
+commit it was taken on, and any head named above is left as written
+because it is the code those numbers came from.
+
 ## Status (one line)
 
 Opened 2026-08-29. Two commits: the observability change in

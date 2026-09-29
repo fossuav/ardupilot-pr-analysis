@@ -5,6 +5,12 @@ Branch `pr-terrain-reset-ge`, base master. No logs committed; numbers
 are from a BF_X indoor quad (SmallFastDronev1 board, Mar 2026), cited
 inline.
 
+### Head on 2026-09-29: `3216b0579e`
+
+Checked against GitHub on 2026-09-29: the head is `3216b0579e`, the commit
+the SIM_TERRAIN 0 run below was taken on, and it did not move in the
+2026-09-29 rebase round. The heads named above are left as written.
+
 ## Status (one line)
 
 Two commits, no autotest; the 1.88 -> 0.3 m result in the PR body is

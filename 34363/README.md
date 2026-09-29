@@ -7,6 +7,13 @@ Branch `ekf3-percore-optflow-logging` (andyp1per fork), two commits, head
 Target: master `371990d846` (2026-09-05). Both the primary-only guard and
 the `XKFA` message are upstream, so this is a gap in merged code.
 
+### Head superseded 2026-09-29: rebased onto master, head `61e71f4ac0`
+
+Rebased onto master on 2026-09-29; the GitHub head is now `61e71f4ac0`.
+Nothing has been re-measured at this head. Every number below keeps the
+commit it was taken on, and any head named above is left as written
+because it is the code those numbers came from.
+
 ## Status (one line)
 
 `XKF5` and `XKFA` are logged for the primary core only, which makes the

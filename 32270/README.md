@@ -5,6 +5,15 @@ Branch `copter-valt-mode` (andyp1per fork), base `master`. No logs are
 committed here; the validation is the `ModeVAltHold` autotest and real flights
 that stay private.
 
+### Head superseded 2026-09-29: rebased onto master, head `8727f57fcd`
+
+Rebased onto master on 2026-09-29; the GitHub head is now `8727f57fcd`.
+The commit "scripts: add build option for VALT mode" was reworded to
+"Tools:" so CI's check_branch_conventions passes; its content is unchanged.
+Nothing has been re-measured at this head. Every number below keeps the
+commit it was taken on, and any head named above is left as written
+because it is the code those numbers came from.
+
 ## Status (one line)
 
 Rebased onto master on 2026-08-29 (941 commits behind before) and extended with

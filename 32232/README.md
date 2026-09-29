@@ -6,6 +6,13 @@ Branch `ek3_gnd_clear` (rishabsingh3003 fork). Head `8bec444e50` (pushed
 top of rmackay9's and rishabsingh3003's, neither of which was rewritten. All
 numbers below are SITL; no hardware and no real-flight logs.
 
+### Head superseded 2026-09-29: rebased onto master, head `e6c82440f2`
+
+Rebased onto master on 2026-09-29; the GitHub head is now `e6c82440f2`.
+Nothing has been re-measured at this head. Every number below keeps the
+commit it was taken on, and any head named above is left as written
+because it is the code those numbers came from.
+
 ## Status (one line)
 
 Review comments from IamPete1 and tridge answered and replied to on the PR,

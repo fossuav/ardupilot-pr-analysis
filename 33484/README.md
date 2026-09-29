@@ -708,6 +708,10 @@ sweep and the position-snap result are real-log only.
   recovery, autotest, 500 ms, `XKF7` diagnostics, reset-churn demotion,
   option-bit fix, `SIM_FLOW_OFS`, `EK3_FLOW_MIN_H` and its autotest).
 - Author: @andyp1per. No review yet.
+- 2026-09-29: the two `SIM_FLOW_OFS` commits (SITL, AP_OpticalFlow) are now
+  their own PR, #34533 (`pr-sitl-flow-ofs`, `c70437775c`), split out at the
+  2026-09-23 dev call. This branch and #34292 carry them patch-identical
+  until it merges; drop them from here on the rebase after that.
 - Related: #33359 / #33507 (the height stack the log58 case needs), #33498
   (the yaw-drift trap found on the same 4-inch airframe), #33497 (its flow
   sensor's half-rate fault).

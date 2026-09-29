@@ -5,6 +5,13 @@ Branch `pr-rng-aglkf-terrain` (andyp1per fork), base `master`, head
 `bba45ab742` (2026-07-29). Real indoor flight logs are not committed here
 (public repo); the numbers below are from Replay on those logs.
 
+### Head superseded 2026-09-29: rebased onto master, head `f48c851e1b`
+
+Rebased onto master on 2026-09-29; the GitHub head is now `f48c851e1b`.
+Nothing has been re-measured at this head. Every number below keeps the
+commit it was taken on, and any head named above is left as written
+because it is the code those numbers came from.
+
 ## Status (one line)
 
 Indoor optical-flow altitude hold diverges by metres because the EKF's rangefinder height-source switch (a) keys off the baro-corrupted main-filter altitude and (b) only engages during takeoff/landing - so cruise/hover rides garbage baro. This routes the switch through the IMU-aided AGL KF, which already exists in master for flow velocity scaling. Replay-validated on two indoor flights and flight-validated on the vehicle (log281).

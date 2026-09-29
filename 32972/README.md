@@ -5,6 +5,13 @@ Branch `pr-baro-gnd-effect`, stacked on #32768. No logs are committed;
 the numbers below are from real indoor flights (cited inline) and from
 the code.
 
+### Head superseded 2026-09-29: rebased onto master, head `7d9b24b395`
+
+Rebased onto master on 2026-09-29; the GitHub head is now `7d9b24b395`.
+Nothing has been re-measured at this head. Every number below keeps the
+commit it was taken on, and any head named above is left as written
+because it is the code those numbers came from.
+
 ## Status (one line)
 
 Eight commits on top of #32768 (five plus three review fixups);

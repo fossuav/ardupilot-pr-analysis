@@ -2,7 +2,8 @@
 
 Analysis archive for [ArduPilot/ardupilot#32471](https://github.com/ArduPilot/ardupilot/pull/32471).
 Branch `pr-vrf-core` (andyp1per fork), base `master`, approved; head
-`bb0a818b52` (pushed 2026-09-15, rebased onto master `bf08027404`). Real-flight
+`c9f68beab8` (2026-09-29, 34 commits rebased onto master `26c7363f64`;
+previous head `7a61baa62e`). Real-flight
 numbers inline; no real-flight logs committed. SITL A/B logs and plots added
 2026-09-04. Partial: the fleet-wide VRFB history (the frozen-correction /
 ground-effect conflict) is not yet here.
@@ -28,6 +29,17 @@ vertical velocity source (indoor, no GPS) the EKF integrates it into
 altitude drift. No stationary calibration can see it: AP_TempCalibration
 learns only with !armed && is_still. The PR learns the bias in stable hover
 and applies it as a frozen correction from the next boot (`INS_ACC_VRFB_Z`).
+
+### Superseded 2026-09-29 by the code at `c9f68beab8`
+
+Nothing on the branch freezes the correction at boot any more.
+`NavEKF3::hoverZBiasCorrection()` reads `dal.ins().get_accel_vrf_bias_z()`
+at the point of use, and `RISK` is refreshed every DAL frame from
+`AP_DAL_InertialSensor::start_frame()`, so a value saved on disarm, set by
+parameter or changed by an accel calibration applies from the next EKF
+frame. Derived from the source, not measured. The sentence above is left
+because it describes the design the PR was approved on and the real-flight
+findings below were made with.
 
 ## Key findings
 
@@ -73,6 +85,11 @@ in flight making up the difference. The pair lands about right; neither
 number is the rectification offset on its own. The parameter description
 ("bias learned during hover to compensate for vibration rectification")
 will be read as the difference. Say "total".
+
+Note 2026-09-29: "frozenCorrection" above is the name at the time. At
+`c9f68beab8` the learner adds back `ahrs.get_hover_z_bias_correction(imu)`,
+the live value the EKF applied (see the note under "The problem"); the
+total-bias invariant is unchanged. Derived from the source.
 
 ### Range against clamp (fixed 2026-09-04)
 
@@ -618,6 +635,8 @@ are unaffected. Only a new flight with bit 2 and `LOG_REPLAY=1` exercises it.
 
 - `pr-vrf-core` - the PR branch, `9b852c9464` as of 2026-09-05. Depends on #32396.
   Local head `7eb93ad76c` 2026-09-15, not pushed (see the 2026-09-15 round).
+  `7a61baa62e` 2026-09-17; `c9f68beab8` 2026-09-29 (rebased onto master,
+  see the 2026-09-29 section).
 - Author: @andyp1per. Approved, then reworked by the 2026-09-04 review pass.
 - Distinct from #34209 (XY bias in unaided flight) and #32473 (acro
   inhibit), which still carries `cb5026417f`.
@@ -848,3 +867,106 @@ matches the accel a core is actually using) and `7a61baa62e` (the INS_USE 0
 leg in VibrationRectificationBiasLearning). Reply posted 08:56Z
 (https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-5711708721).
 The EKF3 maintainer look at the covariance restore remains the open item.
+
+## Rebased, and disarm no longer writes back a stale bias (2026-09-29)
+
+Head `7a61baa62e` -> `c9f68beab8`, rebased onto master `26c7363f64`. All 34
+commits build. #32473 is restacked directly on it (`../32473/`).
+
+### The rebase conflict
+
+Master made the covariance matrix `P` const for writes, with `Pmut` as the
+writable alias. `9b852c9464`'s re-initialisation of P[13..15] (quoted in
+"Bit 2's cost, mostly recovered") wrote `P` and no longer compiled; it now
+writes `Pmut[13][13]`, `Pmut[14][14]`, `Pmut[15][15]`, same values, and
+reads `P[13][13]` back as before. Derived from the source, not measured:
+the arithmetic is unchanged, so the 2026-09-05 and 2026-09-15 restore
+numbers still describe it, on the commits they were taken on.
+
+Old -> new hashes for the commits this file cites by hash:
+
+| was | now | subject |
+|---|---|---|
+| `9b852c9464` | `78326a5b3b` | restore accel bias uncertainty when the vehicle inhibit clears |
+| `18511cd9f2` | `fa57d6798f` | write the accel bias inhibit to the DAL once the cores run |
+| `294b9eb1a2` | `fddeb4fd6f` | the hover Z-bias correction is logged in RISK, not RISJ |
+| `bb0a818b52` | `540fd3450e` | Replay AccelBiasInhibit test |
+| `f09abf42bc` | `cd7b846838` | return the accel bias of the accel a core is actually using |
+| `7a61baa62e` | `8ed31266f6` | INS_USE 0 leg of VibrationRectificationBiasLearning |
+| `e6742bcf8c` | `e49b2faab2` | seeding commit, renamed and extended below |
+
+### AP-Review BUG: disarm restored a cleared bias (confirmed, fixed)
+
+Disarming wrote `_hover_bias_learning[]` back to `INS_ACC*_VRFB_Z`, and that
+array was seeded from the parameter only at boot. Anything that changed
+the parameter since - an accel calibration, a parameter reset, a GCS
+set - was overwritten on the next disarm, with or without a hover. It
+also qualifies the 2026-09-04 bullet "The parameter is written once on
+disarm": still true, but at that head it could write a value the flight
+never learnt.
+
+Fix, in the seeding commit, now `e49b2faab2` "Copter: seed the hover
+Z-bias learner and save only what it learnt" (was `e6742bcf8c` "... when
+only saving"):
+
+- `Copter::seed_hover_bias_learning()` loads the array from the parameter
+  and clears `_hover_bias_learned`. Called from
+  `init_hover_bias_correction()` at boot and from `AP_Arming_Copter::arm()`
+  straight after `motors->armed(true)`.
+- `update_hover_bias_learning()` sets `_hover_bias_learned`;
+  `save_hover_bias_learning()` returns without writing unless it is set.
+
+New test commit `c9f68beab8` "autotest: check a cleared VRF bias is not
+restored on disarm": a subtest of `VibrationRectificationBiasLearning`
+that clears `INS_ACC_VRFB_Z` before arming, and again while armed, then
+arms and disarms without a hover and checks it stays 0.
+
+SITL A/B, 2026-09-29 (tier 2), on the rebased branch with parts of the fix
+taken out:
+
+| build | result |
+|---|---|
+| without the arm-time seed (before the flag existed) | fails, "came back as 0.133092" |
+| arm-time seed, no `_hover_bias_learned` flag, cleared while armed | fails, "came back as 0.100000" |
+| both (`c9f68beab8`) | passes |
+
+The 0.133 is the previous flight's learned value, still in the array, not
+a boot value. An earlier message worded it "the value seeded at boot";
+that was wrong and was corrected.
+
+Derived from the source, not measured: none of the archived numbers in
+this file move. Every harness here is a single flight from boot, where the
+arm-time seed reloads the value boot loaded, and each counted run reaches
+a hover, so the save still fires.
+
+Accepted edge, not fixed: hover, then set the parameter while still
+armed, then disarm without another hover - the learnt value is saved,
+because learning did run that flight.
+
+### Corrections to the record
+
+- The correction is not frozen at boot on this branch (see the note under
+  "The problem"). `libraries/AP_NavEKF3/CLAUDE.md`'s sections that describe
+  a frozen correction and a `one_hz_loop` path are stale for this branch;
+  that playbook was not edited, and a review leaning on it should re-read
+  `hoverZBiasCorrection()` instead.
+- Stale code comments fixed in the same rebase: the
+  `init_hover_bias_correction()` header in `Attitude.cpp`, `system.cpp`,
+  and `AP_DAL_InertialSensor.cpp`'s "only moves when saved on disarm", now
+  "moves when the vehicle saves it on disarm, or on an accel calibration or
+  a parameter set".
+
+### Still open (Codex, not fixed; design questions)
+
+- With `ACC_ZBIAS_LEARN=3` and bit 2 clear, the residual sensor bias can be
+  corrected twice straight after arming: while disarmed the EKF relearns it
+  into `inactiveBias`, and the saved total already includes it. This is
+  the arm-time double count the "Measured and rejected" row on storing the
+  delta assigns to bit 2 (`XKF2.AZ` at arm +0.130 clear vs 0.000 set).
+- Bit 2's inhibit is only asserted from the 1 Hz task, leaving up to 1 s
+  after disarm, and after startup, in which the EKF can learn the
+  motors-off bias. Derived from the source, not measured.
+
+Replay against a flight for this commit: none applies. The defect is in
+what the vehicle writes to a parameter on disarm, which Replay does not
+re-run. Not yet added to `../REPLAY_LOGS.md` (outside this update).

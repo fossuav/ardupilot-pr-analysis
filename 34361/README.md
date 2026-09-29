@@ -1,9 +1,14 @@
 # PR #34361 - EKF3: serve the terrain-database AGL from getHAGL()
 
 Analysis archive for [ArduPilot/ardupilot#34361](https://github.com/ArduPilot/ardupilot/pull/34361).
-Branch `ekf3-hagl-terrain-alt` (andyp1per fork), two commits of its own,
-head `3b7ba40c0a`. Opened 2026-09-10 and **actually stacked on #34360**
-since 2026-09-10, not merely claiming to be: it was based on plain master
+Branch `ekf3-hagl-terrain-alt` (andyp1per fork). Head `a78f5f410b`
+(pushed 2026-09-29, five commits, rebased onto master that day with
+#34360's merged commits dropped); before that `3b7ba40c0a`, two commits
+of its own. Record refreshed 2026-09-29; see "Round 2 (2026-09-29)".
+
+The rest of this paragraph, and the target line below it, are as
+written before #34360 merged. Opened 2026-09-10 and **actually stacked on
+#34360** since 2026-09-10, not merely claiming to be: it was based on plain master
 and `git merge-tree` showed it conflicting with #34360 in both
 `AP_NavEKF3_OptFlowFusion.cpp` and `arducopter.py`. Rebased onto it, and
 its own commit now touches only `getHAGL` - the timeout constant and the
@@ -19,6 +24,12 @@ so this is a gap in merged code, not a branch feature.
 terrain-database one, which silently degrades every caller of
 `AP_AHRS::get_hagl()`; one measured consequence (log7, not committed,
 2026-09-09); fix is three lines and not written.
+
+**Superseded 2026-09-09 and 2026-09-29:** the fix was written the same
+day ("Implemented 2026-09-09"), and at `a78f5f410b` it negates the
+database altitude, reads it against `getPosD()` and refuses a negative
+height. Open for the dev call: whether `getHAGL()` may serve a model
+height at all.
 
 ## The problem
 
@@ -209,3 +220,80 @@ disagreed with what AP_Terrain itself reports.
 - `../33585/` - bit 5 and the flat-ground path this must not serve.
 - `../34360/` - the same convention in `FuseOptFlow`, opened 2026-09-10.
   This touches the adjacent line, so it stacks on that rather than racing it.
+  Merged by 2026-09-29; its commits were dropped from this branch in the
+  2026-09-29 rebase.
+
+## Round 2 (2026-09-29)
+
+Five commits at `a78f5f410b`: `e4f3b1c59b` AP_NavEKF3 (the change),
+`9d44cf7dc3` autotest (flow legs), `3a0e83bc11` autotest (no flow
+sensor), `2e818d0597` AP_NavEKF3 (`EK3_OPTIONS` description and
+comments), `a78f5f410b` AP_GroundEffect (header and `GNDEFF_ALT`).
+
+### The code as it is now
+
+The proposed shape above substituted `terrain_srtm_alt` into the
+`terrainState` expression. At `a78f5f410b` (`AP_NavEKF3_Outputs.cpp:301-316`)
+it does not: `terrain_srtm_alt` is measured up from the public origin, so
+the branch computes `-terrain_srtm_alt - posD` with `posD` from
+`getPosD()` against that same origin, and returns false rather than
+serve a negative height ("a cell sitting above the vehicle means the
+model and the filter disagree"). Order is unchanged - after the AGL KF,
+behind `!gndOffsetValid` - and freshness is still `terrain_srtm_alt_ms`
+against `TERRAIN_SRTM_ALT_TIMEOUT_MS`, now also requiring a non-zero
+timestamp. On master the data reaches the cores only with `EK3_OPTIONS`
+bit 2 (`AP_NavEKF3.cpp:1774`); the "bit 2 or bit 5" in "Implemented
+2026-09-09" is the SmallFastDrone branch. Derived from the source, not
+measured.
+
+### Commit message heights corrected
+
+The commit message quoted heights from mixed runs. It now gives the 60 m
+test only: getHAGL 59.98, 149.10, 220.33 m at 0, 200 and 400 m north
+against database 59.98, 149.09, 220.32 m (the 2026-09-10 run above), and
+labels the wrong-sign substitution's 40.02, -49.10, -120.33 m as from a
+40 m takeoff. No new measurement; a correction of the prose.
+
+### No flow sensor subtest (tier 2)
+
+AP-Review showed the flow legs could not see a vehicle without a flow
+sensor: they pass with the freshness test replaced by
+`terrain_srtm_alt_valid`, which only flow fusion sets. New subtest in
+`3a0e83bc11`: `SIM_FLOW_ENABLE` 0, `FLOW_TYPE` 0, `EK3_OPTIONS` 1<<2, a
+Lua script sending `ahrs:get_hagl()` (or -1) as NAMED_VALUE_FLOAT `HAGL`,
+restart with `--home KalaupapaCliffs`, GUIDED take off to 60 m, fly 200 m
+north. It passes only once `TERRAIN_REPORT` shows `pending` 0, `loaded` >
+0 and `current_height` > 100 m, with HAGL within 5 m of it, inside 30 s -
+no blind delay, and the > 100 m test stops a not-yet-loaded tile's 0 from
+matching the script's -1.
+
+Measured at `a78f5f410b`:
+
+| code | no flow sensor: getHAGL / terrain | flow legs |
+|---|---|---|
+| `a78f5f410b` | 149.24 / 149.29 m | pass |
+| freshness mutated to `terrain_srtm_alt_valid` | -1.00 / 149.03 m, fails | pass |
+
+That second row is the coverage gap the review proved, now closed.
+
+### Documentation
+
+`EK3_OPTIONS` bit 2 now says the database height is also reported as the
+height above ground with `TERRAIN_ENABLE`, "a terrain model rather than a
+measurement", and only when the AGL KF, a range finder and the terrain
+offset all have none, with or without a flow sensor. The
+`AP_GroundEffect` header and `GNDEFF_ALT` list it as a height source, and
+the header says it is not subject to the drift gate. The stale "only used
+by optical flow" comments on `writeTerrainData` and `terrain_srtm_alt`
+now name getHAGL too.
+
+### Open for the dev call
+
+Whether `getHAGL()` may serve a model height. `AP_GroundEffect` takes
+`get_hagl()` as AGL and applies no drift gate to it, so at a landing site
+away from home a database error goes straight into the touchdown
+decision. The PR's case is that the alternative it replaces, takeoff-
+relative height with the drift rule, is worse (log7, above). Not
+settled here.
+
+PR description rewritten 2026-09-29.

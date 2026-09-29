@@ -6,6 +6,15 @@ Branch `pr-loiter-brake-drag` (author andyp1per), head `f8277625ff`
 numbers (logs 276/278) are cited inline only, no real-flight logs are committed
 to this public repo.
 
+### Head superseded 2026-09-29: rebased onto master, head `a6e4e018a1`
+
+Rebased onto master on 2026-09-29; the GitHub head is now `a6e4e018a1`.
+The `AC_Loiter:` commit prefix was reworded to `AC_WPNav:`, the library
+the file lives in.
+Nothing has been re-measured at this head. Every number below keeps the
+commit it was taken on, and any head named above is left as written
+because it is the code those numbers came from.
+
 ## Status (one line)
 
 One-line kinematic-consistency fix in `AC_Loiter::calc_desired_velocity`.
