@@ -135,6 +135,21 @@ ThrowMode autotest does not use THROW_SRC_INI, so its pass does not cover
 this. Needs a SmallFastDrone SITL run with THROW_SRC_INI pointing at a
 no-position set, sitting disarmed in THROW for more than 13 s.
 
+### Superseded 2026-09-29 (later): measured, and fixed in #32475
+
+The prediction above was wrong about the failure. Measured in SITL on
+#32475 `8b5882e6d1` with this PR's ekf_check stacked: an upward throw with
+THROW_SRC_INI on a no-position set is **refused at arming** ("Arm: Need
+Position Estimate") before any failsafe can count, with master's ekf_check
+and with this PR's alike. Drops were never affected: a drop's
+`requires_position()` is already false, and log22 and drop session 2 were
+drops. #32475 now makes an upward throw's requirement follow
+THROW_NEXTMODE (`1796d249cd`, local); with that and this PR, the throw
+arms, waits 20 s and completes into ALT_HOLD with no EKF failsafe. An
+upward throw into LOITER on a no-position THROW_SRC_INI set is still
+refused at arming, which is correct. See `../32475/README.md`. Nothing in
+this PR changes.
+
 ## A/B of the four legs (SITL, tier 2, 2026-09-29)
 
 EKFSourceSetFailsafe as at `b1743055b1`, with only `ArduCopter/ekf_check.cpp`
