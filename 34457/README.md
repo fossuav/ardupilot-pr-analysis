@@ -3,6 +3,11 @@
 **Open as [#34457](https://github.com/ArduPilot/ardupilot/pull/34457)**,
 opened 2026-09-21 from `pr-aglkf-floor-velocity` at `9b74c85f80`.
 
+2026-09-29: two local commits on top, **not pushed**: `d42f9dc86d`
+(AP_NavEKF3, no bias learning while resting on the floor) and `6bb08e8f98`
+(autotest). They answer section 4(a) of the 2026-09-22 automated review. See
+section 6. The PR description has not been updated for them yet.
+
 Two commits on `SmallFastDrone-4.7.1-beta`, to be lifted onto master:
 `8461433db6` (AP_NavEKF3, the fix) and `7433f71001` (autotest). It is a master
 PR and not one of the AGL KF stack in flight: the clamp came in with the AGL KF itself, which the SFD base
@@ -126,11 +131,62 @@ velocity state.
 log6 and log7, on firmware `797f6854`, reach `XKFA.VAgl` -6.5 m/s. The behaviour
 is as old as the AGL KF.
 
+### 6. The bias the floor froze, and what it costs after liftoff (tier 1 and 1b, SFD-O4 log18-21)
+
+Four more flights on `5adc2ea0`, which carries `8461433db6`. The velocity fix
+holds: ground dwells of 63-97 s, bias frozen at -0.058 to -0.065, `VAgl`
+within -0.009 to +0.037 m/s on every core, no takeoff step. The acro churn on
+log18, 20 and 21 (15, 14, 14 aiding stops) tracks the tilt limit, as section
+4 says: in the 5 s before each of the 43 stops, tilt allowed flow fusion at
+most 18 % of the time.
+
+log19, a gentle LOITER takeoff to 2.2 m, shows what the fix leaves. The flow
+lane (core 1, no GPS, AGL KF velocity fused as velD under `EK3_OPTIONS` bit 4)
+sank to **1.0 m** below baro, GPS, the range finder and core 0 after the
+climb, and took 20 s to come back. `HAgl` was flat at 2.0 m while `VAgl` read
+-0.2 m/s for 5 s, and the bias moved -0.062 -> +0.005 over 10 s of flight.
+
+The bias was never a ground residual. It was fitted to the filter's own
+start-up: from 2.27 s after boot (std 1.0) to 5.1 s it went 0 -> -0.062
+while the AGL height rose 7 mm at up to 0.03 m/s. The height then pinned to
+the floor, and with both the height and its measurement at `rngOnGnd` the
+update kept running at full bias gain on a zero innovation: std 0.20 -> 0.016
+by liftoff with nothing learned. log18 is the same (-0.064). This is the
+defect the review's section 4(a) named, and the confidently wrong bias its
+notes predicted "would matter if it were ever extended to fly afterwards".
+
+`d42f9dc86d` sets the bias gain to zero while both are on the floor (a NaN
+height counts as on the floor). The Joseph form update stays consistent for
+any gain. Replay at `5adc2ea0`, which reproduces the flown cores to 0.000 m,
+core 101 on log19:
+
+| | flown | `EK3_AGL_ABIAS_P` 0.3 | zero bias gain on the floor |
+|---|---|---|---|
+| worst height gap to core 100 | -1.00 m | -0.30 m | +0.28 m |
+| gap mean / RMS | -0.26 / 0.42 m | 0.00 / 0.09 m | +0.14 / 0.17 m |
+| AGL KF height error, level, RMS | 0.083 m | 0.042 m | 0.037 m |
+| AGL KF velocity error, RMS | 0.074 m/s | 0.047 m/s | 0.042 m/s |
+| bias std at liftoff | 0.016 | | 0.233 |
+
+Logs 18, 20 and 21 are unchanged except log21's worst early sag, 2.87 ->
+1.96 m. log5 and log7, on `797f6854`, keep worst ground `VAgl` at -0.005 to
+-0.006 m/s with and without it, so the section 3 behaviour is untouched.
+Those two stand in for log9 and log12, which did not resolve on the machine
+used on 2026-09-29.
+
+log18's level AGL KF error reads 0.69 -> 0.80 m under both 0.3 and the gate.
+All of it is one 53-sample window at +139 to +149 s, RTL straight after acro,
+where the bias swings to -0.57 in every arm and the error is 2 m regardless.
+It is a separate post-acro effect, not a cost of either change, and is not
+explained yet.
+
 ## Measured and rejected
 
 | Alternative | Why not |
 |---|---|
 | Bound `aglKfV` to a fixed range instead of clearing it at the floor | Caps the wind-up without stopping it. The takeoff still starts from a large wrong velocity, so the height still lags and still steps, just less. |
+| Raise `EK3_AGL_ABIAS_P` 0.05 -> 0.3 instead of gating the bias on the floor | Fixes log19 about as well (worst gap -1.00 -> -0.30 m, section 6), and 0.3 is what Lucid v2 flew. But it speeds the bias everywhere, in flight included, to cure a defect that is only on the ground, and the operator wants to keep a low value. The gate does it at 0.05. |
+| Re-open the bias variance (to at least 0.1^2) on the `onGround` falling edge, as well as the gate | Measured 2026-09-29, byte-identical output on logs 18-21: with the gate the std is already 0.233 at liftoff, so the `MAX` never bites. Adds a state flag for nothing on these flights. |
 | Also clear the velocity at the measurement-update clamp | Left alone deliberately. There the innovation is real and the correction is informed; clamping is only enforcing the physical bound on the output, and killing a legitimate descent correction there would be a new fault. The 2 residual samples on core 1 in the Replay "after" column come from this path and are in flight, not on the ground. |
 
 ## Rejected finding, recorded so it does not come back
@@ -169,6 +225,17 @@ before reading a flight as a control.
   `GNDEFF_TMO`, where log9 never emits it; that message is latched on the ground
   effect clear edge, so its timestamp is the release. One flight, and the absence
   in log9 has more than one possible cause, so it is corroboration, not proof.
+  2026-09-29: log18, 20 and 21 emit it 1.9, 2.0 and 2.0 s after NOT_LANDED;
+  log19 never does. Derived from the source, not measured: the message is sent
+  only if the active height source is baro at the clear edge, and log19 was near
+  1 m then, around the 0.9 m `EK3_RNG_USE_HGT` threshold. log9, pinned at the
+  floor on the range finder source through its climb, fits the same reading.
+- **Push `d42f9dc86d` and `6bb08e8f98`**, update the PR description, and answer
+  the review's 4(a) with section 6's numbers. The review's section 1 (the `if`
+  clamp dropped `MAX()`'s NaN sanitisation) is still unanswered.
+- The fix commit's last paragraph says "The test is written so a NaN..." and
+  means the floor check, not the autotest. Reword before pushing.
+- Name log19 in REPLAY_LOGS.md alongside log9 (done 2026-09-29).
 
 ## Tests
 
@@ -183,6 +250,17 @@ an upward velocity lifts the height off the floor and corrects itself; a second
 assertion checks the height came back down, since the velocity proves nothing if
 the provocation never reached the clamp. The two builds differ only inside
 `if (aglKfH < rngOnGnd)`, so the difference is itself proof the branch was taken.
+
+`6bb08e8f98` adds a second assertion to the same test, after its 15 s settle
+on the floor: the bias std must not have collapsed. 0.0470 to 0.0472 with
+`d42f9dc86d` over three runs, 0.0175 without it on every one of five (the
+review measured 0.0173), so the 0.03 bound has about 1.6x either side. The
+gated value is well under the 1.0 the filter starts at because SITL's range
+noise lifts the measurement off the floor now and then, and those samples
+still teach the bias. With both commits, `OpticalFlowAGLKfFloorVelocity`,
+`OpticalFlowAGLKalmanFilter` (bias tracks the injected 0.338, excursion peak
+0.027), `EK3_AccelBiasZeroVelOptFlow`, `OpticalFlowLimits` and `OpticalFlow`
+pass.
 
 Injecting an accelerometer bias was tried first and does not work: the main
 filter learns it back out of `velDotNED` through the on-ground zero-velocity

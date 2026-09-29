@@ -696,6 +696,19 @@ The third arm is the one worth keeping: a floor that fired at *every* height
 rather than below its value would pass both of the original two subtests,
 because the second disables the feature outright.
 
+### The hold after landing, flown at FLOW_HGT_MIN 0 (tier 1, SFD-O4 log19, 2026-09-29)
+
+On `5adc2ea0`, which carries the focus-hold guard (`7d65ef05d8`) but not
+`8a38042ace`. `FLOW_HGT_MIN` 0, so the floor is `rngOnGnd + 0.05`, the value
+the airframe should fly. LAND_COMPLETE at 122.5 s, core 1 stopped aiding at
+126.20 s, disarm at 127.70 s, relative aiding restarted at 127.715 s. Nothing
+restarted in the 1.5 s between the stop and disarm. On logs 18, 20 and 21,
+all 43 in-flight stops (flow held off by the tilt limit, which the guard does
+not cover) restarted within 5-7 ms, which is what an unguarded stop does, so
+the gap is the guard. It is not the 30 s dwell log12 was short of: 5.2 s armed
+after landing covers one stop, not the 5 s repeat, and no height reset fired
+in flight.
+
 ## Plots
 
 `plots/flow_hgt_min_ab.png` - the original, head 292ec09fef. One binary,
