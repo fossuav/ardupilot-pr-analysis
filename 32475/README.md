@@ -171,6 +171,41 @@ carrier at 1 g is always rejected, 1.9 g at 15 rad/s, 6 g at 30 rad/s.
 - VALT as a next mode is not upstream; the PR whitelists it only where
   built.
 
+## An upward throw's position requirement follows THROW_NEXTMODE (2026-09-29, local)
+
+Local on `pr-throw-mode-improvements`, not pushed: `1796d249cd` (fixup of
+`e45c1a3cde`, "allow throw without GPS and add next mode options") and
+`23b05a4f7d` (autotest ThrowUpwardNoPositionNextMode), on top of
+`8b5882e6d1`. Found from #32514's review: that PR's EKF failsafe counts a
+missing position whenever the mode's `requires_position()` is true, and an
+upward throw returned true whatever it handed over to.
+
+`requires_position()` was `throw_type != Drop`. It is now
+`throw_type != Drop && nextmode_requires_position()`, the predicate run()
+already used for its PosHold message (not STABILIZE, ALT_HOLD or ACRO),
+moved into a helper. Upward detection reads vertical velocity and
+earth-frame acceleration, so the throw itself never needed a horizontal
+position; PosHold already ran without one when `position_ok()` was false.
+
+SITL, tier 2, 2026-09-29: upward throw, THROW_NEXTMODE 2, THROW_SRC_INI 2
+on a set with no horizontal source, armed in THROW for 20 s, then thrown.
+
+| accessor | ekf_check | result |
+|---|---|---|
+| `throw_type != Drop` | master | refused at arming, "Arm: Need Position Estimate" |
+| `throw_type != Drop` | #32514 `b1743055b1` | refused at arming, same |
+| with next mode | master | passes; "EKF variance: position lost" and a report-only "EKF Failsafe", no mode change |
+| with next mode | #32514 | passes, no EKF failsafe at all |
+
+ThrowMode, ThrowModeNoGPS, ThrowSrcInitRestoredOnCompletion,
+ThrowNextModeAcro, ThrowDropSourceSwitch and ThrowAbortRestoresSourceSet
+pass with the change, alone and with #32514's ekf_check stacked. The 20 s
+"no failsafe action" assertion cannot fail at either accessor on either
+ekf_check (the old accessor never arms), so it guards against a later
+change, not this one. The commit message of `e45c1a3cde` still says an
+upward throw keeps the position requirement and wants rewording at the
+squash.
+
 ## What is here
 
 ```
