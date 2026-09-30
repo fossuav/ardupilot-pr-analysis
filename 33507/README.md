@@ -1,5 +1,29 @@
 # PR #33507 - estimate the accel-Z bias inside the AGL KF (EKF3)
 
+## Restacked 2026-09-30 at `4a6295de9b`: stacked on #34457, P macro fixed
+
+AP-Review 2026-09-30 (REQUEST CHANGES at `b8ee18a23e`) had two blockers, both
+closed. Master now defines `#define P (const_cast<const Matrix24 &>(Pmut))` in
+AP_NavEKF3_OptFlowFusion.cpp, so the cap helper's `ftype P[3][3]` failed to build
+on every CI job; renamed `Pagl` in the commit that adds it. The floor velocity
+wind-up the decay gate exposes is answered by moving the gate into #34457 behind
+its floor clear; this PR is now the eight bias-state commits on top.
+
+A self-review round (Claude only; Codex auth had expired) also: made
+`aglKfCapVariance` restart a NaN variance at the cap with its row and column zeroed
+(master's `MIN()` returned the cap, the `<=` test spread the NaN); fixed the doc
+block (`u` and the prediction line), the "independent of" wording, the parameter
+doc (floor gate, `EK3_ACC_BIAS_LIM`); moved the ASCII edits into the bias-state
+commit; had the first test use `xkfa_recent_mean('Bias')`; and rewrote the floor
+gate commit around the numbers with #34457 underneath (-1.00 -> +0.28 m worst gap,
+0.083 -> 0.037 m RMS). Floor bias std with the velocity clear underneath is 0.0470
+(this session, matching the record's three runs), not the 0.1201 measured without
+it.
+
+Measured at `4a6295de9b`: every commit builds on master, feature-off build OK;
+excursion peak 90.1 m, height deviation 0.04 m, bias back to 0.000; injected bias
+0.000 -> 0.345; floor std 0.0470; floor velocity -0.0011.
+
 Analysis archive for [ArduPilot/ardupilot#33507](https://github.com/ArduPilot/ardupilot/pull/33507).
 Branch `pr-agl-kf-zbias` (andyp1per fork), base `master`, head `0c429893cf`
 (2026-07-27). Evidence is Replay on, and flights of, a 4-inch optical-flow quad
