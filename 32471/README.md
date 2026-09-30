@@ -2,8 +2,8 @@
 
 Analysis archive for [ArduPilot/ardupilot#32471](https://github.com/ArduPilot/ardupilot/pull/32471).
 Branch `pr-vrf-core` (andyp1per fork), base `master`, approved; head
-`c9f68beab8` (2026-09-29, 34 commits rebased onto master `26c7363f64`;
-previous head `7a61baa62e`). Real-flight
+`b8ad09e9cb` (2026-09-30, 38 commits on master `26c7363f64`; previous
+heads `c9f68beab8` 2026-09-29, `7a61baa62e`). Real-flight
 numbers inline; no real-flight logs committed. SITL A/B logs and plots added
 2026-09-04. Partial: the fleet-wide VRFB history (the frozen-correction /
 ground-effect conflict) is not yet here.
@@ -970,3 +970,109 @@ because learning did run that flight.
 Replay against a flight for this commit: none applies. The defect is in
 what the vehicle writes to a parameter on disarm, which Replay does not
 re-run. Not yet added to `../REPLAY_LOGS.md` (outside this update).
+
+## AP-Review round of 2026-09-30 00:50Z: AHRS never saw the correction (2026-09-30)
+
+Review of `c9f68beab8`, verdict REQUEST CHANGES. Answered and pushed as
+`b8ad09e9cb` (force, autosquashed; tree identical to the pre-squash tip
+`pre-squash/pr-vrf-core-20260930-1832`), reply posted as
+issuecomment-5916406231.
+
+### The blocker, confirmed and fixed
+
+`correctDeltaVelocity()` takes the applied hover Z-bias off the IMU data
+before the bias state sees it, so the state holds only the residual.
+AHRS builds `accel_ef` and the corrected delta velocity from raw IMU data
+minus `NavEKF3::getAccelBias()`, which exported that residual, so both
+stayed offset by the applied correction all flight. Consumers: the Z
+accel loop (`get_estimated_accel_D_mss()`), the land and crash
+detectors, throw mode, precision landing, iBus telemetry, video
+stabilisation logging.
+
+Fix `1d21d3888d` "AP_NavEKF3: add the applied hover Z-bias to the accel
+bias AHRS removes": the frontend `getAccelBias()`, whose only caller is
+AHRS, adds `hoverZBiasApplied()` for the core's active accel.
+`getAccelBiasForIMU()` (the learner) and XKF2 stay residual-only, so the
+learner does not double count. XKF2.AZ is therefore not the total bias
+AHRS removes; the applied part is in RISK.
+
+SITL A/B (tier 2), new subtest of VibrationRectificationBiasLearning,
+`59ea3788c4`: mean `PSCD.AD` over the held hover of the carried-over
+flight (SIM_ACC_VRF_Z 0.15, learned INS_ACC_VRFB_Z 0.130):
+
+| build | untrimmed mean | trimmed (2 s off each end) |
+|---|---|---|
+| `c9f68beab8` + test only (no fix) | +0.155 | +0.141 (offline, same log) |
+| `4a30518ec5` (fix, pre-squash) | +0.023, +0.025 | +0.011 |
+
+Threshold 0.05. The untrimmed window included the end of the climb and
+the start of the descent, worth about +0.015 on the failing side, so the
+trim went in before the push.
+
+Not measured: AHRS now carries the correction on the ground at idle, as
+the EKF already did, because both are gated on armed rather than on
+vibration. SITL applies SIM_ACC_VRF in full whenever the motors are on,
+so it cannot show the idle difference. Worst case 0.6 (the clamp)
+against the land detector's 1.0 m/s/s; derived from the source, not
+measured.
+
+### Covariance, fixed for the hover term only
+
+`34d313d697`: `CovariancePrediction()` built `dvz` from the raw delta
+velocity, which still carries the applied correction the bias state no
+longer holds. Now takes `hoverZBiasApplied() * delVelDT` off. Master
+already ignores `inactiveBias` there; that was left alone so the change
+is bit-identical with the feature off. No test separates it;
+VibrationRectificationBiasLearning, AccelBiasMovingPlatform and
+Copter.Replay pass at `4a30518ec5`.
+
+### AccelBiasMovingPlatform flake
+
+`b8ad09e9cb`: poll the log for EV 10 before reading the bias at arm. The
+first attempt (`4a30518ec5`, a fixed 2 s delay) named the wrong
+mechanism - a disarm closing the log. The harness sets `LOG_DISARMED=1`
+and `LOG_FILE_DSRMROT` is 0, so the file stays open; the logger holds
+records in its write buffer until a 2048-byte chunk fills or 2 s pass.
+Buffering is the mechanism by inspection; the flake itself was not
+reproduced.
+
+### Review findings declined, with the reason
+
+- `getAccelBiasForIMU()` preferring the primary core: the bot marked it
+  optional; Codex audit lists it OPEN. Left.
+- AHRS reads raw accel at `getPrimaryCoreIMUIndex()` = the gyro index
+  while the bias belongs to the accel index. Same on master; out of
+  scope. The added hover term makes an existing mismatch larger only
+  when a core's accel and gyro indices differ.
+- Double count at arm without bit 2 (whole-PR reviewer, "possibly
+  must-fix"): already the open design question under "Still open" above
+  and what bit 2 is for. Not re-decided.
+- NaN guard on the hover mean (Codex cold): SITL traps FE_INVALID, so a
+  NaN crashes the firmware before it is logged.
+- A contiguous-plateau check for the hover window (Codex cold): the test
+  flies a single hold and the trim drops its ends.
+
+Also fixed: `hoverZBiasCorrection()`'s header comment named
+`HOVER_Z_BIAS_LIM`, gone since the inactive-IMU commit, now folded into
+that commit.
+
+### Hashes
+
+| was | now | subject |
+|---|---|---|
+| `8c0a0aee87` | `0a33d2fa9f` | inactive IMU compare (comment fixup folded in) |
+| `e49b2faab2` | `1a08db9afd` | seed the learner, save only what it learnt |
+| `a76545fd29` | `fc90ed8926` | Replay record-length fix |
+| `78326a5b3b` | `dbdf6c4a32` | restore accel bias uncertainty |
+| `fa57d6798f` | `97b2587c2b` | inhibit to the DAL once the cores run |
+| `fddeb4fd6f` | `4eac25a0fd` | RISK not RISJ |
+| `540fd3450e` | `ecbba1cf6f` | Replay AccelBiasInhibit test |
+| `cd7b846838` | `e354754512` | accel bias of the accel a core uses |
+| `8ed31266f6` | `2cc99c1fa8` | INS_USE 0 leg |
+| `c9f68beab8` | `2528c3ab56` | cleared bias not restored on disarm |
+| new | `1d21d3888d` | AHRS accel bias includes the applied correction |
+| new | `34d313d697` | covariance hover term |
+| new | `59ea3788c4` | AHRS acceleration subtest |
+| new | `b8ad09e9cb` | arm-event poll |
+
+#32473 is stacked on this branch and needs restacking onto `b8ad09e9cb`.
