@@ -44,6 +44,32 @@ first half for modes that need a position. It still leaves the failsafe
 quiet in ALT_HOLD/STABILIZE on a set with no horizontal source, which is
 now the intended behaviour.
 
+### Superseded 2026-09-30: holdoff dropped (local, not yet pushed)
+
+Local head `23c4bace02` over `b1743055b1`, carrying fixup and amend!
+commits still to be autosquashed. AP-Review's third round (2026-09-30, on
+`b1743055b1`) found the QURT build broken by a braced-list range-for, LAND
+flying on position left without a failsafe, and the holdoff applying to
+switches to a set with no source. The first two are fixed. The third
+turned into dropping the holdoff: it had no measurement behind it and
+nothing covered it (see "Holdoff A/B" below). What is left:
+
+- `position_expected = requires_position() || landing_with_GPS() ||
+  has_horiz_pos_vel_source()`; nothing else in ekf_check changes.
+- EKFSourceSetFailsafe rewritten to five legs, each shown to fail with
+  its term removed (see "Mutation A/B" below).
+
+"A 12 s holdoff for the EKF's aiding-mode transition" in the status line
+above, and the holdoff bullets in the redesign section below, describe
+`b1743055b1`, not this head.
+
+Pushed 2026-09-30 as `752a4bab8b`, autosquashed onto the same base
+(`26c7363f64`); tree identical to the local head `1a1e62f1da` that the
+round-3 numbers below were taken on, every commit builds for SITL copter.
+Old to new: `99da93395d` -> `bfbd9d9382` (AP_NavEKF3), `5a2e2e77cf` ->
+`fec5baecc3` (AP_AHRS), `0f08e17d82` -> `fb3dfea8ab` (Copter),
+`b1743055b1` -> `752a4bab8b` (autotest).
+
 ## The problem
 
 ekf_check latches has_ever_passed once position is available. An
@@ -177,6 +203,54 @@ nothing trips) but is inspection, not a run.
 Also at `b1743055b1`: EKFSource, ThrowMode, EK3_EXT_NAV_vel_without_vert
 and GPSViconSwitching pass.
 
+## Holdoff A/B (SITL, tier 2, 2026-09-30)
+
+EKFSourceSetFailsafe as at `8c0fabdf60` (the four legs above plus a LAND
+leg, LOITER leg timeout 11 s), with only `SOURCE_SWITCH_HOLDOFF_MS` set
+from 12000 to 0 in `ArduCopter/ekf_check.cpp`: **passes every leg**. So
+no leg needs the holdoff. Switching back to the GPS set reported "EKF3
+IMU0 is using GPS" in the same log second as "Using EKF Source Set 1".
+Leg (c) switched about 17 s after leg (b)'s switch, inside the 24 s
+rate limit, so it never opened a holdoff at all (derived from the test's
+timeline, not traced in the run).
+
+## Mutation A/B (SITL, tier 2, 2026-09-30)
+
+A different measurement from the four-leg table above: the test was
+rewritten. EKFSourceSetFailsafe at `23c4bace02`, five legs: (1) ALT_HOLD,
+switch to set 2, wait for EKF_STATUS_REPORT to lose POS_HORIZ_ABS and
+POS_HORIZ_REL, then 5 s with no failsafe; (2) back to set 1, wait for
+POS_HORIZ_ABS, 5 s with no failsafe; (3) GPS disabled, switch to set 3,
+"EKF Failsafe" within 30 s; (4) reboot, LOITER, switch to set 2, "EKF
+Failsafe" within 30 s; (5) reboot, LOITER to 20 m, LAND, switch to set 2,
+"EKF Failsafe" within 30 s. Only `position_expected` in
+`ArduCopter/ekf_check.cpp` changed per row:
+
+| position_expected | result |
+|---|---|
+| `true` (master) | fails leg 1: "EKF failsafe on a switch to a set with no position source" |
+| without `landing_with_GPS()` | fails leg 5: "Failed to receive text: ekf failsafe" |
+| without `requires_position()` | fails leg 4: "Failed to receive text: ekf failsafe" |
+| as committed | passes all five |
+
+Legs 2 and 3 fail on no single term here; they guard against a gate
+reset on a switch, which the code no longer has.
+
+Also at `23c4bace02` (2026-09-30): EKFSource, GPSViconSwitching,
+EKF3SRCPerCore and EK3_EXT_NAV_vel_without_vert pass. EKF3SRCPerCore had
+failed in CI on `b1743055b1` ("VICON glitch did not raise SP in core 1");
+it never changes the selected set, and it passes locally, so read as a
+flake.
+
+Round-2 cold Codex read of `23c4bace02` found one thing: leg 3 matched
+"EKF Failsafe" as a substring, which "EKF Failsafe Cleared" also
+satisfies, so a trip followed by a wrong clear would pass. Leg 3 now also
+requires no "EKF Failsafe Cleared" within 5 s while GPS is still off.
+Shown to discriminate (2026-09-30): with `position_expected` mutated to
+drop the source-set term once the failsafe has latched on set 3, the test
+fails leg 3 with "EKF failsafe cleared with GPS still failing"; as
+committed it passes.
+
 ## Review findings (2026-09-29)
 
 AP-Review on the first design (`8c2114bfc1`), all confirmed:
@@ -206,6 +280,53 @@ Own review of the first redesign (round 1), all fixed at `b1743055b1`:
 
 No review findings have been rejected on this PR so far.
 
+### Review round 3 (2026-09-30)
+
+AP-Review on `b1743055b1`, all confirmed and fixed at `23c4bace02`:
+QURT `<initializer_list>`; LAND flying on position gets no failsafe
+(`ModeLand::requires_position()` is false, so `do_not_use_GPS()` was
+never reached); the holdoff on switches to a set with no source.
+
+Own /pr-review of `8c0fabdf60` (four Claude reviewers, Codex cold and
+audit passes), resolved by dropping the holdoff:
+
+- The fixup that ended the holdoff on a switch to a no-source set did so
+  for one 10 Hz tick only; the next tick recomputed it from
+  `source_switch_ms`. Codex's audit marked it CLOSED; that was wrong, and
+  is recorded here so the next pass does not inherit it.
+- The holdoff delayed a position-mode failsafe up to 13 s against
+  master's ~1 s; alternating a GPS set and a no-source set every 12 s in
+  a non-position mode kept the failsafe off indefinitely, contrary to the
+  code comment; under EK3_SRC_OPTIONS bit 3 the selector started a
+  holdoff with no change to the cores' sources (Codex rated must-fix); a
+  switch inside the 24 s cooldown was never reconsidered.
+
+Rejected or corrected in this round:
+
+- A claim made during the round that the LOITER leg could pass on a
+  stale "EKF Failsafe" from an earlier leg was wrong: `reboot_sitl_mav()`
+  calls `context_clear_collections()`. The clears added for it were
+  removed.
+
+Still open, from the source, not measured:
+
+- A LAND that trips now reports "EKF Failsafe Cleared" about 1 s later,
+  because `do_not_use_GPS()` makes `landing_with_GPS()` false. Harmless.
+- `has_ever_passed` can latch on a vehicle that has never had a
+  position (a no-source set in a non-position mode), so a later switch to
+  a set with a source and no position trips where master stayed silent.
+- With FS_EKF_ACTION=3, ALT_HOLD on a set with no source no longer lands.
+  Intended; the PR description should say so.
+- rmackay9's 2026-04-28 comments and LupusTheCanine's question are
+  unanswered in the thread.
+
+Answered 2026-09-30 after the push, with the PR description rewritten for
+the design without a holdoff: to rmackay9, that the default action only
+reports in ALT_HOLD and lands with FS_EKF_ACTION=3, and that nothing is
+reset or delayed on a switch so alternating sets cannot hold the failsafe
+off; to LupusTheCanine, that a switch to a set with a position source
+counts a missing position again whatever the mode (leg 3).
+
 Known limits, documented in the PR, not coded (derived from the source,
 not measured):
 
@@ -223,6 +344,7 @@ not measured):
 | Reset has_ever_passed and fail_count, clear a latched failsafe, 12 s early-return holdoff on every set change (`b936c14b09`/`8c2114bfc1`) | A switch is a new start; stopped every field false trip (log2, seven throws) | Four confirmed review findings above; fails leg 3 (SITL, 2026-09-29) |
 | Holdoff only: keep master's gate, hold off a missing position for 12 s after a switch | Smallest change, Copter only, no EKF API | Drops the purpose: a set meant to stay without position trips once the holdoff ends. Offered to the author as option 2 on 2026-09-29; option 1 (mode or source-set gate) chosen. Not run |
 | Round-1 redesign: position expected only if the set has a horizontal source (no `requires_position()` term) | The source set says what the EKF can provide | LOITER on a no-source set gets no failsafe; fails leg 4 (SITL, 2026-09-29) |
+| 12 s holdoff on a missing position after a set change, one per 24 s (`b1743055b1`, `8c0fabdf60`) | A newly selected source can take seconds to align | No test leg needs it (Holdoff A/B, 2026-09-30); it delayed a position-mode failsafe to ~13 s and admitted four review findings. Dropped at `23c4bace02` |
 
 ## What is here
 
