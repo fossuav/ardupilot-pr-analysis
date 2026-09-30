@@ -2,8 +2,8 @@
 
 Analysis archive for [ArduPilot/ardupilot#32473](https://github.com/ArduPilot/ardupilot/pull/32473).
 Branch `pr-acro-bias-inhibit` (andyp1per fork), base `master`, so the diff
-contains all of #32471 as well. Head `dbf7c6ed12` (2026-09-29), two commits
-directly on #32471's `c9f68beab8`; previous head `59c2705a71`. No logs of its own; the numbers below are from
+contains all of #32471 as well. Head `1be046f169` (2026-09-30), two commits
+directly on #32471's `b8ad09e9cb`; previous heads `dbf7c6ed12`, `59c2705a71`. No logs of its own; the numbers below are from
 [#32471's SITL A/B](../32471/README.md) of 2026-09-04, which measures the same
 gates.
 
@@ -488,3 +488,28 @@ writes back a stale bias":
 
 No tests were recorded as re-run on `dbf7c6ed12` itself for this update;
 the 2026-09-17 results were taken on `59c2705a71`.
+
+## Restacked on #32471's `b8ad09e9cb` (2026-09-30)
+
+Head `dbf7c6ed12` -> `1be046f169`, force-pushed. Both commits
+patch-identical (`git range-diff` `=`), no conflicts:
+
+| was | now |
+|---|---|
+| `fd6e38331f` Copter: add ACC_ZBIAS_LEARN bit 3 ... | `6dcba24d89` |
+| `dbf7c6ed12` autotest: check ACC_ZBIAS_LEARN bit 3 ... | `1be046f169` |
+
+The base moved for #32471's 2026-09-30 round: AHRS now removes the
+applied hover Z-bias, the covariance prediction takes it off `dvz`, and
+two test fixes. None touches the bit-3 gate.
+
+Re-run on `1be046f169` (SITL, tier 2): AccelBiasLearningInhibitedInAcro
+and VibrationRectificationBiasLearning pass (hover PSCD.AD +0.011).
+The acro A/B numbers above were taken on earlier heads and are not
+re-measured; derived from the source, not measured, the base change
+does not move them, since bit 3 gates learning and the AHRS change sits
+outside the EKF.
+
+The local `pr-acro-bias-inhibit` had been an older pre-restack line
+(`12beaf9914`, 20 commits not on the PR); kept as branch
+`old/pr-acro-bias-inhibit-local` in the ardupilot clone.
