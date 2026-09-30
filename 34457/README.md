@@ -1,5 +1,24 @@
 # AGL KF: clear the velocity when the height rests on its floor
 
+## Restacked 2026-09-30 at `7505d332d9`: now on master, #33507 on top
+
+AP-Review's 2026-09-30 round on #33507 found the decay gate (`df8c4cdb0b`, then
+#33507's first commit) leaves the floor velocity unbounded without this fix, so the
+stack was reversed. This PR now sits on master with three commits: the velocity
+clear (`c824700eaa`), then the decay gate (`3cb6b8b75c`, reworded "after a range
+finder fusion gap"), then the test (`7505d332d9`). The clear lands first so no
+commit carries the gate without it. Title now "AP_NavEKF3: AGL KF velocity decay and
+floor wind-up".
+
+The test's -0.5 bound did not survive the move. Without the bias state underneath,
+the unfixed velocity latches at -0.4311 / -0.4375 m/s (two runs) and the test
+passed on the broken code. Bound now -0.1: +0.0001 with the clear, -0.437 without
+(fails), -0.0010/-0.0011 with #33507 on top, where the unfixed value is -3.5.
+
+The commit messages no longer cite `aglKfB`, and the flight figures in the
+description are labelled as from a build carrying #33507's bias state; every flight
+here was. The 0.62 -> 0.18 m/s decay figure was measured on #33507's tree.
+
 **Open as [#34457](https://github.com/ArduPilot/ardupilot/pull/34457)**,
 opened 2026-09-21 from `pr-aglkf-floor-velocity` at `9b74c85f80`.
 
@@ -139,6 +158,16 @@ velocity state.
 
 log6 and log7, on firmware `797f6854`, reach `XKFA.VAgl` -6.5 m/s. The behaviour
 is as old as the AGL KF.
+
+### Superseded 2026-09-30 by a check of what `797f6854` carries
+
+`797f6854` already has the decay gate (`imuSampleTime_ms - lastAglRngFuseTime_ms >
+aglKfRngGapMax_ms`, OptFlowFusion.cpp:996 there), so log6 and log7 show the wind-up
+on a gated build, not on master. On master the ungated decay runs on about three
+steps in four and keeps the floor wind-up small (AP-Review's model: -0.2 m/s after
+88 s at 0.08 m/s/s, against -7 with the gate). The -6.5 m/s above is left as
+measured; what it does not show is that master winds up. The claim was dropped from
+the PR description.
 
 ### 6. The bias the floor froze, and what it costs after liftoff (tier 1 and 1b, SFD-O4 log18-21)
 
