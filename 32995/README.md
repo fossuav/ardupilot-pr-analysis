@@ -1,6 +1,12 @@
 # PR #32995 - RP2350 Port
 
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
+
+**Current state, 2026-10-01.** PR head `564e6c1c7d`, 53 commits on upstream
+`26c7363f64`, on the davidbuzz remote. The narrative below runs in date
+order and its opening paragraphs describe the branch as it was in
+mid-September; the newest rounds are "2026-10-01: two review rounds" and
+"2026-09-23 to 2026-09-29" further down.
 Buzz's PR, branch `rp2350-v5-squashed-and-cleaned-and-rebased` on the
 **davidbuzz** remote, which andyp1per pushes to. Base `master`, merge-base
 `b832113b10` (rebased 2026-09-15 onto `bf08027404`, local tip `d0106975ee`,
@@ -218,8 +224,18 @@ commits used to make.
   ALT_HOLD and LOITER with a fake GPS, and the RC input chain into SRAM
   (core0 88.5% to 85.4%); later the same day, what building DCM out costs
   and saves.
+- [bench-2026-10-01.md](bench-2026-10-01.md) - the lock-free microsecond
+  clock A/B (per-call cost down by more than half, system load unchanged),
+  core1 left in the bootrom after an SWD flash and only a power cycle
+  clearing it, and both cores' VTORs read off the running board.
 
 ## Status (one line)
+
+2026-10-01: 53 commits; the first 45 leave STM32 output unchanged. Open:
+the RPI_UAVFC README image (CI), ChibiOS#113 not merged, tridge's
+CHANGES_REQUESTED, and no reply yet to the two automated reviews.
+
+Earlier:
 
 CI's six deterministic autotest failures are fixed and the conventions check
 is down from seven failing categories to one; review cleanup reduced chip
@@ -986,7 +1002,9 @@ rest is not:
   keeps dead branches, `drop_unopened_usb_tx_backlog()` does nothing; RP2350
   sets up the USB strings early in `board.c` for no recorded reason;
   `hrt.c` uses `port_lock()` on RP2350 instead of the system lock, and its
-  safety under SMP was not checked; `PICO2.py` carries datasheet tables
+  safety under SMP was not checked; **2026-10-01: moot** - `2d147f576d` reads
+  TIMER0's raw 64-bit count with no lock at all
+  ([bench-2026-10-01.md](bench-2026-10-01.md) section 1); `PICO2.py` carries datasheet tables
   flattened into comments; `AP_HAL_Boards.h` still defines three
   `AP_RP2350_*` feature names
 - Pushed 2026-09-14 at `fea5156687`. Replies posted the same evening: Peter's
@@ -995,6 +1013,229 @@ rest is not:
   (issuecomment-5671163072). Andy's hardware test of the change set is
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
+
+## 2026-10-01: two review rounds, the tables into SRAM, ten pushes
+
+PR head `564e6c1c7d`, 53 commits on upstream `26c7363f64`, pushed
+2026-10-01 17:10 UTC. GitHub reports no failing checks; tridge's review is
+still CHANGES_REQUESTED. Bench measurements of the day are in
+[bench-2026-10-01.md](bench-2026-10-01.md).
+
+| time (UTC) | head | commits | what |
+|---|---|---|---|
+| 10:42 | `2b8df6d7fc` -> `34838f941d` | 78 | review fixups squashed - **on a stale local master**, see below |
+| 10:54 | -> `76d63ae655` | 38 | `rebase --onto 26c7363f64` back to the real base |
+| 11:40 | -> `c4ec53c632` | 44 | pioasm sources, `rp2350_pioasm.py`, installers |
+| 11:57 | -> `afd3275fb5` | 45 | first automated-review fixes |
+| 12:43 | -> `5420869370` | 47 | commit 13 SPI repair, Peter's SITL request |
+| 13:02 | -> `26bef29059` | 45 | no-change commits moved first, two folded |
+| 13:32 | -> `306db74eb8` | 49 | Matt's OSD work, `OSD_TYPE` 5 |
+| 14:42 | -> `805070fb5f` | 50 | lock-free microsecond clock (fast-forward) |
+| 16:33 | -> `2d147f576d` | 52 | second automated-review fixes |
+| 17:10 | -> `564e6c1c7d` | 53 | PIO UART cross-core lock (fast-forward) |
+
+### tridge and Peter, 2026-09-30
+
+Answered by Andy on 2026-10-01 with short replies; the fixes are in the
+10:42 squash.
+
+- `c1_main.c` ("this whole file is very odd"): cut to about 60 lines. Gone:
+  the boot markers and scratch writes (they clobbered watchdog SCRATCH1, the
+  bootloader handoff), `c1_fault_info`, the MPU disable and SHCSR enables.
+  Kept: the NVIC clear (the boot ROM leaves IRQ47 enabled) and the XIP
+  doorbell at minimum priority. The doorbell handler moved to
+  `board_rp2350.c` as a raw `VectorA8` that dispatches on `SIO->CPUID` with
+  no OSAL prologue, because core0 holds the kernel spinlock across the flash
+  operation. A core1 fault now goes to `HardFault_Handler`. Kept in
+  ArduPilot rather than pushed into ChibiOS.
+- Vector tables: the first cut pointed core1 at core0's table in striped
+  SRAM. Andy: "it needs to run from uncontended ram". Now `.c1_vectors` at
+  `0x20081000` (SRAM9, filled by core0 in `rp2350_board_pre_hal_init()`) and,
+  at his request, `.c0_vectors` at `0x20080000` (SRAM8). Hot code behind
+  them: core1 3752 of 3808 B, core0 on Pico2 3464 of 3808 B.
+  **Corrected 16:16:** Andy was told core1 used the SRAM9 table on the
+  strength of the placement alone. `_crt0_c1_entry` stores the flash
+  `_vectors` into VTOR before calling `__c1_cpu_init()`, so it did not;
+  `__c1_cpu_init()` now sets VTOR under `CH_CFG_SMP_MODE`. The extern is
+  inside the guard too, because an unguarded one broke the bootloader link
+  with a duplicate `_unhandled_exception`. Confirmed on the board:
+  [bench-2026-10-01.md](bench-2026-10-01.md) section 3.
+- PIOUART globals and initialisers: the `AP_PIOUART_DEBUG_ENABLED` code is
+  gone. IRQ timing kept as members, and the uarts.txt PIO line shortened to
+  `IRQ=8us/s,max=15us` without `NE=0 FlowCtrl=0`.
+- `RCOutput.cpp` `chTimeUS2I`: `RCOUT_US2I` and the `delay_microseconds`
+  bypass reverted. The pinned ChibiOS has tridge's fix `d3f61cd949`; checked
+  there are no 64-bit divides.
+- `UARTDriver.cpp`: the SIO helpers moved to a top-level
+  `UARTDriver_rp2350.cpp` (waf only globs the top directory and
+  `utility/`).
+- `SoftSigReaderInt.h` `defined()` guards reverted; `HAL_USE_EICU` is always
+  defined. `AP_Filesystem_Sys.cpp`: `#endif` comments added.
+- pioasm (tridge, `RCOutput_pico.cpp`): five of the seven embedded PIO
+  programs had no working source, and `pico_pio_uart.pio` did not assemble.
+  `rp2350/pio/` now has uart, dshot and ws2812 (from pico-examples) and
+  osd_tx (Betaflight, attributed), with the generated `.pio.h` committed;
+  all assemble to the words previously embedded. The loaders relocate JMP
+  targets, so the firmware is not byte-identical to before.
+  `Tools/scripts/rp2350_pioasm.py` regenerates, `--check`s and `--install`s
+  pinned pico-sdk-tools 2.2.0 pioasm and picotool (Linux x86_64 and aarch64,
+  mac; tested on x86_64 only). The Ubuntu and mac installers offer it as an
+  optional step. waf no longer downloads picotool: upload wants it on PATH.
+  Reply discussion_r4154969276 corrected an earlier claim that Betaflight
+  already requires pioasm.
+- Peter's SITL request (`Scheduler.h`): `HAL_SCHEDULER_SMP_ENABLED` in
+  SITL's `board/sitl.h`, and Copter always creates the rate thread with
+  `thread_create_pinned_to_core()`. `DynamicRpmNotchesRateThread` passes.
+  MatekH743 differs by 21 B in `Copter::one_hz_loop()`, so that commit
+  claims no "no change". Reply discussion_r4155650581.
+
+### Automated review at `2b8df6d7fc` (comment 5901861096)
+
+Fifteen findings. Andy: ignore 1, agree on 5, reject 9, document 12.
+
+- Fixed: UART inversion on the wrong pad (`PAL_PAD` masks to 0-31) and
+  wiped by `begin()` (new `sio_apply_inversion()`); PIO TX inversion at the
+  RP2040 bits 9:8 instead of 13:12; OSD use-after-free on the 200 ms probe
+  timeout (a small leak remains); UART RX count read before the DMA abort;
+  SPI DMA allocation failure, which was a hard fault (`acquire_bus()` now
+  unwinds); GPIO RC pulse pairing anchored on a rising edge; a dead
+  `.claude/` reference in Debugger.md; three stale facts in the PR
+  description. The core1 fault record cleared at boot went with the
+  `c1_main.c` cut.
+- Rejected: SBUS out on a PIO UART. A parity request sends nothing and
+  says so once; the commit message says 8E2 is receive-only.
+- Documented limitations: the fast erase checks only the first 4 KiB page
+  of each 64 KiB block - the full-scan fix was reverted because it stalls
+  USB, and Andy: "it has never bitten us yet"; the bootloader's GET_CRC
+  answers from the received bytes.
+- Deferred: the RPI_UAVFC README image.
+
+### Automated review at `306db74eb8` (comment 5934596981)
+
+REQUEST CHANGES. All but the PIO UART item went into `2d147f576d`.
+
+- `scripts:` prefix: reworded to `Tools:`. All 52 commits then pass
+  `allowed_subsystems.py`.
+- The OSD double buffer broke Lua overlays: a script's text landed in the
+  frame that was never cleared, so 'DIST 9' over 'DIST 12345' showed
+  'DIST 92345'. `flush()` now copies front into back after the swap.
+- `clock_pulse()` had no timeout recovery on RP2350. `SPIDevice::abandon_transfer()`
+  is shared by it and `do_transfer()`.
+- The heap budget tool read free stack as used; now used = total - free.
+- The optional RP2350 installer step under `set -e` ended the whole
+  install on unsupported hosts; now non-fatal.
+- Core1 VTOR: see above. `HARDWARE.md` `/home/buzz` paths removed.
+- The PIO UART cross-core race: below.
+
+No reply has been posted to either automated review.
+
+### The PIO UART cross-core race
+
+The receive purges masked the PIO vector with `nvicDisableVector()`, which
+reaches only the calling core's NVIC, so a FETtec purge from core1 cleared
+the ring under a live interrupt on core0 and then enabled the vector on a
+second core. `_write()` drained the TX ring under `chSysLock()`, the
+interrupt drained it with no lock.
+
+The first fix (`90230c88b0`, never pushed) put the interrupt and the purges
+under the kernel lock. Andy objected: "we need to minimise cross core kernel
+locking". In SMP the kernel lock is one hardware spinlock both cores contend
+for, and RP2350-E2 is an erratum on those spinlocks. Pushed instead
+(`564e6c1c7d`): a per-port `uint32_t` lock (`ldaex`/`strex`). The thread side
+raises BASEPRI over `PIO_UART_IRQ_PRIO` before taking it, so the interrupt
+can never spin on a lock held on its own core. `_end()` clears both of the
+instance's INTE bits, which both cores see. No `chSysLock` is left in
+PIOUART.
+
+The lock helpers must be `always_inline`. Plain `inline` in the header still
+left weak out-of-line copies in flash, and `_service_irq`, which runs from
+Scratch X, called them through veneers. That was checked in objdump, not
+assumed. On hardware: u-blox detection works on a PIO UART. The FETtec
+cross-core case is not exercised.
+
+### Matt's OSD work (andyp1per/ardupilot#39)
+
+Taken: the double-buffered character frame and the renderer-decides-blank
+change (both Matt's, split by module under `AP_OSD:`, comments trimmed to
+house length), and his OSD.md as an hwdef commit. Matt's `OSD_TYPE` 1 -> 6
+became 5 (MSP DisplayPort) as its own hwdef commit, at Andy's call. The
+`__DMB()` barrier commit was dropped: no LTO. The draw thread "OSD" runs on
+core0, the scan-out "OSD_c1" on core1. #39 is still open on Andy's fork.
+
+### Keeping STM32 output unchanged up front
+
+Every commit built in its own worktree with `--consistent-builds`.
+MatekH743 copter stays at `55c6972d59e2` through the first 45 commits. The
+six that do change STM32 output follow, then the clock commit:
+`AP_Param` `@READONLY`, the UART start-up race, RCOutput, INS signalling, the
+SPI `clock_pulse` guard and Copter's pinned rate thread. Head copter is
+`f55647ee7e54`, unchanged by the clock commit. The commits that were not
+moved (38-41, 43, 46) went up behind the no-change block with the claim line
+added. 42 (waf picotool) was folded into "waf: build RP2350 boards". 44 (the
+docs) was split per board, and Pico2's "core1 runs a bare-metal dispatcher"
+was corrected to "core1 is started but idles". The MatekH743 bootloader
+hashed `f3d783624e6b` in two morning runs and `ef2fd554a9ca` from 12:24 on.
+The two are not reproducible against each other, and the cause is not
+understood.
+
+### Two mistakes, both caught by checking
+
+- The 10:42 squash rebased onto local `master`, 39 commits behind upstream.
+  Those upstream commits were rewritten into the PR (GitHub showed 77) and
+  pushed. Fixed by `rebase --onto 26c7363f64` twelve minutes later. Take
+  the base from upstream and check the commit count against GitHub before
+  pushing.
+- `absorb.py` applied hunks with `--unidiff-zero`, and that put
+  `return spi_started;` after `#endif` instead of inside `apply_config()`.
+  The final tree was right, but commits 13-44 of `afd3275fb5` did not
+  compile. Found by the per-commit build, fixed in `5420869370`. absorb now
+  self-checks that each fixup's diff matches the hunk it was given.
+
+### Still open
+
+- RPI_UAVFC README image. It becomes the CI blocker once ChibiOS#113
+  merges.
+- `rp2350_pioasm.py --check` is not in CI.
+- Not bench-tested: UART inversion, GPIO RC input, the SBUS-out refusal,
+  the PIO programs from source, Matt's OSD changes, FETtec over PIO.
+- The boot-to-boot two-state rate/load swing, and the core1 hang after SWD
+  ([bench-2026-10-01.md](bench-2026-10-01.md) section 2).
+- Bootloader hash non-reproducibility.
+
+## 2026-09-23 to 2026-09-29: 330 commits to 40, and the split-outs
+
+This week was not recorded here when it happened. It was reconstructed on
+2026-10-01 from the session transcripts, and some heads were pushed by Andy
+outside them (`12ebfaed5f`, `87e36198ce`, `2b8df6d7fc`), so the list of pushes
+is incomplete.
+
+- 2026-09-23: the FTP and logger work split out to #34474 and #34473 and the
+  microSD work to ChibiOS#115, #34476, #34477 and #34478. The SD retry
+  went back to 3 s (282-305 ms per failed probe on the bench). The AP_Relay
+  change was dropped and #34430 closed with a reply to tridge. Rebuilt from
+  `rp2350-rebuild2` as 36 commits, down from 330. All 90 per-commit builds
+  pass, and shared code costs +312 B on MatekF405. Pushed as `4e957574bd`,
+  reply issuecomment-5803428685.
+- 2026-09-24, ten pushes (`60dd0c5cdd` .. `e4f935b225`):
+  - the DShot-command memset and XIP-timeout fixes;
+  - the UART split;
+  - SMP hooks made neutral (29 of 38 commits byte-identical on STM32);
+  - the pico OSD moved into AP_OSD as `AP_OSD_pico`, its AP_OSD fix split
+    out to #34497;
+  - `HAL_RATE_THREAD_CORE`.
+- 2026-09-26/27: `03a36713a1`, the reorder `a7c50b6317`, `7e839c6677`.
+  issuecomment-5858538406 reports ST boards byte-identical up to
+  `67676b6493` (360 boards; PixFlamingo differs only through
+  `__AP_LINE__`). #34518 opened for the size-compare fix.
+- 2026-09-28: `2c61bc3fd9`, 40 commits. Laurel watchdog on,
+  `RCOutput_bdshot.cpp` at `-O2`. RPI_UAVFC-SimOnHardWare removed; the same
+  build now comes from `sitl-on-hw.py`, which also retires the 2026-09-22
+  registry miss on that board.
+- 2026-09-29: memory.txt under-reported free heap through `chHeapStatus`,
+  filed as #34530 (`0a9f82f353`, branch `pr-meminfo-core-free`) and taken
+  off this branch.
+- Open from 2026-09-23: Peter asked for review from the original authors,
+  and tpwrules asked for dual-core to be dropped.
 
 ## The 2026-09-19 automated review, and 2026-09-20's answers
 
@@ -1542,6 +1783,10 @@ is Andy's call rather than a reviewer's.
 
 ## Open review threads (8 of 41)
 
+**Stale since 2026-09-22.** The 2026-09-30 tridge and Peter threads were
+answered on 2026-10-01 (see that round); this table was not re-derived
+from GitHub then.
+
 Closed this session: 12, each verified against the tree **and** against the
 PR head before replying. Remaining:
 
@@ -1580,3 +1825,19 @@ reply whether he wants those gone too.
   `autotest.py --sitl-instance` (PR #34304). Applying that patch to the
   working tree temporarily is what let this branch run tests while another
   clone held the slot
+- The PR base is upstream `master`, not local `master`. A squash onto a
+  stale local master pushed 39 upstream commits into the PR on
+  2026-10-01. Check the commit count against GitHub before every push
+- Zero-context patches (`git apply --unidiff-zero`) can land a hunk at the
+  wrong place and still give the right final tree. Build every commit
+  after a squash, not just the tip
+- Grants for this branch need `--remote davidbuzz`; the default is
+  `origin`
+- Commit prefixes come from `Tools/scripts/allowed_subsystems.py`:
+  `Tools/scripts/` is `Tools:` and `Tools/ardupilotwaf/` is `waf`, whatever
+  the playbook says
+- Per-commit builds need their own `./waf configure` at each commit (plain
+  `./waf` does not regenerate `hwdef.h`), and the bootloader wants its own
+  worktree, or stale DroneCAN headers break it
+- After an SWD flash, power-cycle the board before measuring anything; see
+  [bench-2026-10-01.md](bench-2026-10-01.md) section 2
