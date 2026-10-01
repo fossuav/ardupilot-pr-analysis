@@ -233,7 +233,8 @@ commits used to make.
 
 2026-10-01: 53 commits; the first 45 leave STM32 output unchanged. Open:
 the RPI_UAVFC README image (CI), ChibiOS#113 not merged, tridge's
-CHANGES_REQUESTED, and no reply yet to the two automated reviews.
+CHANGES_REQUESTED. The automated reviews were answered in
+issuecomment-5937448806.
 
 Earlier:
 
@@ -1127,7 +1128,8 @@ REQUEST CHANGES. All but the PIO UART item went into `2d147f576d`.
 - Core1 VTOR: see above. `HARDWARE.md` `/home/buzz` paths removed.
 - The PIO UART cross-core race: below.
 
-No reply has been posted to either automated review.
+Answered 2026-10-01 in one reply covering all three automated reviews
+(issuecomment-5937448806), at head `564e6c1c7d`.
 
 ### The PIO UART cross-core race
 
