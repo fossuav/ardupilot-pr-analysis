@@ -125,6 +125,13 @@ in-controller probe), and the throttle mix (not logged anywhere).
 - A review agent claimed the stack "guarantees a textual conflict" with
   #34208; a trial merge against `a618208324` was clean. Refuted.
 
+- ACRO with `ACRO_OPTIONS` bit 1 (rate loop only): `scale_I_to_angle_P()`
+  sets the I scale to angle kP x `_angle_P_scale`, so on master the
+  compounding reached the integrator (about 4.5 x 1.96^k during a punch, x29
+  at k=5). Bounded at 4.5 x 1.96 with this PR. Inspection only (tier 3), added
+  to the PR description 2026-10-02; the SITL A/B (ACRO, ACRO_OPTIONS=2,
+  boost 0.4, ATSC.IScX) was offered and not run.
+
 ## Relation to other PRs
 
 - #34584 (stacked): the rate thread can still run between the per-loop reset
