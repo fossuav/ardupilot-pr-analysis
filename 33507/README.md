@@ -1,5 +1,14 @@
 # PR #33507 - estimate the accel-Z bias inside the AGL KF (EKF3)
 
+## 2026-10-02 restacked on #34457's coast stop (pushed as `5963bd0583`)
+
+No change of its own in the second round; Codex's one finding against
+`2df9bb8c06` was a single-commit read missing the offset subtest in the
+next commit. Restacked on #34457 `18276345bf`; the only patch difference
+is the neighbouring test name in the registration list. All three AGL KF
+tests pass on the stack (floor 1.0003, with offset 1.0006, no coast
+0.000 m). Description rewritten for the offset gate the same day.
+
 ## 2026-10-02 /pr-review of the offset gate: reworked (pushed as `e17f7e6379`)
 
 Squashed and pushed 2026-10-02 as `e17f7e6379`, restacked on #34457's `7381308bf6` (force push; the eight earlier commits patch-identical). The PR description is not yet updated.

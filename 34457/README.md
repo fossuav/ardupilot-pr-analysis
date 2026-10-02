@@ -1,5 +1,36 @@
 # AGL KF: clear the velocity when the height rests on its floor
 
+## 2026-10-02 second review round: the landed hold replaced by a coast stop (pushed as `18276345bf`)
+
+Supersedes the landed hold recorded below. A second Codex cold read
+confirmed two must-fix rows against it: `takeoff_expected` and the land
+detector are not independent in an automatic throttle mode (Copter passes
+`throttle_up` only for manual throttle modes, so a stuck land detector
+keeps re-anchoring AP_GroundEffect's timer and holds `takeoff_expected`
+latched), and keeping the filter valid stopped the 5 s
+re-initialisation while the covariance kept being predicted. Chosen
+instead (the user's option A): with the sensor out of range low, no range
+sample for 200 ms and the main filter not climbing faster than 0.25 m/s,
+zero `aglKfV`. No landed flag, no validity change; the timeout and
+re-initialisation are master's.
+
+Replay at the head against `7505d332d9`: after touchdown, while still
+valid, the height peaks at 0.06-0.17 m where it coasted to 0.16-1.14 m
+(log27, log28); every in-flight value and every takeoff unchanged on
+log22, 25, 27, 28 (log22's differences are all on the ground while both
+arms were already invalid). `OpticalFlowAGLKfNoCoastBelowMin` replaces
+the landed test: a 1 m range step in a hover, then `RNGFND1_MIN` above
+the reading; height rise 0.357 m without, 0.000 m with. A landing provoked
+the coast only erratically in SITL (3 mm and 0.37 m in two runs).
+
+Cost, accepted: a touch-and-go re-initialises the filter, so on #33507
+the bias variance reopens to 1.0 at the second takeoff (beta Replay of
+log28: 0.977, against 0.018 with the hold), the same state every first
+takeoff starts from; flow lane tracking 0.67 against 0.66 m RMS.
+
+`plots/aglkf_landed_hold.png` shows the abandoned hold and is not in the
+description.
+
 ## 2026-10-02 /pr-review of the landed hold: reworked (pushed as `7381308bf6`)
 
 Squashed and pushed 2026-10-02 as `7381308bf6` (fast-forward). The PR description is not yet updated.
