@@ -184,3 +184,18 @@ bursts, which the dynamic rate mode reads as the thread running slow.
   `INS_GYRO_RATE >= 8` in the SITL backend, an unbounded catch-up loop after a
   gyro fail-mask, burst samples sharing one timestamp, and a heli sysid claim in
   the logging commit that the scheduler order does not support.
+
+## Interaction with #34583 and #34584 (2026-10-02)
+
+Both touch `rate_controller_run_dt()`. A trial merge of each branch against
+this PR's head `a618208324` was clean. When rebasing whichever lands second:
+
+- #34583 replaces the per-run `update_throttle_gain_boost()` with a local
+  `pd_scale` copy and passes `dt` to `update_throttle_rpy_mix()`.
+- #34584 makes the rate controller read `_rate_modifiers.sysid_ang_vel_body_rads`,
+  `pd_scale`, `i_scale` and `actuator_sysid`, recorded once per loop. Keep
+  `_rate_target_rads` assigned after the sysid add. The sysid step edge now
+  falls at the record after `update_flight_mode()` rather than mid-loop, so
+  "sysid added downstream so chirps stay crisp" still holds.
+- #34584 accepts torn copies of its four Vector3f for now and names this PR's
+  odd/even sequence publish as the mechanism to adopt for them once merged.
