@@ -1280,3 +1280,85 @@ would climb past the range and failsafe-land from height once the limit is
 removed (the removal measurement: failsafe at 51.4 m where the limit holds
 27.1 m). #34380 is held until the default is agreed; rmackay9 is asked
 whether to keep the limit for that one case or accept the failsafe there.
+
+### Superseded 2026-09-30 by a gated default
+
+The verdict above (flat ground without terrain data stays opt-in) is kept:
+it is still right about what an ungated default costs. What changed is the
+gate. Decided with the user 2026-09-30 after /pr-review of the local stack:
+make the fallback the default, but only above the optical flow height limit
+(0.7 x RNGFND max - 1 m, the value getHeightControlLimit() publishes) and
+only with optical flow as a velocity source.
+
+Why the gate is height, not range finder status (tier 3, source): the base
+class reports OutOfRangeHigh only above RNGFNDx_MAX, but Benewake, LightWare,
+TeraRanger, JRE, DTS6012M and Ainstein substitute max + 1 m when every
+reading is invalid (a lost return at any height), and VL53L1X / MaxBotix
+I2C / serial timeout give NoData above their reach. Status alone cannot tell
+a climb from a fault in either direction; the EKF's height above the last
+measured ground can.
+
+Local commits (unpushed, fixups to fold): c51c52e093 default, ee6dd8ee75
+ground effect (fold into 27f59f2b3d), c52dc87edf + 16f9fff804 + 0a01435789
+height/source gate and AP_RANGEFINDER_ENABLED guard, 684f94cd45 + amend!
+fa7505fd32 test legs. Head fa7505fd32.
+
+Tier 2 (SITL), each test shown red with its fix removed:
+- BaroGroundEffectRangefinderSwitch fails 2/2 without ee6dd8ee75 (1.28,
+  1.35 m below truth), passes with it.
+- Range data lost at 2.5 m (SIM_SONAR_GLITCH=1, which reads as out of range
+  high like a lidar with no return) drops relative position; holds it without
+  the height term in flatGroundAssumed().
+- POSZ=2 climb out of range: drops without terrain data, holds with it;
+  holds-leg fails if the default terrain path returns false.
+- getLLH() only returns a location while horiz_pos_rel/abs is set, so
+  AP_Terrain cannot feed a flight that never had a position; the default
+  terrain path can only continue a position, not start one (same for bit 2).
+- AP_RANGEFINDER_ENABLED=0 copter build fails without the guard ("no member
+  named rangefinder"), builds with it; EK3_FEATURE_OPTFLOW_SRTM=0 builds.
+- EK3_TerrainStateFollowsDatumReset flaked 1 of 3 on the switch back onto
+  the range finder after disarm; d3110bc6b2 closes the window at disarm, 3/3.
+
+Still open: the terrain database height is not carried across a vertical
+datum reset (documented in 6a1200d267); now reachable by default above the
+limit. AP-Review's bit 4 velTestRatio item (in #33478's commits).
+
+Pushed 2026-09-30 after autosquash (tree identical to the reviewed head): #33585 head adb78f41cb (ground effect fix folded into 656483fc61), #34380 head 219075df1e. Descriptions rewritten; comments posted on #34380 (reply to rmackay9), #33585 and #33568.
+
+## Decoupled from #33478, AP-Review round 3 fixed (2026-10-01)
+
+#33585 rebased onto master 26c7363f64 without #33478 (head 9bfb10b15b, 15 commits). The coupling was textual only: bit 5 sat beside #33478 bit 4 in the EK3_OPTIONS enum and parameter text, and the tests sat beside EK3_AglKfVelForVelD. Applied alone, copter and plane build and all seven #33585 tests pass.
+
+AP-Review round 3 (head adb78f41cb): B1 the height limit was lifted by default on terrain data (getHeightControlLimit used terrainAltUsable); now lifted on terrain only with bit 2. Leg: TERRAIN_ENABLE=1, default avoidance, 8 m range finder, full climb stops at the gate; without the fix 36.8 m. I1 origin altitude error carried the terrain gate: the fallbacks now need every available HAGL (measured offset and database) over the gate (aboveFlowHgtLimitAllSources). Leg: no GPS, origin +10 m, range lost at 2.5 m must drop rel pos; held without the fix. I2 (database below gate vetoes flat ground) closed by the same check, by reading only. I3 velTestRatio fixed in #33478, not carried here any more. N1 description wording. Range finder height source (POSZ=2) measures no offset, so the database decides alone there - disclosed.
+
+#34380 restacked (head 571ed7318c, 3 commits); its EKF hunk supersedes the bit 2 test on the limit; the B1 leg there asserts the climb passes 15 m with rel pos held. Regression on both heads: 12 tests pass incl. Replay. Feature-off builds (AP_RANGEFINDER_ENABLED, EK3_FEATURE_OPTFLOW_SRTM) pass. Descriptions updated; reply to AP-Review and merge-order note on #33568 posted.
+
+## v4: review round fixes (2026-10-01, local, not pushed)
+
+Branch pr-optflow-flat-ground-v4 (../rv-final) on master 26c7363f64: 0e1e634d82 AP_DAL logs every RTER write (EKF3 judges terrain staleness by arrival time, Replay must see each one); 6a5a13dd50 fallback; 0195a1fce6 datum carry; 42ec79bbe5, e0084de1cf tests.
+
+Changes against v3, from the pr-review round (reviewer subagent + Codex cold reads):
+- moveEKFOrigin() now shifts gndKnownNE. Without it the 10 x bound was measured in a stale frame after GPS flight moved the origin. Leg: 300 m on GPS then switch to flow source set, must be refused; held 300 m away without the shift (tier 2).
+- Fallback engages only once gndOffsetValid has gone false, and never without terrain data when 0.7 x max - 1 < 1 m (sensors under 2.9 m), where nothing tells a failure from a climb. Leg: RNGFND1_MAX 2 climbed out of, must be refused; held without the floor check (tier 2).
+- Short-sensor and carry-over legs now assert the range finder reading before killing it (polled RANGEFINDER, not streamed by default), so they cannot pass on the height gate instead. Anchored test waits for terrain tiles before the climb.
+- Carry commit: "that core never recovered" dropped - unverified, and EstimateTerrainOffset re-initialises terrainState after 5 s without fusion (tier 3, reviewer). Drift-reset numbers made consistent: 2.4 m worst against 54.8 m carried (tier 2; 2.2 m on the v4 run).
+
+Results on v4 (tier 2): EK3_OptflowAboveRangefinder passes (bound dropped at 212 m at about 21 m); EK3_OptflowAnchoredTerrain 0.3 m worst over 8.2 m rise; datum tests pass (DatumReset moved -5.97 m, HAGL +0.00 m). Regression on the #34380 v4 head: OpticalFlow, OpticalFlowLocation, BaroGroundEffectRangefinderSwitch, EK3_OptflowTerrainScaleHeight, MaxAltFenceAvoid, MinAltFenceAvoid, GPSViconSwitching, VisionPosition, Replay all pass. Per-commit builds, off_rf/off_srtm/off_flow builds, copter/plane/rover/sub pass. Mechanical gate clean.
+
+Disclosed, not changed: anchoring runs on any vehicle with range finder and terrain data, GPS included (only the logged terrain state changes; getHAGL is invalid while the offset is stale); 5 s handover step before anchored terrain takes over; anchored and frozen terrain states are not carried on a height-timeout reset.
+
+## Database error: SITL harness, SFD-O4 measurement, startup warning (2026-10-01)
+
+Dev call 2026-09-30 (on #34361) preferred AGL logic outside the EKF (AP_HAGL). Use-case review: flat ground alone meets the real flights (dow log308, SFD-O4 log5; SFD-O4 log7/8 flew bit 2), but not GPS loss far from takeoff, long traverses without GPS, or rmackay9's default. The user's call: those three are the point of the PR, so anchoring stays.
+
+Tier 2, harness DatabaseErrorProbe (rv-base, scratch only): SIM_TERRAIN=0 gives flat SITL ground while AP_Terrain serves real SRTM shape, so the database relief from the start is a known injected error. 1 km traverses at 5 m/s, 8 m range finder. Position drift ~ 0.4 x error/height (ratio 0.34-0.6 in 9 of 10 runs): 7 m error 30/16/8% at 10/20/35 m; 13 m 52/29/15%; 2 m 3.5/1.8/1.5%; zero-error controls 0.5-2%. Error with database ground too high drops the EKF height below the flow gate and the failsafe lands (fails safe); too low overestimates velocity, unreported.
+Comparison over real relief (SIM_TERRAIN=1): flat ground 0.2-2.8 m error but drops at its 10x bound (105 m at 10 m, 205 m at 20 m, then failsafe); bit 2 with a 5 m origin error 22-46% at 10 m, 13-24% at 20 m (it uses -pd - terrain_srtm_alt, so XKF5.HAGL does not show the error). Anchoring cancels that error.
+Tier 1, SFD-O4 logs 5-17 (db_error_real.py: TerrH against POS.Alt - range x cos tilt, Good range only, 1 Hz): change in database error between points 0-50 m apart median 0.5 m, p90 1.6 m; 50-100 m median 1.2, p90 3.4 m. Nothing beyond ~100 m: a 15 m range finder only sees ground near takeoff. Longer lines rest on SRTM's ~6 m spec.
+
+Decision (user): no minimum height; warn at startup, since nothing can be done in flight. 7bbc877e8b: with optical flow in any source set and a downward range finder max under 20 m, "EKF3: rangefinder max Xm, flow above may drift" once after the filter initialises. 68d2af7997 adds AP_NavEKF_Source::optflow_enabled(). SITL: the message arrives on reboot (EK3_OptflowAboveRangefinder now waits for it); a GCS connecting after boot can miss it, MSG keeps it in the log. #34380 restacked as pr-avoid-flow-ceiling-v5.
+
+## Review round on v4/v5, fixes, rebase onto master (2026-10-01, local, not pushed)
+
+pr-review (5 Claude reviewers + 4 Codex cold reads) on v4/v5: REQUEST CHANGES. Fixed: the anchored path skipped the last-good-reading check and floor, so a range finder dying between the gate and 0.7 x max engaged the fallback with no database error (now both paths, new AnchoredTerrain leg); anchoring now gated on sources.optflow_enabled() (GPS-only vehicles unchanged); dead_reckoning now uses optflow_gnd_offset (FS_DR with drag fusion); ExtNav-start ResetHeight carries remembered ground (source change); warning re-checked every 5 s while disarmed (late DroneCAN backends); messages: DAL rate 10 Hz, AC_Avoid back-down qualified (zero demand or AVOID_BACKZ_SPD=0 do not back down), airframe name removed. Test fixes: no-height-source leg had been killing the sensor at 9.7 m (beyond max) - now asserted in range; hover-band legs settle ~0.6 m above where the climb stops; warning check moved to its own commit after the warning. Refuted: "OpticalFlowLimits will fail" (read before the test commit). Disputed, for the PR text: real reach < 0.7 x max (master equally broken), RNG-primary no fallback (design), fallback commit alone without carry (same PR).
+
+Rebased onto upstream/master 755258dbb4 (conflicts only in tests1c registration lists). Final heads: pr-optflow-flat-ground-v4 0f428b222e (8 commits), pr-avoid-flow-ceiling-v6 fe5288ab4d (+2). Every commit builds; off_rf/off_flow/off_srtm; copter/plane/rover/sub; gate clean. Tier 2: all 16 tests pass (VisionPosition needed a rerun after a harness heartbeat stall post-flight); AnchoredTerrain 0.3 m; DatumReset -5.98 m move, +0.01 m HAGL; DriftReset 2.4 m; bound drop ~211 m at ~21 m; FlowCeiling back at 16.8 m. All 10 mutations red at their own assertions (no_anchor 7.9 m, anchored_skip, no_check, no_floor, no_bound, no_shift, no_warn, old_carry 51.3 m, never_lift, rng_lift). Untested: dead_reckoning change, ExtNav-start carry.
