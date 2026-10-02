@@ -180,3 +180,50 @@ reachable, so it needs tracing before this merges.
 
 Title "AC_Avoidance: remove the EKF optical flow height limit", body and a
 repurpose comment in the session scratchpad.
+
+### Superseded 2026-09-30: partial removal plus the backup fix
+
+The full removal above (6fadf4e0bb .. dc841b8fd1, and a 2026-09-30 redo)
+was dropped after /pr-review. With #33585's fallback now gated at the limit
+height, removing the limit outright regressed two configurations (tier 2,
+SITL climb probe, 40 m range finder, full climb stick in LOITER):
+
+| config | master | full removal | this design |
+|---|---|---|---|
+| POSZ=2, no origin | 27.1 m | rel pos lost ~44 m, climbed 169 m, no failsafe | 27.3 m (limit kept) |
+| POSZ=2, origin | 27.0 m | held (terrain) | held to 172 m (terrain) |
+| baro, no origin | 27.1 m | held to 172 m | held to 172 m |
+| baro, origin | 27.1 m | held to 170 m | held to 172 m |
+
+EKF2 has no above-range navigation, so it keeps its limit.
+
+Now (branch pr-avoid-flow-ceiling-d on #33585 fa7505fd32): 59034da702 the
+original backup fix (still needed: a GPS vehicle falling back to flow at
+altitude under #33568 never measured the ground, so it keeps the limit while
+above it), a28120dea9 EKF3 publishes the limit only when neither terrain data
+nor a terrain offset measured this flight is available, 3c3f1bf363 +
+a151f7b5dd tests. FlowCeilingDoesNotBackUp now uses POSZ=2 (the original
+baro setup measures an offset, so gets no limit); fails without the backup
+fix (25.3 -> 18.8 m). OpticalFlowLimits climbs past 51 m; fails with the
+limit always applied (27.2 m). Replay passed 2/2 after two harness MAVLink
+timeouts (one on the flow-free BodyOdom bit, one before any flight).
+
+Pushed 2026-09-30 after autosquash (tree identical to the reviewed head): #33585 head adb78f41cb (ground effect fix folded into 656483fc61), #34380 head 219075df1e. Descriptions rewritten; comments posted on #34380 (reply to rmackay9), #33585 and #33568.
+
+## Decoupled from #33478, AP-Review round 3 fixed (2026-10-01)
+
+#33585 rebased onto master 26c7363f64 without #33478 (head 9bfb10b15b, 15 commits). The coupling was textual only: bit 5 sat beside #33478 bit 4 in the EK3_OPTIONS enum and parameter text, and the tests sat beside EK3_AglKfVelForVelD. Applied alone, copter and plane build and all seven #33585 tests pass.
+
+AP-Review round 3 (head adb78f41cb): B1 the height limit was lifted by default on terrain data (getHeightControlLimit used terrainAltUsable); now lifted on terrain only with bit 2. Leg: TERRAIN_ENABLE=1, default avoidance, 8 m range finder, full climb stops at the gate; without the fix 36.8 m. I1 origin altitude error carried the terrain gate: the fallbacks now need every available HAGL (measured offset and database) over the gate (aboveFlowHgtLimitAllSources). Leg: no GPS, origin +10 m, range lost at 2.5 m must drop rel pos; held without the fix. I2 (database below gate vetoes flat ground) closed by the same check, by reading only. I3 velTestRatio fixed in #33478, not carried here any more. N1 description wording. Range finder height source (POSZ=2) measures no offset, so the database decides alone there - disclosed.
+
+#34380 restacked (head 571ed7318c, 3 commits); its EKF hunk supersedes the bit 2 test on the limit; the B1 leg there asserts the climb passes 15 m with rel pos held. Regression on both heads: 12 tests pass incl. Replay. Feature-off builds (AP_RANGEFINDER_ENABLED, EK3_FEATURE_OPTFLOW_SRTM) pass. Descriptions updated; reply to AP-Review and merge-order note on #33568 posted.
+
+## v4: limit lift narrowed (2026-10-01, local, not pushed)
+
+Branch pr-avoid-flow-ceiling-v4 (../rv-34380) on #33585 v4: 07f24cf90b EKF, 3fccfcea32 tests.
+
+Codex cold read (tier 3, accepted): lifting the limit on gndOffsetMeasured && flowScaleHgtUsable() let a vehicle that measured ground on baro, then switched to range finder height, climb out with a fallback that would refuse (lastGoodRngMeas stays short while range height inhibits EstimateTerrainOffset). Now lifted only when flatGroundAssumed(), or gndOffsetValid && flowScaleHgtUsable() && activeHgtSource != RANGEFINDER && limit above its 1 m floor.
+
+Tier 2: OpticalFlowLimits passes (past 51 m, rel pos held 10 s); fails with the limit never lifted. FlowCeilingBacksDownIntoRange passes (rel pos back at 16.8 m); fails (no rel pos within 60 s) with the RANGEFINDER exclusion removed. Test moved so it no longer splits the MaxAltFence comment.
+
+Accepted trade-off, disclosed: past the 10 x bound the limit returns, but AC_Avoid only backs down against a climb demand, so a hovering vehicle stays without rel pos (failsafe acts with an origin).
