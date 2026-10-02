@@ -1,5 +1,51 @@
 # PR #33507 - estimate the accel-Z bias inside the AGL KF (EKF3)
 
+## 2026-10-02: the floor gate tests the reading before the offset correction (local, not pushed)
+
+Branch `pr33507-port`: this PR's eight commits cherry-picked unchanged
+onto #34457's new local head `45852b4417` (the diff against `4a6295de9b` is
+exactly #34457's 77 added lines), then `06dd0ef90e` "AP_NavEKF3: gate the
+AGL KF floor on the reading before offset correction" and `df974dddee`
+"autotest: check the AGL KF floor gate with a range finder offset". Not
+pushed; needs a `/prepare-for-push` grant for this branch and #34457's.
+
+The gate from `876a8aa750` never closed in flight. On SFD-O4 log22
+(`STAT_BOOTCNT` 553, analysis repo `logs/log22-30_sfdo4.md`) a dataflash
+probe in a Replay build showed the range measurement 0.15 mm above
+`rngOnGnd` on every ground sample: the on-ground reading is lifted by the
+position offset correction in `SelectVelPosFusion()` (`RNGFND1_POS_X`
+-0.03, vehicle resting 0.5 deg nose-up), and the gate's exact comparison
+fails. The bias std collapsed to 0.016 on the ground, as with no gate, and
+a gentle takeoff sank the flow-only core 1.2 m. A first explanation (the
+AGL height lifting off the floor) was refuted by Replay before this one;
+and log25, resting nose-down, also collapsed on the old gate by a route not
+identified. The fix flags the sample in `readRangeFinder()` when its
+median reading is at or below `rngOnGnd`, before any correction, and zeroes
+the bias gain on that flag alone.
+
+Replay (cores 101, old gate against the fix): bias std at liftoff 0.016 ->
+1.0 on log22 and 0.028 -> 1.0 on log25; flow lane height against the range
+finder over the first 18 s, worst -1.38 -> +0.58 m on log22 and -0.68 ->
+-0.30 m on log25. Flown on log24-30 (`caafe615` and later): bias std held at
+1.0 on the ground at -1.8 to +11.7 deg of ground pitch.
+
+The fixed arm on log22 sits up to 0.58 m above the range finder after the
+climb, and log26 flew 0.5 to 0.7 m above it. log28 and log30 did not (within
+0.25 m over five takeoffs). Whether that is an overshoot the bias now
+learning from 1.0 causes, or terrain, is open; scoring against the GPS lane
+does not settle it because the GPS lane lags 0.4 m in the same climbs.
+
+`OpticalFlowAGLKalmanFilter` gains a subtest that sets `RNGFND1_POS_Z` 0.02
+on the ground (SITL's simulated sensor position is `SIM_SONAR_POS`, so this
+moves only the EKF's correction): bias std after 15 s 0.0189 with the gate
+on the corrected reading, which fails the 0.03 bound, and 1.0006 with the
+fix. The existing floor subtest now reads 1.0003 with the fix (0.0470 on
+the old gate, as recorded); its comment carries all three numbers.
+
+Figure: `plots/aglkf_floor_gate_offset.png`, from
+`plots/make_floor_gate_plots.py`, which takes the four Replay BINs as
+arguments.
+
 ## Restacked 2026-09-30 at `4a6295de9b`: stacked on #34457, P macro fixed
 
 AP-Review 2026-09-30 (REQUEST CHANGES at `b8ee18a23e`) had two blockers, both

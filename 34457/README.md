@@ -1,5 +1,49 @@
 # AGL KF: clear the velocity when the height rests on its floor
 
+## 2026-10-02: hold the AGL KF on the ground after a landing (local, not pushed)
+
+Branch `pr34457-port` on `7505d332d9`: `7568122335` "AP_NavEKF3: hold the
+AGL KF on the ground after a landing" and `45852b4417` "autotest: check the
+AGL KF holds the ground while landed". #33507 is restacked on top of it
+(`pr33507-port`). Not pushed; needs a `/prepare-for-push` grant.
+
+A range finder below its minimum delivers no reading, so after a landing
+the AGL KF coasts on the velocity the touchdown left: SFD-O4 log27
+(`STAT_BOOTCNT` 564) climbed from 0.1 to 1.61 m sitting armed on the ground
+and went invalid after 5 s; on log28 (566) the touch-and-go then took off on
+a re-initialised filter with the bias std back at 0.98. The hold puts the
+height on the floor with zero velocity, and keeps the filter valid, while
+`takeoff_expected`, the sensor reports out of range low, no range sample is
+arriving and the main filter's vertical velocity is under 0.25 m/s.
+
+Two earlier versions, measured on the beta by Replay and discarded: without
+the last two terms the hold also fired at a normal first liftoff, where the
+sensor stays below its minimum for a few hundred ms after the vehicle
+moves, and wiped the IMU-sensed climb (flow lane height moved up to 0.77 m
+on log22). With them log22 is byte-identical and the remaining effect is a
+few samples at the start of a slow climb (0.07 m of AGL height on log25).
+
+The out of range low time stamps (`rngOutOfRangeLowTime_ms`, its reset and
+its update in `readRangeFinder()`) are the same lines #34292 adds, so the
+two merge without a conflict in them.
+
+Replay (the beta's identical hold, core 101): log27 after landing 1.61 ->
+0.05 m, 176 -> 0 invalid samples; log28 bias std one second into the second
+takeoff 0.977 -> 0.018. Flown on log30 (`f547e6f7`): four landings, AGL
+height exactly 0.050 m and valid throughout each, every later takeoff with
+its learnt bias.
+
+`OpticalFlowAGLKfLandedHold` (new): `RNGFND1_MIN` 0.5 so the sensor reads
+out of range low on the ground, fly, land, sit armed 12 s. Without the hold
+the filter went invalid 2.4 s after touchdown (100 of 114 landed samples);
+with it 0 of 110, height at most 0.100 m. SITL leaves almost no touchdown
+velocity, so the 1.6 m coast does not reproduce; the timeout does.
+`OpticalFlowAGLKfFloorVelocity` still passes, and both pass on the
+restacked #33507.
+
+Figure: `plots/aglkf_landed_hold.png`, from `plots/make_landed_hold_plots.py`
+(log27 and log28 flown, against Replay with the hold).
+
 ## Restacked 2026-09-30 at `7505d332d9`: now on master, #33507 on top
 
 AP-Review's 2026-09-30 round on #33507 found the decay gate (`df8c4cdb0b`, then
