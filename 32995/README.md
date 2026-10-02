@@ -2,6 +2,11 @@
 
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 
+**2026-10-02:** the flight build failed - continuous reboots (PIO UART lock
+deadlock) and GPS dropouts (UART RX DMA count after an abort). Both fixed,
+squashed into the PR and measured; see "2026-10-02" below and
+[bench-2026-10-02.md](bench-2026-10-02.md).
+
 **Current state, 2026-10-01.** PR head `564e6c1c7d`, 53 commits on upstream
 `26c7363f64`, on the davidbuzz remote. The narrative below runs in date
 order and its opening paragraphs describe the branch as it was in
@@ -228,6 +233,10 @@ commits used to make.
   clock A/B (per-call cost down by more than half, system load unchanged),
   core1 left in the bootrom after an SWD flash and only a power cycle
   clearing it, and both cores' VTORs read off the running board.
+- [bench-2026-10-02.md](bench-2026-10-02.md) - the flight build that
+  rebooted and lost its GPS: the PIO UART lock deadlock caught on core0, an
+  aborted DMA channel reading `TRANS_COUNT` as 0, and a CPU load A/B
+  showing the fixed head costs nothing over the head before 2026-10-01.
 
 ## Status (one line)
 
@@ -1015,6 +1024,27 @@ rest is not:
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
 
+## 2026-10-02: the flight that failed
+
+Andy flew `rp2350-flight-test` (`df0ee89f`, PR head `564e6c1c7d` plus 17
+split-out commits) and it rebooted continuously; with the lock-free clock
+backed out it stopped rebooting but the GPS kept dropping out. Neither was
+the clock. Both bugs came from 2026-10-01 work, both found on the bench over
+SWD: the PIO UART per-port lock deadlocked core0, and the UART RX DMA flush
+read `TRANS_COUNT` after an abort, which RP2350 reports as 0. Fixed as
+`fixup!`/`amend!` commits on the flight-test branch (`195e6a7ada`,
+`ec2cf9be6c`, `c3c3439520`, the last the same read on the TX timeout path),
+then squashed into the PR's own commits. A CPU load A/B (before 2026-10-01
+against the fixed head) found no measurable cost. Details and numbers:
+[bench-2026-10-02.md](bench-2026-10-02.md).
+
+Pushed 2026-10-02 as `fc8a3009d9`, 53 commits on `26c7363f64`, final tree
+identical to the measured build B. Every commit from `hwdef: add RPI_UAVFC`
+on builds RPI_UAVFC, and MatekH743 copter hashes match the 2026-10-01 run
+commit for commit (`55c6972d59e2` through the `@READONLY` commit,
+`f55647ee7e54` from the Copter commit to the head). Correction posted as
+issuecomment-5960369015.
+
 ## 2026-10-01: two review rounds, the tables into SRAM, ten pushes
 
 PR head `564e6c1c7d`, 53 commits on upstream `26c7363f64`, pushed
@@ -1097,7 +1127,11 @@ Fifteen findings. Andy: ignore 1, agree on 5, reject 9, document 12.
 - Fixed: UART inversion on the wrong pad (`PAL_PAD` masks to 0-31) and
   wiped by `begin()` (new `sio_apply_inversion()`); PIO TX inversion at the
   RP2040 bits 9:8 instead of 13:12; OSD use-after-free on the 200 ms probe
-  timeout (a small leak remains); UART RX count read before the DMA abort;
+  timeout (a small leak remains); UART RX count read before the DMA abort
+  (**superseded 2026-10-02**: the re-read after the abort returns 0 on
+  RP2350 and corrupted every partial flush - the GPS dropouts in Andy's
+  flight; now counted from `WRITE_ADDR`, see
+  [bench-2026-10-02.md](bench-2026-10-02.md) section 2);
   SPI DMA allocation failure, which was a hard fault (`acquire_bus()` now
   unwinds); GPIO RC pulse pairing anchored on a rising edge; a dead
   `.claude/` reference in Debugger.md; three stale facts in the PR
@@ -1154,6 +1188,18 @@ left weak out-of-line copies in flash, and `_service_irq`, which runs from
 Scratch X, called them through veneers. That was checked in objdump, not
 assumed. On hardware: u-blox detection works on a PIO UART. The FETtec
 cross-core case is not exercised.
+
+#### Superseded 2026-10-02 by the failed flight
+
+The lock deadlocked. BASEPRI over `PIO_UART_IRQ_PRIO` does not survive a
+kernel interrupt: any that leaves through `chSysUnlockFromISR()` writes
+BASEPRI 0, and the port's interrupt then spins on a lock its own core's
+thread holds. Andy's flight build rebooted continuously; core0 was caught in
+the spin with the holder stacked inside `_write()`. The thread side now
+masks at `CORTEX_BASEPRI_KERNEL`. And the hardware check above proved
+nothing: the u-blox is on hardware UART1, not a PIO UART. Evidence in
+[bench-2026-10-02.md](bench-2026-10-02.md) section 1. The text above is left
+as the reasoning that was wrong.
 
 ### Matt's OSD work (andyp1per/ardupilot#39)
 
