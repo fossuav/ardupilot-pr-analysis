@@ -13,6 +13,21 @@ committed; the field numbers are from real throws on the first design.
 > in this file was taken on the first design or without the PR, never on
 > the current head.
 
+## 2026-10-02 second review round: landed means ground idle (pushed as `591e6bfe4b`)
+
+A second Codex cold read of the squashed `16f69f0849` found that
+`SPOOLING_UP` is not on the ground: in a manual throttle mode the pilot's
+throttle passes through during the spool ramp, so a vehicle can leave the
+ground before `THROTTLE_UNLIMITED`. The hold now needs `GROUND_IDLE` or
+`SHUT_DOWN`. The landing leg now collects statustexts from before the
+descent, so a clear on the way down is caught as well. Its other findings
+were a "no test" read of a single commit (the test is the next one) and a
+note that a count half accumulated before landing trips within a second
+of a takeoff rather than after one, left as intended. Force pushed with
+the squash; the description was rewritten the same day for the landed
+behaviour, the two new legs and the hardware caveat (the flown version
+was `land_complete` alone).
+
 ## 2026-10-02 /pr-review of the landed change: reworked (pushed as `eaf4b3b1ad`)
 
 Squashed and pushed 2026-10-02 as `eaf4b3b1ad` (fast-forward). The PR description is not yet updated.
