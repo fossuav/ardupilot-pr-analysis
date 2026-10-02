@@ -1,6 +1,8 @@
 # AGL KF: clear the velocity when the height rests on its floor
 
-## 2026-10-02 /pr-review of the landed hold: reworked (local, fixup commits)
+## 2026-10-02 /pr-review of the landed hold: reworked (pushed as `7381308bf6`)
+
+Squashed and pushed 2026-10-02 as `7381308bf6` (fast-forward). The PR description is not yet updated.
 
 REQUEST CHANGES on `7568122335`, from a Codex cold read, confirmed:
 `takeoff_expected` stays latched up to 5 s after liftoff, so a range
@@ -37,7 +39,7 @@ The test now requires the landed samples to cover the window and every
 height to be finite on the floor; without the hold it failed again (93 of
 112 invalid, coasting to 0.37 m in that run).
 
-## 2026-10-02: hold the AGL KF on the ground after a landing (local, not pushed)
+## 2026-10-02: hold the AGL KF on the ground after a landing (since pushed, see above)
 
 Branch `pr34457-port` on `7505d332d9`: `7568122335` "AP_NavEKF3: hold the
 AGL KF on the ground after a landing" and `45852b4417` "autotest: check the

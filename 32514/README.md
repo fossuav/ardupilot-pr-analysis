@@ -13,7 +13,9 @@ committed; the field numbers are from real throws on the first design.
 > in this file was taken on the first design or without the PR, never on
 > the current head.
 
-## 2026-10-02 /pr-review of the landed change: reworked (local, fixup commits)
+## 2026-10-02 /pr-review of the landed change: reworked (pushed as `eaf4b3b1ad`)
+
+Squashed and pushed 2026-10-02 as `eaf4b3b1ad` (fast-forward). The PR description is not yet updated.
 
 Self-review (Claude, with Codex cold reads of each new commit) returned
 REQUEST CHANGES on `8d4ffc52a8`. Changes, as `fixup!`/`amend!` commits on
@@ -49,7 +51,7 @@ code too: there the failsafe goes to non-GPS LAND and clears in the air,
 which is this PR's existing behaviour (the bot's note), not a landing
 effect.
 
-## 2026-10-02: no position expected while landed (local, not pushed)
+## 2026-10-02: no position expected while landed (since pushed, see above)
 
 Branch `pr32514-port` on `752a4bab8b`: `8d4ffc52a8` "Copter: expect no
 position from the EKF while landed" and `6dd30a236d` "autotest: check a
