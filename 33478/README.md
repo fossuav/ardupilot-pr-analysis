@@ -603,3 +603,46 @@ watch `XKFA.VAgl` settle at bias x 2 s with `XKFA.Valid=1`. Not yet built.
   AGL KF at `EK3_AGL_ABIAS_P=0.3`. Not yet re-validated with this branch's
   2-state KF; a Replay of the same logs with this branch would settle it.
 - No maintainer review yet.
+
+## velTestRatio contamination fixed (2026-09-30)
+
+The open item above ("`velTestRatio` can be contaminated") and AP-Review's
+#33585 round-2 ISSUE (ExtNav VELZ gap, `useExtNavVel` latched, imax=2) are
+the same family. Tier 2 (SITL) found a second route the review's suggested
+fix (drop velD from the combined test on the claim step) misses: with
+ExtNav as velD source the GPS block never writes `velPosObs[2]`, so on later
+GPS steps the combined test still reads the AGL value the last claim left
+there.
+
+Fix `4328e0c925`: `imax = 1` when `velDIsAglKfVel`, and `velPosObs[2]` is
+restored after `FuseVelPosNED()` on a step the AGL KF claimed it, so the AGL
+value never outlives its step (non-claim steps behave as master, including
+master's own stale-ExtNav behaviour, left alone).
+
+Test `e12630f96f` EK3_AglKfVelMixedSources: GPS XY + ExtNav VELZ,
+SIM_SONAR_SCALE /3 (range finder and AGL KF read 3x, consistently), Vicon
+failed mid-climb at 2.5 m/s so the AGL KF claims with ~5 m/s residual.
+max XKF4.SV (sqrt of velTestRatio) in the 3 s window:
+
+| build | max SV | max abs IVD |
+|---|---|---|
+| e21558d163 (no fix) | 0.91, 1.04 | 2.64 |
+| imax change only | 1.43 | - |
+| restore only | 0.16 | 4.32 |
+| both | 0.17, 0.17, 0.18 | 4.34-5.32 |
+
+Threshold 0.5. The claim-step half is not visible in SITL: a single-step
+spike when a GPS step coincides with a claim is overwritten before XKF4
+logs at 10 Hz; it rests on AP-Review's extracted-code probe (ratio 2.67)
+and inspection. EK3_AglKfVelForVelD still passes; EK3_FEATURE_OPTFLOW_AGL_KF=0
+copter builds. Unpushed; #33585 and #34380 need rebasing onto it.
+
+Squashed and force-pushed 2026-10-01 (tree identical to e12630f96f + review fixups): 6503f5f8d7 decay fix; a2320dfc88 = 1938fe4063 + 0a50ee9939 + 4328e0c925 (message now matches the gate code); a2210f10df = 69034ab1a7 + e21558d163; 57138444e8 = e12630f96f + test fixups (min XKF4 sample count; bits 3+4 kept - bit 4 alone gave SV 0.40, too close to the 0.5 line). Head 57138444e8. #33585 and #34380 still carry the old #33478 commits. Backup branch pre-squash/pr-ekf3-aglkf-veld-20261001-0945 kept until they are rebased.
+
+## Round on AP-Review 2026-10-01 (head 57138444e8) and self-review (2026-10-02, local, not pushed)
+
+Rebuilt on upstream/master 755258dbb4 by cherry-pick as pr-ekf3-aglkf-veld-v2 (conflicts only in tests1c registration). AP-Review's five: (1) body odometry did not stand the AGL KF aside - FuseBodyVel fuses all three body axes; gate on prevBodyVelFuseTime_ms (covers wheel odometry too); (2) noise floor - SITL A/B, 1 m range step under a 10 m hover: velD transient 0.36 m/s at floor 0.05, 0.25 at 0.2, but settled error 0.26 vs 0.17 m/s with 0.2, so floor kept and fixed-ground assumption documented (true height excursion ~1 m is Copter surface tracking, present with fusion off); (3) mixed-sources test did not guard the imax exclusion (confirmed: passed with it removed, SV 0.16) - added a GPS-height leg where every claim lands on a GPS step: 0.07-0.08 fixed, 1.6 without; baro leg guards the velPosObs[2] restore (1.4 without); (4) new EK3_AglKfVelYieldsToOtherVelD: GPS 241 and body odometry 242 claims with their gates removed, 0 with; (5) XKFA.VTR logged.
+Self-review (Claude x2 + Codex cold): must-fix confirmed and fixed - UpdateAglKf ran after the mag load-levelling return in SelectFlowFusion (pre-existing on master, whose comment claimed every step), losing skipped steps' dt: climb/descent mean AGL KF velocity error 0.20 -> 0.02 m/s, velD max 0.51 -> 0.23-0.25; test limit tightened 0.25 -> 0.1 (0.19 with the fix reverted). Also: GPS gate keyed on received not fused (now gpsRetrieveTime_ms on dal.millis()); fusion waits for AGL KF P11 < 0.2^2 after a reset (range back mid-descent: first fusion 1.6 s later vs 0.04 s, velD err 0.01 vs 0.05 m/s); out-of-scope zero-vel comment edit reverted; docs for horiz_vel requirement, speed-gate hysteresis, RNG_USE_SPD=0. Disputed/noted: correlated observation (shares IMU; VTR <= 0.12 even under a 1 m step), velD-only source holds the AGL KF off though never fused (pre-existing).
+Tier 2 at the local head: 14 tests pass (EK3_AglKfVelYieldsToOtherVelD needed a rerun after a SYSTEM_TIME harness stall); 5 mutations red; feature-off builds (AGL KF, external nav, flow, rangefinder) and copter/plane/rover/sub pass.
+
+Folded and force-pushed 2026-10-02: #33478 head 1b6f63bff1 on upstream/master cafe674577 (master gained 4 unrelated commits between test run and fold; AP_NavEKF3 and autotest trees identical to the tested pre-squash/agl-20261002). Every commit builds, all vehicles, gate clean. Description rewritten.
