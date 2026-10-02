@@ -1,6 +1,8 @@
 # PR #33507 - estimate the accel-Z bias inside the AGL KF (EKF3)
 
-## 2026-10-02 /pr-review of the offset gate: reworked (local, fixup commits)
+## 2026-10-02 /pr-review of the offset gate: reworked (pushed as `e17f7e6379`)
+
+Squashed and pushed 2026-10-02 as `e17f7e6379`, restacked on #34457's `7381308bf6` (force push; the eight earlier commits patch-identical). The PR description is not yet updated.
 
 REQUEST CHANGES on `06dd0ef90e`, both must-fix rows from Codex cold
 reads and confirmed in the source:
@@ -25,7 +27,7 @@ reads and confirmed in the source:
 All three AGL KF tests pass on the restacked branch (bias std on the
 floor 1.0003, with the offset 1.0006).
 
-## 2026-10-02: the floor gate tests the reading before the offset correction (local, not pushed)
+## 2026-10-02: the floor gate tests the reading before the offset correction (since pushed, see above)
 
 Branch `pr33507-port`: this PR's eight commits cherry-picked unchanged
 onto #34457's new local head `45852b4417` (the diff against `4a6295de9b` is
