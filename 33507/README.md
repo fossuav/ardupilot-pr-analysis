@@ -1,5 +1,30 @@
 # PR #33507 - estimate the accel-Z bias inside the AGL KF (EKF3)
 
+## 2026-10-02 /pr-review of the offset gate: reworked (local, fixup commits)
+
+REQUEST CHANGES on `06dd0ef90e`, both must-fix rows from Codex cold
+reads and confirmed in the source:
+
+- The gate on the flag alone dropped the old test of the corrected
+  height, which a tilted vehicle's slant reading reaches only after tilt
+  correction. The gain is now zero on the flag or that test. SITL cannot
+  rest a vehicle tilted, so not measured; it can only close the gate in
+  more cases, and it is the test AP-Review already accepted.
+- Master's on-ground substitute (`readRangeFinder()`'s `onGround` branch)
+  never set the flag. It now does. Inspection only: an out-of-range-low
+  reading reaches `continue` before that branch, so it runs only when good
+  readings arrive without three fresh ones. A test built to reach it from
+  boot (range finder below its minimum, disarmed) could not: the AGL KF was
+  never valid there, with or without the fix, so it was dropped. That
+  `continue` also explains why both master-based Replay arms held the bias
+  std at 1.0 on the ground: nothing reached the AGL KF there.
+- The subtest comment ("a millimetre or two on a level vehicle") now says
+  what the correction moves: the sensor's vertical offset from the IMU in
+  the earth frame.
+
+All three AGL KF tests pass on the restacked branch (bias std on the
+floor 1.0003, with the offset 1.0006).
+
 ## 2026-10-02: the floor gate tests the reading before the offset correction (local, not pushed)
 
 Branch `pr33507-port`: this PR's eight commits cherry-picked unchanged

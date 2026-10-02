@@ -13,6 +13,42 @@ committed; the field numbers are from real throws on the first design.
 > in this file was taken on the first design or without the PR, never on
 > the current head.
 
+## 2026-10-02 /pr-review of the landed change: reworked (local, fixup commits)
+
+Self-review (Claude, with Codex cold reads of each new commit) returned
+REQUEST CHANGES on `8d4ffc52a8`. Changes, as `fixup!`/`amend!` commits on
+`pr32514-port` awaiting an autosquash:
+
+- `land_complete` alone is not a landed state: on cqc-copter F3 (analysis
+  repo `notes/cqc_height_datum_reset_status.md`) NOT_LANDED was never
+  logged and `time_flying_ms` stayed 0 for a whole flight. Gating on it
+  alone would have disabled the position failsafe for such a flight. The
+  hold now also needs the motors not at `THROTTLE_UNLIMITED`, which no
+  copter can fly without.
+- A failsafe declared in the air cleared about 1 s after landing, with
+  "EKF Failsafe Cleared" on the ground and still no position. The change
+  now holds the count while landed instead of treating the position as not
+  expected: nothing is raised on the ground and nothing is cleared there.
+- The code comment cited #34292's focus floor, which is not on master;
+  reworded.
+- Codex rated "takes off again in LOITER without a position, with about
+  1 s before the failsafe acts" must-fix. Kept as designed: master would
+  have switched the landed vehicle to ALT_HOLD first, but that 1 s is what
+  lets a flow lane regain aiding after liftoff (0.3 s on log30), and it is
+  the same second an in-flight loss gets. To be stated in the PR.
+- A disarmed vehicle now never raises the failsafe on position loss;
+  arming in a position mode still needs a position. To be stated in the PR.
+
+Test, three ways (2026-10-02, one run each): the reworked code passes;
+the first version fails the new landing leg ("EKF failsafe cleared by
+landing with no position", a GPS set with the GPS failed, failsafe to
+ALT_HOLD, landed armed); `752a4bab8b` fails the landed leg ("EKF failsafe
+while landed on a set with no position source"). A first attempt at the
+landing check, on a set with no position source, failed on the reworked
+code too: there the failsafe goes to non-GPS LAND and clears in the air,
+which is this PR's existing behaviour (the bot's note), not a landing
+effect.
+
 ## 2026-10-02: no position expected while landed (local, not pushed)
 
 Branch `pr32514-port` on `752a4bab8b`: `8d4ffc52a8` "Copter: expect no

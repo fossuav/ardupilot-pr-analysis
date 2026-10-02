@@ -1,5 +1,42 @@
 # AGL KF: clear the velocity when the height rests on its floor
 
+## 2026-10-02 /pr-review of the landed hold: reworked (local, fixup commits)
+
+REQUEST CHANGES on `7568122335`, from a Codex cold read, confirmed:
+`takeoff_expected` stays latched up to 5 s after liftoff, so a range
+finder failing low in a slow hover then would pin the AGL height in
+flight, and the comment claimed it could not. The landed test is now
+`takeoff_expected` and `time_flying_ms == 0` together. Neither alone is
+reliable: the land detector stayed set through a whole cqc-copter flight
+(analysis repo `notes/cqc_height_datum_reset_status.md`), while
+`takeoff_expected` is released by AP_GroundEffect's own timer within 5 s
+of throttle-up whatever the land detector says, so in flight both must be
+wrong at once and only in that window.
+
+Codex also said refreshing the fusion time stamp suppresses the
+re-initialisation at the next takeoff. Measured by Replay at this head
+against `7505d332d9` (core 100/101 decoded by hand), flow lane AGL height
+against the range finder over the first 20 s of each takeoff:
+
+| takeoff | old head | hold, every held filter kept valid | hold, only a valid one kept valid |
+|---|---|---|---|
+| log22 129.4 s | 0.150 / -0.29 | 0.216 / -0.43 | 0.150 / -0.29 |
+| log25 51.7 s | 0.175 / -0.31 | 0.237 / -0.47 | 0.175 / -0.31 |
+| log27 43.1 s | 0.035 / -0.06 | 0.065 / -0.14 | 0.035 / -0.06 |
+| log28 36.9 s | 0.110 / -0.17 | 0.156 / -0.30 | 0.110 / -0.17 |
+| log28 88.8 s (touch-and-go) | 0.041 / +0.12 | 0.039 / +0.12 | 0.039 / +0.12 |
+
+(RMS / worst, m.) On master the filter has already timed out armed on
+the ground before a first takeoff, and re-initialising from the first
+reading tracked better than continuing from the held state. The hold now
+refreshes the time stamp only for a filter that is still valid, which is
+the touch-and-go it is for. Landings unchanged: log27 1.52 -> 0.05 m,
+176 -> 0 invalid; log28 68 -> 0 and 159 -> 0 invalid.
+
+The test now requires the landed samples to cover the window and every
+height to be finite on the floor; without the hold it failed again (93 of
+112 invalid, coasting to 0.37 m in that run).
+
 ## 2026-10-02: hold the AGL KF on the ground after a landing (local, not pushed)
 
 Branch `pr34457-port` on `7505d332d9`: `7568122335` "AP_NavEKF3: hold the
