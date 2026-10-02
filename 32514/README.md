@@ -13,6 +13,44 @@ committed; the field numbers are from real throws on the first design.
 > in this file was taken on the first design or without the PR, never on
 > the current head.
 
+## 2026-10-02: no position expected while landed (local, not pushed)
+
+Branch `pr32514-port` on `752a4bab8b`: `8d4ffc52a8` "Copter: expect no
+position from the EKF while landed" and `6dd30a236d` "autotest: check a
+landed vehicle trips no EKF failsafe without a position". Not pushed;
+needs a `/prepare-for-push` grant.
+
+Found in the field on SFD-O4 (the analysis repo's `logs/log22-30_sfdo4.md`).
+With an optical flow lane primary, #34292's focus floor stops flow aiding a
+few seconds after touchdown; in LOITER this PR's check then counted the
+missing position and tripped a second later, switching a landed vehicle to
+ALT_HOLD. log28 (`STAT_BOOTCNT` 566) tripped at 129.8 s, 4.5 s after the
+second landing of a touch-and-go sortie; log29 (567) tripped 1 s after set 2
+was selected on the ground. Not a variance trip, although both report "EKF
+variance": the flow lane's `SV`/`SP` were 0.00 to 0.01 and `XKF4.AID` went
+2 -> 1. log30 (571), flown on `f547e6f7`, the beta carrying the same change:
+the same aiding stop on both of its landings with the flow lane primary, a
+touch-and-go taken off in that state, and no trip.
+
+The change: `position_expected` is false while `ap.land_complete`. A
+vehicle that takes off without regaining a position still trips a second
+after it leaves the ground.
+
+New `EKFSourceSetFailsafe` leg: take off on set 1, land in LOITER with
+`DISARM_DELAY` 0, select set 2 (no position source), wait for the EKF to
+lose position and 5 s more, then take off. Without the change: "EKF
+failsafe while landed on a set with no position source". With it: passes,
+and the takeoff trips. Run at `6dd30a236d` and with `ekf_check.cpp`
+reverted to `752a4bab8b`, 2026-10-02, one run each. The leg had to request
+`EXTENDED_SYS_STATE` itself; it is not streamed by default.
+
+Figure: `plots/ekf_failsafe_landed.png`, from `plots/make_landed_failsafe_plots.py`
+(log28 against log30, the primary lane's aiding mode, the landed spans and
+the failsafe).
+
+Not answered here: whether #34456 should refuse a source set selection onto
+a lane with no position when the mode needs one (log29, 92.0 s).
+
 ## Status (one line)
 
 Open, awaiting review. Four commits: the gate reset, a 12 s holdoff for the
