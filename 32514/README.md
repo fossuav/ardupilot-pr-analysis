@@ -480,3 +480,5 @@ Local branch `fix/32514` (from PR head `cd0a8b728b`, not pushed).
   same debounce as any in-flight position loss; master's immediacy comes from
   the false alarm the PR removes.
 - CI at `cd0a8b728b`: 108/108 pass.
+
+Pushed 2026-10-03: cd0a8b728b -> 03787e07e9 (fast-forward, one new commit).
