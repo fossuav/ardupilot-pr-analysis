@@ -745,3 +745,5 @@ test covers. Replay of the 14 cached logs: no difference.
   `millis()` wrap. Codebase-wide convention; not changed.
 
 Pushed 2026-10-03: 4317016b8b -> 59ca8fc5e5 (fast-forward: registration re-indent, the pause-and-backoff commit, its test).
+Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/33484#issuecomment-5973749867
+Pushed 2026-10-03: 59ca8fc5e5 -> 4e9409406a (QMIN wording, fast-forward). Description rewritten and posted 2026-10-03 (pause design, testing lists only asserted cases, QMIN corrected).

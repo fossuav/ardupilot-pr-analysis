@@ -430,3 +430,4 @@ plus fixups:
   silently ignored), both fixed; final pass clean.
 
 Pushed 2026-10-03: a04fb2dbbd -> c7d1d732fe (fast-forward, 6 new commits, each built on its own).
+Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/34456#issuecomment-5973749744
