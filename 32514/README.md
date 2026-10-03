@@ -465,3 +465,18 @@ reproduced from this record.
 - Related: #32475 (THROW_SRC_INI/THROW_SRC_SET, which is what exposed this
   on GPS vehicles).
 - rmackay9 - objected to the first design in principle.
+
+## Review of 2026-10-03 answered locally (2026-10-03)
+
+Local branch `fix/32514` (from PR head `cd0a8b728b`, not pushed).
+
+- Spool-state part of the landed hold was untested. New commit
+  `a3c8566419` (+ fixup rebooting after the leg so EXTENDED_SYS_STATE is
+  not left disabled): STABILIZE spool-up with MOT_SPOOL_TIME 3 on a GPS set
+  after GPS loss must trip while still landed. Passes at the head; a build
+  with the hold reduced to land_complete alone fails the leg.
+- AUTO NAV_ATTITUDE_TIME -> waypoint on a no-source set: 1 s count instead
+  of master's immediate action. Answered without code (user's choice): the
+  same debounce as any in-flight position loss; master's immediacy comes from
+  the false alarm the PR removes.
+- CI at `cd0a8b728b`: 108/108 pass.
