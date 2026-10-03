@@ -737,3 +737,12 @@ excursion. It needs a lidar-class range finder (`RNGFND1_MAX` 100,
 covariance inflation opens the gate wide enough to accept an in-range glitch
 within about half a second, so the filter re-anchors instead of coasting and
 the failure never arises.
+
+## Tidy round (2026-10-03, local, not pushed)
+
+Restacked onto the updated #34457 (cherry-picked, content identical apart
+from the base's registration indent). New commits: its registration
+re-indent, and the floor test comment updated for the bias state: without the
+velocity clear -1.29 to -1.41 m/s over three runs (the bot saw -3.77 and
+-1.391), about 0 with it. All three AGL KF tests pass. The push will be a
+force push of the whole stack.

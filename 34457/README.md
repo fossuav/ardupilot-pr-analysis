@@ -467,3 +467,12 @@ above directly. Build Replay for **sitl** and check the build log names
 `build/sitl/tool/Replay`: a board-configured tree builds a different binary while
 the sweep runs the stale sitl one, which produced a null A/B that read as "the
 change does nothing".
+
+## Tidy round (2026-10-03, local, not pushed)
+
+New commits on `f8651ffaeb`: registration re-indent (flake8 E131); the
+no-coast test now asserts its provocation (VAgl >= 0.015 m/s after the step,
+0.030-0.040 measured, valid finite samples only; RFND OutOfRangeLow
+throughout) - without the coast fix the height still rises 0.34-0.37 m; the
+coast-stop comment says it applies up and down. Floor test figure re-measured
+on this head: -0.430/-0.431 m/s without the clear, so it stands.
