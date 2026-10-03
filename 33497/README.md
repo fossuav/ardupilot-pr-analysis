@@ -103,3 +103,10 @@ matters is the sensor-rate regression above on a real log.
 - Author: @andyp1per. No review yet.
 - Open question for the description: it names both an "Holybro H-Flow" and
   an "ARK Flow"; the flights here were on an ARK Flow.
+
+## Proposed for closing (2026-10-03)
+
+tpwrules asked "if the bug is fixed, do we need this?" after dakejahl pointed
+to PX4#27418, which fixed the node's integration_interval in the default ARK
+Flow firmware. User's decision: propose closing rather than rename it. Reply
+drafted, not posted; the PR is not closed until it is.
