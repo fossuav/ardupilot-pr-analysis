@@ -1086,6 +1086,7 @@ but the write-up leans on it.
       reset_baro_rnd_0p2.BIN    (reset at arm, SITL default baro noise)
       reset_baro_rnd_0.BIN      (reset at arm, SIM_BARO_RND 0)
       no_reset_home_locked.BIN  (home locked, so no reset)
+  video/             <- explainer video + interactive page sources; see video/README.md
 ```
 
 All BINs are SITL (ArduCopter V4.8.0-dev, CMAC default home; each carries

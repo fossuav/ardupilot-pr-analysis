@@ -1,0 +1,250 @@
+<title>Baro Drift at Arm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a single reading column of instrument panels; each panel pairs a live chart with readouts, like a ground-station strip */
+:root {
+  --bg: #eef1f3;
+  --panel: #ffffff;
+  --ink: #17212b;
+  --muted: #5a6875;
+  --rule: #d3dae0;
+  --baro: #b86e00;      /* barometer / temperature: amber */
+  --pr: #0a7f8c;        /* this PR: teal */
+  --master: #b8323f;    /* master: red */
+  --ok: #1f7a3d;
+  --warn: #a8471c;
+  --display: "Saira Condensed", "Arial Narrow", sans-serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f151b; --panel: #172029; --ink: #e3e9ee; --muted: #93a2af; --rule: #2a3742;
+  --baro: #f0a63a; --pr: #3cc6d4; --master: #f0707b; --ok: #5fcf85; --warn: #f09a6a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f151b; --panel: #172029; --ink: #e3e9ee; --muted: #93a2af; --rule: #2a3742;
+  --baro: #f0a63a; --pr: #3cc6d4; --master: #f0707b; --ok: #5fcf85; --warn: #f09a6a; color-scheme: dark }
+
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 860px; margin: 0 auto; padding-inline: 16px; padding-block: 32px 64px; display: grid; gap: 28px; }
+h1, h2 { font-family: var(--display); font-weight: 700; letter-spacing: .01em; text-wrap: balance; line-height: 1.1; margin: 0; }
+h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); }
+h2 { font-size: 1.6rem; }
+p { margin: 0; max-width: 65ch; }
+.eyebrow { font-family: var(--mono); font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.lede { font-size: 1.1rem; }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; padding: 20px; display: grid; gap: 16px; min-width: 0; }
+.chart { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--muted); font-family: var(--mono); font-size: 11px; }
+.chart .grid { stroke: var(--rule); stroke-width: 1; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+label { font-size: .9rem; color: var(--muted); }
+input[type=range] { width: 100%; accent-color: var(--baro); }
+.seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; flex-wrap: wrap; }
+.seg button { font: 600 .85rem var(--body); background: transparent; color: var(--ink); border: 0; padding: 7px 12px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--rule); }
+.seg button[aria-pressed=true] { background: var(--ink); color: var(--panel); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--pr); outline-offset: 2px; }
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.ro { border-top: 2px solid var(--rule); padding-top: 6px; min-width: 0; }
+.ro .k { font-size: .78rem; color: var(--muted); }
+.ro .v { font-family: var(--mono); font-size: 1.35rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ro.baro { border-color: var(--baro); }
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.side { border: 1px solid var(--rule); border-radius: 4px; padding: 14px; display: grid; gap: 8px; min-width: 0; }
+.side h3 { margin: 0; font: 700 1.15rem var(--display); letter-spacing: .02em; }
+.side.master h3 { color: var(--master); }
+.side.pr h3 { color: var(--pr); }
+.row { display: flex; justify-content: space-between; gap: 12px; font-size: .92rem; }
+.row b { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.note { font-size: .88rem; color: var(--muted); }
+.verdict { font: 700 1.5rem var(--display); letter-spacing: .03em; }
+.verdict.ok { color: var(--ok); }
+.verdict.no { color: var(--warn); }
+select { font: .95rem var(--body); padding: 6px 8px; border-radius: 4px; border: 1px solid var(--rule); background: var(--panel); color: var(--ink); max-width: 100%; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; align-items: end; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.key { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .85rem; color: var(--muted); }
+.key i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 6px; }
+footer { font-size: .85rem; color: var(--muted); display: grid; gap: 6px; }
+a { color: var(--pr); }
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:12px">
+    <div class="eyebrow">ArduPilot PR #32768 &middot; Copter / EKF3</div>
+    <h1>Baro Drift at Arm</h1>
+    <p class="lede">You power up a copter, wait for a GPS lock, run your checks. The autopilot board warms up, and the barometer warms with it. Its height reading wanders, by about a metre in a few minutes on the vehicles measured. This page replays one of those benches, then shows what happens to that metre when you arm.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="h-bench">
+    <div class="eyebrow">Real vehicle &middot; MatekH743 5-inch quad &middot; log12, motors never spun</div>
+    <h2 id="h-bench">Sitting on the bench</h2>
+    <svg id="bench" class="chart" viewBox="0 0 800 300" role="img" aria-label="Barometer height and board temperature over 206 seconds"></svg>
+    <div class="key"><span><i style="background:var(--baro)"></i>Baro height (m)</span><span><i style="background:var(--muted)"></i>Baro temperature (&deg;C)</span></div>
+    <div class="field">
+      <label for="t">Time since power-on: <b id="tlabel" style="font-family:var(--mono)"></b>. Drag to choose when you arm.</label>
+      <input id="t" type="range" min="0" max="205" step="1" value="205">
+    </div>
+    <div class="readouts">
+      <div class="ro"><div class="k">Vehicle actually moved</div><div class="v">0.00 m</div></div>
+      <div class="ro baro"><div class="k">Baro says it moved</div><div class="v" id="ro-alt"></div></div>
+      <div class="ro"><div class="k">Board temperature</div><div class="v" id="ro-temp"></div></div>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-arm">
+    <div class="eyebrow">What arming does with that error</div>
+    <h2 id="h-arm">Arm at the slider position</h2>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Home state">
+        <button id="c-set" aria-pressed="true">GPS fix, home set</button>
+        <button id="c-none" aria-pressed="false">No GPS, home not set</button>
+        <button id="c-lock" aria-pressed="false">Home locked</button>
+      </div>
+    </div>
+    <div class="compare">
+      <div class="side master"><h3>Master</h3><div id="m-out"></div></div>
+      <div class="side pr"><h3>This PR</h3><div id="p-out"></div></div>
+    </div>
+    <p class="note" id="case-note"></p>
+  </section>
+
+  <section class="panel" aria-labelledby="h-sitl">
+    <div class="eyebrow">SITL &middot; BaroDriftClearedAtArm &middot; stress case, 9.5 m injected drift</div>
+    <h2 id="h-sitl">The reset, one sample wide</h2>
+    <svg id="sitl" class="chart" viewBox="0 0 800 300" role="img" aria-label="SITL EKF height and vertical velocity before and after arming"></svg>
+    <div class="key"><span><i style="background:var(--pr)"></i>EKF height (m)</span><span><i style="background:var(--master)"></i>EKF vertical speed, down (m/s), right axis</span></div>
+    <p>While the vehicle sits still, the filter follows the drifting barometer up to about 9.5 m. It also reports a phantom descent of 0.29 m/s, because it reads the drift rate as motion. At arm, height and that false speed both go to zero in one sample. Afterwards the vertical speed stays under 0.015 m/s, so the controller has no jump to chase.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="h-guard">
+    <div class="eyebrow">When the reset is refused</div>
+    <h2 id="h-guard">Zeroing the height is only safe on the ground</h2>
+    <p>The reset is valid only when the vehicle is on the ground, the height comes from the barometer or GPS, and nothing is moving. Arming does not guarantee any of that. A copter can be armed while you lift it, or re-armed after a mid-air disarm while it is still falling. Set up a case:</p>
+    <div class="grid2">
+      <div class="field"><label for="g-air">Last disarm</label>
+        <select id="g-air"><option value="0">Landed normally</option><option value="1">In the air, not landed since</option></select></div>
+      <div class="field"><label for="g-src">Height source</label>
+        <select id="g-src"><option value="baro">Barometer</option><option value="gps">GPS</option><option value="rng">Rangefinder switch engaged, parked</option><option value="ext">External nav (vicon)</option></select></div>
+      <div class="field"><label for="g-vz">Vertical speed at arm: <b id="g-vzl" style="font-family:var(--mono)"></b></label>
+        <input id="g-vz" type="range" min="0" max="3" step="0.1" value="0"></div>
+    </div>
+    <div style="display:grid;gap:4px"><div class="verdict" id="g-v" aria-live="polite"></div><p class="note" id="g-why"></p></div>
+  </section>
+
+  <footer>
+    <p>Bench data: real log12, BARO instance 0, 206 s, 41.8 to 61.8 &deg;C, -1.17 m. SITL data: barodrift_arm.BIN from the PR analysis archive, XKF1 core 0. Master and PR outcomes follow the arming code on branch pr-baro-drift-minimum and the PR's SITL measurements.</p>
+    <p>The reset clears drift that built up before arming. It does not fix drift during flight; that needs a better temperature calibration or a second height reference.</p>
+    <p><a href="https://github.com/ArduPilot/ardupilot/pull/32768">github.com/ArduPilot/ardupilot/pull/32768</a></p>
+  </footer>
+</div>
+
+<script>
+const DATA = __DATA__;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent && parent.appendChild(e); return e; }
+function scale(d0, d1, r0, r1) { return v => r0 + (v - d0) * (r1 - r0) / (d1 - d0); }
+function path(pts, sx, sy) { return pts.map((p, i) => (i ? 'L' : 'M') + sx(p[0]).toFixed(1) + ' ' + sy(p[1]).toFixed(1)).join(''); }
+const fmt = (v, d = 2) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(d);
+
+// --- bench chart
+const L = DATA.log12;
+const B = { l: 52, r: 748, t: 16, b: 262 };
+const bx = scale(0, 206, B.l, B.r), by = scale(0.2, -1.4, B.t, B.b), bt = scale(40, 64, B.b, B.t);
+const bench = document.getElementById('bench');
+let cursor, dot;
+function drawBench() {
+  bench.innerHTML = '';
+  for (let v = 0; v >= -1.4; v -= 0.2) { const y = by(v); el('line', { x1: B.l, x2: B.r, y1: y, y2: y, class: 'grid' }, bench); el('text', { x: B.l - 6, y: y + 4, 'text-anchor': 'end' }, bench).textContent = v.toFixed(1); }
+  for (let tc = 40; tc <= 64; tc += 8) el('text', { x: B.r + 6, y: bt(tc) + 4 }, bench).textContent = tc + '°';
+  for (let s = 0; s <= 200; s += 50) el('text', { x: bx(s), y: B.b + 18, 'text-anchor': 'middle' }, bench).textContent = s + ' s';
+  el('path', { d: path(L.map(p => [p[0], p[2]]), bx, bt), fill: 'none', stroke: css('--muted'), 'stroke-width': 1.5, 'stroke-dasharray': '4 3' }, bench);
+  el('path', { d: path(L.map(p => [p[0], p[1]]), bx, by), fill: 'none', stroke: css('--baro'), 'stroke-width': 2.2 }, bench);
+  cursor = el('line', { y1: B.t, y2: B.b, stroke: css('--ink'), 'stroke-width': 1 }, bench);
+  dot = el('circle', { r: 5, fill: css('--baro'), stroke: css('--panel'), 'stroke-width': 2 }, bench);
+}
+function sampleAt(t) { let best = L[0]; for (const p of L) { if (p[0] <= t + 0.5) best = p; } return best; }
+
+// --- arm comparison
+let homeCase = 'set';
+const caseNotes = {
+  set: 'The normal outdoor case. Master moves home to where the EKF thinks the vehicle is, so the screen reads zero, but home is filed at the wrong height above sea level. Terrain following, AMSL fences and comparisons with GPS altitude inherit that error. This PR re-zeroes the height and re-anchors the reference to GPS altitude.',
+  none: 'Without GPS, home is not set yet. Master already re-zeroed the height on this path, and this PR keeps that, adding the guards in the last panel.',
+  lock: 'Home is locked when a ground station or script fixes it. Neither build re-zeroes on this path, so the error stays on screen. This PR does not change that case.'
+};
+function rowsHtml(rows) { return rows.map(r => `<div class="row"><span>${r[0]}</span><b>${r[1]}</b></div>`).join(''); }
+function updateArm(drift) {
+  const d = fmt(drift);
+  let m, p;
+  if (homeCase === 'set') {
+    m = [['Altitude on screen', '0.00 m'], ['Home height above sea level', d + ' m off'], ['Error carried into flight', Math.abs(drift).toFixed(2) + ' m']];
+    p = [['Altitude on screen', '0.00 m'], ['Home height above sea level', 'matches GPS'], ['Error carried into flight', '0.00 m']];
+  } else if (homeCase === 'none') {
+    m = [['Altitude on screen', '0.00 m'], ['Reset at arm', 'yes'], ['Error carried into flight', '0.00 m']];
+    p = [['Altitude on screen', '0.00 m'], ['Reset at arm', 'yes, with guards'], ['Error carried into flight', '0.00 m']];
+  } else {
+    m = [['Altitude on screen', d + ' m'], ['Reset at arm', 'no'], ['Error carried into flight', Math.abs(drift).toFixed(2) + ' m']];
+    p = m;
+  }
+  document.getElementById('m-out').innerHTML = rowsHtml(m);
+  document.getElementById('p-out').innerHTML = rowsHtml(p);
+  document.getElementById('case-note').textContent = caseNotes[homeCase];
+}
+const tIn = document.getElementById('t');
+function updateBench() {
+  const t = +tIn.value, s = sampleAt(t);
+  const x = bx(s[0]);
+  cursor.setAttribute('x1', x); cursor.setAttribute('x2', x);
+  dot.setAttribute('cx', x); dot.setAttribute('cy', by(s[1]));
+  document.getElementById('tlabel').textContent = Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
+  document.getElementById('ro-alt').textContent = fmt(s[1]) + ' m';
+  document.getElementById('ro-temp').textContent = s[2].toFixed(1) + ' °C';
+  updateArm(s[1]);
+}
+tIn.addEventListener('input', updateBench);
+const caseBtns = { set: 'c-set', none: 'c-none', lock: 'c-lock' };
+for (const k in caseBtns) document.getElementById(caseBtns[k]).addEventListener('click', () => {
+  homeCase = k; for (const j in caseBtns) document.getElementById(caseBtns[j]).setAttribute('aria-pressed', j === k); updateBench();
+});
+
+// --- SITL chart
+const sitl = document.getElementById('sitl');
+function drawSitl() {
+  sitl.innerHTML = '';
+  const E = DATA.sitl_ekf, S = { l: 52, r: 748, t: 16, b: 262 };
+  const sx = scale(0, 86, S.l, S.r), sy = scale(10, -1, S.t, S.b), sv = scale(-0.4, 0.04, S.b, S.t);
+  for (let v = 0; v <= 10; v += 2) { const y = sy(v); el('line', { x1: S.l, x2: S.r, y1: y, y2: y, class: 'grid' }, sitl); el('text', { x: S.l - 6, y: y + 4, 'text-anchor': 'end' }, sitl).textContent = v; }
+  for (const v of [-0.3, -0.2, -0.1, 0]) el('text', { x: S.r + 6, y: sv(v) + 4 }, sitl).textContent = v.toFixed(1);
+  for (let s = 0; s <= 80; s += 20) el('text', { x: sx(s), y: S.b + 18, 'text-anchor': 'middle' }, sitl).textContent = s + ' s';
+  const armT = 79.8;
+  el('line', { x1: sx(armT), x2: sx(armT), y1: S.t, y2: S.b, stroke: css('--ink'), 'stroke-dasharray': '3 3' }, sitl);
+  el('text', { x: sx(armT) - 6, y: S.t + 12, 'text-anchor': 'end', style: 'fill:' + css('--ink') + ';font-weight:600' }, sitl).textContent = 'ARM';
+  el('path', { d: path(E.map(p => [p[0], p[2]]), sx, sv), fill: 'none', stroke: css('--master'), 'stroke-width': 1.6 }, sitl);
+  el('path', { d: path(E.map(p => [p[0], p[1]]), sx, sy), fill: 'none', stroke: css('--pr'), 'stroke-width': 2.4 }, sitl);
+}
+
+// --- guard checker
+function updateGuard() {
+  const air = document.getElementById('g-air').value === '1';
+  const src = document.getElementById('g-src').value;
+  const vz = +document.getElementById('g-vz').value;
+  document.getElementById('g-vzl').textContent = vz.toFixed(1) + ' m/s';
+  let ok = true, why;
+  if (air) { ok = false; why = 'The last disarm happened in the air and the land detector has not seen the vehicle come to rest since. The EKF reports on-ground from the moment the motors stop, so it cannot tell this apart from a landing. Zeroing here would wipe out a real descent. In SITL, master zeroed a 15.6 m/s fall; with this PR the speed stays continuous and ALT_HOLD stops the fall.'; }
+  else if (vz >= 1.0) { ok = false; why = 'The filter reports vertical movement of 1 m/s or more, so the vehicle is probably being lifted or is falling. The drift stays in for now and is cleared at the next arm on the ground.'; }
+  else if (src === 'ext') { ok = false; why = 'Height is referenced to external nav, not the barometer, so there is no baro drift to clear. Zeroing would corrupt the estimate. With a periodic reset in SITL, the reported height jumped 9.5 m with the vehicle on the ground.'; }
+  else if (src === 'rng') { why = 'The rangefinder took over height while the vehicle was parked, but the datum is still the barometer, and so is the drift. At rest the rangefinder reads the ground anyway. Master skipped this case, so the drift appeared as soon as the vehicle climbed past the switch height.'; }
+  else { why = 'On the ground, still, and the height comes from ' + (src === 'gps' ? 'GPS' : 'the barometer') + '. Height and vertical speed go to zero, and EKF_ALT_RESET is logged.'; }
+  const v = document.getElementById('g-v');
+  v.textContent = ok ? 'Reset at arm' : 'Reset refused';
+  v.className = 'verdict ' + (ok ? 'ok' : 'no');
+  document.getElementById('g-why').textContent = why;
+}
+['g-air', 'g-src', 'g-vz'].forEach(id => document.getElementById(id).addEventListener('input', updateGuard));
+
+function drawAll() { drawBench(); drawSitl(); updateBench(); }
+drawAll(); updateGuard();
+try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawAll); new MutationObserver(drawAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] }); } catch (e) {}
+</script>
