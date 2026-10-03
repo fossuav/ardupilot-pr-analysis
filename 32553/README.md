@@ -923,3 +923,47 @@ SIM_TERRAIN 0 the test reaches its measurement every run and fails for its
 designed reason: +0.211, +0.225 m at `3216b0579e`. Not yet taken up: the
 2026-09-17 review's suggestion to assert on HAGL against the range finder
 during the dwell, where it measured a 1.8x RMS separation (0.22 vs 0.40 m).
+
+## Covariance reopen and the 2026-09-18 review (2026-10-03)
+
+The review showed the baro reset is transient: range fusion pulls
+`terrainState` back to PD + range, 90% gone in about 2 s, so what helped was
+the `Popt` reopen. It also showed the `touchdown_expected` edge can re-arm the
+latch through HAGL, which the reset itself moves. Local branch `fix/32553`
+(not pushed) replaces the reset with a reopen: latched on `takeoff_expected`
+only, fired once when it clears while armed, `Popt = MAX(Popt,
+sq(_rngNoise))`, status text "terrain offset reopened after takeoff". The
+armed gate exists because AP_GroundEffect sets `takeoff_expected` again while
+landed and armed, and disarm clears it, so without the gate every landing
+reopened on the ground.
+
+SITL, the test now asserting HAGL against the range finder 5-20 s after
+arming: master 0.50 / 0.49 m rms, reopen 0.26 / 0.26 / 0.26 / 0.27 m, limit
+0.35 m. The offset above 5 m is the same on all builds (+0.24 m) and is now
+only printed.
+
+### Replay of the indoor loiter logs cannot test it
+
+Logs 200-206 (SFD O4, `/mnt/d/logs/IndoorLoiter`, copied to
+`~/replay-cache/32553`) replayed through beta with the reset, without it and
+with the reopen moved PD by at most 0.11 m. That is **not** evidence that the
+stack fixed the flight problem. `takeoff_expected` and `touchdown_expected`
+come from RFRN, i.e. the flight firmware's AP_GroundEffect, and that firmware
+held `takeoff_expected` through the hover: 94% of airborne frames in log200
+(longest run 48 s), 100% in log205 (25 s), 39% in log202 (13 s), against
+beta's 5 s cap. Only 203 (2 s) and 206 (3 s) released early. While it is
+held, the dead zone (`EK3_GND_EFF_DZ` -8) floors the baro innovation at
+-0.5 m and the noise at 8 m: XKF3.IPD sits at exactly -0.50 m from 26 to
+54 s in the log200 replay. So PD free-runs, drifting 0.6-1.2 m above the baro
+in every variant tried (AGL KF on or off, `EK3_RNG_USE_HGT` -1, 3 or 10).
+The reopen can only fire when the logged flag drops, at 56 s in log200.
+
+Log200's "+0.8 m height minus range finder" is mostly that PD drift (height
+above origin). HAGL against the range finder is +0.22 m through the hover
+(Popt std 3-4 cm), +0.10 m with range height off, and +0.03 m with the
+switch moved to 3 m. The hover sits at the 0.9 m switch height
+(`EK3_RNG_USE_HGT` 3 of `RNGFND1_MAX` 30 m).
+
+A flight on beta is the only test of the motivating case. Tools:
+scratchpad `rfrn.py` and `teair.py` (logged ground effect flags), `hinnov.py`
+(height innovation), `x5rng.py` and `hsrc.py` (HAGL and PD against range).
