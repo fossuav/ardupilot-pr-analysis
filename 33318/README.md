@@ -219,3 +219,20 @@ the bit set: 1.08-1.13x and -0.05 to -0.08 m/s; bit clear -0.33 to -0.38;
 GPS default 0.00. The test asserts all three and fails on a master binary.
 SFD must set LOIT_OPTIONS 2 in its hwdef defaults to keep the beta's
 behaviour, and #33639 is now on the SFD list.
+
+### Superseded 2026-10-03 (later): the SFD O4's own drag matches the model
+
+The Nazgul10 figure above is from a different, GPS-only airframe at cruise
+speeds, and does not describe the SFD O4 the indoor flow work was flown on.
+The O4's own indoor logs (tier 1, EKF core 0 speed, calm air), steady
+segments, lean acceleration above hover: log281 0.48 m/s/s at 0.5 m/s and
+0.70 at 1.0; log280 0.38 and 1.52. LOIT_SPEED_MS 5 at 30 deg models 0.57 and
+1.13. At the speeds the O4 flies indoors the model matches it within the
+noise, so the "several times too much drag" account does not hold for it.
+
+What that leaves, as a hypothesis to fly: the O4's step-back was the EKF cap
+inflating the drag (4.65 m/s/s at 0.5 m/s in the June logs, before #33639),
+which #33639 removes; the SITL step-back at LOIT_SPEED_MS 5 / 30 deg is the
+SITL airframe having far less drag than the O4. Flying #33639 on the O4 with
+LOIT_OPTIONS clear would settle it. The opt-in bit and its SITL numbers above
+stand as measured; whether SFD needs it does not.
