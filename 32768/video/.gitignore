@@ -1,0 +1,10 @@
+# rebuilt by make_video.sh
+media/
+audio/
+concat.txt
+__pycache__/
+*.mp4
+# real-flight data (public repo): rebuilt by make_data.sh / make_page.py
+data/log12_baro.csv
+data/page_data.json
+explainer.html
