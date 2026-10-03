@@ -297,3 +297,20 @@ relative height with the drift rule, is worse (log7, above). Not
 settled here.
 
 PR description rewritten 2026-09-29.
+
+## Reworked into AP_GroundEffect (2026-10-03, local, not pushed)
+
+tridge/rmackay9 (30 Sep): leave EKF3 getHAGL alone; terrain as a one-way input
+to AP_GroundEffect. Local branch `fix/34361` on PR head `6a3091d0ad`, new
+commits: drop the getHAGL tests, revert EKF3 to master (ASCII dash kept),
+AP_GroundEffect terrain_says_clear() beyond the 20 m drift gate only (no
+measured HAGL), margin GNDEFF_ALT + 10 m (NASADEM 90% relative bound), no
+extrapolation, takeoff window untouched; new test.
+- GroundEffectTerrainClearsTouchdown: 0/87 frames touchdown at 12-18 m with
+  the change, 87/87 with master's AP_GroundEffect; 50/50 at 0.5-4 m both.
+  Existing ground effect tests pass.
+- Codex/reviewer: extrapolate=true and a 6 m margin rejected (fixed);
+  reviewer suggests dropping the add-then-revert history and the ASCII dash,
+  which conflicts with the keep-pushed-history rule (left for the user).
+- New PR title needed: "AP_GroundEffect: let terrain end the touchdown gate
+  far from launch".
