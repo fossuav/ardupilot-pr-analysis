@@ -307,3 +307,29 @@ On fix/34362 (local, not pushed), over PR head c9edf58b74. SITL (tier 2).
   position.
 - All 8 ground-effect autotests pass. Replay cannot A/B this: the touchdown
   flags are vehicle-side and Replay reads them from the log.
+
+## For the description: what the drift gate does not cover (2026-10-03)
+
+How "more than 20 m from launch" is measured: AP_GroundEffect latches the AHRS
+NE position relative to the EKF origin while landed with no throttle-up, and
+drift is the horizontal distance from it, kept consistent across EKF position
+resets. It applies only with a horizontal position, i.e. EKF3 `getPosNE()`
+true, which is absolute (GPS) or relative (optical flow) aiding, and only if
+the launch latch was taken with one.
+
+- Trade-off of this PR: beyond 20 m with no measured height, near_ground is
+  now false rather than forced true, so a copter without a range finder that
+  lands more than 20 m from launch gets no ground effect compensation at
+  touchdown. The terrain database was considered to restore it (#34361) and
+  rejected: ~10 m relative error at 90% is too coarse at ground effect heights.
+- Baro-only copter: EKF3 runs AID_NONE, `getPosNE()` is false, so the drift
+  gate is never used. near_ground is the height since takeoff below GNDEFF_ALT,
+  assuming flat ground. Unchanged from master.
+- Position lost in flight (GPS lost, no flow): after ~7 s of dead reckoning
+  the EKF drops to AID_NONE and the vehicle falls into the baro-only path
+  however far from launch. Landing on lower ground than launch, near_ground
+  may never come on; on higher ground it comes on early. Unchanged from master.
+- No position at takeoff (GPS lock arriving in flight): the launch latch is
+  invalid, so the baro-only path is used for the whole flight. Unchanged.
+- Flow vehicles: drift is measured on flow relative position, which itself
+  drifts, so 20 m is approximate on a long flight.
