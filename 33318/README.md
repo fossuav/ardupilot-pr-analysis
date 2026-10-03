@@ -236,3 +236,11 @@ which #33639 removes; the SITL step-back at LOIT_SPEED_MS 5 / 30 deg is the
 SITL airframe having far less drag than the O4. Flying #33639 on the O4 with
 LOIT_OPTIONS clear would settle it. The opt-in bit and its SITL numbers above
 stand as measured; whether SFD needs it does not.
+
+## Codex cold read (2026-10-03)
+
+One coverage gap, verified: the autotest never sets EK3_OPTIONS bit 3, so the
+`aglKfH` branch the AP_NavEKF3 commit adds to the flow control limits never
+runs, and a regression there would pass. The Loiter maths, units, NE frame,
+bit-clear behaviour (identical to master) and the bit 1 docs were clean. To be
+picked up when the PR is unparked after the O4 flies #33639.
