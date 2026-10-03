@@ -746,3 +746,5 @@ re-indent, and the floor test comment updated for the bias state: without the
 velocity clear -1.29 to -1.41 m/s over three runs (the bot saw -3.77 and
 -1.391), about 0 with it. All three AGL KF tests pass. The push will be a
 force push of the whole stack.
+
+Pushed 2026-10-03: d971b694cb -> 28b59bd51b (force; 10 commits restacked with identical patch-ids, 2 new).

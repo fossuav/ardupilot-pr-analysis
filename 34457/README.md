@@ -476,3 +476,5 @@ no-coast test now asserts its provocation (VAgl >= 0.015 m/s after the step,
 throughout) - without the coast fix the height still rises 0.34-0.37 m; the
 coast-stop comment says it applies up and down. Floor test figure re-measured
 on this head: -0.430/-0.431 m/s without the clear, so it stands.
+
+Pushed 2026-10-03: f8651ffaeb -> 55bd80a81b (fast-forward).
