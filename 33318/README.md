@@ -187,3 +187,35 @@ and rebuild.
 - Reviewer: Leonard Hall (attitude/position-control author) - agreed on the root
   cause, raised the I-term concern (addressed above and in `analysis.md`), and
   proposed the larger drag-model scaling fix as separate future work.
+
+## Round of 2026-09-30 (AP-Review at a6e4e018a1): reworked as an opt-in, 2026-10-03
+
+On local branch fix/33318 (not pushed), over head ddd7135b95.
+
+The bot's GPS regression reproduced (SITL jab test, metrics: peak speed over
+desired along the jab, most backward speed in 8 s after release): master flow
+1.47x/-0.39 m/s, GPS 1.00x/0.00; PR head flow 1.10x/-0.07, GPS 1.01x/-0.22.
+
+The cause, re-derived. #33639 (lthall, merged 2026-07-07, not in the 4.7
+beta) made the modelled drag A*v/LOIT_SPEED_MS whatever the EKF cap, so the
+June logs' 4.65 m/s/s cap-inflated drag no longer happens. What remains is the
+model itself: LOIT_SPEED_MS reached at the maximum lean. With LOIT_SPEED_MS 5
+at 30 deg (the SFD indoor setting, and the test's) the model asks for 5.7
+m/s/s at 5 m/s; the Nazgul10 cruise log (tier 1, groundspeed, wind not
+separated) leans about 0.8 more at 5 m/s than in a hover, and its lean grows
+about linearly with speed (linear fit residual 0.099 against quadratic 0.330).
+With LOIT_SPEED_MS 12.5 the same SITL flow flight has no pull-back on master
+(-0.02 m/s).
+
+Tried and rejected, all SITL: scaling pilot accel by cap/LOIT_SPEED (undoes
+#33639's stick feel, flow 0.96x/-0.20); weighting the PR's drag removal by the
+cap (1.26x/-0.02); making the feed-forward consistent with the speed clamp
+(1.31-1.35x/-0.14 to -0.27); removing only a quadratic-drag "excess" (1.23x/
+-0.07, but its premise is refuted by the Nazgul10 data above).
+
+Kept: LOIT_OPTIONS bit 1 (FF_INCLUDES_DRAG), opt-in, subtracting the modelled
+drag from a local feed-forward. Bit clear: identical to master. Flow jab with
+the bit set: 1.08-1.13x and -0.05 to -0.08 m/s; bit clear -0.33 to -0.38;
+GPS default 0.00. The test asserts all three and fails on a master binary.
+SFD must set LOIT_OPTIONS 2 in its hwdef defaults to keep the beta's
+behaviour, and #33639 is now on the SFD list.
