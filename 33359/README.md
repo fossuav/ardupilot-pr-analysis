@@ -304,3 +304,31 @@ Independent of the AC_Loiter drag PR, but the same theme: route the clean AGL KF
 The third commit's `terrainStable = true` override is what lets the height switch engage while the vehicle is parked: Copter's own `terrain_hgt_stable` is false unless taking off or landing, so before this PR the on-ground switch could not fire. Combined with a fresh `lastAglRngFuseTime_ms` and `heightAboveGnd = aglKfH`, every term of `belowLowerSwHgt && trustTerrain && prevTnb.c.z >= 0.7f` holds at rest, and `activeHgtSource` is RANGEFINDER before the vehicle ever arms.
 
 That is correct for this PR's purpose and is not being changed here. It did, however, silently disable [#32768](../32768/)'s arm-time baro drift reset, which refused any height source but baro or GPS: `EKF_ALT_RESET` at arm went 1 -> 0 with `EK3_RNG_USE_HGT` alone (measured 2026-09-05, see `../32768/README.md`). The fix is on the #32768 side - allow the reset when the *configured* primary is baro or GPS and the vehicle is stationary - so nothing here moves. Recorded in both directories because either PR read alone looks complete.
+
+## Round of 2026-09-30 (AP-Review at f48c851e1b), fixed 2026-10-03
+
+On local branch fix/33359-carry (not pushed), over the PR head. SITL (tier 2)
+unless stated.
+
+- The lag blocker reproduced: new EK3_AglKfVerticalMotion (GUIDED 2 -> 9 -> 2 m,
+  EK3_OPTIONS bit 3, analog range finder) puts the worst AGL KF height error at
+  0.90-0.92 m on the PR head. Two causes, both already fixed in #33478:
+  the velocity decay ran between healthy samples (fix alone: 0.50-0.51 m), and
+  UpdateAglKf() sat after the magnetometer load-levelling return, so skipped
+  steps lost their acceleration (fix alone: 0.83-0.84 m). Both: 0.15 m, which is
+  the output predictor running ahead of the AGL KF's delayed horizon in the
+  reference, not lag.
+- #33359 now carries #33478's commits: 8166c6c166 byte-identical, 91692c4cb8
+  with the velD option condition dropped (so it will conflict, trivially, when
+  both are stacked), and the double-fusion guard c36643d41e + fixup, which
+  91692c4cb8 makes necessary.
+- Consumer: the AGL height stands in for the range only within DCM33FlowMin
+  and with its last fusion under 200 ms old; the tilt/terrain-gradient noise
+  term is restored on both paths; bit 3 description updated. Replay (tier 1b)
+  of 14 logs on the beta stack: in-flight states move by at most ~0.03 m; the
+  one larger change (log21 flow lane, 0.39 m) starts after disarm.
+- Open, not selected for this round: terrainStable forced true under bit 3
+  (a behaviour change for Copter with EK3_RNG_USE_HGT); the main filter's
+  acceleration reused in the AGL KF and fused back (needs a SIM_ACC1_BIAS_Z
+  A/B); a stale terrainState stepping height at the switch (unconfirmed);
+  the cliff data promised on the thread.
