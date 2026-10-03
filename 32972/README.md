@@ -647,3 +647,29 @@ drift of finding 2.
 - Automated review 2026-09-03 (AIReview label, external dev-call batch,
   not GitHub Actions): four points, all answered, two of them belonging
   to #32768 rather than here. See review-response-2026-09-04.md.
+
+## Review of 2026-09-30 answered locally (2026-10-03)
+
+Local branch `fix/32972` (from PR head `ee316e32f4`, not pushed).
+
+- Hover check in BaroGroundEffectAtTakeoff now reads LOCAL_POSITION_NED:
+  EKF 3.00 m against true 3.02 m.
+- Suppression timing: both retry times (10 s / 5 s) are at least the 5 s
+  window, so only the first timeout is suppressed and the reset comes two
+  retry periods after the baro last passed. Header comment, f42e507fd9
+  message and test comment corrected; the test now holds 17 s and requires
+  the reset within 12 s (reset seen at about 20 s after arming).
+- Held reference after a mid-air re-arm (SITL, temporary test, not
+  committed): Stabilize at zero throttle and ALT_HOLD with stick at 1450,
+  1500 and 1550 all stayed landed and fell at 15-17 m/s. Worst EKF-true
+  error, default dead zone vs -5: with GPS VELZ 0.82/0.71 vs 1.89/1.78 m;
+  without 0.47/0.37/0.50/0.47 vs 2.53/1.97/2.86/2.07 m. After a Stabilize
+  catch the error was gone in about 6 s, as was the baseline's catch
+  transient. Not changed in code.
+- Codex: the 5 m cutoff is recomputed each sample (not a latch) and is not
+  equivalent to the height gate (EK3_HGT_I_GATE, covariance); the comment
+  and 6494afe6ea message no longer claim either. Also noted: a mid-air
+  re-arm can spend the one suppressed ResetHeight timeout, inside the
+  stated bound.
+- Autosquash: the AP_NavEKF3.h fixups on f42e507fd9 conflict trivially
+  with 6494afe6ea's added line; the resolved tree matches the branch tip.
