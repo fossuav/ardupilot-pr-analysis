@@ -341,4 +341,4 @@ The 5 pushed commits keep their patches (2 unchanged SHAs, the drift commit
 reworded, 2 tests re-parented); new on top: cap restart + test, NE reset
 following + test, the GNDEFF_ALT/drift comment follow-up, the registration
 re-indent. Tree identical to the pre-squash tip (backup/34362-pre-squash).
-Description drafted (scratchpad desc_34362.md), not yet posted.
+Description posted 2026-10-03 (title unchanged), read back and matching.
