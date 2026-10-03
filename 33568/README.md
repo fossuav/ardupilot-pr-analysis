@@ -629,3 +629,28 @@ Not re-run as of 2026-09-29.
 Updated 2026-09-29 with two sentences: the external nav velocity case
 now stays in absolute aiding, and the test covers three cases (rejected
 GPS, drag, external velocity).
+
+## Round of 2026-09-30 (AP-Review at 02faf4127d): the height limit, 2026-10-03
+
+On local branch fix/33568 (not pushed), over head 626fa555a3. SITL (tier 2).
+
+The blocker reproduced with a new test, OpticalFlowFallbackHeightLimit
+(RNGFND1_MAX 12, so a 7.4 m limit; fall back at 8.4-8.5 m; a 2 s climb
+demand): on #33568 alone the vehicle is pulled down to 7.4 m.
+
+A #33568-local fix (a flag keeping getHeightControlLimit() off for relative
+aiding entered from absolute) was written, measured (held 7.5 m against
+6.0 m) and withdrawn after review: it also removed the back-down #34380 keeps
+as the recovery when the vehicle is out of range finder range, and the climb
+cap after a fall back below the limit. #34380 (now "lift the flow height
+limit where flow nav carries on above it", on #33585) owns that logic. The
+EKF commit is reverted on the branch; drop both at squash.
+
+On the beta stack, which carries #33568, #34380 and #33585, the same test
+passes: 8.4 m rising to 10.2 m under the climb demand, no descent, aiding
+never stopped. So #33568 lands after #34380, and the PR description's
+"#34380 addresses it" paragraph, written when #34380 changed AC_Avoid, needs
+rewriting. The test stays in #33568, marked as needing #34380.
+
+Also: the two E131 registration indents the PR added are fixups; the
+optional LOG_DISARMED note was not taken.
