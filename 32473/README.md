@@ -539,3 +539,13 @@ Comment fixes and the bit-3 commit message now cites the Replay A/B. Two
 flake8 E131 registrations came from #32471's stack and fail flake8 there too;
 fixed on fix/32471 (c8cd9431e6, b08d10b8d1). Rebase #32473 onto that and drop
 its copies.
+
+## Codex cold read of the ACRO inhibit (2026-10-03)
+
+One finding, verified by reading: `acro_hold` requires `!ap.land_complete`,
+which a mid-air disarm forces true. A re-arm in ACRO while falling therefore
+releases the inhibit until the land detector sees throttle, plus up to 1 s
+for the 1 Hz update, so learning can run during a 1-2 s fall. That is the
+same order as the 1 Hz latency every mode change already has, and
+`ap.disarmed_in_air` exists only on #32768's branch. Not changed; to be
+stated as a known limitation if raised.

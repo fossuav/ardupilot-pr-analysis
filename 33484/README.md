@@ -734,3 +734,12 @@ sliding 10 s window: ten resets, no latch. Removing !flowVelResetUnhealthy
 still passes, because the latch also takes the filter out of AID_RELATIVE;
 that guard only matters while body odometry holds relative aiding, which no
 test covers. Replay of the 14 cached logs: no difference.
+
+## Codex cold read of the pause and backoff (2026-10-03)
+
+- The backoff and reset history clear on EKF `onGround`, which on a copter is
+  the disarmed state, so a mid-air disarm and re-arm starts again at 5 s.
+  Benign (a shorter pause, not a hazard), but the message said "on the
+  ground"; amended to say what the flag means.
+- A zero timestamp as the "no pause" sentinel can collide at the 49.7-day
+  `millis()` wrap. Codebase-wide convention; not changed.
