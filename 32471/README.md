@@ -1078,3 +1078,5 @@ that commit.
 #32473 is stacked on this branch and needs restacking onto `b8ad09e9cb`.
 
 Pushed 2026-10-03: e7a56f1389 -> 1f357b2429 (fast-forward; one new commit re-indenting the test registrations).
+Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-5973680930
+Open, not selected: per-IMU learned flag on the disarm save (bot 2026-10 round); reply says not changed.

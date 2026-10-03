@@ -551,3 +551,4 @@ same order as the 1 Hz latency every mode change already has, and
 stated as a known limitation if raised.
 
 Pushed 2026-10-03: 82bd6cd00f -> adba7a0000 (force, restacked on 1f357b2429). a8267e13f1 reworded with the Replay A/B evidence (patch unchanged), 82bd6cd00f patch unchanged; new: flip-from-acro test, Copter comment, autotest comment/indent. AccelBiasLearningInhibitedInAcro, VibrationRectificationBiasLearning, AccelBiasMovingPlatform pass.
+Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-5973681037
