@@ -314,3 +314,14 @@ extrapolation, takeoff window untouched; new test.
   which conflicts with the keep-pushed-history rule (left for the user).
 - New PR title needed: "AP_GroundEffect: let terrain end the touchdown gate
   far from launch".
+
+## Proposed for closing (2026-10-03)
+
+The AP_GroundEffect rework only acts beyond the 20 m drift gate with no
+measured HAGL, where #34362 (kept: users like it) already makes near_ground
+false, so it is redundant on top of #34362. The opt-in "terrain both ways"
+bit tridge mentioned was considered to restore touchdown compensation for a
+no-rangefinder landing far from launch (lost under #34362) and rejected: the
+terrain database (~10 m relative at 90%) is too coarse for ground effect
+heights. User's decision: close. Local branch fix/34361 kept, not pushed;
+reply drafted, not posted.
