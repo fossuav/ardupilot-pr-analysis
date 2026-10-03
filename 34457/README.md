@@ -478,3 +478,4 @@ coast-stop comment says it applies up and down. Floor test figure re-measured
 on this head: -0.430/-0.431 m/s without the clear, so it stands.
 
 Pushed 2026-10-03: f8651ffaeb -> 55bd80a81b (fast-forward).
+Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/34457#issuecomment-5973590521

@@ -748,3 +748,4 @@ velocity clear -1.29 to -1.41 m/s over three runs (the bot saw -3.77 and
 force push of the whole stack.
 
 Pushed 2026-10-03: d971b694cb -> 28b59bd51b (force; 10 commits restacked with identical patch-ids, 2 new).
+Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/33507#issuecomment-5973590672
