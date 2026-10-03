@@ -333,3 +333,12 @@ the launch latch was taken with one.
   invalid, so the baro-only path is used for the whole flight. Unchanged.
 - Flow vehicles: drift is measured on flow relative position, which itself
   drifts, so 20 m is approximate on a long flight.
+
+## Pushed 2026-10-03
+
+Force-pushed `c9edf58b74` -> `35ad8c264f` to andyp1per/groundeffect-touchdown-gate.
+The 5 pushed commits keep their patches (2 unchanged SHAs, the drift commit
+reworded, 2 tests re-parented); new on top: cap restart + test, NE reset
+following + test, the GNDEFF_ALT/drift comment follow-up, the registration
+re-indent. Tree identical to the pre-squash tip (backup/34362-pre-squash).
+Description drafted (scratchpad desc_34362.md), not yet posted.
