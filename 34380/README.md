@@ -227,3 +227,26 @@ Codex cold read (tier 3, accepted): lifting the limit on gndOffsetMeasured && fl
 Tier 2: OpticalFlowLimits passes (past 51 m, rel pos held 10 s); fails with the limit never lifted. FlowCeilingBacksDownIntoRange passes (rel pos back at 16.8 m); fails (no rel pos within 60 s) with the RANGEFINDER exclusion removed. Test moved so it no longer splits the MaxAltFence comment.
 
 Accepted trade-off, disclosed: past the 10 x bound the limit returns, but AC_Avoid only backs down against a climb demand, so a hovering vehicle stays without rel pos (failsafe acts with an origin).
+
+## Review of 2026-10-02 answered locally (2026-10-03)
+
+Local branch `fix/34380` on PR head `fe5288ab4d` (stacked on #33585's
+pushed head), two new commits plus fixups, not pushed.
+
+- Short-reach range finder: getHeightControlLimit drops the limit only once
+  lastGoodRngMeas reaches the fallback threshold (limit + 1 m = 0.7 x max);
+  between limit - 0.5 m and that threshold the limit is raised by 1.5 m.
+  First attempt (drop at limit - 0.5) left the band: both reviewers caught
+  it, and a 27 m reach still climbed to 37.9 m.
+- Rejected: aligning #33585's fallback threshold with the limit. Its test
+  "A short range finder that fails in range drops it" relies on the 1 m band
+  to tell an in-range failure from a climb-out.
+- SITL, RNGFND1_MAX 40, full climb ALT_HOLD, FlowCeilingShortRangeFinder:
+  reach 25 m: 36.1 m at head, 27.2 m fixed; reach 27 m: 37.9 m first fix,
+  28.7 m fixed (bounds 27.8-30.5). OpticalFlowLimits (past 51 m),
+  FlowCeilingBacksDownIntoRange, EK3_OptflowAboveRangefinder,
+  EK3_OptflowAnchoredTerrain pass.
+- flatGndEngaged not re-armed: already fixed in #33585 locally
+  (f7956a74cd, 2 s of unbroken range ends the fallback).
+- Open (Codex, unconfirmed): no hysteresis at the two thresholds; the vehicle
+  is below both published values at each, so it only changes climb shaping.
