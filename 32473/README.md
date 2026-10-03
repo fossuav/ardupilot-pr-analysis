@@ -513,3 +513,29 @@ outside the EKF.
 The local `pr-acro-bias-inhibit` had been an older pre-restack line
 (`12beaf9914`, 20 commits not on the PR); kept as branch
 `old/pr-acro-bias-inhibit-local` in the ardupilot clone.
+
+## Round of 2026-09-30 (AP-Review at 1be046f169), handled 2026-10-03
+
+On local branch fix/32473 (not pushed), over head 82bd6cd00f.
+
+The Replay blocker (the inhibit event dropped when the cores start before DAL
+logging) was answered, not coded. AP_Logger::allow_start_ekf() holds the EKF
+until logging only when LOG_REPLAY and logging while disarmed are both set,
+and InitialiseFilter's DAL frame starts logging before the cores exist, so in
+a replayable log the event is always written. Every scenario the review lists
+(5 s start-wait timeout, watchdog reset, LOG_DISARMED=2 with USB, LOG_DISARMED
+0) starts the log after the cores, without the InitialiseFilterEKF3 frame
+Replay needs: measured (SITL, tier 2), a log started mid-session by setting
+LOG_DISARMED at runtime replayed 0 EKF messages with and without a
+pending-until-logging fix. That fix was written and dropped. Residual, not
+specific to this PR: a REV3 write that fails is not retried.
+
+Flip coverage added (SITL): three flips from ACRO in the first segment, the
+MODE parser treating FLIP as part of the acro window, and a check that one
+flip lasted at least 1 s (the inhibit runs at 1 Hz). Estimate moved 0.000
+m/s/s with the hold, 0.14-0.23 with it removed (fails the 0.05 bound).
+
+Comment fixes and the bit-3 commit message now cites the Replay A/B. Two
+flake8 E131 registrations came from #32471's stack and fail flake8 there too;
+fixed on fix/32471 (c8cd9431e6, b08d10b8d1). Rebase #32473 onto that and drop
+its copies.
