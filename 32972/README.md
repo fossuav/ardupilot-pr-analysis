@@ -675,3 +675,4 @@ Local branch `fix/32972` (from PR head `ee316e32f4`, not pushed).
   with 6494afe6ea's added line; the resolved tree matches the branch tip.
 
 Pushed 2026-10-03: ee316e32f4 -> 62a0d172c6 (force; f42e507fd9 and 6494afe6ea reworded, all 5 own patches unchanged, #32768 commits untouched; 3 new on top).
+Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/32972#issuecomment-5973702227
