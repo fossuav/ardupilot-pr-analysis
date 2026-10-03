@@ -1024,6 +1024,32 @@ rest is not:
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
 
+## 2026-10-03: logging capacity lost in the 09-23 split, and the 1.4 kHz tone
+
+Andy's log142 (flight-test `e12f495c`) logged at about 145 KB/s with the
+buffer full and about 108 messages/s dropped; log144 (rp2350-v7 `baa23b86`)
+the same, about 120/s. log123 (`3d26814c`, 09-22) wrote 162 KB/s armed with
+no drops and never less than 18.7 KB free. Same `LOG_BITMASK`, same
+54 B/message. Cause: the 09-23 rebuild split the microSD work out and with
+it RPI_UAVFC's `define AP_FATFS_MAX_IO_SIZE 32768`. FATFS `io_size` starts at
+4 KB and only `set_io_size()` raises it; #34476 adds that call on the
+MMC-SPI path but with `AP_FATFS_MAX_IO_SIZE`, which is 4 KB except on big H7
+and boards that define it, so the board fell back to a sync every 4 KB
+(119 KB/s against 265 KB/s in the original sweep, DEVELOPMENT.md). The
+define is back in `hwdef: add RPI_UAVFC`, pushed 2026-10-03 as `1abd39c093`
+(53 commits; RPI_UAVFC builds at every commit from that one). It only takes
+effect with #34476. Not bench-measured before the push: the board was
+unplugged, and Andy judged the evidence sufficient.
+
+The audible resonance "slightly above hover" is not firmware: the same
+noise on rp2350-v7, and Andy's recording shows fixed lines at about 1400 Hz
+and 2200 Hz that light up as the rotor harmonics sweep through them, about
+7x rotation at 12k rpm (14-pole motor electrical frequency). The IMU's
+internal anti-alias filter (about 1 kHz at a 4 kHz ODR) removes it: log144's
+pre-filter gyro reads 0.000 dps in 1300-1500 Hz in every batch block. Also
+noted, unexplained: `INS_GYRO_RATE` 2 but the batch sampler reports
+3216 Hz.
+
 ## 2026-10-02: the flight that failed
 
 Andy flew `rp2350-flight-test` (`df0ee89f`, PR head `564e6c1c7d` plus 17
