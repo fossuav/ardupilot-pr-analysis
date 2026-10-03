@@ -715,3 +715,22 @@ sweep and the position-snap result are real-log only.
 - Related: #33359 / #33507 (the height stack the log58 case needs), #33498
   (the yaw-drift trap found on the same 4-inch airframe), #33497 (its flow
   sensor's half-rate fault).
+
+## Round of 2026-09-12 (tridge AI review at 853f3f2177), fixed 2026-10-03
+
+On local branch fix/33484 (not pushed), over head 4317016b8b. SITL (tier 2).
+
+The latch needed five resets in a tumbling 10 s window, so no steady cadence
+slower than one reset per 2.5 s ever latched (the review's case was 2.6 s).
+A sliding window alone has the same threshold for a steady cadence (window /
+4), so the fix is both: the last five reset times kept in a ring and the
+window widened to 20 s (latches at a 5 s cadence or faster). The ring is also
+cleared on the ground with the latch.
+
+A steady SIM_FLOW_OFS gives exactly one reset (the reset adopts the faulty
+axis and the lockout ends), so the new leg flips the offset sign every 4 s.
+Fixed: resets 30.5 35.5 39.5 43.5 47.5 s, latched on the fifth. PR head and a
+sliding 10 s window: ten resets, no latch. Removing !flowVelResetUnhealthy
+still passes, because the latch also takes the filter out of AID_RELATIVE;
+that guard only matters while body odometry holds relative aiding, which no
+test covers. Replay of the 14 cached logs: no difference.
