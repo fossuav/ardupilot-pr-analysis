@@ -252,3 +252,4 @@ pushed head), two new commits plus fixups, not pushed.
   is below both published values at each, so it only changes climb shaping.
 
 Pushed 2026-10-03: fe5288ab4d -> d405a9bca8 (force, restacked on 6034b82053; 2 pushed commits identical patch-ids). Combined-stack test found the restored #33585 leg "Terrain data does not lift the height limit without bit 2" climbing to 37.2 m under this PR: it tested the fallback, so a new commit flies it with the range finder as height source. All 8 flow tests pass on the stack.
+Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/34380#issuecomment-5973644606
