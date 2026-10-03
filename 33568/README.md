@@ -656,3 +656,4 @@ Also: the two E131 registration indents the PR added are fixups; the
 optional LOG_DISARMED note was not taken.
 
 Pushed 2026-10-03: 626fa555a3 -> 6079970f2d (fast-forward; reverted EKF pair dropped; OpticalFlowFallbackHeightLimit in disabled_tests until #34380 lands).
+Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/33568#issuecomment-5973856538

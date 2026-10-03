@@ -334,3 +334,4 @@ unless stated.
   the cliff data promised on the thread.
 
 Pushed 2026-10-03: f48c851e1b -> 8cbaa630a5 (fast-forward; f48c message kept, consumer fix as a new commit).
+Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/33359#issuecomment-5973856689

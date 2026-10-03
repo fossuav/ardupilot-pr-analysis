@@ -648,3 +648,4 @@ Tier 2 at the local head: 14 tests pass (EK3_AglKfVelYieldsToOtherVelD needed a 
 Folded and force-pushed 2026-10-02: #33478 head 1b6f63bff1 on upstream/master cafe674577 (master gained 4 unrelated commits between test run and fold; AP_NavEKF3 and autotest trees identical to the tested pre-squash/agl-20261002). Every commit builds, all vehicles, gate clean. Description rewritten.
 
 Pushed 2026-10-03: 1b6f63bff1 -> dda9757668 (fast-forward).
+Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/33478#issuecomment-5973856386

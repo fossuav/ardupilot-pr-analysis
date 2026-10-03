@@ -969,3 +969,5 @@ scratchpad `rfrn.py` and `teair.py` (logged ground effect flags), `hinnov.py`
 (height innovation), `x5rng.py` and `hsrc.py` (HAGL and PD against range).
 
 Pushed 2026-10-03: fd9ba29c01 -> 42bd10926d (force; baro-reset commit kept with its message, replaced by a new reopen commit; c4f8 reworded).
+Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/32553#issuecomment-5973856227
+Title and description rewritten and posted 2026-10-03: "AP_NavEKF3: reopen the terrain variance after takeoff ground effect"; hardware unticked (the reopen has not flown).

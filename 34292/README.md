@@ -1885,3 +1885,4 @@ re-arm, the cqc F3 case) and is below the floor would fuse zero. Sensors that
 report quality 0 at the ground store no sample, so get no benefit (safe).
 
 Pushed 2026-10-03: 34be757539 -> e36aab7b08 (fast-forward; RangeFinder and DAL before the EKF commit; every commit builds).
+Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/34292#issuecomment-5973856808
