@@ -482,3 +482,4 @@ Local branch `fix/32514` (from PR head `cd0a8b728b`, not pushed).
 - CI at `cd0a8b728b`: 108/108 pass.
 
 Pushed 2026-10-03: cd0a8b728b -> 03787e07e9 (fast-forward, one new commit).
+Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/32514#issuecomment-5973702328
