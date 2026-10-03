@@ -428,3 +428,5 @@ plus fixups:
   owed.
 - Codex: two findings (latch survives clearing bit 3; boot set with no lane
   silently ignored), both fixed; final pass clean.
+
+Pushed 2026-10-03: a04fb2dbbd -> c7d1d732fe (fast-forward, 6 new commits, each built on its own).

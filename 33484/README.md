@@ -743,3 +743,5 @@ test covers. Replay of the 14 cached logs: no difference.
   ground"; amended to say what the flag means.
 - A zero timestamp as the "no pause" sentinel can collide at the 49.7-day
   `millis()` wrap. Codebase-wide convention; not changed.
+
+Pushed 2026-10-03: 4317016b8b -> 59ca8fc5e5 (fast-forward: registration re-indent, the pause-and-backoff commit, its test).
