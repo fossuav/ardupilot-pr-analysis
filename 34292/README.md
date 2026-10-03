@@ -1810,3 +1810,76 @@ FlowFocusHoldReleasesWithDeadRangeFinder and OpticalFlow pass.
   pair when they rebase.
 - The Replay of log65/66/67 and the flight items under round 3's "Open"
   are unchanged by this round.
+
+## Round of 2026-09-30 (AP-Review at 2714d632d1): the post-landing failsafe, fixed 2026-10-03
+
+On fix/34292 (local, not pushed). The bot's blocker reproduced: after a
+LOITER landing with an origin and the default DISARM_DELAY, the hold discards
+every flow sample at the ground clearance, relative aiding times out and the
+armed vehicle failsafes to LAND. The fix fuses zero flow below the floor once
+the vehicle is landed.
+
+What "landed" means took three tries, and the first two were wrong:
+
+- Height alone (4595d2f234): within 5 cm of GNDCLR on a fresh range, or within
+  0.55 m while the range finder reports out of range low. Four reviewers found
+  the second band fuses "not moving" in a hover below RNGFND_MIN. SITL, 0.37 m
+  hover after a touchdown with RNGFND1_MIN 0.6 and FLOW_HGT_MIN 1.0: 13-17
+  innovation updates and aiding never stopped, 3/3 runs.
+- `dal.get_time_flying_ms() == 0` on every vehicle: rejected by inspection.
+  Plane's is_flying (is_flying.cpp update_is_flying_5Hz) with no GPS fix ever
+  and no airspeed sensor reduces to airspeed_EAS && !is_still, so it can read
+  false in flight; a landing roll-out is below the floor and moving. Copter's
+  own flag is suspect too, see the cqc F3 note (no NOT_LANDED logged through
+  a flight) and 32972 (land_complete forced true by a mid-air disarm).
+- Kept: COPTER vehicle class && time_flying_ms == 0. Plane, QuadPlane and
+  Rover keep the discard.
+
+### Superseded 2026-10-03 by the range finder's on_ground()
+
+The COPTER class gate was withdrawn: the EKF must carry no vehicle-specific
+code, and Copter's own flag stays landed through a slow takeoff, THROW and a
+re-arm after a mid-air disarm. Kept instead: `on_ground()` (an interim
+`!get_fly_forward() &&` was dropped: Rover sets it false at low throttle and
+Sub always, so it is no motion test; moving on the ground is a stated limit), a new AP_RangeFinder accessor (Good within 0.05 m of GNDCLR, or
+OutOfRangeLow), recomputed in the DAL from logged RRNI/RRNH so Replay agrees.
+OutOfRangeLow counts as the ground by maintainer decision; where RNGFND_MIN >
+GNDCLR + 0.05 a hover below the minimum fuses zero (MIN description says so).
+SFD airframes read 0.00 OutOfRangeLow on the ground (MIN 0.05, GNDCLR 0), so
+this reaches them; a Good-only rule changed only log66.
+
+onGroundNotMoving was considered and rejected by measurement (tier 1, IMU at
+25 Hz from the logs, the movement check's own ratios): armed on the ground
+after landing gyro_diff 15.5-21.6x and accel_diff 2.0-3.4x threshold (log281
+t=213, log66 t=63); steadiest hover gyro_diff 3.6-3.8x (log19, 2.4 m);
+disarmed 0.16-0.73x. It reads "moving" whenever the motors spin.
+
+Replay (tier 1b), 14 logs, beta stack: 12 change, every one from the ground
+(before liftoff or after touchdown). Ground wander log281 after landing 2.2 m
+-> 0.02 m (flown cores 0.01), log19 flow lane 0.63 -> 0.09 m; pre-liftoff
+unchanged. Airborne flow-lane velocity against the GPS lane unchanged to
+0.015 m/s rms on every log. pymavlink's Cython fast indexer misreads a float
+in the log280 replay output as a message header ("Invalid length in FMT");
+PYMAVLINK_FAST_INDEX=0 reads it.
+
+SITL (tier 2): the low-hover leg (FLOW_HGT_MIN 1.0, hover 0.42 m, range Good)
+discards (0 fusions) and fails on a mutant that ignores the reading's height;
+OpticalFlowFocusHeight landing with RNGFND1_MIN 0.2 and 0 both fuse zero,
+drift 0.03-0.04 m, measured-flow mutant 2.44 m; dead range finder keeps
+aiding through the climb.
+
+Evidence for the kept version (SITL, tier 2): the low-hover leg passes 5/5
+with 0 updates and aiding stopping on the timeout (samples discarded); the
+LOITER landing has no failsafe; OpticalFlowFocusHeight with a 2 rad/s flow
+offset after touchdown drifts 0.02-0.03 m against 2.44 m for a mutant fusing
+measured flow at rest.
+
+Replay (tier 1b) of the 14 cached SFD logs through the land-detector version
+on the beta stack: divergence only between touchdown and disarm, or before
+liftoff, never in flight. Ground wander before disarm on log281 replayed cores
+2.2 m without the fix, 0.05 m with it, against 0.01 m on the flown cores;
+log19 flow lane 0.63 m to 0.07 m.
+
+Open: a copter whose land detector reads landed in flight (mid-air disarm and
+re-arm, the cqc F3 case) and is below the floor would fuse zero. Sensors that
+report quality 0 at the ground store no sample, so get no benefit (safe).
