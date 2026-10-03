@@ -325,3 +325,4 @@ no-rangefinder landing far from launch (lost under #34362) and rejected: the
 terrain database (~10 m relative at 90%) is too coarse for ground effect
 heights. User's decision: close. Local branch fix/34361 kept, not pushed;
 reply drafted, not posted.
+Closing reply posted and PR closed 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/34361#issuecomment-5973865396
