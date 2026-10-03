@@ -399,3 +399,32 @@ For the test:
 ./waf configure --board sitl && ./waf copter
 Tools/autotest/autotest.py test.Copter.EK3_SourceSetSelectsLane
 ```
+
+## Redesign for tridge and peterbarker (2026-10-03, local, not pushed)
+
+tridge (CHANGES_REQUESTED 2026-09-30): why is Lua different from RC; make
+it all EKF internal. peterbarker: set the lane in the loop. User chose the
+redesign. Local branch `fix/34456` on PR head `a04fb2dbbd`, six new commits
+plus fixups:
+
+- `setPosVelYawSourceSet` latches `sourceSetLane` under bit 3;
+  `UpdateFilter()` uses it as `user_primary` while bit 3 stays set.
+  EK3_PRIMARY is never written. `select_lane` removed from AP_AHRS and EKF3;
+  RC_Channel returns false on refusal (bot point 2).
+- A selection before the cores exist is kept (bot point 1); if no core runs
+  it, "has no lane" is sent once the cores run and the latch dropped.
+- Refusals kept at the call: no lane, and armed without bit 1.
+- Consequence: the extnav-optflow Lua applet now switches lanes under bit 3.
+  Its binding returns void, so it cannot see a refusal.
+- Test reworked: lane via statustext counts and XKF4.PI/MSG from the log;
+  Lua leg; DO_AUX_FUNCTION FAILED; boot at set 2 -> lane 1; boot at set 3 on
+  two cores -> warning, lane 0. Passes; PR head fails (EK3_PRIMARY written);
+  intermediate local build fails the set-3 boot leg; a no-latch build fails.
+- Replay of a SITL LOG_REPLAY flight: replayed cores follow the same lane
+  sequence (PI 0,1,0,1,0). check_replay FAILS identically with the PR-head
+  Replay (pre-existing: a set selected ~1 s after boot is lost because the
+  replayed cores initialise later). log11/log14 not on the local log roots;
+  the server share is not mounted here, so the flight-log replay is still
+  owed.
+- Codex: two findings (latch survives clearing bit 3; boot set with no lane
+  silently ignored), both fixed; final pass clean.
