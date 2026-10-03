@@ -967,3 +967,5 @@ switch moved to 3 m. The hover sits at the 0.9 m switch height
 A flight on beta is the only test of the motivating case. Tools:
 scratchpad `rfrn.py` and `teair.py` (logged ground effect flags), `hinnov.py`
 (height innovation), `x5rng.py` and `hsrc.py` (HAGL and PD against range).
+
+Pushed 2026-10-03: fd9ba29c01 -> 42bd10926d (force; baro-reset commit kept with its message, replaced by a new reopen commit; c4f8 reworded).

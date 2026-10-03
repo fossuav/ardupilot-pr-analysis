@@ -332,3 +332,5 @@ unless stated.
   acceleration reused in the AGL KF and fused back (needs a SIM_ACC1_BIAS_Z
   A/B); a stale terrainState stepping height at the switch (unconfirmed);
   the cliff data promised on the thread.
+
+Pushed 2026-10-03: f48c851e1b -> 8cbaa630a5 (fast-forward; f48c message kept, consumer fix as a new commit).
