@@ -646,3 +646,5 @@ Self-review (Claude x2 + Codex cold): must-fix confirmed and fixed - UpdateAglKf
 Tier 2 at the local head: 14 tests pass (EK3_AglKfVelYieldsToOtherVelD needed a rerun after a SYSTEM_TIME harness stall); 5 mutations red; feature-off builds (AGL KF, external nav, flow, rangefinder) and copter/plane/rover/sub pass.
 
 Folded and force-pushed 2026-10-02: #33478 head 1b6f63bff1 on upstream/master cafe674577 (master gained 4 unrelated commits between test run and fold; AP_NavEKF3 and autotest trees identical to the tested pre-squash/agl-20261002). Every commit builds, all vehicles, gate clean. Description rewritten.
+
+Pushed 2026-10-03: 1b6f63bff1 -> dda9757668 (fast-forward).

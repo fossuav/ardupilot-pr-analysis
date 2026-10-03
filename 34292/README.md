@@ -1883,3 +1883,5 @@ log19 flow lane 0.63 m to 0.07 m.
 Open: a copter whose land detector reads landed in flight (mid-air disarm and
 re-arm, the cqc F3 case) and is below the floor would fuse zero. Sensors that
 report quality 0 at the ground store no sample, so get no benefit (safe).
+
+Pushed 2026-10-03: 34be757539 -> e36aab7b08 (fast-forward; RangeFinder and DAL before the EKF commit; every commit builds).
