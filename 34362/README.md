@@ -284,3 +284,26 @@ No logs or plots here yet. The code is on `SmallFastDrone-4.7.1-beta`
 - `../32972/` finding 6 - the EKF-side cost, measured on the same flight.
 - `../34361/` - the root fix for why `get_hagl()`
   failed here.
+
+## Round of 2026-09-30 (AP-Review at 6b01d433b8), fixed 2026-10-03
+
+On fix/34362 (local, not pushed), over PR head c9edf58b74. SITL (tier 2).
+
+- The 60 s cap cut a slow approach. GNDEFF_ALT 10, WP_SPD_DN 0.1, GUIDED
+  descent from 12 m then LAND, range finder fitted: PR head longest
+  touchdown_expected episode 60.0 s (ends about 4 m up), with the fix 87.1 s
+  and 87.2 s. The fix restarts the window after each 1 m of descent while
+  height_m is positive, which bounds the whole window by GNDEFF_ALT.
+  Measured on the HAGL path only; the relative-height path is not covered by
+  the test.
+- NE resets. 33 m GPS glitch (SIM_GPS1_GLTCH_X 0.0003) the EKF reset onto
+  while hovering over the takeoff point, no range finder: PR head 0 s of
+  gate on the landing, with the fix 3.7 s and 3.6 s. The takeoff point is
+  moved by the reset step. That is wrong for a reset that corrects drift
+  built up since takeoff, and nothing distinguishes the two; recorded in the
+  commit message.
+- Not handled: D resets on the relative-height fallback (in the merged
+  #32472 code, not this PR), and an NE reset on a tick with no horizontal
+  position.
+- All 8 ground-effect autotests pass. Replay cannot A/B this: the touchdown
+  flags are vehicle-side and Replay reads them from the log.
