@@ -549,3 +549,5 @@ for the 1 Hz update, so learning can run during a 1-2 s fall. That is the
 same order as the 1 Hz latency every mode change already has, and
 `ap.disarmed_in_air` exists only on #32768's branch. Not changed; to be
 stated as a known limitation if raised.
+
+Pushed 2026-10-03: 82bd6cd00f -> adba7a0000 (force, restacked on 1f357b2429). a8267e13f1 reworded with the Replay A/B evidence (patch unchanged), 82bd6cd00f patch unchanged; new: flip-from-acro test, Copter comment, autotest comment/indent. AccelBiasLearningInhibitedInAcro, VibrationRectificationBiasLearning, AccelBiasMovingPlatform pass.
