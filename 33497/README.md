@@ -110,3 +110,4 @@ tpwrules asked "if the bug is fixed, do we need this?" after dakejahl pointed
 to PX4#27418, which fixed the node's integration_interval in the default ARK
 Flow firmware. User's decision: propose closing rather than rename it. Reply
 drafted, not posted; the PR is not closed until it is.
+Closing reply posted and PR closed 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/33497#issuecomment-5973865689
