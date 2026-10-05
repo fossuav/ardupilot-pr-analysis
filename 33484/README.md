@@ -759,10 +759,11 @@ commit series. That squash is not recorded above; the last entry names
 (see [34630](../34630/README.md)). Two things there bear on this record:
 
 - The per-reset statustext from "Proposed fix 2" stays on by default.
-  #34630 adds `EK3_OPTIONS` bit 4 to quiet it for an operator watching the
+  #34630 adds `EK3_OPTIONS` bit 6 (bit 4 when this note was first
+  written; moved 2026-10-05 12:59) to quiet it for an operator watching the
   OSD. Muting it outright was written and dropped against the log7 finding
   above.
-- With bit 4 set, the Replay sweep's `'flow vel reset'` needle counts only
+- With bit 6 set, the Replay sweep's `'flow vel reset'` needle counts only
   "flow vel resets paused" messages, one per burst. Replay with bit 4 clear.
 
 This PR's `flowFuseTimeAxis_ms` is unchanged by the stack; #34543 renamed
