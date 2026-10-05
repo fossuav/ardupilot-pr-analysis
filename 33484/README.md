@@ -747,3 +747,24 @@ test covers. Replay of the 14 cached logs: no difference.
 Pushed 2026-10-03: 4317016b8b -> 59ca8fc5e5 (fast-forward: registration re-indent, the pause-and-backoff commit, its test).
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/33484#issuecomment-5973749867
 Pushed 2026-10-03: 59ca8fc5e5 -> 4e9409406a (QMIN wording, fast-forward). Description rewritten and posted 2026-10-03 (pause design, testing lists only asserted cases, QMIN corrected).
+
+## Stacked under #34630 (2026-10-05)
+
+Head observed 2026-10-05: `669172801f` ("say what the low-quality lockout
+latch stops in XKF7.FVU"), committed 2026-10-05 09:31, on a squashed 7+1
+commit series. That squash is not recorded above; the last entry names
+`4e9409406a`, which is no longer an object in the checkout.
+
+#34630 stacks on this PR and #34543 to show each reset on the OSD lane item
+(see [34630](../34630/README.md)). Two things there bear on this record:
+
+- The per-reset statustext from "Proposed fix 2" stays on by default.
+  #34630 adds `EK3_OPTIONS` bit 4 to quiet it for an operator watching the
+  OSD. Muting it outright was written and dropped against the log7 finding
+  above.
+- With bit 4 set, the Replay sweep's `'flow vel reset'` needle counts only
+  "flow vel resets paused" messages, one per burst. Replay with bit 4 clear.
+
+This PR's `flowFuseTimeAxis_ms` is unchanged by the stack; #34543 renamed
+its own same-named timer to `flowPassTimeAxis_ms` (`7c149439c1`) so the two
+no longer collide.
