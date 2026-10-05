@@ -253,3 +253,13 @@ body-frame ceiling.
   which THROW_SRC_INI needs on GPS vehicles), #32401 (pending arm, the
   other half of the log18 crash), #32391 (LEVEL arming check: "Arm:
   Leaning" blocked re-arming on the carrier in log32).
+
+## THROW_SRC_INI / THROW_SRC_SET move no lane under SRC_PER_CORE (2026-10-03)
+
+Found by inspection while checking the SmallFastDrone 4.7.2-beta
+explainers, not flown or tested. Throw's source switches call
+`set_posvelyaw_source_set()` without `select_lane`, so with
+`EK3_SRC_OPTIONS` bit 3 they announce a source-set change and move no
+EKF core. Recorded with the lane-selection change it belongs to:
+`../34456/README.md`, "Known and deliberately not fixed here".
+
