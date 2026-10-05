@@ -1,7 +1,8 @@
 # AP_OSD: show the status of each EKF3 core
 
 **Open as [#34543](https://github.com/ArduPilot/ardupilot/pull/34543)**
-from `andyp1per/pr-osd-ekf-lanes`. Head `7c149439c1`, pushed 2026-10-05.
+from `andyp1per/pr-osd-ekf-lanes`. Head `be2961c02b`, pushed 2026-10-05
+21:05.
 Record started 2026-10-05; nothing was kept here before that.
 
 `OSDn_EKF0` to `EKF2` show one EKF3 core each: `C<n>`, a marker if it is
@@ -32,7 +33,8 @@ Second operator report the same day: liked the changes, then asked for the
 marker to be the same right arrow as the sideways flow arrow, and for tilt
 to step left, up, right with a 1 s cycle. Done in `88f8672b48` +
 `9f44a7b3be` (marker `SYM_ROLLR`, test expects 0xEA) and an `amend!` taking
-the step from 500 to 333 ms, to be autosquashed before the push. The `>`
+the step from 500 to 333 ms, autosquashed and pushed as `d69703eeb5` +
+`be2961c02b`. The `>`
 and up/down rows in the table above are superseded by these.
 
 The PR description still describes the flown display and needs updating.

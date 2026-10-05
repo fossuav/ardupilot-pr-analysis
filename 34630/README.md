@@ -2,7 +2,17 @@
 
 **Open as [#34630](https://github.com/ArduPilot/ardupilot/pull/34630)**,
 opened 2026-10-05 from `andyp1per/pr-osd-ekf-lanes-flow-reset` at
-`b993d77c7a`. Record written 2026-10-05.
+`b993d77c7a`. Head `749bf16701` (pushed 2026-10-05 21:05). Record written
+2026-10-05.
+
+Head history the same day: `b993d77c7a` -> `6ed939c51b` (12:59, the
+option moved from bit 4 to bit 6 in code, docs, commit message and test,
+and the test subject shortened; the four commits from the option onwards
+renumbered `2b49d7b3af`, `948e72ad06`, `ca6c02dfa3`, `6ed939c51b`) ->
+`749bf16701` (21:05, fast-forward: #34543's second round of display
+changes carried across as `89955625d3` + `749bf16701`). Commit hashes in
+the sections below are as of `b993d77c7a` unless named otherwise; the
+code they describe is unchanged apart from the bit number.
 
 ## Stacking
 
@@ -45,7 +55,7 @@ At `b993d77c7a`, eight commits:
   two at the reset (`axisLockout` guarantees one stale, one fresh).
 - `1527cf8116` AP_OSD: that axis's arrow is not drawn while the flag is set.
 - `6eeb42eb08` AP_NavEKF3: the rename above.
-- `7ab84c0188` AP_NavEKF3: `EK3_OPTIONS` bit 4 (`QuietFlowVelResets`)
+- `2b49d7b3af` AP_NavEKF3: `EK3_OPTIONS` bit 6 (`QuietFlowVelResets`)
   stops the per-reset "flow vel reset N (axis lockout)" statustext. Default
   off, so the messages stay on. The pause, deferral and low-quality messages
   are not affected.
@@ -68,9 +78,9 @@ OSD item (off by default), and the Replay sweep's count, which reads
 statustexts because XKF7's format record is lost to a reader desync in the
 33484 logs. The operator then chose an option bit instead.
 
-Consequence for the Replay sweep: with bit 4 set, its `'flow vel reset'`
+Consequence for the Replay sweep: with bit 6 set, its `'flow vel reset'`
 needle matches only "flow vel resets paused", one per burst. Replay with
-bit 4 clear.
+bit 6 clear.
 
 ### 250 ms, not 500 ms
 
@@ -87,7 +97,7 @@ SITL only (tier 2), at the heads named:
 
 - `EK3_FlowAxisLockoutRecovery` and `OSDEKFLanes` pass at `c24fa3e925`,
   the pre-squash tip with the same tree as `b993d77c7a`.
-- The new subtest sets `EK3_OPTIONS` 8|16, provokes a lockout with
+- The new subtest sets `EK3_OPTIONS` 8|64, provokes a lockout with
   `SIM_FLOW_OFS_X`, waits for core 0's `XKF7.FVC` to count a reset, and
   checks no "(axis lockout)" statustext arrived. It **fails** with the
   option check replaced by `if (true)`: "flow vel reset announced with the
