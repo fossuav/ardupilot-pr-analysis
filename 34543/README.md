@@ -28,6 +28,13 @@ In the Betaflight symbol table `SYM_ROLLR` and `SYM_ARROW_RIGHT` are both
 0x64, so the last change does nothing there, and the marker and the
 sideways arrow are the same glyph (different columns).
 
+Second operator report the same day: liked the changes, then asked for the
+marker to be the same right arrow as the sideways flow arrow, and for tilt
+to step left, up, right with a 1 s cycle. Done in `88f8672b48` +
+`9f44a7b3be` (marker `SYM_ROLLR`, test expects 0xEA) and an `amend!` taking
+the step from 500 to 333 ms, to be autosquashed before the push. The `>`
+and up/down rows in the table above are superseded by these.
+
 The PR description still describes the flown display and needs updating.
 
 ## The timer rename (`7c149439c1`)
