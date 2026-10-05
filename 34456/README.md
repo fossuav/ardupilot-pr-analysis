@@ -316,6 +316,19 @@ refusing one that can.
 under `SRC_PER_CORE` is not what any core is running. The shipped `ahrs-source`
 applets do a set-then-read-back against it. Same defect class, untouched.
 
+**Throw mode's source switch moves no lane under `SRC_PER_CORE`** (found
+2026-10-03, tier 3: inspection at SmallFastDrone-4.7.2-beta `9238f92e42`, not
+flown or tested). `THROW_SRC_INI` on entry and `THROW_SRC_SET` on completion
+or abort call `ahrs.set_posvelyaw_source_set()` with the default
+`select_lane=false` (`ArduCopter/mode_throw.cpp:79`, `:106`, `:951`). On a
+bit-3 vehicle that prints "Throw: EKF Source Set N" and changes no core: the
+log11 lie this PR removes for RC and MAVLink, left in place for throw.
+`ThrowDropSourceSwitch` and `ThrowAbortRestoresSourceSet` pass because they do
+not set `EK3_SRC_OPTIONS` bit 3. The throw side is #32475's; see
+`../32475/README.md`. Whether throw should move lanes in flight at all is the
+same armed-lane-switch question as `EK3_OPTIONS` bit 1, so it is recorded
+here rather than fixed.
+
 ## The objection this PR has to meet
 
 Source sets and cores are orthogonal concepts and should stay that way; the EKF3
