@@ -5,6 +5,12 @@ Branch `pr-rate-target-interp` (andyp1per fork), base `master`, head
 `32829ea806` (2026-09-01). The plots here are from SITL; the hardware numbers
 are cited inline only, no real-flight logs are committed to this public repo.
 
+### Head on 2026-10-06: `3561165628`
+
+Rebased onto master, the std::atomic sequence replaced by a volatile one,
+`.cpp` method descriptions added, and the SITL gyro-rate commits split out to
+[#34642](../34642/). See "2026-10-06: lock-free without std::atomic" at the end.
+
 ## Status (one line)
 
 Opened 2026-08-29. Four commits: the interpolation in the copter rate thread,
@@ -199,3 +205,32 @@ this PR's head `a618208324` was clean. When rebasing whichever lands second:
   "sysid added downstream so chirps stay crisp" still holds.
 - #34584 accepts torn copies of its four Vector3f for now and names this PR's
   odd/even sequence publish as the mechanism to adopt for them once merged.
+
+## 2026-10-06: lock-free without std::atomic, and the split
+
+Dev-call comments 2026-10-06: rmackay9 asked for descriptions above methods
+in both the `.h` and `.cpp`, and to drop `load`/`store` unless they earn it;
+peterbarker noted nobody on the call knew what they did; tridge asked what
+the std:: calls compile to on our MCUs.
+
+- `2725e59d77`/`1c34c1d96c` -> `7a7d4e0046`: plain `volatile` sequence and a
+  volatile published copy. Writer: seq odd, three float stores, seq even.
+  Reader: copy only if even and unchanged, else keep the previous target.
+- MatekH743 codegen: both functions are ordered `ldr`/`str`, no barriers or
+  calls; the atomic version had 4 `dmb` on the path. Flash +4 bytes.
+- Rejected: `HAL_Semaphore` with `take_nonblocking()` in the reader. Built,
+  never measured; the author's decision: the attitude path stays lock-free,
+  "better to be fast and mostly right".
+- Accepted gap: a weakly ordered multi-core Linux board (Linux enables
+  `HAL_INS_RATE_LOOP`) can still pass a mixed target, which the ramp then
+  heads for over one main loop period. An earlier comment claimed "no worse
+  than the unguarded read"; wrong (master's tear lasts one rate step), and
+  corrected before pushing.
+- Codex findings rejected: AutoTune steps being ramped (documented in the
+  description; lthall accepted p = 0 knowing it); explicit init of the new
+  members (zeroed by allocation; the playbook bars defensive init).
+- SITL commits moved to #34642. #34208 then has no tests of its own; the
+  2 kHz SITL A/B in the description used #34642.
+- SITL after the change: CompassMotFastRate, DynamicRpmNotchesRateThread,
+  RateThreadPostFilterGyroLog, GPSBlendingAffinity pass.
+- AP-Review ACCEPT at `3561165628` (its one note is the multi-core caveat).
