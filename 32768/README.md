@@ -1287,3 +1287,21 @@ and the voice, 1.7.19 for when a table earns its place, 1.7.20 for keeping the
 detail under a heading in the body rather than in a PR comment, which no
 automated pass reads. rmackay9 was asked directly whether the shape works
 (comment 5784308890).
+
+## 2026-10-06: AP-Review COMMENT at `873d61cf47`, left alone
+
+Nothing blocking. The reboot after the airborne-arm test fixed a real
+ordering failure (HeightKeptOnAidingLossWithAltOffset after
+HeightDatumKeptOnArmWhileMoving).
+
+Remaining suggestion, deliberately not acted on: `NavEKF3::resetHeightDatum()`
+lets each core decide (its own height source and `onGroundNotMoving`) and
+keeps only the primary's answer, while a resetting core recalibrates the
+shared baro. With `EK3_RNG_USE_HGT`, a still secondary on baro can recalibrate
+while a moving primary on the range finder refuses: no `EKF_ALT_RESET`, no
+terrain reference refresh, no EKF2 follow. Reproduced only in extracted code;
+the bot rates it low. Fix if wanted: decide once in the frontend before any
+core calls `update_calibration()`.
+
+Deferred because a maintainer is reviewing the PR and the author wants it left
+untouched meanwhile.
