@@ -516,5 +516,5 @@ rather large policy shift in failsafe triggering behaviour". Three comments:
    `be426a9a42` (its function keeps the old name pending point 2).
 
 `EKFSourceSetFailsafe` passes at `be426a9a42`; copter, plane, rover, sub
-build. Local head `be426a9a42`, push pending.
+build. Pushed 2026-10-06; head `be426a9a42`.
 
