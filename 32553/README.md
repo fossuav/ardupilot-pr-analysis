@@ -971,3 +971,29 @@ scratchpad `rfrn.py` and `teair.py` (logged ground effect flags), `hinnov.py`
 Pushed 2026-10-03: fd9ba29c01 -> 42bd10926d (force; baro-reset commit kept with its message, replaced by a new reopen commit; c4f8 reworded).
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/32553#issuecomment-5973856227
 Title and description rewritten and posted 2026-10-03: "AP_NavEKF3: reopen the terrain variance after takeoff ground effect"; hardware unticked (the reopen has not flown).
+
+## 2026-10-06: the reopen measured on a flight, and a retraction
+
+Retraction: on 2026-10-05 a Replay A/B of log36 "without the reopen" showed
+identical results and was recorded (in the SFD field plan) as "nothing to
+correct". The no-reopen binary was byte-identical to the baseline (same md5):
+a `waf configure --out` in the build worktree had redirected every later
+build. The conclusion is withdrawn.
+
+Genuine A/B, tier 1b: log36 (3408138/584), flown on firmware containing this
+PR (`c7e1dff234` head in the build), so `takeoff_expected` is released where
+this code releases it and the log replays exactly. Baro height source, range
+finder used for terrain only (`EK3_RNG_USE_HGT -1`), takeoff into a ~0.5 m
+hover for 16 s. Height above ground against tilt-corrected range, from the
+reopen's status text to the climb:
+
+| | with the reopen (flown) | reopen removed |
+|---|---|---|
+| core 0 | 0.04 m rms | 0.11 m rms |
+| core 1 | 0.21 m rms | 0.47 m rms |
+| core 1, `EK3_GND_EFF_DZ=2` | 0.22 m rms | 0.54 m rms |
+
+Above the ground effect band the two agree within 0.01 m rms; a second
+takeoff climbing straight out: 0.20/0.16 with, 0.23/0.24 m without.
+
+A PR comment with these numbers was drafted, not posted.
