@@ -483,3 +483,38 @@ Local branch `fix/32514` (from PR head `cd0a8b728b`, not pushed).
 
 Pushed 2026-10-03: cd0a8b728b -> 03787e07e9 (fast-forward, one new commit).
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/32514#issuecomment-5973702328
+
+## 2026-10-06: peterbarker's structure review
+
+CHANGES_REQUESTED at `03787e07e9`, explicitly on structure only, "*not* on the
+rather large policy shift in failsafe triggering behaviour". Three comments:
+
+1. `AP_AHRS::has_horiz_pos_vel_source()` reads as a source delivering now;
+   suggested `configured_to_use_horizontal_position_or_velocity_source`.
+   Taken: `1fba2fad50` (AP_AHRS, with the old name as an alias),
+   `e2ae4cfe86` (Copter caller), `d55c2e72b6` (alias dropped). New commits
+   rather than folds because the PR has flown; each builds alone.
+2. "Implement this for every other backend ... an entry in the backend
+   estimates object; don't poke holes in the AHRS layer." Not done yet;
+   replied with the trade-off and asked which he prefers
+   (https://github.com/ArduPilot/ardupilot/pull/32514#discussion_r4198128295):
+   - Only EKF3 has source sets; every other backend's answer is `true`.
+   - AP_AHRS already passes source-set queries straight to EKF3
+     (`set_posvelyaw_source_set()`, `get_posvelyaw_source_set()`,
+     `get_vel_innovations_and_variances_for_source()`; ~20 of AP_AHRS.cpp's
+     92 functions call EKF3 directly on master).
+   - As an `Estimates` field it zero-initialises to false, so every non-EKF3
+     backend must set it true explicitly or the failsafe silently stops
+     expecting a position on EKF2/DCM; inverting the flag brings back the
+     "not" he objected to in comment 3.
+   - If he still wants it, do it his way with every backend setting the
+     flag and a test that the failsafe still trips on EKF2. For EKF2, `true`
+     rather than a derived GPS-or-flow answer: EKF2 fuses external nav
+     whenever it arrives, with no setting to read.
+3. Header comment ambiguous about "both" and says "EKF" not "backend".
+   Rewritten in `1fba2fad50`; the EKF3 frontend comment likewise in
+   `be426a9a42` (its function keeps the old name pending point 2).
+
+`EKFSourceSetFailsafe` passes at `be426a9a42`; copter, plane, rover, sub
+build. Local head `be426a9a42`, push pending.
+
