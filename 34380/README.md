@@ -4,10 +4,11 @@ Analysis archive for [ArduPilot/ardupilot#34380](https://github.com/ArduPilot/ar
 Branch `pr-avoid-flow-ceiling-backup`, head `88277a54a7`, base master
 `37ea692edb` (2026-09-12). Two commits. Opened 2026-09-12.
 
-### Head on 2026-10-06: `9a09ef5238` on GitHub, `ff144b7421` local
+### Head on 2026-10-06: `ff144b7421`
 
-`ff144b7421` (centred-stick leg in `FlowCeilingShortRangeFinder`) is
-committed locally and not yet pushed; see "The short-reach band" at the end.
+`ff144b7421` (centred-stick leg in `FlowCeilingShortRangeFinder`) pushed
+2026-10-06 as a fast-forward of `9a09ef5238`; see "The short-reach band" at
+the end.
 
 ## Status (one line)
 
