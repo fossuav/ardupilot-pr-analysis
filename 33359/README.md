@@ -12,6 +12,14 @@ Nothing has been re-measured at this head. Every number below keeps the
 commit it was taken on, and any head named above is left as written
 because it is the code those numbers came from.
 
+### Head on 2026-10-06: `27991de5ef`
+
+Rebased onto master on 2026-10-06 (`ca4bba4f4b`: the eight EKF commits
+patch-identical, the test commit only moves its registration), then
+`5d98f8175f` (step-up fix) and `27991de5ef` (`EK3_RngHgtSwitchStepUp`)
+pushed the same day. See "Flight coverage, the step-up defect and its fix"
+at the end. Earlier numbers keep the heads they were taken on.
+
 ## Status (one line)
 
 Indoor optical-flow altitude hold diverges by metres because the EKF's rangefinder height-source switch (a) keys off the baro-corrupted main-filter altitude and (b) only engages during takeoff/landing - so cruise/hover rides garbage baro. This routes the switch through the IMU-aided AGL KF, which already exists in master for flow velocity scaling. Replay-validated on two indoor flights and flight-validated on the vehicle (log281).
@@ -335,3 +343,124 @@ unless stated.
 
 Pushed 2026-10-03: f48c851e1b -> 8cbaa630a5 (fast-forward; f48c message kept, consumer fix as a new commit).
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/33359#issuecomment-5973856689
+
+## Flight coverage, the step-up defect and its fix (2026-10-06)
+
+### Was the current head flown? (tier 1b)
+
+Six outdoor flights on a beta carrying head `8cbaa630a5`, all with bit 3 set
+and `EK3_RNG_USE_HGT 6` on a 15 m range finder (switch region below 0.9 m).
+`activeHgtSource` is not logged, so each was replayed with a stdout probe on
+it, and the replay checked against the flight (no paired XKF1 sample more than
+2 cm apart where the replay firmware matched the flown one).
+
+| log (ACC_ID/BOOTCNT) | range finder height in flight with the vehicle's terrain-stable flag clear |
+|---|---|
+| log31 (3408138/575) | ~72 s per core: a 21 s hover below 0.9 m after takeoff, a second low hover, the descents. HAGL against tilt-corrected range through the 21 s hover: 0.10 m rms, 0.24 m max |
+| log35 (3408138/582) | 4.3 s, final descent |
+| log32-34, log39 | 0 s: the flag was set wherever the switch engaged, as master would |
+
+Flat ground only. Most flying was above 0.9 m; long low hovers, the original
+indoor case, were not repeated.
+
+### The step-up defect (tier 1b)
+
+log29 (3408138/567) and log30 (3408138/571), head `f48c851e1b`, cross a
+0.84 m step at about 0.45 m.
+
+- Off the edge: range 0.45 -> 1.28 m, both cores hand back to baro within
+  0.3 s, no altitude step.
+- Back up: the terrain offset reset to the lower ground off the edge
+  (core 0: 0.08 -> 0.87 m) and had recovered only to 0.65 m when the switch
+  re-engaged the range finder 0.6 s after the crossing, with the vehicle flag
+  clear. The source-change height reset (`ResetPositionD(-hgtMea)`,
+  PosVelFusion.cpp ~1507) then pulled the altitude down, and Copter moved its
+  target with it.
+- Ground-to-ground altitude change, taking off from and landing back on the
+  top (true change 0): **-0.45 / -0.46 m** as flown, **+0.23 / -1.04 m** with
+  only the terrainStable override removed. Core 1's baro path carries
+  #33478's AGL velD climb at the edge, so core 0 is the clean comparison.
+  Same on the beta at `13cf7ed1a5` (current head): -0.45 / -0.58 against
+  +0.23 / -0.89.
+- log30's step sortie never engaged the range finder in flight.
+
+Retraction: the 2026-10-06 comment first said log31's good switch-ins had the
+terrain offset and the AGL height agreeing within 0.01 m. That was one core at
+one switch; core 0 differed by 0.20-0.22 m. Corrected before posting.
+
+### Measured and rejected: the step-up fix candidates
+
+Replay of the beta (`13cf7ed1a5`, this PR's current head) with each candidate,
+on log29/30/31/35. Altitude error on landings within 3 m of takeoff
+(core 0/core 1, m; GPS drifted too far to be the reference). log31 carries
+1-2 m of baro drift in every variant, so only differences between rows count
+there.
+
+| candidate | log29 step | log30 x2 | log31 x2 | log35 | verdict |
+|---|---|---|---|---|---|
+| head | -0.57/-0.63 | -0.14/-0.10, -0.11/-0.07 | +1.05/+0.40, +1.89/+1.02 | -0.13/-1.39 | the defect |
+| override removed | +0.09/-0.89 | -0.08/-0.16, -0.12/-0.08 | +1.07/+1.01, +0.97/+1.28 | -0.30/-0.98 | loses the PR |
+| gate on terrain vs AGL height, 0.15 m | +0.14/-1.09 | = head | +1.16/+0.43, +2.00/+1.08 | -0.13/-0.96 | rejected: blocks core 1 too long |
+| same gate, 0.25 m | +0.14/-0.63 | = head | = head | -0.13/-1.23 | rejected: core 1's bad switch differed by only 0.18 m and passed; a gate bounds the error at its threshold |
+| gate on terrain vs raw range, 0.3/0.4 m | +0.14/-0.82, -0.69 | = head | = head | = head | rejected: delays core 1's switch, still switches onto a stale offset |
+| reset offset from AGL height at every switch | -0.23/-0.47 | -0.09, -0.05 ... | +1.47/+0.68, +2.37/+1.51 | -0.09/-1.05 | rejected: AGL lags in a descent and the lag is baked in |
+| reset offset from raw range at every switch | +0.09/-0.14 | -0.06, -0.04 ... | +1.49/+0.65, +2.37/+1.42 | -0.13/-1.08 | rejected: on flat ground the old offset is the better reference; costs ~0.45 m on log31 |
+| hybrid: reset from range only above 0.2 m | +0.08/-0.15 | = head | +1.48/+0.65, +2.32/+1.27 | -0.13/-1.05 | rejected: fires on flat-ground drift |
+| hybrid 0.3 m | +0.08/-0.15 | = head | = head | -0.13/-1.05 | measured; superseded by the next row |
+| hybrid 0.3 m + wait for AGL within 0.15 m of the fused sample (adopted) | +0.10/-0.35 | = head | = head | -0.14/-1.08 | adopted in `5d98f8175f` |
+
+Why the wait: the source-change reset uses the AGL height, so a reset of the
+offset from raw range still leaves the AGL KF's lag as a height jump, and
+Copter climbs by it (SITL below). It costs 0.2 m on log29's core 1 at landing.
+
+Thresholds: flat-ground terrain-vs-range disagreement at a switch stayed
+<= 0.22 m in these flights; the step showed 0.66 m. 0.3-0.4 m is the band
+that fixes the step without firing on log31; 0.3 was chosen after seeing
+log29.
+
+Further checks on the adopted logic:
+
+- Indoor propwash flights log280 (3408138/327) and log281 (3408138/331),
+  `EK3_OPTIONS` forced to 8: identical to head; no reset fires (the vehicle
+  switches in once and stays). log281 low hover 0.07 m rms with the override,
+  1.06 m without it, so the PR's benefit is intact.
+- Terrain database feeding the offset (bit 2 cleared): results unchanged;
+  log31/35 descents from above range engaged with the database-fed offset
+  agreeing within 0.3 m. A database-fed offset descending onto ground SRTM
+  does not hold is untested.
+
+### SITL: `EK3_RngHgtSwitchStepUp`
+
+Takes 3.5 m off the range (`SIM_SONAR_OFFSET -3.5`) in an ALT_HOLD hover at
+~4.7 m with `EK3_RNG_USE_HGT 8`, `SURFTRAK_MODE 0`. Design notes, each found
+by a failed attempt: a faked step *down* drives the vehicle into the real
+ground (under range height it follows the ground down); GUIDED and surface
+tracking follow the fake ground up and never enter the switch region.
+
+| code | EKF height vs simulator after the step | vehicle movement at the step |
+|---|---|---|
+| no fix | -3.16 m (worst 3.30) | - |
+| reset only (no wait) | -0.09 m, peak error 0.39 m | +0.42 m, peak +0.66 m |
+| adopted (`27991de5ef`) | -0.07 to -0.08 m, worst 0.18-0.19 | 0.29-0.36 m (4 runs) |
+
+On the beta (topup9): -0.01 m, worst 0.17; vehicle 0.32 m.
+
+### Review triage (Codex rounds on the fix, AP-Review at `ca4bba4f4b`)
+
+- Fixed: stale or glitched raw sample (switch now needs `rangeDataToFuse` and
+  an AGL fusion under 200 ms); the lag jump (the wait); test windows tied to
+  core 0's reset, peak bounded, range crossing asserted.
+- Open, stated in the commit and on the PR: a fixed threshold cannot separate
+  a step from baro drift; drift over 0.3 m at a re-engagement would be kept
+  rather than corrected. Not reached in any of the six flights.
+- Not done: refreshing `Popt`/`gndHgtValidTime_ms` on the reset (the existing
+  5 s reset does not either). "The wait can hold off indefinitely": it falls
+  back to baro, as master.
+- AP-Review's blocker at `ca4bba4f4b` was this defect; its suggestion
+  (re-seed at switch-in, or require agreement, plus a step test) is what was
+  done. Still open from it: the hand-back side can hold a stale AGL height
+  above the ceiling; the covariance argument for reusing main-filter accel.
+
+Comments: flight results
+https://github.com/ArduPilot/ardupilot/pull/33359#issuecomment-6017631963,
+the fix https://github.com/ArduPilot/ardupilot/pull/33359#issuecomment-6019795040.
