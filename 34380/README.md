@@ -4,6 +4,11 @@ Analysis archive for [ArduPilot/ardupilot#34380](https://github.com/ArduPilot/ar
 Branch `pr-avoid-flow-ceiling-backup`, head `88277a54a7`, base master
 `37ea692edb` (2026-09-12). Two commits. Opened 2026-09-12.
 
+### Head on 2026-10-06: `9a09ef5238` on GitHub, `ff144b7421` local
+
+`ff144b7421` (centred-stick leg in `FlowCeilingShortRangeFinder`) is
+committed locally and not yet pushed; see "The short-reach band" at the end.
+
 ## Status (one line)
 
 `adjust_velocity_z()` backed the vehicle down from the EKF optical-flow ceiling
@@ -253,3 +258,28 @@ pushed head), two new commits plus fixups, not pushed.
 
 Pushed 2026-10-03: fe5288ab4d -> d405a9bca8 (force, restacked on 6034b82053; 2 pushed commits identical patch-ids). Combined-stack test found the restored #33585 leg "Terrain data does not lift the height limit without bit 2" climbing to 37.2 m under this PR: it tested the fallback, so a new commit flies it with the range finder as height source. All 8 flow tests pass on the stack.
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/34380#issuecomment-5973644606
+
+## The short-reach band: kept, and tested with the stick centred (2026-10-06)
+
+AP-Review at `9a09ef5238` still blocks on it: with `RNGFND1_MAX 40` and a
+sensor that really reaches 27.5 m, the limit is raised to 28.5 m, the raise
+lapses once the return goes, the fallback needs 28 m, and AC_Avoid never
+pushes down, so a centred stick in the band loses relative position where
+master holds 27 m.
+
+Decision (2026-10-06): keep the raise. The case needs a range finder that
+cannot reach 70% of its own `RNGFND1_MAX`, i.e. configured wrongly for the
+airframe; with `RNGFND1_MAX` at its real reach the limit, the raise and the
+fallback line up.
+
+Rejected: bringing the vehicle back into reach when the raise lapses with no
+climb demand (the bot's remaining route). It means AC_Avoid descending on its
+own, a behaviour change outside the EKF, for a misconfigured sensor.
+
+`ff144b7421` adds the leg (SITL, head `9a09ef5238` + the leg): reach 27.5 m,
+climb past it, centre the stick 20 s. Held 28.2-28.6 m; relative position
+lost at 28.6 m. The other two legs unchanged (25 m reach: highest 27.1 m,
+lost at 27.1 m; 27.5 m reach at full stick: highest 28.4 m, kept). The leg
+asserts the hold (within 1 m), not the loss, so a later fix does not fail it.
+
+Reply drafted asking for a maintainer's view on accepting the band.
