@@ -42,7 +42,9 @@ stop (2ae32c99ce + comment 55bd80a81b), `ec3c439aec` coast test
 `cc269a57cf` (AP_NavEKF3), `d48bf30698` (autotest). Final trees equal the
 two-commit versions tested above; on the old base they equal the old heads.
 Every commit builds and is flake8-clean, and the floor test passes at its
-own commit. Heads: #34457 `ec3c439aec`, #33507 `d48bf30698`.
+own commit. Heads: #34457 `ec3c439aec`, #33507 `d48bf30698`, force-pushed
+2026-10-07; reply to the approval:
+https://github.com/ArduPilot/ardupilot/pull/33507#issuecomment-6039192730
 
 ## 2026-10-02 restacked on #34457's coast stop (pushed as `5963bd0583`)
 
