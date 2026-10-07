@@ -1,0 +1,485 @@
+AT-0001.1: ##################################################################################
+AT-0001.1: ########## StabilizeInvertedLanded (right a copter in Stabilize that is inverted but believes it has landed)  ##########
+AT-0001.1: ##################################################################################
+AT-0001.1: Downloading parameters
+AT-0001.1: AP: ArduCopter V4.8.0-dev (31fca549)
+AT-0001.1: AP: 3b082c7f056148a0aa0830c3b6ddd4e6
+AT-0001.1: AP: Frame: QUAD/PLUS
+AT-0001.2: Downloaded 1431 parameters OK (attempt=1)
+AT-0001.2: Doing timesync roundtrip
+AT-0001.2: Received: TIMESYNC {tc1 : 7202440000, ts1 : 609885356282}
+AT-0001.2: Received TIMESYNC response after 0.000000s
+AT-0001.2: RC values good
+AT-0001.2: Changing mode to STABILIZE
+AT-0001.2: Sending COMMAND_LONG to (1,1) (MAV_CMD_DO_SET_MODE=176) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0001.2: Got mode STABILIZE
+AT-0001.2: AP: GPS 1: probing for u-blox at 230400 baud
+AT-0001.2: AP: GPS 1: detected u-blox
+AT-0001.3: AP: EKF3 IMU1 origin set
+AT-0001.3: AP: Field Elevation Set: 584m
+AT-0001.3: AP: EKF3 IMU0 origin set
+AT-0001.3: 30 count after 15.800000 seconds: 0
+AT-0001.3: Sending COMMAND_LONG to (1,1) (MAV_CMD_SET_MESSAGE_INTERVAL=511) (p1=30.000000 p2=20000.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0001.3: ACK received: COMMAND_ACK {command : 511, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0001.4: 245 count after 12.000000 seconds: 0
+AT-0001.4: Sending COMMAND_LONG to (1,1) (MAV_CMD_SET_MESSAGE_INTERVAL=511) (p1=245.000000 p2=100000.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0001.4: ACK received: COMMAND_ACK {command : 511, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0001.4: set_parameters: ({'ACRO_TRAINER': 0, 'ACRO_RP_RATE': 90})
+AT-0001.4: ACRO_TRAINER want=0.000000 autopilot=None (attempt=1/20)
+AT-0001.4: Requesting (ACRO_TRAINER)
+AT-0001.4: ACRO_RP_RATE want=90.000000 autopilot=None (attempt=1/20)
+AT-0001.4: Requesting (ACRO_RP_RATE)
+AT-0001.4: Received wanted PARAM_VALUE ACRO_TRAINER=2.000000
+AT-0001.4: Received wanted PARAM_VALUE ACRO_RP_RATE=360.000000
+AT-0001.4: ACRO_TRAINER want=0.000000 autopilot=2.0 (attempt=2/20)
+AT-0001.4: Sending set (ACRO_TRAINER) to (0.000000) (old=2.000000)
+AT-0001.4: ACRO_RP_RATE want=90.000000 autopilot=360.0 (attempt=2/20)
+AT-0001.4: Sending set (ACRO_RP_RATE) to (90.000000) (old=360.000000)
+AT-0001.4: Received wanted PARAM_VALUE ACRO_TRAINER=0.000000
+AT-0001.4: Received wanted PARAM_VALUE ACRO_RP_RATE=90.000000
+AT-0001.4: ACRO_TRAINER want=0.000000 autopilot=0.0 (attempt=3/20)
+AT-0001.4: ACRO_TRAINER is now 0.000000
+AT-0001.4: ACRO_RP_RATE want=90.000000 autopilot=90.0 (attempt=3/20)
+AT-0001.4: ACRO_RP_RATE is now 90.000000
+AT-0001.4: TAKEOFF
+AT-0001.4: Changing mode to GUIDED
+AT-0001.4: Sending COMMAND_LONG to (1,1) (MAV_CMD_DO_SET_MODE=176) (p1=1.000000 p2=4.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0001.4: Got mode GUIDED
+AT-0001.4: Drained 1 messages from mav (39945.752381/s)
+AT-0001.4: AP: PreArm: Need Position Estimate
+AT-0001.4: Waiting for ready to arm
+AT-0001.4: Sending param_request_read for (AHRS_EKF_TYPE)
+AT-0001.5: get_parameter(AHRS_EKF_TYPE): PARAM_VALUE {param_id : AHRS_EKF_TYPE, param_value : 3.0, param_type : 2, param_count : 1431, param_index : 65535}
+AT-0001.5: Waiting for EKF value 831
+AT-0001.5: Want=831 got=167 errors=128
+AT-0001.5: Want=831 got=167 errors=128
+AT-0001.5: AP: EKF3 IMU0 is using GPS
+AT-0001.5: AP: EKF3 IMU1 is using GPS
+AT-0001.5: EKF Flags OK
+AT-0001.5: Waiting for GPS health
+AT-0001.5: GPS healthy after 0.000000/30.000000 seconds
+AT-0001.5: Polled home position (HOME_POSITION {latitude : -353629380, longitude : 1491650850, altitude : 584090, x : 0.0, y : 0.0, z : -0.0, q : [nan, nan, nan, nan], approach_x : 0.0, approach_y : 0.0, approach_z : 0.0, time_usec : 42564634})
+AT-0001.5: Doing timesync roundtrip
+AT-0001.5: Received: TIMESYNC {tc1 : 42776538000, ts1 : 622770258170}
+AT-0001.5: Received TIMESYNC response after 0.000000s
+AT-0001.5: Took 4 seconds to become armable
+AT-0001.5: Arm motors with MAVLink cmd
+AT-0001.5: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0001.5: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0001.5: AP: Arming motors
+AT-0001.5: Motors ARMED
+AT-0001.5: Sending COMMAND_LONG to (1,1) (MAV_CMD_NAV_TAKEOFF=22) (p1=0.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=200.000000)
+AT-0001.5: ACK received: COMMAND_ACK {command : 22, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0001.5: Waiting for Altitude=202.00 with accuracy 3.00
+AT-0001.5: Altitude=0.00 (want 202.000000 +- 3.000000)
+AT-0001.5: Altitude=0.00 (want 202.000000 +- 3.000000)
+AT-0001.5: Altitude=0.01 (want 202.000000 +- 3.000000)
+AT-0001.5: Altitude=0.83 (want 202.000000 +- 3.000000)
+AT-0001.5: AP: EKF3 IMU0 MAG0 in-flight yaw alignment complete
+AT-0001.5: AP: EKF3 IMU1 MAG0 in-flight yaw alignment complete
+AT-0001.5: Altitude=2.83 (want 202.000000 +- 3.000000)
+AT-0001.6: Altitude=6.04 (want 202.000000 +- 3.000000)
+AT-0001.6: Altitude=9.01 (want 202.000000 +- 3.000000)
+AT-0001.6: Altitude=12.10 (want 202.000000 +- 3.000000)
+AT-0001.6: Altitude=14.96 (want 202.000000 +- 3.000000)
+AT-0001.6: Altitude=17.99 (want 202.000000 +- 3.000000)
+AT-0001.6: Altitude=20.99 (want 202.000000 +- 3.000000)
+AT-0001.6: Altitude=24.02 (want 202.000000 +- 3.000000)
+AT-0001.6: Altitude=27.01 (want 202.000000 +- 3.000000)
+AT-0001.7: Altitude=29.97 (want 202.000000 +- 3.000000)
+AT-0001.7: Altitude=33.00 (want 202.000000 +- 3.000000)
+AT-0001.7: Altitude=36.03 (want 202.000000 +- 3.000000)
+AT-0001.7: Altitude=39.00 (want 202.000000 +- 3.000000)
+AT-0001.7: Altitude=42.01 (want 202.000000 +- 3.000000)
+AT-0001.7: Altitude=44.98 (want 202.000000 +- 3.000000)
+AT-0001.7: Altitude=47.98 (want 202.000000 +- 3.000000)
+AT-0001.7: Altitude=51.01 (want 202.000000 +- 3.000000)
+AT-0001.7: Altitude=54.00 (want 202.000000 +- 3.000000)
+AT-0001.8: Altitude=56.98 (want 202.000000 +- 3.000000)
+AT-0001.8: Altitude=60.00 (want 202.000000 +- 3.000000)
+AT-0001.8: Altitude=63.00 (want 202.000000 +- 3.000000)
+AT-0001.8: Altitude=66.01 (want 202.000000 +- 3.000000)
+AT-0001.8: Altitude=68.98 (want 202.000000 +- 3.000000)
+AT-0001.8: Altitude=71.97 (want 202.000000 +- 3.000000)
+AT-0001.8: Altitude=74.98 (want 202.000000 +- 3.000000)
+AT-0001.8: Altitude=77.99 (want 202.000000 +- 3.000000)
+AT-0001.8: Altitude=80.98 (want 202.000000 +- 3.000000)
+AT-0001.9: Altitude=83.98 (want 202.000000 +- 3.000000)
+AT-0001.9: Altitude=86.98 (want 202.000000 +- 3.000000)
+AT-0001.9: Altitude=89.99 (want 202.000000 +- 3.000000)
+AT-0001.9: Altitude=92.99 (want 202.000000 +- 3.000000)
+AT-0001.9: Altitude=95.99 (want 202.000000 +- 3.000000)
+AT-0001.9: Altitude=98.98 (want 202.000000 +- 3.000000)
+AT-0001.9: Altitude=101.98 (want 202.000000 +- 3.000000)
+AT-0001.9: Altitude=104.98 (want 202.000000 +- 3.000000)
+AT-0002.0: Altitude=107.96 (want 202.000000 +- 3.000000)
+AT-0002.0: Altitude=110.99 (want 202.000000 +- 3.000000)
+AT-0002.0: Altitude=113.97 (want 202.000000 +- 3.000000)
+AT-0002.0: Altitude=117.00 (want 202.000000 +- 3.000000)
+AT-0002.0: Altitude=119.99 (want 202.000000 +- 3.000000)
+AT-0002.0: Altitude=123.01 (want 202.000000 +- 3.000000)
+AT-0002.0: Altitude=126.00 (want 202.000000 +- 3.000000)
+AT-0002.0: Altitude=128.89 (want 202.000000 +- 3.000000)
+AT-0002.0: Altitude=132.00 (want 202.000000 +- 3.000000)
+AT-0002.1: Altitude=134.97 (want 202.000000 +- 3.000000)
+AT-0002.1: Altitude=137.99 (want 202.000000 +- 3.000000)
+AT-0002.1: Altitude=140.98 (want 202.000000 +- 3.000000)
+AT-0002.1: Altitude=144.00 (want 202.000000 +- 3.000000)
+AT-0002.1: Altitude=147.00 (want 202.000000 +- 3.000000)
+AT-0002.1: Altitude=150.00 (want 202.000000 +- 3.000000)
+AT-0002.1: Altitude=152.99 (want 202.000000 +- 3.000000)
+AT-0002.1: Altitude=156.04 (want 202.000000 +- 3.000000)
+AT-0002.2: Altitude=159.00 (want 202.000000 +- 3.000000)
+AT-0002.2: Altitude=161.97 (want 202.000000 +- 3.000000)
+AT-0002.2: Altitude=164.99 (want 202.000000 +- 3.000000)
+AT-0002.2: Altitude=168.04 (want 202.000000 +- 3.000000)
+AT-0002.2: Altitude=171.03 (want 202.000000 +- 3.000000)
+AT-0002.2: Altitude=174.01 (want 202.000000 +- 3.000000)
+AT-0002.2: Altitude=176.99 (want 202.000000 +- 3.000000)
+AT-0002.2: Altitude=180.00 (want 202.000000 +- 3.000000)
+AT-0002.2: Altitude=182.99 (want 202.000000 +- 3.000000)
+AT-0002.3: Altitude=185.96 (want 202.000000 +- 3.000000)
+AT-0002.3: Altitude=188.98 (want 202.000000 +- 3.000000)
+AT-0002.3: Altitude=191.99 (want 202.000000 +- 3.000000)
+AT-0002.3: Altitude=195.00 (want 202.000000 +- 3.000000)
+AT-0002.3: Altitude=197.91 (want 202.000000 +- 3.000000)
+AT-0002.3: Attained Altitude=199.246
+AT-0002.3: Waiting for Altitude=50099.50 with accuracy 49900.50
+AT-0002.3: Altitude=199.68 (got 50099.500000 +- 49900.500000)
+AT-0002.3: Attained Altitude=199.682
+AT-0002.3: TAKEOFF COMPLETE
+AT-0002.3: set_parameters: ({'SIM_SPEEDUP': 1})
+AT-0002.3: SIM_SPEEDUP want=1.000000 autopilot=None (attempt=1/10)
+AT-0002.3: Requesting (SIM_SPEEDUP)
+AT-0002.3: Received wanted PARAM_VALUE SIM_SPEEDUP=100.000000
+AT-0002.3: SIM_SPEEDUP want=1.000000 autopilot=100.0 (attempt=2/10)
+AT-0002.3: Sending set (SIM_SPEEDUP) to (1.000000) (old=100.000000)
+AT-0002.4: Received wanted PARAM_VALUE SIM_SPEEDUP=1.000000
+AT-0002.4: SIM_SPEEDUP want=1.000000 autopilot=1.0 (attempt=3/10)
+AT-0002.4: SIM_SPEEDUP is now 1.000000
+AT-0002.4: Changing mode to ACRO
+AT-0002.6: Sending COMMAND_LONG to (1,1) (MAV_CMD_DO_SET_MODE=176) (p1=1.000000 p2=1.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.6: Got mode ACRO
+AT-0003.0: RC values good
+AT-0003.2: Waiting for Roll=180.00 with accuracy 20.00
+AT-0003.2: Roll 46 Pitch 0
+AT-0003.2: Roll=46.01 (want 180.000000 +- 20.000000)
+AT-0003.2: Roll 47 Pitch 0
+AT-0003.2: Roll 49 Pitch 0
+AT-0003.3: Roll 51 Pitch 0
+AT-0003.3: Roll 53 Pitch 0
+AT-0003.3: Roll 55 Pitch 0
+AT-0003.3: Roll 56 Pitch 0
+AT-0003.3: Roll 58 Pitch 0
+AT-0003.4: Roll 60 Pitch 0
+AT-0003.4: Roll 62 Pitch 0
+AT-0003.4: Roll 64 Pitch 0
+AT-0003.4: Roll 65 Pitch 0
+AT-0003.4: Roll 67 Pitch 0
+AT-0003.5: Roll 69 Pitch 0
+AT-0003.5: Roll 71 Pitch 0
+AT-0003.5: Roll 73 Pitch 0
+AT-0003.5: Roll 74 Pitch 0
+AT-0003.5: Roll 76 Pitch 0
+AT-0003.6: Roll 78 Pitch 0
+AT-0003.6: Roll 80 Pitch 0
+AT-0003.6: Roll 82 Pitch 0
+AT-0003.6: Roll 83 Pitch 0
+AT-0003.6: Roll 85 Pitch 0
+AT-0003.7: Roll 87 Pitch 0
+AT-0003.7: Roll 89 Pitch 0
+AT-0003.7: Roll 91 Pitch 0
+AT-0003.7: Roll 92 Pitch 0
+AT-0003.7: Roll 94 Pitch 0
+AT-0003.8: Roll 96 Pitch 0
+AT-0003.8: Roll 98 Pitch 0
+AT-0003.8: Roll 99 Pitch 0
+AT-0003.8: Roll 101 Pitch 0
+AT-0003.8: Roll 103 Pitch 0
+AT-0003.9: Roll 105 Pitch 0
+AT-0003.9: Roll 107 Pitch 0
+AT-0003.9: Roll 108 Pitch 0
+AT-0003.9: Roll 110 Pitch 0
+AT-0003.9: Roll 112 Pitch 0
+AT-0004.0: Roll 114 Pitch 0
+AT-0004.0: Roll 115 Pitch 0
+AT-0004.0: Roll 117 Pitch 0
+AT-0004.0: Roll 119 Pitch 0
+AT-0004.0: Roll 121 Pitch 0
+AT-0004.1: Roll 123 Pitch 0
+AT-0004.1: Roll 124 Pitch 0
+AT-0004.1: Roll 126 Pitch 0
+AT-0004.1: Roll 128 Pitch 0
+AT-0004.1: Roll 130 Pitch 0
+AT-0004.2: Roll 131 Pitch 0
+AT-0004.2: Roll 133 Pitch 0
+AT-0004.2: Roll 135 Pitch 0
+AT-0004.2: Roll 137 Pitch 0
+AT-0004.2: Roll 139 Pitch 0
+AT-0004.3: Roll 140 Pitch 0
+AT-0004.3: Roll 142 Pitch 0
+AT-0004.3: Roll 144 Pitch 0
+AT-0004.3: Roll 146 Pitch 0
+AT-0004.3: Roll 148 Pitch 0
+AT-0004.4: Roll 149 Pitch 0
+AT-0004.4: Roll 151 Pitch 0
+AT-0004.4: Roll 153 Pitch 0
+AT-0004.4: Roll=153.41 (want 180.000000 +- 20.000000)
+AT-0004.4: Roll 155 Pitch 0
+AT-0004.4: Roll 156 Pitch 0
+AT-0004.5: Roll 158 Pitch 0
+AT-0004.5: Roll 160 Pitch 0
+AT-0004.5: Attained Roll=160.5747830849
+AT-0004.8: RC values good
+AT-0004.8: Disarm motors with MAVLink cmd
+AT-0005.0: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0005.0: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0005.0: Waiting for DISARM
+AT-0005.0: AP: Disarming motors
+AT-0005.2: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0005.5: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0005.5: Changing mode to STABILIZE
+AT-0005.6: Sending COMMAND_LONG to (1,1) (MAV_CMD_DO_SET_MODE=176) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0005.6: Got mode STABILIZE
+AT-0005.6: Arm motors with MAVLink cmd
+AT-0005.8: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=2989.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0005.8: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0005.8: AP: Arming motors
+AT-0006.5: Motors ARMED
+AT-0006.8: Waiting for MAV_VTOL_STATE=MC MAV_LANDED_STATE=ON_GROUND
+AT-0006.9: Received (EXTENDED_SYS_STATE {vtol_state : 3, landed_state : 1})
+AT-0006.9: vtol and landed states match
+AT-0007.0: Waiting for Roll=180.00 with accuracy 45.00
+AT-0007.0: Roll 168 Pitch 0
+AT-0007.0: Roll=168.28 (got 180.000000 +- 45.000000)
+AT-0007.0: Attained Roll=168.28411322374177
+AT-0007.4: RC values good
+AT-0007.6: Waiting for Roll=0.00 with accuracy 20.00
+AT-0007.6: Roll 168 Pitch 0
+AT-0007.6: Roll=168.26 (want 0.000000 +- 20.000000)
+AT-0007.6: Roll 168 Pitch 0
+AT-0007.6: Roll 168 Pitch 0
+AT-0007.7: Roll 168 Pitch 0
+AT-0007.7: Roll 168 Pitch 0
+AT-0007.7: Roll 168 Pitch 0
+AT-0007.7: Roll 168 Pitch 0
+AT-0007.7: Roll 168 Pitch 0
+AT-0007.8: Roll 168 Pitch 0
+AT-0007.8: Roll 168 Pitch 0
+AT-0007.8: Roll 168 Pitch 0
+AT-0007.8: Roll 168 Pitch 0
+AT-0007.8: Roll 168 Pitch 0
+AT-0007.9: Roll 168 Pitch 0
+AT-0007.9: Roll 168 Pitch 0
+AT-0007.9: Roll 168 Pitch 0
+AT-0007.9: Roll 168 Pitch 0
+AT-0007.9: Roll 168 Pitch 0
+AT-0008.0: Roll 168 Pitch 0
+AT-0008.0: Roll 168 Pitch 0
+AT-0008.0: Roll 168 Pitch 0
+AT-0008.0: Roll 168 Pitch 0
+AT-0008.0: Roll 168 Pitch 0
+AT-0008.1: Roll 168 Pitch 0
+AT-0008.1: Roll 168 Pitch 0
+AT-0008.1: Roll 168 Pitch 0
+AT-0008.1: Roll 168 Pitch 0
+AT-0008.1: Roll 168 Pitch 0
+AT-0008.2: Roll 168 Pitch 0
+AT-0008.2: Roll 168 Pitch 0
+AT-0008.2: Roll 168 Pitch 0
+AT-0008.2: Roll 168 Pitch 0
+AT-0008.2: Roll 168 Pitch 0
+AT-0008.3: Roll 168 Pitch 0
+AT-0008.3: Roll 168 Pitch 0
+AT-0008.3: Roll 168 Pitch 0
+AT-0008.3: Roll 168 Pitch 0
+AT-0008.3: Roll 167 Pitch 0
+AT-0008.4: Roll 164 Pitch 0
+AT-0008.4: Roll 159 Pitch 0
+AT-0008.4: Roll 153 Pitch 0
+AT-0008.4: Roll 147 Pitch 0
+AT-0008.4: Roll 141 Pitch 0
+AT-0008.5: Roll 134 Pitch 0
+AT-0008.5: Roll 127 Pitch 0
+AT-0008.5: Roll 120 Pitch 0
+AT-0008.5: Roll 114 Pitch 0
+AT-0008.5: Roll 107 Pitch 0
+AT-0008.6: Roll 100 Pitch 0
+AT-0008.6: Roll 94 Pitch 0
+AT-0008.6: Roll 88 Pitch 0
+AT-0008.6: Roll 82 Pitch 0
+AT-0008.6: Roll 76 Pitch 0
+AT-0008.7: Roll 71 Pitch 0
+AT-0008.7: Roll 66 Pitch 0
+AT-0008.7: Roll 61 Pitch 0
+AT-0008.7: Roll 56 Pitch 0
+AT-0008.7: Roll 52 Pitch 0
+AT-0008.8: Roll 47 Pitch 0
+AT-0008.8: Roll 43 Pitch 0
+AT-0008.8: Roll 40 Pitch 0
+AT-0008.8: Roll=40.11 (want 0.000000 +- 20.000000)
+AT-0008.8: Roll 36 Pitch 0
+AT-0008.8: Roll 33 Pitch 0
+AT-0008.9: Roll 30 Pitch 0
+AT-0008.9: Roll 27 Pitch 0
+AT-0008.9: Roll 24 Pitch 0
+AT-0008.9: Roll 22 Pitch 0
+AT-0008.9: Roll 19 Pitch 0
+AT-0008.9: Attained Roll=19.79751675269352
+AT-0009.2: Waiting for MAV_VTOL_STATE=MC MAV_LANDED_STATE=IN_AIR
+AT-0009.3: Received (EXTENDED_SYS_STATE {vtol_state : 3, landed_state : 2})
+AT-0009.3: vtol and landed states match
+AT-0009.3:   statustext got=(PreArm: Need Position Estimate) want=(SIM Hit ground)
+AT-0009.3:   statustext got=(EKF3 IMU0 is using GPS) want=(SIM Hit ground)
+AT-0009.3:   statustext got=(EKF3 IMU1 is using GPS) want=(SIM Hit ground)
+AT-0009.3:   statustext got=(Arming motors) want=(SIM Hit ground)
+AT-0009.3:   statustext got=(EKF3 IMU0 MAG0 in-flight yaw alignment complete) want=(SIM Hit ground)
+AT-0009.3:   statustext got=(EKF3 IMU1 MAG0 in-flight yaw alignment complete) want=(SIM Hit ground)
+AT-0009.3:   statustext got=(Disarming motors) want=(SIM Hit ground)
+AT-0009.3:   statustext got=(Arming motors) want=(SIM Hit ground)
+AT-0009.4: Received (SYS_STATUS {onboard_control_sensors_present : 1399979055, onboard_control_sensors_enabled : 1398905903, onboard_control_sensors_health : 1467063343, load : 0, voltage_battery : 12143, current_battery : 4569, battery_remaining : 77, drop_rate_comm : 0, errors_comm : 0, errors_count1 : 0, errors_count2 : 0, errors_count3 : 0, errors_count4 : 0})
+AT-0009.4: SYS_STATUS.errors_count4 has expected value 0
+AT-0009.4: Disarm motors with MAVLink cmd
+AT-0009.6: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0009.6: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0009.6: Waiting for DISARM
+AT-0009.6: AP: Disarming motors
+AT-0009.8: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0010.5: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0010.5: Drained 0 messages from mav (0.000000/s)
+AT-0011.5: Rebooting SITL
+AT-0011.5: Sending param_request_read for (STAT_RESET)
+AT-0011.6: get_parameter(STAT_RESET): PARAM_VALUE {param_id : STAT_RESET, param_value : 1.0, param_type : 6, param_count : 1431, param_index : 65535}
+AT-0011.6: Sending param_request_read for (STAT_BOOTCNT)
+AT-0011.8: get_parameter(STAT_BOOTCNT): PARAM_VALUE {param_id : STAT_BOOTCNT, param_value : 2.0, param_type : 4, param_count : 1431, param_index : 65535}
+AT-0011.8: Sending reboot command
+AT-0011.8: Sending COMMAND_LONG to (1,1) (MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN=246) (p1=1.000000 p2=1.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0011.8: Sending param_request_read for (STAT_BOOTCNT)
+AT-0011.8: While awaiting reboot received (COMMAND_ACK {command : 246, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250})
+AT-0011.9: get_parameter(STAT_BOOTCNT): None
+AT-0011.9: Sending param_request_read for (STAT_BOOTCNT)
+EOF on TCP socket
+Attempting reconnect
+[Errno 111] Connection refused sleeping
+AT-0013.0: get_parameter(STAT_BOOTCNT): None
+AT-0013.0: Sending param_request_read for (STAT_BOOTCNT)
+AT-0013.1: get_parameter(STAT_BOOTCNT): PARAM_VALUE {param_id : STAT_BOOTCNT, param_value : 3.0, param_type : 4, param_count : 1421, param_index : 65535}
+AT-0013.1: current=3.0 required=3
+AT-0013.1: Doing timesync roundtrip
+AT-0013.1: Received: TIMESYNC {tc1 : 134435000, ts1 : 635655160058}
+AT-0013.1: Received TIMESYNC response after 0.000012s
+AT-0013.1: Calling initialise-after-reboot
+AT-0013.1: Drained 0 messages from mav (0.000000/s)
+AT-0013.1: AP: RCInput: decoding UDP (Pulses)
+AT-0013.3: AP: Calibrating barometer
+AT-0013.9: Doing timesync roundtrip
+AT-0014.0: Received: TIMESYNC {tc1 : 1009085000, ts1 : 639950127354}
+AT-0014.0: Received TIMESYNC response after 0.000015s
+AT-0014.9: AP: Barometer 1 calibration complete
+AT-0014.9: AP: Barometer 2 calibration complete
+AT-0015.4: AP: ArduPilot Ready
+AT-0015.7: AP: RC7: SaveWaypoint MIDDLE
+AT-0016.0: Reboot complete
+AT-0016.0: set_parameters: ({})
+AT-0016.0: Sending COMMAND_LONG to (1,1) (MAV_CMD_REQUEST_MESSAGE=512) (p1=164.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0016.0: Simstate Close to startup location: dist=0.000000 max=1.000000 (simstate: Location(lat=-35.3629380 lng=149.1650850 no-alt) start-loc: Location(lat=-35.3629380 lng=149.1650850 alt=584.08m-ABSOLUTE))
+AT-0016.0: Drained 0 messages from mav (0.000000/s)
+AT-0017.0: Sending COMMAND_LONG to (1,1) (MAV_CMD_SET_MESSAGE_INTERVAL=511) (p1=30.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0017.0: ACK received: COMMAND_ACK {command : 511, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0017.2: Sending COMMAND_LONG to (1,1) (MAV_CMD_SET_MESSAGE_INTERVAL=511) (p1=245.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0017.2: ACK received: COMMAND_ACK {command : 511, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0017.2: set_parameters: ({'ACRO_TRAINER': 2.0, 'ACRO_RP_RATE': 360.0, 'SIM_SPEEDUP': 100.0})
+AT-0017.2: ACRO_TRAINER want=2.000000 autopilot=None (attempt=1/30)
+AT-0017.2: Requesting (ACRO_TRAINER)
+AT-0017.2: ACRO_RP_RATE want=360.000000 autopilot=None (attempt=1/30)
+AT-0017.2: Requesting (ACRO_RP_RATE)
+AT-0017.2: SIM_SPEEDUP want=100.000000 autopilot=None (attempt=1/30)
+AT-0017.2: Requesting (SIM_SPEEDUP)
+AT-0017.4: AP: EKF3 IMU0 initialised
+AT-0017.4: AP: EKF3 IMU1 initialised
+AT-0017.4: AP: AHRS: EKF3 active
+AT-0017.4: Received wanted PARAM_VALUE ACRO_TRAINER=0.000000
+AT-0017.4: Received wanted PARAM_VALUE ACRO_RP_RATE=90.000000
+AT-0017.4: Received wanted PARAM_VALUE SIM_SPEEDUP=1.000000
+AT-0017.4: ACRO_TRAINER want=2.000000 autopilot=0.0 (attempt=2/30)
+AT-0017.4: Sending set (ACRO_TRAINER) to (2.000000) (old=0.000000)
+AT-0017.4: ACRO_RP_RATE want=360.000000 autopilot=90.0 (attempt=2/30)
+AT-0017.4: Sending set (ACRO_RP_RATE) to (360.000000) (old=90.000000)
+AT-0017.4: SIM_SPEEDUP want=100.000000 autopilot=1.0 (attempt=2/30)
+AT-0017.4: Sending set (SIM_SPEEDUP) to (100.000000) (old=1.000000)
+AT-0017.4: Received wanted PARAM_VALUE ACRO_TRAINER=2.000000
+AT-0017.4: Received wanted PARAM_VALUE ACRO_RP_RATE=360.000000
+AT-0017.4: Received wanted PARAM_VALUE SIM_SPEEDUP=100.000000
+AT-0017.4: ACRO_TRAINER want=2.000000 autopilot=2.0 (attempt=3/30)
+AT-0017.4: ACRO_TRAINER is now 2.000000
+AT-0017.4: ACRO_RP_RATE want=360.000000 autopilot=360.0 (attempt=3/30)
+AT-0017.4: ACRO_RP_RATE is now 360.000000
+AT-0017.4: SIM_SPEEDUP want=100.000000 autopilot=100.0 (attempt=3/30)
+AT-0017.4: SIM_SPEEDUP is now 100.000000
+AT-0017.4: Doing implicit context-pop reboot
+AT-0017.4: Drained 0 messages from mav (0.000000/s)
+AT-0017.4: Rebooting SITL
+AT-0017.4: Sending param_request_read for (STAT_RESET)
+AT-0017.4: get_parameter(STAT_RESET): PARAM_VALUE {param_id : STAT_RESET, param_value : 1.0, param_type : 6, param_count : 1431, param_index : 65535}
+AT-0017.4: Sending param_request_read for (STAT_BOOTCNT)
+AT-0017.4: get_parameter(STAT_BOOTCNT): PARAM_VALUE {param_id : STAT_BOOTCNT, param_value : 3.0, param_type : 4, param_count : 1431, param_index : 65535}
+AT-0017.4: Sending reboot command
+AT-0017.4: Sending COMMAND_LONG to (1,1) (MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN=246) (p1=1.000000 p2=1.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0017.4: Sending param_request_read for (STAT_BOOTCNT)
+AT-0017.4: While awaiting reboot received (COMMAND_ACK {command : 246, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250})
+EOF on TCP socket
+Attempting reconnect
+[Errno 111] Connection refused sleeping
+AT-0018.4: get_parameter(STAT_BOOTCNT): None
+AT-0018.4: Sending param_request_read for (STAT_BOOTCNT)
+AT-0018.4: get_parameter(STAT_BOOTCNT): PARAM_VALUE {param_id : STAT_BOOTCNT, param_value : 4.0, param_type : 4, param_count : 1421, param_index : 65535}
+AT-0018.4: current=4.0 required=4
+AT-0018.4: Doing timesync roundtrip
+AT-0018.4: AP: RCInput: decoding UDP (Pulses)
+AT-0018.4: Received: TIMESYNC {tc1 : 198576000, ts1 : 652835029242}
+AT-0018.4: Received TIMESYNC response after 0.000014s
+AT-0018.4: Calling initialise-after-reboot
+AT-0018.4: Drained 0 messages from mav (0.000000/s)
+AT-0018.4: AP: Calibrating barometer
+AT-0018.4: Doing timesync roundtrip
+AT-0018.4: Received: TIMESYNC {tc1 : 1038240000, ts1 : 657129996538}
+AT-0018.4: Received TIMESYNC response after 0.000011s
+AT-0018.4: AP: Barometer 1 calibration complete
+AT-0018.4: AP: Barometer 2 calibration complete
+AT-0018.4: AP: ArduPilot Ready
+AT-0018.4: AP: RC7: SaveWaypoint MIDDLE
+AT-0018.4: Reboot complete
+AT-0018.4: set_parameters: ({})
+AT-0018.4: Sending COMMAND_LONG to (1,1) (MAV_CMD_REQUEST_MESSAGE=512) (p1=164.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0018.4: Simstate Close to startup location: dist=0.000000 max=1.000000 (simstate: Location(lat=-35.3629380 lng=149.1650850 no-alt) start-loc: Location(lat=-35.3629380 lng=149.1650850 alt=584.08m-ABSOLUTE))
+AT-0018.4: Drained 0 messages from mav (0.000000/s)
+AT-0018.4: Sending COMMAND_LONG to (1,1) (MAV_CMD_REQUEST_MESSAGE=512) (p1=164.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0018.4: Simstate Close to startup location: dist=0.000000 max=2.000000 (simstate: Location(lat=-35.3629380 lng=149.1650850 no-alt) start-loc: Location(lat=-35.3629380 lng=149.1650850 alt=584.08m-ABSOLUTE))
+AT-0018.4: Downloading parameters
+AT-0018.4: AP: ArduCopter V4.8.0-dev (31fca549)
+AT-0018.4: AP: 3b082c7f056148a0aa0830c3b6ddd4e6
+AT-0018.4: AP: Frame: QUAD/PLUS
+AT-0018.5: AP: EKF3 IMU0 initialised
+AT-0018.5: AP: EKF3 IMU1 initialised
+AT-0018.5: AP: AHRS: EKF3 active
+AT-0018.5: Downloaded 1431 parameters OK (attempt=1)
+AT-0018.5: Parameter leak check: clean
+AT-0018.5: Received (MISSION_ACK {target_system : 250, target_component : 250, type : 0, mission_type : 1})
+AT-0018.5: MISSION_ACK.target_system has expected value 250
+AT-0018.5: MISSION_ACK.target_component has expected value 250
+AT-0018.5: MISSION_ACK.type has expected value 0 (MAV_MISSION_ACCEPTED)
+AT-0018.5: AP: Fence Indexed OK
+AT-0018.5: Received (MISSION_ACK {target_system : 250, target_component : 250, type : 0, mission_type : 0})
+AT-0018.5: MISSION_ACK.target_system has expected value 250
+AT-0018.5: MISSION_ACK.target_component has expected value 250
+AT-0018.5: MISSION_ACK.type has expected value 0 (MAV_MISSION_ACCEPTED)
+AT-0018.5: AP: Flight plan received
+AT-0018.5: Received (MISSION_ACK {target_system : 250, target_component : 250, type : 0, mission_type : 2})
+AT-0018.5: MISSION_ACK.target_system has expected value 250
+AT-0018.5: MISSION_ACK.target_component has expected value 250
+AT-0018.5: MISSION_ACK.type has expected value 0 (MAV_MISSION_ACCEPTED)
+AT-0018.5: Received (MISSION_ACK {target_system : 250, target_component : 250, type : 0, mission_type : 0})
+AT-0018.5: MISSION_ACK.target_system has expected value 250
+AT-0018.5: MISSION_ACK.target_component has expected value 250
+AT-0018.5: MISSION_ACK.type has expected value 0 (MAV_MISSION_ACCEPTED)
+AT-0018.5: PASSED: "StabilizeInvertedLanded (right a copter in Stabilize that is inverted but believes it has landed)"
