@@ -1,0 +1,992 @@
+AT-0001.1: ##################################################################################
+AT-0001.1: ########## ZZRaceProbe (throwaway: rate thread airmode throttle punch from zero)  ##########
+AT-0001.1: ##################################################################################
+AT-0001.1: Downloading parameters
+AT-0001.1: AP: ArduCopter V4.8.0-dev (31fca549)
+AT-0001.1: AP: 3b082c7f056148a0aa0830c3b6ddd4e6
+AT-0001.1: AP: Frame: QUAD/PLUS
+AT-0001.2: Downloaded 1431 parameters OK (attempt=1)
+AT-0001.2: Doing timesync roundtrip
+AT-0001.2: Received: TIMESYNC {tc1 : 7184947000, ts1 : 609885356282}
+AT-0001.2: Received TIMESYNC response after 0.000000s
+AT-0001.2: RC values good
+AT-0001.2: Changing mode to STABILIZE
+AT-0001.2: Sending COMMAND_LONG to (1,1) (MAV_CMD_DO_SET_MODE=176) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0001.2: Got mode STABILIZE
+AT-0001.2: set_parameters: ({'FSTRATE_ENABLE': 1, 'ACRO_OPTIONS': 1})
+AT-0001.2: FSTRATE_ENABLE want=1.000000 autopilot=None (attempt=1/20)
+AT-0001.2: Requesting (FSTRATE_ENABLE)
+AT-0001.2: ACRO_OPTIONS want=1.000000 autopilot=None (attempt=1/20)
+AT-0001.2: Requesting (ACRO_OPTIONS)
+AT-0001.2: Received wanted PARAM_VALUE FSTRATE_ENABLE=0.000000
+AT-0001.2: Received wanted PARAM_VALUE ACRO_OPTIONS=0.000000
+AT-0001.2: FSTRATE_ENABLE want=1.000000 autopilot=0.0 (attempt=2/20)
+AT-0001.2: Sending set (FSTRATE_ENABLE) to (1.000000) (old=0.000000)
+AT-0001.2: ACRO_OPTIONS want=1.000000 autopilot=0.0 (attempt=2/20)
+AT-0001.2: Sending set (ACRO_OPTIONS) to (1.000000) (old=0.000000)
+AT-0001.2: Received wanted PARAM_VALUE FSTRATE_ENABLE=1.000000
+AT-0001.2: Received wanted PARAM_VALUE ACRO_OPTIONS=1.000000
+AT-0001.2: FSTRATE_ENABLE want=1.000000 autopilot=1.0 (attempt=3/20)
+AT-0001.2: FSTRATE_ENABLE is now 1.000000
+AT-0001.2: ACRO_OPTIONS want=1.000000 autopilot=1.0 (attempt=3/20)
+AT-0001.2: ACRO_OPTIONS is now 1.000000
+AT-0001.2: Drained 0 messages from mav (0.000000/s)
+AT-0001.2: AP: Rate CPU normal, rate set to 999Hz
+AT-0001.2: AP: Rate CPU normal, rate set to 999Hz
+AT-0001.2: AP: GPS 1: probing for u-blox at 230400 baud
+AT-0001.2: AP: GPS 1: detected u-blox
+AT-0001.2: Rebooting SITL
+AT-0001.2: Sending param_request_read for (STAT_RESET)
+AT-0001.2: get_parameter(STAT_RESET): PARAM_VALUE {param_id : STAT_RESET, param_value : 1.0, param_type : 6, param_count : 1431, param_index : 65535}
+AT-0001.2: Sending param_request_read for (STAT_BOOTCNT)
+AT-0001.2: get_parameter(STAT_BOOTCNT): PARAM_VALUE {param_id : STAT_BOOTCNT, param_value : 2.0, param_type : 4, param_count : 1431, param_index : 65535}
+AT-0001.2: Sending reboot command
+AT-0001.2: Sending COMMAND_LONG to (1,1) (MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN=246) (p1=1.000000 p2=1.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0001.2: Sending param_request_read for (STAT_BOOTCNT)
+AT-0001.2: While awaiting reboot received (COMMAND_ACK {command : 246, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250})
+EOF on TCP socket
+Attempting reconnect
+[Errno 111] Connection refused sleeping
+AT-0002.2: get_parameter(STAT_BOOTCNT): None
+AT-0002.2: Sending param_request_read for (STAT_BOOTCNT)
+AT-0002.2: get_parameter(STAT_BOOTCNT): PARAM_VALUE {param_id : STAT_BOOTCNT, param_value : 3.0, param_type : 4, param_count : 1421, param_index : 65535}
+AT-0002.2: current=3.0 required=3
+AT-0002.2: Doing timesync roundtrip
+AT-0002.2: AP: RCInput: decoding UDP (Pulses)
+AT-0002.2: Received: TIMESYNC {tc1 : 200242000, ts1 : 622770258170}
+AT-0002.2: Received TIMESYNC response after 0.000011s
+AT-0002.2: Calling initialise-after-reboot
+AT-0002.2: AP: Calibrating barometer
+AT-0002.2: Drained 2 messages from mav (49344.752941/s)
+AT-0002.2: Doing timesync roundtrip
+AT-0002.2: Received: TIMESYNC {tc1 : 1043238000, ts1 : 627065225466}
+AT-0002.2: Received TIMESYNC response after 0.000009s
+AT-0002.2: AP: Barometer 1 calibration complete
+AT-0002.2: AP: Barometer 2 calibration complete
+AT-0002.2: AP: ArduPilot Ready
+AT-0002.2: AP: RC7: SaveWaypoint MIDDLE
+AT-0002.2: Reboot complete
+AT-0002.2: set_parameters: ({})
+AT-0002.2: Sending COMMAND_LONG to (1,1) (MAV_CMD_REQUEST_MESSAGE=512) (p1=164.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.2: Simstate Close to startup location: dist=0.000000 max=1.000000 (simstate: Location(lat=-35.3629380 lng=149.1650850 no-alt) start-loc: Location(lat=-35.3629380 lng=149.1650850 alt=584.08m-ABSOLUTE))
+AT-0002.2: Changing mode to ACRO
+AT-0002.2: Sending COMMAND_LONG to (1,1) (MAV_CMD_DO_SET_MODE=176) (p1=1.000000 p2=1.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.2: AP: Rate CPU normal, rate set to 999Hz
+AT-0002.2: AP: Rate CPU normal, rate set to 999Hz
+AT-0002.2: Got mode ACRO
+AT-0002.2: Waiting for ready to arm
+AT-0002.2: Sending param_request_read for (AHRS_EKF_TYPE)
+AT-0002.2: get_parameter(AHRS_EKF_TYPE): PARAM_VALUE {param_id : AHRS_EKF_TYPE, param_value : 3.0, param_type : 2, param_count : 1431, param_index : 65535}
+AT-0002.2: Waiting for EKF value 831
+AT-0002.2: AP: EKF3 IMU0 initialised
+AT-0002.2: AP: EKF3 IMU1 initialised
+AT-0002.2: AP: AHRS: EKF3 active
+AT-0002.2: Want=831 got=1024 errors=1024
+AT-0002.2: Want=831 got=0 errors=0
+AT-0002.2: AP: EKF3 IMU1 tilt alignment complete
+AT-0002.2: AP: EKF3 IMU0 tilt alignment complete
+AT-0002.2: AP: EKF3 IMU1 MAG0 initial yaw alignment complete
+AT-0002.2: AP: EKF3 IMU0 MAG0 initial yaw alignment complete
+AT-0002.2: Want=831 got=167 errors=128
+AT-0002.2: Want=831 got=167 errors=128
+AT-0002.3: Want=831 got=167 errors=128
+AT-0002.3: AP: GPS 1: probing for u-blox at 230400 baud
+AT-0002.3: AP: GPS 1: detected u-blox
+AT-0002.3: Want=831 got=167 errors=128
+AT-0002.3: AP: Rate CPU high, rate set to 499Hz
+AT-0002.3: AP: Rate CPU normal, rate set to 999Hz
+AT-0002.3: Want=831 got=167 errors=128
+AT-0002.3: Want=831 got=167 errors=128
+AT-0002.3: AP: Rate CPU high, rate set to 500Hz
+AT-0002.3: AP: Rate CPU normal, rate set to 1000Hz
+AT-0002.3: Want=831 got=167 errors=128
+AT-0002.3: Want=831 got=167 errors=128
+AT-0002.3: Want=831 got=167 errors=128
+AT-0002.3: Want=831 got=167 errors=128
+AT-0002.3: Want=831 got=167 errors=128
+AT-0002.3: AP: EKF3 IMU1 origin set
+AT-0002.3: AP: Field Elevation Set: 584m
+AT-0002.3: Want=831 got=167 errors=128
+AT-0002.3: AP: EKF3 IMU0 origin set
+AT-0002.3: Want=831 got=167 errors=128
+AT-0002.3: Want=831 got=167 errors=128
+AT-0002.4: Want=831 got=167 errors=128
+AT-0002.4: Want=831 got=167 errors=128
+AT-0002.4: Want=831 got=167 errors=128
+AT-0002.4: Want=831 got=167 errors=128
+AT-0002.4: Want=831 got=167 errors=128
+AT-0002.4: Want=831 got=167 errors=128
+AT-0002.4: Want=831 got=167 errors=128
+AT-0002.4: Want=831 got=167 errors=128
+AT-0002.4: Want=831 got=167 errors=128
+AT-0002.5: Want=831 got=167 errors=128
+AT-0002.5: Want=831 got=167 errors=128
+AT-0002.5: Want=831 got=167 errors=128
+AT-0002.5: Want=831 got=167 errors=128
+AT-0002.5: Want=831 got=167 errors=128
+AT-0002.5: Want=831 got=167 errors=128
+AT-0002.5: AP: EKF3 IMU0 is using GPS
+AT-0002.5: AP: EKF3 IMU1 is using GPS
+AT-0002.5: Want=831 got=831 errors=0
+AT-0002.5: EKF Flags OK
+AT-0002.5: Waiting for GPS health
+AT-0002.5: GPS healthy after 0.000000/30.000000 seconds
+AT-0002.5: Polled home position (HOME_POSITION {latitude : -353629380, longitude : 1491650850, altitude : 584090, x : 0.0, y : 0.0, z : -0.0, q : [nan, nan, nan, nan], approach_x : 0.0, approach_y : 0.0, approach_z : 0.0, time_usec : 42562135})
+AT-0002.5: Doing timesync roundtrip
+AT-0002.5: Received: TIMESYNC {tc1 : 42772373000, ts1 : 631360192762}
+AT-0002.5: Received TIMESYNC response after 0.000000s
+AT-0002.5: Took 39 seconds to become armable
+AT-0002.5: RC values good
+AT-0002.5: Arm motors with MAVLink cmd
+AT-0002.5: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.5: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0002.5: AP: Arming motors
+AT-0002.5: Motors ARMED
+AT-0002.6: Delaying 1.000000 seconds for spool up
+AT-0002.6: RC values good
+AT-0002.6: Delaying 0.200000 seconds for punch
+AT-0002.6: RC values good
+AT-0002.6: Disarm motors with MAVLink cmd
+AT-0002.6: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.6: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0002.6: Waiting for DISARM
+AT-0002.6: AP: Disarming motors
+AT-0002.6: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0002.6: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0002.6: Delaying 2.000000 seconds for settle
+AT-0002.6: PROBE punch 0 errors_count4=0
+AT-0002.6: RC values good
+AT-0002.6: Arm motors with MAVLink cmd
+AT-0002.6: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.6: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0002.6: AP: Arming motors
+AT-0002.6: Motors ARMED
+AT-0002.6: Delaying 1.000000 seconds for spool up
+AT-0002.6: RC values good
+AT-0002.6: Delaying 0.200000 seconds for punch
+AT-0002.6: RC values good
+AT-0002.6: Disarm motors with MAVLink cmd
+AT-0002.6: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.6: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0002.6: Waiting for DISARM
+AT-0002.6: AP: Disarming motors
+AT-0002.6: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0002.6: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0002.6: Delaying 2.000000 seconds for settle
+AT-0002.7: PROBE punch 1 errors_count4=0
+AT-0002.7: RC values good
+AT-0002.7: Arm motors with MAVLink cmd
+AT-0002.7: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.7: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0002.7: AP: Arming motors
+AT-0002.7: Motors ARMED
+AT-0002.7: Delaying 1.000000 seconds for spool up
+AT-0002.7: RC values good
+AT-0002.7: Delaying 0.200000 seconds for punch
+AT-0002.7: RC values good
+AT-0002.7: Disarm motors with MAVLink cmd
+AT-0002.7: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.7: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0002.7: Waiting for DISARM
+AT-0002.7: AP: Disarming motors
+AT-0002.7: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0002.7: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0002.7: Delaying 2.000000 seconds for settle
+AT-0002.7: PROBE punch 2 errors_count4=0
+AT-0002.7: RC values good
+AT-0002.7: Arm motors with MAVLink cmd
+AT-0002.7: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.7: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0002.7: AP: Arming motors
+AT-0002.7: Motors ARMED
+AT-0002.7: Delaying 1.000000 seconds for spool up
+AT-0002.7: RC values good
+AT-0002.7: Delaying 0.200000 seconds for punch
+AT-0002.7: RC values good
+AT-0002.7: Disarm motors with MAVLink cmd
+AT-0002.7: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.7: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0002.7: Waiting for DISARM
+AT-0002.7: AP: Disarming motors
+AT-0002.7: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0002.8: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0002.8: Delaying 2.000000 seconds for settle
+AT-0002.8: PROBE punch 3 errors_count4=0
+AT-0002.8: RC values good
+AT-0002.8: Arm motors with MAVLink cmd
+AT-0002.8: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.8: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0002.8: AP: Arming motors
+AT-0002.8: Motors ARMED
+AT-0002.8: Delaying 1.000000 seconds for spool up
+AT-0002.8: RC values good
+AT-0002.8: Delaying 0.200000 seconds for punch
+AT-0002.8: RC values good
+AT-0002.8: Disarm motors with MAVLink cmd
+AT-0002.8: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.8: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0002.8: Waiting for DISARM
+AT-0002.8: AP: Disarming motors
+AT-0002.8: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0002.8: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0002.8: Delaying 2.000000 seconds for settle
+AT-0002.8: PROBE punch 4 errors_count4=0
+AT-0002.8: RC values good
+AT-0002.8: Arm motors with MAVLink cmd
+AT-0002.8: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.8: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0002.8: AP: Arming motors
+AT-0002.8: Motors ARMED
+AT-0002.8: Delaying 1.000000 seconds for spool up
+AT-0002.9: RC values good
+AT-0002.9: Delaying 0.200000 seconds for punch
+AT-0002.9: RC values good
+AT-0002.9: Disarm motors with MAVLink cmd
+AT-0002.9: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.9: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0002.9: Waiting for DISARM
+AT-0002.9: AP: Disarming motors
+AT-0002.9: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0002.9: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0002.9: Delaying 2.000000 seconds for settle
+AT-0002.9: PROBE punch 5 errors_count4=0
+AT-0002.9: RC values good
+AT-0002.9: Arm motors with MAVLink cmd
+AT-0002.9: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.9: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0002.9: AP: Arming motors
+AT-0002.9: Motors ARMED
+AT-0002.9: Delaying 1.000000 seconds for spool up
+AT-0002.9: RC values good
+AT-0002.9: Delaying 0.200000 seconds for punch
+AT-0002.9: RC values good
+AT-0002.9: Disarm motors with MAVLink cmd
+AT-0002.9: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0002.9: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0002.9: Waiting for DISARM
+AT-0002.9: AP: Disarming motors
+AT-0002.9: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0002.9: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0002.9: Delaying 2.000000 seconds for settle
+AT-0002.9: PROBE punch 6 errors_count4=0
+AT-0003.0: RC values good
+AT-0003.0: Arm motors with MAVLink cmd
+AT-0003.0: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.0: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.0: AP: Arming motors
+AT-0003.0: Motors ARMED
+AT-0003.0: Delaying 1.000000 seconds for spool up
+AT-0003.0: RC values good
+AT-0003.0: Delaying 0.200000 seconds for punch
+AT-0003.0: RC values good
+AT-0003.0: Disarm motors with MAVLink cmd
+AT-0003.0: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.0: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.0: Waiting for DISARM
+AT-0003.0: AP: Disarming motors
+AT-0003.0: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.0: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.0: Delaying 2.000000 seconds for settle
+AT-0003.0: PROBE punch 7 errors_count4=0
+AT-0003.0: RC values good
+AT-0003.0: Arm motors with MAVLink cmd
+AT-0003.0: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.0: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.0: AP: Arming motors
+AT-0003.0: Motors ARMED
+AT-0003.0: Delaying 1.000000 seconds for spool up
+AT-0003.0: RC values good
+AT-0003.0: Delaying 0.200000 seconds for punch
+AT-0003.0: RC values good
+AT-0003.0: Disarm motors with MAVLink cmd
+AT-0003.0: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.0: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.0: Waiting for DISARM
+AT-0003.0: AP: Disarming motors
+AT-0003.0: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.0: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.0: Delaying 2.000000 seconds for settle
+AT-0003.1: PROBE punch 8 errors_count4=0
+AT-0003.1: RC values good
+AT-0003.1: Arm motors with MAVLink cmd
+AT-0003.1: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.1: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.1: AP: Arming motors
+AT-0003.1: Motors ARMED
+AT-0003.1: Delaying 1.000000 seconds for spool up
+AT-0003.1: RC values good
+AT-0003.1: Delaying 0.200000 seconds for punch
+AT-0003.1: RC values good
+AT-0003.1: Disarm motors with MAVLink cmd
+AT-0003.1: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.1: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.1: Waiting for DISARM
+AT-0003.1: AP: Disarming motors
+AT-0003.1: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.1: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.1: Delaying 2.000000 seconds for settle
+AT-0003.1: PROBE punch 9 errors_count4=0
+AT-0003.1: RC values good
+AT-0003.1: Arm motors with MAVLink cmd
+AT-0003.1: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.1: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.1: AP: Arming motors
+AT-0003.1: Motors ARMED
+AT-0003.1: Delaying 1.000000 seconds for spool up
+AT-0003.1: RC values good
+AT-0003.1: Delaying 0.200000 seconds for punch
+AT-0003.2: RC values good
+AT-0003.2: Disarm motors with MAVLink cmd
+AT-0003.2: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.2: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.2: Waiting for DISARM
+AT-0003.2: AP: Disarming motors
+AT-0003.2: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.2: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.2: Delaying 2.000000 seconds for settle
+AT-0003.2: PROBE punch 10 errors_count4=0
+AT-0003.2: RC values good
+AT-0003.2: Arm motors with MAVLink cmd
+AT-0003.2: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.2: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.2: AP: Arming motors
+AT-0003.2: Motors ARMED
+AT-0003.2: Delaying 1.000000 seconds for spool up
+AT-0003.2: RC values good
+AT-0003.2: Delaying 0.200000 seconds for punch
+AT-0003.2: RC values good
+AT-0003.2: Disarm motors with MAVLink cmd
+AT-0003.2: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.2: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.2: Waiting for DISARM
+AT-0003.2: AP: Disarming motors
+AT-0003.2: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.2: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.2: Delaying 2.000000 seconds for settle
+AT-0003.2: PROBE punch 11 errors_count4=0
+AT-0003.2: RC values good
+AT-0003.2: Arm motors with MAVLink cmd
+AT-0003.2: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.2: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.2: AP: Arming motors
+AT-0003.2: Motors ARMED
+AT-0003.2: Delaying 1.000000 seconds for spool up
+AT-0003.3: RC values good
+AT-0003.3: Delaying 0.200000 seconds for punch
+AT-0003.3: RC values good
+AT-0003.3: Disarm motors with MAVLink cmd
+AT-0003.3: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.3: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.3: Waiting for DISARM
+AT-0003.3: AP: Disarming motors
+AT-0003.3: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.3: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.3: Delaying 2.000000 seconds for settle
+AT-0003.3: PROBE punch 12 errors_count4=0
+AT-0003.3: RC values good
+AT-0003.3: Arm motors with MAVLink cmd
+AT-0003.3: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.3: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.3: AP: Arming motors
+AT-0003.3: Motors ARMED
+AT-0003.3: Delaying 1.000000 seconds for spool up
+AT-0003.3: RC values good
+AT-0003.3: Delaying 0.200000 seconds for punch
+AT-0003.3: RC values good
+AT-0003.3: Disarm motors with MAVLink cmd
+AT-0003.3: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.3: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.3: Waiting for DISARM
+AT-0003.3: AP: Disarming motors
+AT-0003.3: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.3: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.3: Delaying 2.000000 seconds for settle
+AT-0003.4: PROBE punch 13 errors_count4=0
+AT-0003.4: RC values good
+AT-0003.4: Arm motors with MAVLink cmd
+AT-0003.4: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.4: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.4: AP: Arming motors
+AT-0003.4: Motors ARMED
+AT-0003.4: Delaying 1.000000 seconds for spool up
+AT-0003.4: RC values good
+AT-0003.4: Delaying 0.200000 seconds for punch
+AT-0003.4: RC values good
+AT-0003.4: Disarm motors with MAVLink cmd
+AT-0003.4: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.4: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.4: Waiting for DISARM
+AT-0003.4: AP: Disarming motors
+AT-0003.4: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.4: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.4: Delaying 2.000000 seconds for settle
+AT-0003.4: PROBE punch 14 errors_count4=0
+AT-0003.4: RC values good
+AT-0003.4: Arm motors with MAVLink cmd
+AT-0003.4: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.4: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.4: AP: Arming motors
+AT-0003.4: Motors ARMED
+AT-0003.4: Delaying 1.000000 seconds for spool up
+AT-0003.4: RC values good
+AT-0003.4: Delaying 0.200000 seconds for punch
+AT-0003.4: RC values good
+AT-0003.4: Disarm motors with MAVLink cmd
+AT-0003.4: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.4: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.4: Waiting for DISARM
+AT-0003.4: AP: Disarming motors
+AT-0003.4: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.4: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.5: Delaying 2.000000 seconds for settle
+AT-0003.5: PROBE punch 15 errors_count4=0
+AT-0003.5: RC values good
+AT-0003.5: Arm motors with MAVLink cmd
+AT-0003.5: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.5: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.5: AP: Arming motors
+AT-0003.5: Motors ARMED
+AT-0003.5: Delaying 1.000000 seconds for spool up
+AT-0003.5: RC values good
+AT-0003.5: Delaying 0.200000 seconds for punch
+AT-0003.5: RC values good
+AT-0003.5: Disarm motors with MAVLink cmd
+AT-0003.5: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.5: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.5: Waiting for DISARM
+AT-0003.5: AP: Disarming motors
+AT-0003.5: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.5: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.5: Delaying 2.000000 seconds for settle
+AT-0003.5: PROBE punch 16 errors_count4=0
+AT-0003.5: RC values good
+AT-0003.5: Arm motors with MAVLink cmd
+AT-0003.5: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.5: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.5: AP: Arming motors
+AT-0003.5: Motors ARMED
+AT-0003.5: Delaying 1.000000 seconds for spool up
+AT-0003.6: RC values good
+AT-0003.6: Delaying 0.200000 seconds for punch
+AT-0003.6: RC values good
+AT-0003.6: Disarm motors with MAVLink cmd
+AT-0003.6: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.6: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.6: Waiting for DISARM
+AT-0003.6: AP: Disarming motors
+AT-0003.6: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.6: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.6: Delaying 2.000000 seconds for settle
+AT-0003.6: PROBE punch 17 errors_count4=0
+AT-0003.6: RC values good
+AT-0003.6: Arm motors with MAVLink cmd
+AT-0003.6: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.6: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.6: AP: Arming motors
+AT-0003.6: Motors ARMED
+AT-0003.6: Delaying 1.000000 seconds for spool up
+AT-0003.6: RC values good
+AT-0003.6: Delaying 0.200000 seconds for punch
+AT-0003.6: RC values good
+AT-0003.6: Disarm motors with MAVLink cmd
+AT-0003.6: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.6: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.6: Waiting for DISARM
+AT-0003.6: AP: Disarming motors
+AT-0003.6: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.6: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.6: Delaying 2.000000 seconds for settle
+AT-0003.6: PROBE punch 18 errors_count4=0
+AT-0003.7: RC values good
+AT-0003.7: Arm motors with MAVLink cmd
+AT-0003.7: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.7: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.7: AP: Arming motors
+AT-0003.7: Motors ARMED
+AT-0003.7: Delaying 1.000000 seconds for spool up
+AT-0003.7: RC values good
+AT-0003.7: Delaying 0.200000 seconds for punch
+AT-0003.7: RC values good
+AT-0003.7: Disarm motors with MAVLink cmd
+AT-0003.7: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.7: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.7: Waiting for DISARM
+AT-0003.7: AP: Disarming motors
+AT-0003.7: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.7: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.7: Delaying 2.000000 seconds for settle
+AT-0003.7: PROBE punch 19 errors_count4=0
+AT-0003.7: RC values good
+AT-0003.7: Arm motors with MAVLink cmd
+AT-0003.7: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.7: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.7: AP: Arming motors
+AT-0003.7: Motors ARMED
+AT-0003.7: Delaying 1.000000 seconds for spool up
+AT-0003.7: RC values good
+AT-0003.7: Delaying 0.200000 seconds for punch
+AT-0003.7: RC values good
+AT-0003.7: Disarm motors with MAVLink cmd
+AT-0003.7: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.7: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.7: Waiting for DISARM
+AT-0003.7: AP: Disarming motors
+AT-0003.7: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.7: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.7: Delaying 2.000000 seconds for settle
+AT-0003.8: PROBE punch 20 errors_count4=0
+AT-0003.8: RC values good
+AT-0003.8: Arm motors with MAVLink cmd
+AT-0003.8: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.8: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.8: AP: Arming motors
+AT-0003.8: Motors ARMED
+AT-0003.8: Delaying 1.000000 seconds for spool up
+AT-0003.8: RC values good
+AT-0003.8: Delaying 0.200000 seconds for punch
+AT-0003.8: RC values good
+AT-0003.8: Disarm motors with MAVLink cmd
+AT-0003.8: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.8: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.8: Waiting for DISARM
+AT-0003.8: AP: Disarming motors
+AT-0003.8: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.8: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.8: Delaying 2.000000 seconds for settle
+AT-0003.8: PROBE punch 21 errors_count4=0
+AT-0003.8: RC values good
+AT-0003.8: Arm motors with MAVLink cmd
+AT-0003.8: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.8: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.8: AP: Arming motors
+AT-0003.8: Motors ARMED
+AT-0003.8: Delaying 1.000000 seconds for spool up
+AT-0003.8: RC values good
+AT-0003.8: Delaying 0.200000 seconds for punch
+AT-0003.8: RC values good
+AT-0003.8: Disarm motors with MAVLink cmd
+AT-0003.9: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.9: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.9: Waiting for DISARM
+AT-0003.9: AP: Disarming motors
+AT-0003.9: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.9: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.9: Delaying 2.000000 seconds for settle
+AT-0003.9: PROBE punch 22 errors_count4=0
+AT-0003.9: RC values good
+AT-0003.9: Arm motors with MAVLink cmd
+AT-0003.9: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.9: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.9: AP: Arming motors
+AT-0003.9: Motors ARMED
+AT-0003.9: Delaying 1.000000 seconds for spool up
+AT-0003.9: RC values good
+AT-0003.9: Delaying 0.200000 seconds for punch
+AT-0003.9: RC values good
+AT-0003.9: Disarm motors with MAVLink cmd
+AT-0003.9: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.9: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.9: Waiting for DISARM
+AT-0003.9: AP: Disarming motors
+AT-0003.9: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0003.9: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0003.9: Delaying 2.000000 seconds for settle
+AT-0003.9: AP: Rate CPU high, rate set to 500Hz
+AT-0003.9: AP: Rate CPU normal, rate set to 1000Hz
+AT-0003.9: PROBE punch 23 errors_count4=0
+AT-0003.9: RC values good
+AT-0003.9: Arm motors with MAVLink cmd
+AT-0003.9: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0003.9: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0003.9: AP: Arming motors
+AT-0003.9: Motors ARMED
+AT-0003.9: Delaying 1.000000 seconds for spool up
+AT-0004.0: RC values good
+AT-0004.0: Delaying 0.200000 seconds for punch
+AT-0004.0: RC values good
+AT-0004.0: Disarm motors with MAVLink cmd
+AT-0004.0: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.0: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.0: Waiting for DISARM
+AT-0004.0: AP: Disarming motors
+AT-0004.0: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.0: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.0: Delaying 2.000000 seconds for settle
+AT-0004.0: PROBE punch 24 errors_count4=0
+AT-0004.0: RC values good
+AT-0004.0: Arm motors with MAVLink cmd
+AT-0004.0: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.0: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.0: AP: Arming motors
+AT-0004.0: Motors ARMED
+AT-0004.0: Delaying 1.000000 seconds for spool up
+AT-0004.0: RC values good
+AT-0004.0: Delaying 0.200000 seconds for punch
+AT-0004.0: RC values good
+AT-0004.0: Disarm motors with MAVLink cmd
+AT-0004.0: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.0: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.0: Waiting for DISARM
+AT-0004.0: AP: Disarming motors
+AT-0004.0: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.0: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.0: Delaying 2.000000 seconds for settle
+AT-0004.1: PROBE punch 25 errors_count4=0
+AT-0004.1: RC values good
+AT-0004.1: Arm motors with MAVLink cmd
+AT-0004.1: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.1: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.1: AP: Arming motors
+AT-0004.1: Motors ARMED
+AT-0004.1: Delaying 1.000000 seconds for spool up
+AT-0004.1: RC values good
+AT-0004.1: Delaying 0.200000 seconds for punch
+AT-0004.1: RC values good
+AT-0004.1: Disarm motors with MAVLink cmd
+AT-0004.1: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.1: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.1: Waiting for DISARM
+AT-0004.1: AP: Disarming motors
+AT-0004.1: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.1: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.1: Delaying 2.000000 seconds for settle
+AT-0004.1: PROBE punch 26 errors_count4=0
+AT-0004.1: RC values good
+AT-0004.1: Arm motors with MAVLink cmd
+AT-0004.1: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.1: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.1: AP: Arming motors
+AT-0004.1: Motors ARMED
+AT-0004.1: Delaying 1.000000 seconds for spool up
+AT-0004.1: AP: Rate CPU high, rate set to 499Hz
+AT-0004.1: AP: Rate CPU normal, rate set to 999Hz
+AT-0004.1: RC values good
+AT-0004.1: Delaying 0.200000 seconds for punch
+AT-0004.1: RC values good
+AT-0004.1: Disarm motors with MAVLink cmd
+AT-0004.1: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.1: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.1: Waiting for DISARM
+AT-0004.1: AP: Disarming motors
+AT-0004.1: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.1: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.1: Delaying 2.000000 seconds for settle
+AT-0004.2: AP: Rate CPU high, rate set to 500Hz
+AT-0004.2: AP: Rate CPU normal, rate set to 1000Hz
+AT-0004.2: PROBE punch 27 errors_count4=0
+AT-0004.2: RC values good
+AT-0004.2: Arm motors with MAVLink cmd
+AT-0004.2: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.2: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.2: AP: Arming motors
+AT-0004.2: Motors ARMED
+AT-0004.2: Delaying 1.000000 seconds for spool up
+AT-0004.2: RC values good
+AT-0004.2: Delaying 0.200000 seconds for punch
+AT-0004.2: RC values good
+AT-0004.2: Disarm motors with MAVLink cmd
+AT-0004.2: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.2: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.2: Waiting for DISARM
+AT-0004.2: AP: Disarming motors
+AT-0004.2: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.2: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.2: Delaying 2.000000 seconds for settle
+AT-0004.2: PROBE punch 28 errors_count4=0
+AT-0004.2: RC values good
+AT-0004.2: Arm motors with MAVLink cmd
+AT-0004.2: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.2: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.2: AP: Arming motors
+AT-0004.2: Motors ARMED
+AT-0004.2: Delaying 1.000000 seconds for spool up
+AT-0004.2: RC values good
+AT-0004.3: Delaying 0.200000 seconds for punch
+AT-0004.3: RC values good
+AT-0004.3: Disarm motors with MAVLink cmd
+AT-0004.3: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.3: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.3: Waiting for DISARM
+AT-0004.3: AP: Disarming motors
+AT-0004.3: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.3: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.3: Delaying 2.000000 seconds for settle
+AT-0004.3: PROBE punch 29 errors_count4=0
+AT-0004.3: RC values good
+AT-0004.3: Arm motors with MAVLink cmd
+AT-0004.3: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.3: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.3: AP: Arming motors
+AT-0004.3: Motors ARMED
+AT-0004.3: Delaying 1.000000 seconds for spool up
+AT-0004.3: RC values good
+AT-0004.3: Delaying 0.200000 seconds for punch
+AT-0004.3: RC values good
+AT-0004.3: Disarm motors with MAVLink cmd
+AT-0004.3: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.3: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.3: Waiting for DISARM
+AT-0004.3: AP: Disarming motors
+AT-0004.3: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.3: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.3: Delaying 2.000000 seconds for settle
+AT-0004.3: PROBE punch 30 errors_count4=0
+AT-0004.3: RC values good
+AT-0004.3: Arm motors with MAVLink cmd
+AT-0004.3: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.3: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.3: AP: Arming motors
+AT-0004.3: Motors ARMED
+AT-0004.4: Delaying 1.000000 seconds for spool up
+AT-0004.4: RC values good
+AT-0004.4: Delaying 0.200000 seconds for punch
+AT-0004.4: RC values good
+AT-0004.4: Disarm motors with MAVLink cmd
+AT-0004.4: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.4: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.4: Waiting for DISARM
+AT-0004.4: AP: Disarming motors
+AT-0004.4: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.4: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.4: Delaying 2.000000 seconds for settle
+AT-0004.4: PROBE punch 31 errors_count4=0
+AT-0004.4: RC values good
+AT-0004.4: Arm motors with MAVLink cmd
+AT-0004.4: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.4: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.4: AP: Arming motors
+AT-0004.4: Motors ARMED
+AT-0004.4: Delaying 1.000000 seconds for spool up
+AT-0004.4: RC values good
+AT-0004.4: Delaying 0.200000 seconds for punch
+AT-0004.4: RC values good
+AT-0004.4: Disarm motors with MAVLink cmd
+AT-0004.4: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.4: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.4: Waiting for DISARM
+AT-0004.4: AP: Disarming motors
+AT-0004.4: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.4: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.4: Delaying 2.000000 seconds for settle
+AT-0004.5: PROBE punch 32 errors_count4=0
+AT-0004.5: RC values good
+AT-0004.5: Arm motors with MAVLink cmd
+AT-0004.5: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.5: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.5: AP: Arming motors
+AT-0004.5: AP: Rate CPU high, rate set to 499Hz
+AT-0004.5: Motors ARMED
+AT-0004.5: AP: Rate CPU normal, rate set to 999Hz
+AT-0004.5: Delaying 1.000000 seconds for spool up
+AT-0004.5: RC values good
+AT-0004.5: Delaying 0.200000 seconds for punch
+AT-0004.5: RC values good
+AT-0004.5: Disarm motors with MAVLink cmd
+AT-0004.5: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.5: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.5: Waiting for DISARM
+AT-0004.5: AP: Disarming motors
+AT-0004.5: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.5: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.5: Delaying 2.000000 seconds for settle
+AT-0004.5: PROBE punch 33 errors_count4=0
+AT-0004.5: RC values good
+AT-0004.5: Arm motors with MAVLink cmd
+AT-0004.5: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.5: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.5: AP: Arming motors
+AT-0004.5: Motors ARMED
+AT-0004.5: Delaying 1.000000 seconds for spool up
+AT-0004.5: RC values good
+AT-0004.5: Delaying 0.200000 seconds for punch
+AT-0004.5: RC values good
+AT-0004.5: Disarm motors with MAVLink cmd
+AT-0004.5: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.5: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.5: Waiting for DISARM
+AT-0004.5: AP: Disarming motors
+AT-0004.5: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.5: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.5: Delaying 2.000000 seconds for settle
+AT-0004.6: PROBE punch 34 errors_count4=0
+AT-0004.6: RC values good
+AT-0004.6: Arm motors with MAVLink cmd
+AT-0004.6: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.6: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.6: AP: Arming motors
+AT-0004.6: Motors ARMED
+AT-0004.6: Delaying 1.000000 seconds for spool up
+AT-0004.6: RC values good
+AT-0004.6: Delaying 0.200000 seconds for punch
+AT-0004.6: RC values good
+AT-0004.6: Disarm motors with MAVLink cmd
+AT-0004.6: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.6: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.6: Waiting for DISARM
+AT-0004.6: AP: Disarming motors
+AT-0004.6: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.6: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.6: Delaying 2.000000 seconds for settle
+AT-0004.6: PROBE punch 35 errors_count4=0
+AT-0004.6: RC values good
+AT-0004.6: Arm motors with MAVLink cmd
+AT-0004.6: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.6: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.6: AP: Arming motors
+AT-0004.6: Motors ARMED
+AT-0004.6: Delaying 1.000000 seconds for spool up
+AT-0004.7: RC values good
+AT-0004.7: Delaying 0.200000 seconds for punch
+AT-0004.7: RC values good
+AT-0004.7: Disarm motors with MAVLink cmd
+AT-0004.7: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.7: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.7: Waiting for DISARM
+AT-0004.7: AP: Disarming motors
+AT-0004.7: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.7: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.7: Delaying 2.000000 seconds for settle
+AT-0004.7: PROBE punch 36 errors_count4=0
+AT-0004.7: RC values good
+AT-0004.7: Arm motors with MAVLink cmd
+AT-0004.7: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.7: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.7: AP: Arming motors
+AT-0004.7: Motors ARMED
+AT-0004.7: Delaying 1.000000 seconds for spool up
+AT-0004.7: RC values good
+AT-0004.7: Delaying 0.200000 seconds for punch
+AT-0004.7: RC values good
+AT-0004.7: Disarm motors with MAVLink cmd
+AT-0004.7: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.7: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.7: Waiting for DISARM
+AT-0004.7: AP: Disarming motors
+AT-0004.7: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.7: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.7: Delaying 2.000000 seconds for settle
+AT-0004.7: PROBE punch 37 errors_count4=0
+AT-0004.8: RC values good
+AT-0004.8: Arm motors with MAVLink cmd
+AT-0004.8: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.8: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.8: AP: Arming motors
+AT-0004.8: Motors ARMED
+AT-0004.8: Delaying 1.000000 seconds for spool up
+AT-0004.8: RC values good
+AT-0004.8: Delaying 0.200000 seconds for punch
+AT-0004.8: RC values good
+AT-0004.8: Disarm motors with MAVLink cmd
+AT-0004.8: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.8: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.8: Waiting for DISARM
+AT-0004.8: AP: Disarming motors
+AT-0004.8: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.8: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.8: Delaying 2.000000 seconds for settle
+AT-0004.8: PROBE punch 38 errors_count4=0
+AT-0004.8: RC values good
+AT-0004.8: Arm motors with MAVLink cmd
+AT-0004.8: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=1.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.8: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.8: AP: Arming motors
+AT-0004.8: Motors ARMED
+AT-0004.8: Delaying 1.000000 seconds for spool up
+AT-0004.8: RC values good
+AT-0004.8: Delaying 0.200000 seconds for punch
+AT-0004.8: RC values good
+AT-0004.8: Disarm motors with MAVLink cmd
+AT-0004.8: Sending COMMAND_LONG to (1,1) (MAV_CMD_COMPONENT_ARM_DISARM=400) (p1=0.000000 p2=21196.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.8: ACK received: COMMAND_ACK {command : 400, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250} (0.000000s)
+AT-0004.8: Waiting for DISARM
+AT-0004.8: AP: Disarming motors
+AT-0004.8: Waiting for disarm (0.00s so far of allowed 120.00)
+AT-0004.8: DISARMED after 0.00 seconds (allowed=120.00)
+AT-0004.8: Delaying 2.000000 seconds for settle
+AT-0004.9: PROBE punch 39 errors_count4=0
+AT-0004.9: Drained 21 messages from mav (69849.630452/s)
+AT-0004.9: set_parameters: ({'FSTRATE_ENABLE': 0.0, 'ACRO_OPTIONS': 0.0})
+AT-0004.9: FSTRATE_ENABLE want=0.000000 autopilot=None (attempt=1/20)
+AT-0004.9: Requesting (FSTRATE_ENABLE)
+AT-0004.9: ACRO_OPTIONS want=0.000000 autopilot=None (attempt=1/20)
+AT-0004.9: Requesting (ACRO_OPTIONS)
+AT-0004.9: Received wanted PARAM_VALUE FSTRATE_ENABLE=1.000000
+AT-0004.9: Received wanted PARAM_VALUE ACRO_OPTIONS=1.000000
+AT-0004.9: FSTRATE_ENABLE want=0.000000 autopilot=1.0 (attempt=2/20)
+AT-0004.9: Sending set (FSTRATE_ENABLE) to (0.000000) (old=1.000000)
+AT-0004.9: ACRO_OPTIONS want=0.000000 autopilot=1.0 (attempt=2/20)
+AT-0004.9: Sending set (ACRO_OPTIONS) to (0.000000) (old=1.000000)
+AT-0004.9: AP: Rate CPU normal, rate set to 499Hz
+AT-0004.9: Received wanted PARAM_VALUE FSTRATE_ENABLE=0.000000
+AT-0004.9: Received wanted PARAM_VALUE ACRO_OPTIONS=0.000000
+AT-0004.9: FSTRATE_ENABLE want=0.000000 autopilot=0.0 (attempt=3/20)
+AT-0004.9: FSTRATE_ENABLE is now 0.000000
+AT-0004.9: ACRO_OPTIONS want=0.000000 autopilot=0.0 (attempt=3/20)
+AT-0004.9: ACRO_OPTIONS is now 0.000000
+AT-0004.9: Doing implicit context-pop reboot
+AT-0004.9: Drained 0 messages from mav (0.000000/s)
+AT-0004.9: Rebooting SITL
+AT-0004.9: Sending param_request_read for (STAT_RESET)
+AT-0004.9: get_parameter(STAT_RESET): PARAM_VALUE {param_id : STAT_RESET, param_value : 1.0, param_type : 6, param_count : 1431, param_index : 65535}
+AT-0004.9: Sending param_request_read for (STAT_BOOTCNT)
+AT-0004.9: get_parameter(STAT_BOOTCNT): PARAM_VALUE {param_id : STAT_BOOTCNT, param_value : 3.0, param_type : 4, param_count : 1431, param_index : 65535}
+AT-0004.9: Sending reboot command
+AT-0004.9: Sending COMMAND_LONG to (1,1) (MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN=246) (p1=1.000000 p2=1.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0004.9: Sending param_request_read for (STAT_BOOTCNT)
+AT-0004.9: While awaiting reboot received (COMMAND_ACK {command : 246, result : 0, progress : 0, result_param2 : 0, target_system : 250, target_component : 250})
+EOF on TCP socket
+Attempting reconnect
+[Errno 111] Connection refused sleeping
+AT-0005.9: get_parameter(STAT_BOOTCNT): None
+AT-0005.9: Sending param_request_read for (STAT_BOOTCNT)
+AT-0005.9: get_parameter(STAT_BOOTCNT): PARAM_VALUE {param_id : STAT_BOOTCNT, param_value : 4.0, param_type : 4, param_count : 1421, param_index : 65535}
+AT-0005.9: current=4.0 required=4
+AT-0005.9: Doing timesync roundtrip
+AT-0005.9: Received: TIMESYNC {tc1 : 191079000, ts1 : 644245094650}
+AT-0005.9: Received TIMESYNC response after 0.000011s
+AT-0005.9: Calling initialise-after-reboot
+AT-0005.9: AP: RCInput: decoding UDP (Pulses)
+AT-0005.9: Drained 0 messages from mav (0.000000/s)
+AT-0005.9: AP: Calibrating barometer
+AT-0005.9: Doing timesync roundtrip
+AT-0005.9: Received: TIMESYNC {tc1 : 1056566000, ts1 : 648540061946}
+AT-0005.9: Received TIMESYNC response after 0.000013s
+AT-0005.9: AP: Barometer 1 calibration complete
+AT-0005.9: AP: Barometer 2 calibration complete
+AT-0005.9: AP: ArduPilot Ready
+AT-0005.9: AP: RC7: SaveWaypoint MIDDLE
+AT-0005.9: Reboot complete
+AT-0005.9: set_parameters: ({})
+AT-0005.9: Sending COMMAND_LONG to (1,1) (MAV_CMD_REQUEST_MESSAGE=512) (p1=164.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0005.9: Simstate Close to startup location: dist=0.000000 max=1.000000 (simstate: Location(lat=-35.3629380 lng=149.1650850 no-alt) start-loc: Location(lat=-35.3629380 lng=149.1650850 alt=584.08m-ABSOLUTE))
+AT-0005.9: Drained 0 messages from mav (0.000000/s)
+AT-0005.9: Sending COMMAND_LONG to (1,1) (MAV_CMD_REQUEST_MESSAGE=512) (p1=164.000000 p2=0.000000 p3=0.000000 p4=0.000000 p5=0.000000 p6=0.000000  p7=0.000000)
+AT-0005.9: Simstate Close to startup location: dist=0.000000 max=2.000000 (simstate: Location(lat=-35.3629380 lng=149.1650850 no-alt) start-loc: Location(lat=-35.3629380 lng=149.1650850 alt=584.08m-ABSOLUTE))
+AT-0005.9: Downloading parameters
+AT-0005.9: AP: ArduCopter V4.8.0-dev (31fca549)
+AT-0005.9: AP: 3b082c7f056148a0aa0830c3b6ddd4e6
+AT-0005.9: AP: Frame: QUAD/PLUS
+AT-0006.0: AP: EKF3 IMU0 initialised
+AT-0006.0: AP: EKF3 IMU1 initialised
+AT-0006.0: AP: AHRS: EKF3 active
+AT-0006.0: Downloaded 1431 parameters OK (attempt=1)
+AT-0006.0: Parameter leak check: clean
+AT-0006.0: Received (MISSION_ACK {target_system : 250, target_component : 250, type : 0, mission_type : 1})
+AT-0006.0: MISSION_ACK.target_system has expected value 250
+AT-0006.0: MISSION_ACK.target_component has expected value 250
+AT-0006.0: MISSION_ACK.type has expected value 0 (MAV_MISSION_ACCEPTED)
+AT-0006.0: AP: Fence Indexed OK
+AT-0006.0: Received (MISSION_ACK {target_system : 250, target_component : 250, type : 0, mission_type : 0})
+AT-0006.0: MISSION_ACK.target_system has expected value 250
+AT-0006.0: MISSION_ACK.target_component has expected value 250
+AT-0006.0: MISSION_ACK.type has expected value 0 (MAV_MISSION_ACCEPTED)
+AT-0006.0: AP: Flight plan received
+AT-0006.0: Received (MISSION_ACK {target_system : 250, target_component : 250, type : 0, mission_type : 2})
+AT-0006.0: MISSION_ACK.target_system has expected value 250
+AT-0006.0: MISSION_ACK.target_component has expected value 250
+AT-0006.0: MISSION_ACK.type has expected value 0 (MAV_MISSION_ACCEPTED)
+AT-0006.0: Received (MISSION_ACK {target_system : 250, target_component : 250, type : 0, mission_type : 0})
+AT-0006.0: MISSION_ACK.target_system has expected value 250
+AT-0006.0: MISSION_ACK.target_component has expected value 250
+AT-0006.0: MISSION_ACK.type has expected value 0 (MAV_MISSION_ACCEPTED)
+AT-0006.0: PASSED: "ZZRaceProbe (throwaway: rate thread airmode throttle punch from zero)"
