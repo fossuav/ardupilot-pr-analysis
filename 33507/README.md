@@ -28,6 +28,22 @@ plane and Replay build; copter and plane build with
 EK3_FEATURE_OPTFLOW_AGL_KF 0. Both were flight tested at their pre-squash
 heads (in the SFD beta through refresh10), so squashing is allowed.
 
+
+### Superseded before pushing: #34457 kept as five commits
+
+The two-commit shape above was never pushed. #34457's message described
+three separate EKF fixes, so they stay separate commits, each followed by
+its test, in the original order (the floor test needs the decay gate, which
+is what exposes the latch): `42de1d07f1` floor velocity clear (764e4d4399),
+`8e40047bf8` decay after a fusion gap (5b814ea367), `2622d00aba` floor test
+(32d62e6685, its registration indent fixed in place), `d3df572550` coast
+stop (2ae32c99ce + comment 55bd80a81b), `ec3c439aec` coast test
+(f8651ffaeb + 69add987bc + 52c6ffbe30). #33507's own two follow:
+`cc269a57cf` (AP_NavEKF3), `d48bf30698` (autotest). Final trees equal the
+two-commit versions tested above; on the old base they equal the old heads.
+Every commit builds and is flake8-clean, and the floor test passes at its
+own commit. Heads: #34457 `ec3c439aec`, #33507 `d48bf30698`.
+
 ## 2026-10-02 restacked on #34457's coast stop (pushed as `5963bd0583`)
 
 No change of its own in the second round; Codex's one finding against
