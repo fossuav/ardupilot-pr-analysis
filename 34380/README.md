@@ -283,4 +283,5 @@ lost at 28.6 m. The other two legs unchanged (25 m reach: highest 27.1 m,
 lost at 27.1 m; 27.5 m reach at full stick: highest 28.4 m, kept). The leg
 asserts the hold (within 1 m), not the loss, so a later fix does not fail it.
 
-Reply drafted asking for a maintainer's view on accepting the band.
+Reply posted 2026-10-07 asking for a maintainer's view on accepting the band:
+https://github.com/ArduPilot/ardupilot/pull/34380#issuecomment-6039251667
