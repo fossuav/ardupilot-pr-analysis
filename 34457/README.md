@@ -1,5 +1,32 @@
 # AGL KF: clear the velocity when the height rests on its floor
 
+
+## 2026-10-07: rebased onto master and squashed to two commits (head `c3204a1836`)
+
+Done for #33507, which is stacked on this PR and was approved on 2026-10-07
+with a request to squash. #34457 itself has no approval yet (AP-Review
+COMMENT).
+
+Squash map (old commit -> new), for review comments and CI runs that cite
+the old SHAs: #34457's 764e4d4399, 5b814ea367, 2ae32c99ce, 55bd80a81b ->
+`371a25c015` (AP_NavEKF3); 32d62e6685, f8651ffaeb, 69add987bc, 52c6ffbe30
+-> `c3204a1836` (autotest). #33507's 7a14003440, 87ad9d25ca, 3c61823f21,
+5f7b34a19f, 5ff859ed28, 342d104874 -> `decedef717` (AP_NavEKF3);
+b578d499cc, 78cfc5979f, e4b58c2504, cedaf68d1e, 4e858b1068, 28b59bd51b ->
+`ac92f50e6d` (autotest). Backups: `pre-squash/pr-aglkf-floor-velocity-20261007`
+(55bd80a81b), `pre-squash/pr-agl-kf-zbias-20261007` (28b59bd51b).
+
+Checks: squashed on the old base `e204ca77a8` the trees equal the old heads
+exactly; after the rebase each PR's own +/- lines are identical to before.
+The one conflict was `AP_NavEKF3.h`, where master had changed `_options` to
+`AP_UInt32` on the line above `_aglKfAccelBiasPnse`; kept master's type.
+`AGL_ABIAS_P` (var_info2 index 12) collides with nothing. At the new heads:
+OpticalFlowAGLKfFloorVelocity and OpticalFlowAGLKfNoCoastBelowMin pass on
+#34457 alone; those and OpticalFlowAGLKalmanFilter pass on #33507; copter,
+plane and Replay build; copter and plane build with
+EK3_FEATURE_OPTFLOW_AGL_KF 0. Both were flight tested at their pre-squash
+heads (in the SFD beta through refresh10), so squashing is allowed.
+
 ## 2026-10-02 second review round: the landed hold replaced by a coast stop (pushed as `18276345bf`)
 
 Supersedes the landed hold recorded below. A second Codex cold read
