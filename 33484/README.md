@@ -810,3 +810,14 @@ route, and has to be shown to reproduce on the current code first.
 Full record: `../../analysis/logs/td25_flyaway.md` and the TD25 section
 of `../../analysis/topics/optflow_horizontal_velocity_lockout.md`
 (analysis `0643515`).
+
+### Amended 2026-10-08: TD25 log 3 replays
+
+A third TD25 flight carries `LOG_REPLAY=1`, and Replay at `7b0e4dd8`
+reproduces it exactly (|dV| 0.000 m/s). Five resets, three in Loiter.
+One adopted a **frozen** (0, 0) flow output while the vehicle moved at
+about 1.8 m/s under full stick, so re-anchoring to a mean or gating on
+sample scatter would not have stopped it. `EK3_FLOW_QMIN` 60, 70 or 80
+latches at the first lockout (67.437 s) and no reset happens;
+`EK3_FLOW_M_NSE=1.0` forms no lockout. Record:
+`../../analysis/logs/td25_flyaway.md` (analysis `4a2bf1c`).
