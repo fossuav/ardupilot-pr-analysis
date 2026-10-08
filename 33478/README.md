@@ -660,3 +660,31 @@ the core tracks the GPS core within 0.1 m and lands at -0.21 m against +0.36 m.
 Why it is sustained is not yet known; the #33507 bias learning on the AGL KF
 is the first suspect. The primary was the GPS core, so the vehicle was not
 affected.
+
+## 2026-10-08: step hold for the velD fusion (fix/33478, not pushed)
+
+Mechanism of the step-flight climb, measured in Replay: the AGL KF takes
+R from EK3_RNG_M_NSE (0.5 m), so a 0.6-0.7 m single-sample range step is
+absorbed over 3-5 s with the velocity 0.2-0.3 m/s wrong and VAglStd still
+0.07. The GPS core's AGL KF does the same; only the fusing core moves.
+
+Tried, scored on 12 replayed flights (velD error vs the GPS core where
+fusion is possible):
+- R inflated by K x innovation: halves the climb, cannot stop it (the
+  observation is fused many times inside one correlated error).
+- Hard gate on innovation size: fixes the flights but never fuses under
+  an accel bias in SITL (the 2-state KF lags > 0.1 m).
+- Re-centring the AGL height at a step: fixes 40/29/34, worse on
+  32/33/37/39 (0.12 -> 0.50 m/s on one) - velocity lag read as a step.
+- Hold velD fusion 5 s after a change in AGL innovation > 0.15 m + 25 ms
+  x |v|: log40 0.089 -> 0.046, climb gone, 10 of 11 others better or
+  unchanged, log32 at fusion-off. SITL step drift 1.07 -> 0.32 m.
+  Range-scaled threshold: worse on 34/37/39.
+
+Open: with SIM_SONAR_RND 0.1 the hold trips once as the bias-runaway leg
+injects its 0.4 m/s/s step (0.155 against 0.150); the velD error then runs
+past the AGL velD innovation gate during the hold and fusion never
+resumes (4.1 m/s). Head fuses there. 0.2 noise passes. A learned noise
+threshold (4x rms) does not change the SITL result and loses the gains
+on 34/37/39. Hypothesis, not traced: any hold during a runaway leaves
+nothing to bring velD back inside the gate.
