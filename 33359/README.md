@@ -507,3 +507,15 @@ threshold, no reset, a 0.27 m step on both cores identical with and without
 the fix. The remaining error is baro drift over the excursion, which the
 offset inherits whichever way the threshold goes; threshold left at 0.3 m on
 one flight. Core 1's +0.36 m is #33478 (bit 4), not this PR.
+
+## 2026-10-08: squashed after flight test
+
+Head 1b221ab4a1 -> 5c5441d830, 12 -> 6 commits on the same base, content identical
+(empty diff against the pre-squash head); every commit builds on its own. The three commits shared with #33478 are unchanged; "run the AGL KF on every filter step" already differed between the two PRs.
+
+- 39dee56c7f AP_NavEKF3: use AGL KF for rangefinder height source switching
+- 39dc3fe860 AP_NavEKF3: fuse AGL KF height as the rangefinder height source
+- e09f450f30 AP_NavEKF3: only decay AGL KF velocity when the range finder is absent
+- e94afecc47 AP_NavEKF3: run the AGL KF on every filter step
+- d15264bc96 AP_NavEKF3: do not fuse a range sample twice in the AGL KF
+- 5c5441d830 autotest: check the AGL KF height keeps up with a climb and descent
