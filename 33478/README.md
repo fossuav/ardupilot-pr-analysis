@@ -720,3 +720,16 @@ The log40 sortie again. Core 1 against core 0 after each edge, hold vs a
 Replay without it: +0.33 vs +0.99-1.33 m, +0.63 vs +1.36 m, within 0.12 vs
 +0.79-1.16 m, -0.13..-0.32 vs +0.30..+0.71 m. Landing +0.05 m vs +0.41 m.
 Pushed to the PR as e0d009ff31 and 6185109557 (head 6185109557).
+
+## 2026-10-08: squashed after flight test
+
+Head 6185109557 -> 0f6e2e789d, 9 -> 7 commits on the same base, content identical
+(empty diff against the pre-squash head); every commit builds on its own. Only the three original test commits folded; the step hold and its test stay separate.
+
+- 8166c6c166 AP_NavEKF3: only decay AGL KF velocity when the range finder is absent
+- 30765aca4d AP_NavEKF3: fuse AGL KF velocity as a velD observation
+- 91692c4cb8 AP_NavEKF3: run the AGL KF on every filter step
+- 365c1b06dd autotest: add EK3_AglKfVelForVelD
+- cf6d7649a1 AP_NavEKF3: do not fuse a range sample twice in the AGL KF
+- 4a1e0994ed AP_NavEKF3: hold the AGL KF velocity out of velD after a range step
+- 0f6e2e789d autotest: test a range step against the AGL KF velD fusion
