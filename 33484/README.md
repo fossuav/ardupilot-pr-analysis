@@ -769,3 +769,15 @@ commit series. That squash is not recorded above; the last entry names
 This PR's `flowFuseTimeAxis_ms` is unchanged by the stack; #34543 renamed
 its own same-named timer to `flowPassTimeAxis_ms` (`7c149439c1`) so the two
 no longer collide.
+
+## 2026-10-08: squashed after flight test
+
+Head 669172801f -> 71719dd7d4, 7 -> 6 commits on the same base, content identical
+(empty diff against the pre-squash head); every commit builds on its own. A comment-only commit folded into the lockout recovery.
+
+- 25b2b7c2b4 SITL: add SIM_FLOW_OFS optical flow rate offset for fault injection
+- f7d496a483 AP_OpticalFlow: apply SIM_FLOW_OFS offset to the SITL flow rate
+- b6d26583ca SITL: add SIM_FLOW_QUAL optical flow surface quality
+- 52a4bba707 AP_OpticalFlow: report SIM_FLOW_QUAL as the SITL surface quality
+- 7117c1c5bc AP_NavEKF3: recover velocity from a single-axis optical flow lockout
+- 71719dd7d4 autotest: cover optical flow single-axis lockout recovery
