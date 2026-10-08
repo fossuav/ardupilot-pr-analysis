@@ -668,3 +668,12 @@ switch, not only a GPS outage (`gpsDelivering` needs the active set's
 POSXY to be GPS), which OpticalFlowGPSLossAiding flies. Replied
 https://github.com/ArduPilot/ardupilot/pull/33568#issuecomment-6056079877
 noting the merge order after #34380 and #33585.
+
+## 2026-10-08: squashed after flight test
+
+Head b249f0778e -> 32ebf12db0, 8 -> 3 commits on the same base, content identical
+(empty diff against the pre-squash head); every commit builds on its own. The XKF4 aiding mode log kept as its own commit.
+
+- cb5d41828a AP_NavEKF3: drop to relative aiding when flow replaces a lost GPS
+- 0e6198857b AP_NavEKF3: log the EKF aiding mode in XKF4
+- 32ebf12db0 autotest: cover the GPS-to-flow relative-aiding fallback
