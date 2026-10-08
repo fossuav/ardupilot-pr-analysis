@@ -676,3 +676,13 @@ Local branch `fix/32972` (from PR head `ee316e32f4`, not pushed).
 
 Pushed 2026-10-03: ee316e32f4 -> 62a0d172c6 (force; f42e507fd9 and 6494afe6ea reworded, all 5 own patches unchanged, #32768 commits untouched; 3 new on top).
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/32972#issuecomment-5973702227
+
+## 2026-10-08: squashed after flight test
+
+Head f8bb0e5bb6 -> 08146e80d9, 10 -> 4 commits on the same base, content identical
+(empty diff against the pre-squash head); every commit builds on its own. Only its own commits above #32768 rebased; the spool-up hold builds on the negative deadzone, so they stay separate.
+
+- 896b795136 AP_NavEKF3: suppress ResetHeight during baro ground effect
+- 1bc26699c4 AP_NavEKF3: support negative EK3_GND_EFF_DZ as baro noise floor
+- de7062749a AP_NavEKF3: hold the pre-takeoff height during ground effect spool-up
+- 08146e80d9 autotest: add BaroGroundEffectAtTakeoff test
