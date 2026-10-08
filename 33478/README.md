@@ -649,3 +649,14 @@ Folded and force-pushed 2026-10-02: #33478 head 1b6f63bff1 on upstream/master ca
 
 Pushed 2026-10-03: 1b6f63bff1 -> dda9757668 (fast-forward).
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/33478#issuecomment-5973856386
+
+## 2026-10-08: flight over a ~0.7 m step (SFD beta 9d8e8053)
+
+Flow-lane core, baro the height source over the lower ground. Crossing the
+edge, the fused AGL KF velocity drove velD to -0.25 m/s for about 5 s (not a
+brief transient) while baro was flat: 0.9 m of height error, baro
+innovations reaching 1.4 m at a test ratio of 0.14. Replaying with bit 4 off,
+the core tracks the GPS core within 0.1 m and lands at -0.21 m against +0.36 m.
+Why it is sustained is not yet known; the #33507 bias learning on the AGL KF
+is the first suspect. The primary was the GPS core, so the vehicle was not
+affected.
