@@ -563,3 +563,5 @@ Head ec3c439aec -> 7f83487786: the two floor-hold commits (931be4dc21, 7f8348778
 ## 2026-10-08: on the 4.7 beta (topup13)
 
 Carried as 29fef9c3a2 and db4abcbff0. OpticalFlowAGLKfNoCoastAfterTouchdown failed its precondition there: the 4.7 SITL range finder reads 0.55 m on the ground, not the ~0.1 m the test assumed, so RNGFND1_MIN 0.5 never took it out of range low. Beta commit 80626ee223 sets RNGFND1_GNDCLR from the RANGEFINDER reading on the ground and raises the minimum 0.4 m above it; owed to this PR, where it is a no-op on master. Beta: 0.29 m with the hold, 1.47 m with the OptFlowFusion change removed.
+
+Pushed as 22821432da (2026-10-08), fast-forward on 7f83487786, message reworded for master. On master the test passes with a 0.27 m rise (0.30 m before).
