@@ -1365,3 +1365,13 @@ Rebased onto upstream/master 755258dbb4 (conflicts only in tests1c registration 
 
 Pushed 2026-10-03: 0f428b222e -> 6034b82053 (fast-forward, 5 new commits). EK3_OptflowAboveRangefinder passes on it alone.
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/33585#issuecomment-5973644513
+
+## 2026-10-08: squashed after flight test
+
+Head dbc79586ae -> b0c3cb87ce, 6 -> 4 commits on the same base, content identical
+(empty diff against the pre-squash head); every commit builds on its own. Review and test follow-ups folded into their commits.
+
+- 4c036f5be8 AP_DAL: log every terrain height write
+- 0e008302ec AP_NavEKF: add optflow_enabled() for any source set
+- 784c750af1 AP_NavEKF3: keep optical flow nav alive above the rangefinder range
+- b0c3cb87ce autotest: cover optical flow nav above the rangefinder range
