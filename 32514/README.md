@@ -518,3 +518,14 @@ rather large policy shift in failsafe triggering behaviour". Three comments:
 `EKFSourceSetFailsafe` passes at `be426a9a42`; copter, plane, rover, sub
 build. Pushed 2026-10-06; head `be426a9a42`.
 
+
+## 2026-10-08: squashed after flight test
+
+Head be426a9a42 -> c6ce4344c1, 11 -> 5 commits on the same base, content identical
+(empty diff against the pre-squash head); every commit builds on its own. The AHRS query rename folded into the AHRS commit, Copter uses the final name.
+
+- 5671f6cada AP_NavEKF3: say whether the primary core has a horizontal source
+- 01ca8a6ab2 AP_AHRS: pass on whether the EKF has a horizontal source
+- 099b9dad50 Copter: expect a position only where the mode or source set needs one
+- 5253105497 Copter: hold the EKF failsafe count while landed
+- c6ce4344c1 autotest: check the EKF failsafe follows the selected source set
