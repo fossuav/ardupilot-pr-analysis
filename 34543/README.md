@@ -70,3 +70,16 @@ Inspection only (tier 3), none measured:
 - With `EK3_FEATURE_OPTFLOW_FUSION=0`, `flow_configured` is false even
   when the source set asks for flow (Codex).
 - The #33484 low-quality latch has no reason of its own on the OSD.
+
+## 2026-10-08: squashed after flight test
+
+Head be2961c02b -> 3d3a382b3f, 12 -> 7 commits on the same base, content identical
+(empty diff against the pre-squash head); every commit builds on its own. Follow-ups folded into their AHRS, NavEKF3 and OSD commits; tests folded.
+
+- e3a4eca0e9 AP_AHRS: report the primary core index with the estimates
+- 467deaeef4 AP_NavEKF: add a per-lane status structure
+- 8f2e289008 AP_NavEKF3: report the status of each lane
+- ba75cc42b3 AP_AHRS: pass out the status of each EKF3 lane
+- a7c2c673b6 AP_OSD: map the symbols after SYM_LQ for MSP DisplayPort
+- 3dfe60f0bb AP_OSD: show the status of each EKF lane
+- 3d3a382b3f autotest: check the OSD EKF lane items
