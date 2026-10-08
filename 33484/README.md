@@ -781,3 +781,32 @@ Head 669172801f -> 71719dd7d4, 7 -> 6 commits on the same base, content identica
 - 52a4bba707 AP_OpticalFlow: report SIM_FLOW_QUAL as the SITL surface quality
 - 7117c1c5bc AP_NavEKF3: recover velocity from a single-axis optical flow lockout
 - 71719dd7d4 autotest: cover optical flow single-axis lockout recovery
+
+## 2026-10-08: TD25 flyaways, the reset re-anchored to noise
+
+Two real flights on a bragg MicoAir743v2 quad (TD25), SmallFastDrone
+`7b0e4dd8`, which carries this PR, MAVLink flow, no GPS, `EK3_FLOW_QMIN=0`.
+Both Loiter flyaways are this recovery. Each of three resets stepped EKF
+velocity 2.9-3.8 m/s to the velocity **one** 10 ms flow sample implied;
+the post-reset velocity is reproduced from `OF` to 0.1-0.25 m/s, while
+neighbouring samples scatter 1.3-2.8 m/s (1 sigma). Loiter then leaned
+22-27 deg at 1.2-1.9 m against the pilot, and the second flight crashed
+in the ACRO recovery.
+
+Every gate this PR has was passed: range fresh, tilt small, `aglKfH`
+within 0.1 m of the range finder. The flow sensor was the root condition
+(quality ~48, no Y-axis rotation response, no correlation with
+IMU-integrated velocity), and with one axis failing the gate routinely
+the recovery fired on schedule. `EK3_FLOW_QMIN` is the only guard
+against a bad sample and is off by default.
+
+The "re-anchoring to noisy flow" the threshold sweep saw below 300 ms
+happens at 500 ms on a noisy enough sensor. Candidate fixes (re-anchor
+to a mean or median over the lockout, refuse on high sample scatter,
+blend rather than step) are *untested*. Neither log replays
+(`LOG_REPLAY=0`); a SITL repro with `SIM_FLOW_RND` near 1.5 rad/s is the
+route, and has to be shown to reproduce on the current code first.
+
+Full record: `../../analysis/logs/td25_flyaway.md` and the TD25 section
+of `../../analysis/topics/optflow_horizontal_velocity_lockout.md`
+(analysis `0643515`).
