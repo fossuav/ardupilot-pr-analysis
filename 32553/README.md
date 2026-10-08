@@ -997,3 +997,11 @@ Above the ground effect band the two agree within 0.01 m rms; a second
 takeoff climbing straight out: 0.20/0.16 with, 0.23/0.24 m without.
 
 A PR comment with these numbers was drafted, not posted.
+
+## 2026-10-08: squashed after flight test
+
+Head c7e1dff234 -> 9fb70f0f8d, 8 -> 2 commits on the same base, content identical
+(empty diff against the pre-squash head); every commit builds on its own. Review and test follow-ups folded into their commits.
+
+- b8cf8b32ab AP_NavEKF3: reset terrain offset from baro when ground effect clears
+- 9fb70f0f8d autotest: record terrain offset after the ground effect baro error
