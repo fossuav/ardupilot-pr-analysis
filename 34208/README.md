@@ -234,3 +234,12 @@ the std:: calls compile to on our MCUs.
 - SITL after the change: CompassMotFastRate, DynamicRpmNotchesRateThread,
   RateThreadPostFilterGyroLog, GPSBlendingAffinity pass.
 - AP-Review ACCEPT at `3561165628` (its one note is the multi-core caveat).
+
+## 2026-10-08: squashed after flight test
+
+Head 3561165628 -> 3878be001a, 8 -> 3 commits on the same base, content identical
+(empty diff against the pre-squash head); every commit builds on its own. Three commits: AC AttitudeControl additions, Copter, then AC AttitudeControl dropping the old interfaces.
+
+- b78e1da8b1 AC_AttitudeControl: pass rate target to rate_controller_run_dt(), log it
+- 029a4b132f Copter: interpolate the rate target in the fast rate thread
+- 3878be001a AC_AttitudeControl: drop the two argument rate_controller_run_dt()
