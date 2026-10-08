@@ -657,3 +657,14 @@ optional LOG_DISARMED note was not taken.
 
 Pushed 2026-10-03: 626fa555a3 -> 6079970f2d (fast-forward; reverted EKF pair dropped; OpticalFlowFallbackHeightLimit in disabled_tests until #34380 lands).
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/33568#issuecomment-5973856538
+
+## 2026-10-08: rmackay9 links a 4.7.1 user report
+
+https://discuss.ardupilot.org/t/copter-4-7-1-released/145385/42 : after a
+GPS -> flow source-set switch in flight the EKF stays in AID_ABSOLUTE, so
+the flow height limit is never applied and the vehicle climbs past it;
+filed in the 4.7 issues list. This PR's fallback covers a deliberate set
+switch, not only a GPS outage (`gpsDelivering` needs the active set's
+POSXY to be GPS), which OpticalFlowGPSLossAiding flies. Replied
+https://github.com/ArduPilot/ardupilot/pull/33568#issuecomment-6056079877
+noting the merge order after #34380 and #33585.
