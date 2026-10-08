@@ -821,3 +821,12 @@ sample scatter would not have stopped it. `EK3_FLOW_QMIN` 60, 70 or 80
 latches at the first lockout (67.437 s) and no reset happens;
 `EK3_FLOW_M_NSE=1.0` forms no lockout. Record:
 `../../analysis/logs/td25_flyaway.md` (analysis `4a2bf1c`).
+
+### Amended 2026-10-08: the TD25 sensor works at rest
+
+A disarmed hand tilt test on TD25 shows the flow sensor tracking body
+rate (X corr 0.96, Y 0.91), with orientation and the 30 ms delay right.
+It degrades only in flight (quality ~67 -> ~49, no tracking of
+IMU-integrated velocity). So the lockouts that fed this recovery come
+from in-flight degradation, not from a misconfigured sensor; cause
+untested. Record: analysis `37132bd`.
