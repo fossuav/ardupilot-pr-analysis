@@ -795,3 +795,7 @@ force push of the whole stack.
 
 Pushed 2026-10-03: d971b694cb -> 28b59bd51b (force; 10 commits restacked with identical patch-ids, 2 new).
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/33507#issuecomment-5973590672
+
+## 2026-10-08: rebased onto #34457
+
+Head d48bf30698 -> c34e097cc4: its own two commits (a14ef99f77, c34e097cc4) rebased onto #34457 7f83487786, patches unchanged apart from context lines. Copter builds; OpticalFlowAGLKalmanFilter and OpticalFlowAGLKfNoCoastAfterTouchdown pass.
