@@ -530,3 +530,28 @@ Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/34457#issue
 The squash kept the reviewed lines identical; each commit builds and passes
 flake8. Answered its question on flight testing:
 https://github.com/ArduPilot/ardupilot/pull/34457#issuecomment-6056080176
+
+## 2026-10-08: floor behaviour on fourteen flights, and a coast the stop missed
+
+All of logs 31-44 flew the floor commits. Armed on the ground before
+takeoff the AGL KF height stayed within 0.02 m of its floor on every log;
+after touchdown within 0.07 m, except one lane after an acro sortie whose
+main filter read 0.3-0.57 m/s climbing on the ground. The coast stop leaves
+anything faster than 0.25 m/s to the IMU, so it never fired and the AGL KF
+height coasted 0.28 -> 1.8 m.
+
+fix2/34457 (two new commits on ec3c439aec, not pushed, not flown): with the
+range last read within 0.5 m of the floor, no reading for 1 s and still out
+of range low, an AGL KF height 0.3 m above that last reading is held on the
+floor until a reading or the low reports stop. The last reading is recorded
+for every sample, fused or not, and starts out of reach so nothing latches
+before a reading. Replay: the coast held at the floor, the other 13 logs
+unchanged. SITL OpticalFlowAGLKfNoCoastAfterTouchdown (accel offset on the
+ground, main filter velD 2.8 m/s): 0.30 m rise with the hold, 2.42 m
+without.
+
+Rejected on the way: a 1 s timeout alone zeroed a real liftoff (+0.36 m/s,
+log44); keying on the floor instead of the last reading pinned a liftoff on
+a range finder whose minimum is well above its clearance (review); no latch
+left a 0.35 m sawtooth. Known gap: a range finder whose minimum is over
+0.5 m above its clearance never gets the hold.
