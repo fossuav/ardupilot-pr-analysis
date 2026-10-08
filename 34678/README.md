@@ -180,3 +180,13 @@ Path 2 probe: see `data/race-probe-2026-10-07/harness.py`.
   paths rewritten to relative ones.
 - `data/race-probe-2026-10-07/harness.py` - the throwaway probe method.
 - `data/race-probe-2026-10-07/transcript.txt` - its run.
+
+## 2026-10-08: in the SFD 4.7 build (topup11)
+
+Added to the SFD beta on top of 4.7.2-beta1. `StabilizeInvertedLanded` passes
+there with the fix, and with `8c2c964953` reverted it fails with "Internal
+Errors 0x100000" and `errors_count4` 1, the same as on master. The 4.7 test
+harness has no `context_set_speedup()`, so the SFD copy sets `self.speedup`
+and `SIM_SPEEDUP` by hand (SFD commit `5fa489a2a5`). It is on the SFD flight
+card as an optional ground check: arm on its back in Stabilize and roll
+upright, with no internal error and a re-arm without a reboot.
