@@ -688,3 +688,28 @@ resumes (4.1 m/s). Head fuses there. 0.2 noise passes. A learned noise
 threshold (4x rms) does not change the SITL result and loses the gains
 on 34/37/39. Hypothesis, not traced: any hold during a runaway leaves
 nothing to bring velD back inside the gate.
+
+## 2026-10-08: step hold, final shape (fix/33478 e1c297f748, not pushed)
+
+The hold is tested at the velD claim and applies only while the height
+fused on that step is trusted: a real source (not SourceZ::NONE), not in
+ground effect (takeoff/touchdown expected), noise under 5 m. With nothing
+else on velD, holding let a sudden accel bias run velD past the AGL velD
+innovation gate and it was never recovered (SITL, EK3_ALT_M_NSE 10, range
+noise 0.1 m: 4.1 m/s); without the hold there it is bounded as on the head
+(1.16 m/s, forced ground step plus bias step).
+
+SITL, trusted baro (EK3_ALT_M_NSE 1): 1 m ground step drift 0.94 m head,
+0.22-0.24 m with the hold. Replay, 12 flights: unchanged from the fixed
+hold (log40 0.046 m/s, climb gone, landing +0.25 m).
+
+Rejected along the way, with the numbers in the commit message: a velD
+reset to the AGL KF velocity after 2 s of rejections (forced a 3x-scale
+range into the filter, SV 0.89), release on velocity agreement (velocities
+never re-agree in a runaway), weak fusion with 1 m/s or 0.3 m/s extra noise
+(runaway not bounded, or 0.62 m step drift), learned noise threshold (gave
+up gains on logs 34/37/39).
+
+Known limit: a range finder noisy enough to trip the detector (about
+0.1 m and up) keeps the hold going while the height source is trusted,
+which costs the velD observation, not the height.
