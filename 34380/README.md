@@ -294,3 +294,11 @@ the loss it documents - is done in `c982c2d7f6`: both short-reach legs
 (25 m and 27.5 m centred) now require relative position to be lost, so the
 leg pins the accepted behaviour exactly and a fix must update it. SITL:
 25 m reach lost at 27.1 m; centred, held 28.3-28.6 m and lost at 28.6 m.
+
+## 2026-10-08: squashed after flight test
+
+Head c982c2d7f6 -> c436f781dc, 14 -> 2 commits on the same base, content identical
+(empty diff against the pre-squash head); every commit builds on its own. Rebased onto the squashed #33585.
+
+- 0b7942a9f6 AP_NavEKF3: no flow height limit where flow nav carries on above it
+- c436f781dc autotest: flow height limit tests
