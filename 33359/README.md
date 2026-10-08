@@ -485,3 +485,25 @@ condition. Replay: source changes log30 42 -> 46, log280 18 -> 20; log31
 core 1 low-hover error 0.54 -> 0.73 m rms; nothing better. While the AGL KF
 is stale the main filter fuses the raw range itself, so range height is
 never held without an observation.
+
+## 2026-10-08: first flight with the step-up fix (beta 9d8e8053)
+
+One sortie over a ~0.7 m step, two excursions, landed on top. Replays
+exactly. Touchdown altitude against before takeoff (0 is right), core 0 /
+core 1:
+
+| Replay | touchdown |
+|---|---|
+| as flown | -0.16 / +0.36 m |
+| fix removed | -0.57 / +0.01 m |
+| EK3_OPTIONS bit 4 off | -0.16 / -0.21 m |
+| fix removed, bit 4 off | -0.57 / -0.69 m |
+| threshold 0.2 m, bit 4 off | +0.10 / 0.00 m |
+| threshold 0.15 m, bit 4 off | +0.26 / +0.20 m |
+
+Third crossing: reset fired on core 0, switch-in step 0.15 m against 0.55 m
+without the fix. Second crossing: disagreement 0.23 m, under the 0.3 m
+threshold, no reset, a 0.27 m step on both cores identical with and without
+the fix. The remaining error is baro drift over the excursion, which the
+offset inherits whichever way the threshold goes; threshold left at 0.3 m on
+one flight. Core 1's +0.36 m is #33478 (bit 4), not this PR.
