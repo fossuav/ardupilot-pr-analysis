@@ -464,3 +464,24 @@ On the beta (topup9): -0.01 m, worst 0.17; vehicle 0.32 m.
 Comments: flight results
 https://github.com/ArduPilot/ardupilot/pull/33359#issuecomment-6017631963,
 the fix https://github.com/ArduPilot/ardupilot/pull/33359#issuecomment-6019795040.
+
+## 2026-10-08: AP-Review COMMENT at `27991de5ef`; the switch-out gate
+
+The step-up blocker is closed (the bot reproduced EK3_RngHgtSwitchStepUp:
+-0.06 m at head, -3.23 m with the fix reverted, 0.69 m worst without the
+wait). Non-blocking items left: the switch used the AGL height without the
+observation's gates, and the cross-covariance argument (still owed).
+
+`1b221ab4a1`: the height the switch reads is the AGL KF's only within the
+observation's tilt and freshness limits (DCM33FlowMin, fused within 200 ms);
+otherwise the terrain offset path. Replay of log29/30/31/35/280/281 on the
+beta (`fde4de75a6`) with and without it: identical PD and identical height
+source sequences. The tilt band (c.z 0.70-0.71, ~45 deg sustained) cannot be
+held in SITL, so no dedicated test. PR tests pass; feature-off build OK.
+
+Measured and rejected (Codex cold read MUST-FIX): applying the same limits
+to the terrain-stable override and to the step-up reset's AGL-only
+condition. Replay: source changes log30 42 -> 46, log280 18 -> 20; log31
+core 1 low-hover error 0.54 -> 0.73 m rms; nothing better. While the AGL KF
+is stale the main filter fuses the raw range itself, so range height is
+never held without an observation.

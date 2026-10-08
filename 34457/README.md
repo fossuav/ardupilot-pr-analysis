@@ -524,3 +524,9 @@ on this head: -0.430/-0.431 m/s without the clear, so it stands.
 
 Pushed 2026-10-03: f8651ffaeb -> 55bd80a81b (fast-forward).
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/34457#issuecomment-5973590521
+
+## 2026-10-08: AP-Review ACCEPT at `ec3c439aec`
+
+The squash kept the reviewed lines identical; each commit builds and passes
+flake8. Answered its question on flight testing:
+https://github.com/ArduPilot/ardupilot/pull/34457#issuecomment-6056080176

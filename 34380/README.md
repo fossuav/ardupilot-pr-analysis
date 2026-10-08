@@ -285,3 +285,12 @@ asserts the hold (within 1 m), not the loss, so a later fix does not fail it.
 
 Reply posted 2026-10-07 asking for a maintainer's view on accepting the band:
 https://github.com/ArduPilot/ardupilot/pull/34380#issuecomment-6039251667
+
+## 2026-10-08: AP-Review still REQUEST CHANGES at `ff144b7421`
+
+It now asks for explicit maintainer acceptance of the band (the reply asks
+for it) or a fix. Its minor point - the centred-stick leg never asserted
+the loss it documents - is done in `c982c2d7f6`: both short-reach legs
+(25 m and 27.5 m centred) now require relative position to be lost, so the
+leg pins the accepted behaviour exactly and a fix must update it. SITL:
+25 m reach lost at 27.1 m; centred, held 28.3-28.6 m and lost at 28.6 m.
