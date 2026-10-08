@@ -1886,3 +1886,28 @@ report quality 0 at the ground store no sample, so get no benefit (safe).
 
 Pushed 2026-10-03: 34be757539 -> e36aab7b08 (fast-forward; RangeFinder and DAL before the EKF commit; every commit builds).
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/34292#issuecomment-5973856808
+
+## 2026-10-08: squashed after flight test
+
+Head 4566254c91 -> d3b59dec34, 33 -> 17 commits on the same base, content identical
+(empty diff against the pre-squash head); every commit builds on its own. Follow-ups folded into their
+commits. The four drop-the-default commits stay separate: each can only land after every caller further
+up the DAL -> EKF -> AHRS -> OpticalFlow chain passes the argument, and folding them earlier breaks the build.
+
+- 715bc01889 SITL: add SIM_FLOW_OFS optical flow rate offset for fault injection
+- 29700f3ff8 AP_OpticalFlow: apply SIM_FLOW_OFS offset to the SITL flow rate
+- 3e7b00ee35 AP_RangeFinder: add on_ground() for a reading taken on the ground
+- 06103188b1 AP_DAL: force out an IFCHANGED block dropped before logging starts
+- 339643ebf2 AP_DAL: carry the flow minimum focus height in a new ROFM message
+- b8811e996b AP_NavEKF2: pass the optical flow minimum focus height to the DAL
+- 5bbd6ce8c2 AP_NavEKF3: discard optical flow below the sensor's focus height
+- 9d37beefbc AP_AHRS: forward the optical flow minimum focus height
+- 4f5125d6b2 AP_OpticalFlow: add FLOW_HGT_MIN, the sensor's minimum focus height
+- f4cfeb2267 AP_DAL: drop the default for the flow minimum focus height
+- 687d61eee7 AP_NavEKF2: drop the default for the flow minimum focus height
+- 8150d701fb AP_NavEKF3: drop the default for the flow minimum focus height
+- f436b5b191 AP_AHRS: drop the default for the flow minimum focus height
+- 86024f8e7a AP_DAL: give the range finder backend on_ground()
+- e6fc7d245f AP_NavEKF3: fuse zero flow on the ground below the focus floor
+- e94b68d217 Replay: handle the ROFM optical flow metadata message
+- d3b59dec34 autotest: cover the optical flow focus height floor
