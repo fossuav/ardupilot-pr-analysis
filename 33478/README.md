@@ -713,3 +713,10 @@ up gains on logs 34/37/39).
 Known limit: a range finder noisy enough to trip the detector (about
 0.1 m and up) keeps the hold going while the height source is trusted,
 which costs the velD observation, not the height.
+
+## 2026-10-08: step hold flown (log44, SFD beta topup12)
+
+The log40 sortie again. Core 1 against core 0 after each edge, hold vs a
+Replay without it: +0.33 vs +0.99-1.33 m, +0.63 vs +1.36 m, within 0.12 vs
++0.79-1.16 m, -0.13..-0.32 vs +0.30..+0.71 m. Landing +0.05 m vs +0.41 m.
+Pushed to the PR as e0d009ff31 and 6185109557 (head 6185109557).
