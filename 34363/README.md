@@ -186,3 +186,11 @@ autotest in `Tools/autotest/arducopter.py`.
 
 - `../33484/` - `XKF7`, which is per-core and proved the point.
 - `../33478/`, `../33507/` - the AGL KF state that `XKFA` carries.
+
+## 2026-10-08: squashed after flight test
+
+Head 54b54b6057 -> af037c533d, 3 -> 2 commits on the same base, content identical
+(empty diff against the pre-squash head); every commit builds on its own. Test follow-up folded.
+
+- 5c5228b08e AP_NavEKF3: log XKF5 and XKFA for every core
+- af037c533d autotest: check XKF5 and XKFA are logged for every core
