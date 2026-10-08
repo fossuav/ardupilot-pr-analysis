@@ -555,3 +555,7 @@ log44); keying on the floor instead of the last reading pinned a liftoff on
 a range finder whose minimum is well above its clearance (review); no latch
 left a 0.35 m sawtooth. Known gap: a range finder whose minimum is over
 0.5 m above its clearance never gets the hold.
+
+## 2026-10-08: pushed
+
+Head ec3c439aec -> 7f83487786: the two floor-hold commits (931be4dc21, 7f83487786) on top of the five flown ones, review fixes folded in before the push. Not yet flown.
