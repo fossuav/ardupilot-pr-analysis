@@ -160,6 +160,24 @@ rather than the mode switch position; why 3 s.
 - **SFD top-up owed**: this PR and #32270's VALT action, hand-ported to
   4.7, where `FS_EKF_ACTION` is still a set of `#define`s.
 
+### Superseded 2026-10-09 by a SITL mutant on the beta (the #32514 bullet)
+
+The landed-branch cancel was written into the beta port and then removed.
+A mutant without it passed `EKFFailsafeRestoreMode` on the beta, including
+a version of the landing subtest that regains GPS only after the
+re-takeoff. In that run `LAND_COMPLETE` was logged at 395.03 s and the
+motors stayed `SPOOLING_DOWN` until 395.54 s. The early return needs ground
+idle or stopped, so it did not apply on those ticks, and the normal
+`land_complete` cancel ran first. A copter landing under power always
+spools down after `land_complete` sets, so no port change is needed. The
+bullet is left because it is the reasoning a reader of the two diffs side
+by side will arrive at.
+
+The top-up itself was done 2026-10-09 as topup14 on
+`SmallFastDrone-4.7.2-beta` (`f209d485e5` to `38c627cb2b`, not pushed).
+The test bodies are identical to the PRs', and `EKFFailsafeRestoreMode`,
+`ModeVAltHold` and `EKFSourceSetFailsafe` pass on that stack.
+
 ## Reproduce
 
 ```bash
