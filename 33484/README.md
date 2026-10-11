@@ -11,6 +11,13 @@ and log message names below are the upstream ones (AglKfForOptflow is
 SmallFastDrone branch, where the same option is bit 4 and the message is
 `XKF6`.
 
+*Superseded 2026-10-11 (the head named above).* `853f3f2177` is history.
+The posted head is `71719dd7d4` (6 commits, squashed 2026-10-08, see
+"2026-10-08: squashed after flight test"), and the 2026-10-11 fixes sit on
+the local branch `fix/pr-vel-flow-axis-gate` over it, not pushed (see
+"2026-10-11: AP-Review round at 71719dd7d4, fixes"). Each number in this
+file keeps the commit it was taken on.
+
 ## Status (one line)
 
 **Superseded in part on 2026-09-04 - see `split-and-quality-gate.md`.** The
@@ -716,6 +723,14 @@ sweep and the position-snap result are real-log only.
   (the yaw-drift trap found on the same 4-inch airframe), #33497 (its flow
   sensor's half-rate fault).
 
+*Superseded 2026-10-11 ("No review yet", and the ten commits).* Wrong
+since 2026-09-10: tridge's automated review answered at `bfb41f69a1`
+(2026-09-10), the round at `853f3f2177` (2026-09-12), and the AP-Review
+bot, whose report at `71719dd7d4` is answered in the last section. The
+branch is the six commits listed under "2026-10-08: squashed after flight
+test", and `EK3_FlowMinHeightFloor` in "Reproduce" left with the floor for
+#34292 on 2026-09-04.
+
 ## Round of 2026-09-12 (tridge AI review at 853f3f2177), fixed 2026-10-03
 
 On local branch fix/33484 (not pushed), over head 4317016b8b. SITL (tier 2).
@@ -735,6 +750,18 @@ still passes, because the latch also takes the filter out of AID_RELATIVE;
 that guard only matters while body odometry holds relative aiding, which no
 test covers. Replay of the 14 cached logs: no difference.
 
+### Superseded 2026-10-11: "cleared on the ground with the latch"
+
+True only when a flow sample arrives. At `71719dd7d4` the latch, the reset
+ring and the pause were cleared in the `onGround` branch of
+`detectOptFlowTakeoff()`, which runs only from `writeOptFlowMeas()`, so a
+sensor that sends nothing between landing and the next arm carried all
+three into the next flight (AP-Review finding L3). Measured in SITL at
+`71719dd7d4` with the test leg added on 2026-10-11 (below): after the
+re-arm `XKF7.FVU` read 1 in 359 of 359 core-0 records over 39 s and core 0
+never restarted relative aiding. Fixed by `d4945f5510`. The paragraph above
+is left because the ring and the 20 s window it describes are unchanged.
+
 ## Codex cold read of the pause and backoff (2026-10-03)
 
 - The backoff and reset history clear on EKF `onGround`, which on a copter is
@@ -743,6 +770,21 @@ test covers. Replay of the 14 cached logs: no difference.
   ground"; amended to say what the flag means.
 - A zero timestamp as the "no pause" sentinel can collide at the 49.7-day
   `millis()` wrap. Codebase-wide convention; not changed.
+
+### Superseded 2026-10-11: "clear on EKF onGround"
+
+They cleared on `onGround` only inside `detectOptFlowTakeoff()`, so only
+when a flow sample arrived while disarmed; see the note under the
+2026-09-12 round above. From `d4945f5510` they clear on every filter step
+while `!motorsArmed`, in `controlFilterModes()` before `setAidingMode()`
+and before any flow fusion that step. Both branches of `detectFlight()`
+set `onGround = !motorsArmed`, so this is the same state on every vehicle
+and the mid-air disarm behaviour above is unchanged (derived from the
+source, not measured). TD25's firmware `7b0e4dd8` already cleared on every
+step while disarmed, by another route: it carries #32232's `3ebeb38816`,
+whose `detectMovementSinceArming()` runs from `controlFilterModes()` and
+holds the clear in its `onGround` branch. No TD25 flight can show the
+carry-over.
 
 Pushed 2026-10-03: 4317016b8b -> 59ca8fc5e5 (fast-forward: registration re-indent, the pause-and-backoff commit, its test).
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/33484#issuecomment-5973749867
@@ -830,3 +872,185 @@ It degrades only in flight (quality ~67 -> ~49, no tracking of
 IMU-integrated velocity). So the lockouts that fed this recovery come
 from in-flight degradation, not from a misconfigured sensor; cause
 untested. Record: analysis `37132bd`.
+
+## 2026-10-11: AP-Review round at 71719dd7d4, fixes
+
+The AP-Review bot's report at `71719dd7d4` (verdict COMMENT) asked for a
+rebase over master's `de3f1330c4`, offered `AP_UInt8` for `_flowQualMin`,
+and raised the latch carry-over as optional hardening. Triage added two
+items from the TD25 QMIN flight (below). Fixes on the local branch
+`fix/pr-vel-flow-axis-gate` over `71719dd7d4`, not pushed; the main
+session squashes and rebases:
+
+- `d4945f5510` fixup! AP_NavEKF3: recover velocity from a single-axis optical flow lockout
+- `3507898650` amend! of the same commit's message: drops the leftover
+  "say what the low-quality lockout latch stops in XKF7.FVU" subject and
+  paragraph, names `XKF7.FVU`, and says the pause and latch clear while
+  disarmed instead of "once the EKF reports on ground"
+- `53bcddddc3` fixup! autotest: cover optical flow single-axis lockout recovery
+- `df60ccfe99` amend! of the autotest message, adding the new leg
+
+| finding | status | by |
+|---|---|---|
+| L1 conflict with master `de3f1330c4` in `AP_NavEKF3.h` | open, resolution below, for the rebase | main session |
+| L2 `AP_UInt8` for `_flowQualMin` (bot, optional) | DISPUTED, kept `AP_Int16` | - |
+| L3 latch, ring and pause carried over by a silent sensor | RESOLVED | `d4945f5510`, `53bcddddc3` |
+| L4 latch evaluated on a lockout formed on the ground | DEFERRED | - |
+| L5 zero-velocity gate shares `prevFlowFuseTime_ms` | DEFERRED | - |
+| leftover subject in `7117c1c5bc`'s message | RESOLVED | `3507898650` |
+
+### L3: the clear, and the test that shows it (SITL, tier 2)
+
+`d4945f5510` clears `flowVelResetUnhealthy`, the reset ring and the pause
+in `controlFilterModes()` under `if (!motorsArmed)`, right after the
+arming-edge block and under `EK3_FEATURE_OPTFLOW_AGL_KF`, the guard the
+members are declared under. `motorsArmed` is read from `dal.get_armed()`
+two lines above, so the clear cannot run on an armed step, and it runs
+before `detectFlight()`, `setAidingMode()` and the step's
+`SelectFlowFusion()` (`UpdateFilter()` calls `controlFilterModes()` first).
+The clear in `detectOptFlowTakeoff()` is removed; nothing else needed it,
+and `AP_NavEKF3_VehicleStatus.cpp` is back to master's text. Derived from
+the source.
+
+New leg "Low flow quality: the latch ends with the flight, sensor silent
+or not": `EK3_OPTIONS=8`, `EK3_FLOW_QMIN=40`, `SIM_FLOW_QUAL=10`, ALT_HOLD
+at 3 m, `SIM_FLOW_OFS_X=1.0` until "flow quality ... too low to recover";
+then the offset off and `SIM_FLOW_ENABLE=0`, throttle low, and Copter's
+auto-disarm after landing; then `SIM_FLOW_QUAL=51`, `DISARM_DELAY=0`, arm,
+`SIM_FLOW_ENABLE=1`, wait up to 30 s for "EKF3 IMU0 started relative
+aiding", and require `XKF7.FVU` 0 in every record after that arm.
+
+| tree | result | after the re-arm (core 0) |
+|---|---|---|
+| fix reverted (`71719dd7d4` EKF code) | FAIL, "Failed to receive text: ekf3 imu0 started relative aiding" | `FVU` 1 in 359 of 359 records, 45.78-84.77 s; no relative aiding |
+| fix, before committing (same source) | PASS | `FVU` 0 in 16 of 16; relative aiding 1.04 s after the arm |
+| fix at `df60ccfe99` | PASS | `FVU` 0 in 88 of 88; relative aiding 8.45 s after the arm |
+
+The 1.0-8.7 s restart latency over three passing runs is not this PR's
+gate: `AID_NONE` to `AID_RELATIVE` also needs `delAngBiasLearned`, which
+with compass yaw fused compares all three gyro bias variances with
+`sq(radians(0.15 * dtEkfAvg))`, and `XKV2.V12` sat at 1.07-1.12e-9 through
+that window, falling slowly. *Derived from the source and the XKV trend,
+not isolated.* The wait is 30 s for that reason.
+
+Two earlier cuts of the leg, kept because each misled:
+
+- Left armed on the ground with the default `DISARM_DELAY` (10 s), the
+  reverted tree *passed* the relative-aiding wait: Copter auto-disarmed
+  9.95 s after the re-arm (58.139 s), a flow sample 28 ms later cleared
+  the latch, and aiding restarted at 58.167 s. Only the `FVU` check failed
+  it (1 from the re-arm at 48.19 s to the disarm). That run is also the
+  plainest measurement of the defect: the latch held for the whole armed
+  period and cleared within one flow sample of the disarm. Hence
+  `DISARM_DELAY=0` for the re-arm.
+- Taking off after the re-arm instead: reverted tree FAIL as intended
+  (`FVU` 1 in 175 of 175 over 20.0 s), but with the fix aiding restarted
+  8.0 s after the flow came back, too close to the 10 s wait then used.
+
+Other legs at `df60ccfe99`: all pass; repeated-lockout reset
+times 35.4 39.5 43.3 47.4 51.4 56.4 59.3 63.5 67.4 72.0 83.3 87.6 91.3
+95.3 99.9 s, so the gaps after the first two bursts are 5.0 s and 11.3 s
+against pauses of 5 s and 10 s. `flake8 Tools/autotest/arducopter.py`
+clean.
+
+**Replay of the TD25 QMIN log (tier 1b), fix against fix-reverted, both
+built as `tool/Replay` at the fix branch tip.** Replay's own events are
+identical: 2 low-quality latches (67.397 s and 140.457 s), 0 resets, 0
+deferrals. The outputs are byte-identical up to the first EKF record
+after the first disarm (128.56 s); from 128.662 s the replayed core
+differs a little after each disarm, because the latch now clears on the
+first disarmed step rather than at the next flow sample: `XKF3` velocity
+innovations by up to 0.17 m/s (at 155.96 s, after the second disarm),
+`XKF5.NI` by up to 5, `XKFA.HAgl` by up to 0.0008 m, and the position
+reset `XKF4.OFN/OFE` at the AID_RELATIVE restart after the disarm differs
+(1.12/-0.63 m against 2.35/-1.31 m), all while disarmed or just after.
+`XKF1` and `XKF7` of the replayed core cannot be read: the output keeps
+the flight's (SmallFastDrone) `FMT` records, whose formats differ from
+this tree's, so those records desync the reader. A log flown on this
+PR's own tree would be needed for velocity.
+
+### L1: the rebase conflict, for the main session
+
+`git merge-tree --write-tree upstream/master fix/pr-vel-flow-axis-gate`
+(upstream/master `a04e2c9334`) reports one conflict,
+`libraries/AP_NavEKF3/AP_NavEKF3.h`:
+
+```
+<<<<<<< upstream/master
+    AP_UInt32 _options;              // bit mask of processing options
+=======
+    AP_Int32 _options;              // bit mask of processing options
+    AP_Int16 _flowQualMin;          // flow quality below which a lockout is not recovered by a reset
+>>>>>>> fix/pr-vel-flow-axis-gate
+```
+
+Resolution: keep master's `AP_UInt32 _options;` and add
+`AP_Int16 _flowQualMin;` on the next line. It arises when replaying
+`7117c1c5bc`; the fixups apply cleanly. `de3f1330c4` is the only master
+commit under `libraries/AP_NavEKF3/` since the merge base, and there is no
+`var_info2` index clash (master stops at 11, `FLOW_QMIN` is 13). Not built
+here at the resolved tree; the bot reports Copter built and
+`EK3_FlowAxisLockoutRecovery` passed with this resolution at
+`71719dd7d4`.
+
+### L2: AP_UInt8 for EK3_FLOW_QMIN, rejected
+
+*Derived from the source at upstream/master, not measured.* `AP_UInt8` is
+stored as `AP_PARAM_INT8` (`AP_Param.h:1114`, "unsigned types share the
+storage type of the signed type"), `AP_Param::set_float()` clamps INT8 to
+-128..127 (`AP_Param.cpp:2322-2325`), and `de3f1330c4` says the GCS
+representation is unchanged. A GCS write of 128-255 therefore stores 127;
+the upper half could only be reached by entering a negative number.
+`FLOW_QMIN` is documented 0-255 against sensors whose scale runs to 255,
+so it stays `AP_Int16`. Recorded because the suggestion will come back.
+
+### L4 and L5: open follow-ups, not implemented this round
+
+L4, the latch can fire on a lockout that formed while disarmed. In the
+TD25 QMIN log (below), re-read 2026-10-11: `XKF5.FIY` was already 29.6
+rad/s at 134.06 s with `FIX` passing (-0.018 to -0.054), before the arm
+at 138.362 s; the latch message is at 140.457 s, `XKF4.SS` bit 10
+(`movedSinceArming`) sets at 140.462 s, and NOT_LANDED (`EV` 28) follows
+at 140.802 s, 0.34 s later, with `RFND.Dist` 0.03-0.04 m (Stat 4)
+throughout. `takeoff_expected` (`XKF4.SS` bit 11) was set 138.46-145.86 s,
+so a `!takeoff_expected` gate would have held this one off, but it is
+unsafe as a gate: Copter re-asserts it in flight below `TKOFF_GNDEFF_ALT`
+(`../../analysis/topics/aglkf_veld_flight_validation.md:70-76`), and it is
+a vehicle opinion the EKF should not lean on. `movedSinceArming` set on
+the very step of the latch, so it is no gate either. The #32232 record
+predicted this deck-latch exposure (`../32232/README.md:243-247`). A fix
+needs a sign that the lockout formed in flight; not designed.
+
+L5, the stationary zero-velocity fusion is skipped while
+`prevFlowFuseTime_ms` is under 1 s old
+(`AP_NavEKF3_PosVelFusion.cpp:721`, the same line on master), and either
+axis passing refreshes that timer (`AP_NavEKF3_OptFlowFusion.cpp:699`), so
+on the ground one passing axis lets the other axis's velocity dead-reckon.
+Source verified 2026-10-11. That it caused TD25's ground runaway between
+flights 1 and 2 is UNCONFIRMED; the log has `LOG_REPLAY=1`, so it is
+Replay-testable, on a tree whose `XKF1` format matches the flight's.
+
+### TD25 QMIN failsafe test (real flight, 2026-10-08)
+
+`T25 - MicoAir743v2 - QMIN EKF Failsafe Test.bin`, `STAT_BOOTCNT` 44,
+SmallFastDrone `7b0e4dd8` (carries this PR), `LOG_REPLAY=1`,
+`EK3_FLOW_QMIN` 75, `EK3_OPTIONS` 28. Full record: analysis `bbfb643`,
+`../../analysis/logs/td25_flyaway.md` "QMIN failsafe test". Quoted, not
+re-measured, except the L4 timings above.
+
+- Three flights, `XKF7.FVC` 0 throughout: the quality gate latched where
+  log 3's Replay said it would, and no reset fired.
+- Flight 1: "flow quality 50 too low to recover" at 67.40 s, stopped
+  aiding, and with `FS_EKF_ACTION=2` the EKF failsafe dropped to AltHold
+  at 68.36 s with no lean. Loiter was refused for the rest of the flight.
+- Flight 2: the latch fired on the ground (L4), so the whole flight had
+  no flow position.
+- Between flights 1 and 2, disarmed and still, `XKF1.VE` ramped -0.23 to
+  -2.17 m/s over 11 s with one flow axis passing (L5).
+
+What it settles for this PR: `EK3_FLOW_QMIN` does what it is for on a real
+degraded sensor, at the cost of Loiter until disarm, and it exposes L4.
+It cannot show L3: `7b0e4dd8` already cleared the latch on every disarmed
+step (see the 2026-10-11 note under the Codex cold read).
+
+Pushed 2026-10-11: `pr-vel-flow-axis-gate` `71719dd7d4` -> `f0804c0644` (force), autosquashed and rebased onto master `00bf6ac82b`; the one conflict, AP_NavEKF3.h, keeps master's `AP_UInt32 _options;` and adds `AP_Int16 _flowQualMin;` after it. The whole-PR diff is unchanged but for that context line. copter and Replay build at all 6 commits; EK3_FlowAxisLockoutRecovery passes at the head. Mechanical gate clean. PR replies drafted, not posted.
