@@ -1,8 +1,10 @@
 # PR #33478 - Fuse the AGL KF velocity as a velD observation (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#33478](https://github.com/ArduPilot/ardupilot/pull/33478).
-Branch `pr-ekf3-aglkf-veld` (andyp1per fork), head `2f1cc48977`
-(2026-09-05), base `master`. No real-flight
+Branch `pr-ekf3-aglkf-veld` (andyp1per fork), head `0f6e2e789d`
+(2026-10-08), base `master` at `cafe674577`; fixes for the 2026-10-11
+AP-Review round are on the local `fix/pr-ekf3-aglkf-veld`, not pushed
+(last section). No real-flight
 logs are committed here; the flight numbers below are from three indoor
 flights on one 5-inch baro-only quad and Replay on a MatekH743 flow quad.
 Option bits are the upstream ones (`EK3_OPTIONS=24` = AglKfForOptflow bit 3
@@ -733,3 +735,147 @@ Head 6185109557 -> 0f6e2e789d, 9 -> 7 commits on the same base, content identica
 - cf6d7649a1 AP_NavEKF3: do not fuse a range sample twice in the AGL KF
 - 4a1e0994ed AP_NavEKF3: hold the AGL KF velocity out of velD after a range step
 - 0f6e2e789d autotest: test a range step against the AGL KF velD fusion
+
+## 2026-10-11: AP-Review round at 0f6e2e789d, fixes
+
+AP-Review at `0f6e2e789d` (verdict COMMENT, no blockers). Fixes are on
+the local `fix/pr-ekf3-aglkf-veld`, as fixup!/amend! commits for the
+squash; nothing pushed, nothing rebased:
+
+```
+1dfd481e87 fixup! AP_NavEKF3: hold the AGL KF velocity out of velD after a range step  (XKFA.VHold)
+22cff8e5ff fixup! AP_NavEKF3: hold the AGL KF velocity out of velD after a range step  (bit 4 text)
+646eda4d9d fixup! autotest: test a range step against the AGL KF velD fusion
+ddf988453b amend! autotest: add EK3_AglKfVelForVelD
+0ac5b26a93 amend! AP_NavEKF3: hold the AGL KF velocity out of velD after a range step
+3cd54a1ef9 amend! autotest: test a range step against the AGL KF velD fusion
+```
+
+**1. Conflict with master. DEFERRED to the squash.** de3f1330c4 made
+`_options` an `AP_UInt32`. `git merge-tree --write-tree upstream/master
+fix/pr-ekf3-aglkf-veld` (master `a04e2c9334`) gives one conflict, in
+`AP_NavEKF3.h`:
+
+```
+<<<<<<< upstream/master
+    AP_UInt32 _options;              // bit mask of processing options
+=======
+    AP_Int32 _options;              // bit mask of processing options
+    AP_Float _aglKfVelMaxSpd;       // maximum horizontal speed for AGL KF vertical velocity fusion (m/s)
+>>>>>>> fix/pr-ekf3-aglkf-veld
+```
+
+Resolution: keep master's `AP_UInt32 _options;` and add the PR's
+`AP_Float _aglKfVelMaxSpd;` after it. `var_info2` on master still ends at
+index 11, so `AGL_VD_SPD` at 15 is free. The resolved tree (trial
+commit `bc6e142b3a`, on no branch) builds copter SITL.
+
+**2. Range noise holds the fusion off, invisibly. RESOLVED for the flag;
+threshold unchanged.** New field `XKFA.VHold`: 1 when the step hold kept
+the AGL KF velocity out of velD within the last 250 ms (the same window
+as `VFuse`). It is set only on a step where every other gate passed and
+the speed gate was open, so a hold reads VFuse 0 / VHold 1 and a closed
+speed gate or another velD source reads 0 / 0. Log only; no estimator
+change.
+
+Replay: XKFA is an EKF output message, not a DAL message, so no Replay
+input changes. Checked in SITL: the two range-step legs of
+`EK3_AglKfVelForVelD` recorded with `LOG_REPLAY=1` (and the stock Replay
+test's `LOG_DARM_RATEMAX`/`LOG_FILE_RATEMAX` 0, `LOG_FILE_BUFSIZE`
+32767; temporary harness, not committed), replayed with `tool/Replay` at
+the fix tree. `check_replay.py --ekf3-only` passes on both: 5628/5628 and
+5368/5372 messages, 0 errors, XKFA 670/670 and 639/639; VHold set for 51
+samples on core 0 and on core 100 over the same 5.0 s. A first attempt
+with the log rate limits left at their defaults failed `check_replay`
+only in the first 16 s after boot (TimeUS pairing, 62 extra replayed
+messages per type), with no VHold, VFuse or VTR mismatch anywhere; that
+was the harness. Cross-version, derived from the source, not measured:
+Replay copies the input log's FMT, so a log recorded with an older XKFA
+layout (master's 7 fields, or this PR's 9 before this round) replays
+into 10-field records under the old FMT. The PR's VFuse/VTR addition
+already had that property, as does any XK* layout change.
+
+Real range finders. Logged RFND run offline through a Python model of
+readRangeFinder's 3-sample median and the step detector at `0f6e2e789d`
+(scratch analysis 2026-10-10; not an EKF Replay), as the share of
+eligible time (AGL KF valid, ground speed under 2 m/s) the hold would
+be on:
+
+| log | 0.15 m (shipped) | 0.30 m | 0.50 m |
+|---|---|---|---|
+| d2_21 | 0% | 0% | 0% |
+| fa3 | 16% | 13% | 0% |
+| d1_10 | 36% | 20% | 0% |
+| m25_3 | 20% | 0% | 0% |
+| m2log4 | 45% | 18% | 0% |
+| cqc29 | 21% | 0% | 0% |
+
+The trips come from outliers and surface texture, not Gaussian noise: a
+Gaussian with each log's measured spread (robust sd 0-4.4 cm) predicts at
+most 2% in the same model (model not re-run this round). This adds to
+the 2026-10-08 "Known limit" above, which was SITL Gaussian noise (about
+0.1 m and up); real sensors with a few cm of spread trip it anyway. The
+known 100% case is log32: in the 12-flight Replay the hold kept fusion
+off for all 61 of its in-range samples, velD error 0.116 -> 0.266 m/s,
+i.e. back to fusion off (smallfastdrone `Tools/SFD/FLIGHT_VALIDATION.md`,
+2026-10-08 "#33478 step hold, from log40").
+
+The threshold stays at 0.15 m. It is what was scored on the 12 replayed
+flights; scaled and learned thresholds gave up the gains on 34/37/39,
+where holding helped; this record has no score on them for a fixed
+0.30 m or 0.50 m. Changing it needs that re-scoring first. Open.
+
+**3. EK3_OPTIONS bit 4 text. RESOLVED** (`22cff8e5ff`). "briefly" is
+gone; the text gives the 5 s hold after a range jump of more than
+0.15 m that the IMU does not account for, says outliers of that size
+keep it on, and lists the bypasses. Each confirmed from the source:
+`hgtHoldsVelD` in `SelectVelPosFusion()` is `activeHgtSource != NONE`,
+neither takeoff nor touchdown expected, and `posDownObsNoise <
+sq(aglKfStepHgtNoiseMax)` (5 m, so EK3_ALT_M_NSE >= 5 on baro); the
+trip is `|hgtInnov - aglKfLastHgtInnov| > 0.15 + 0.025 |aglKfV|` in
+`UpdateAglKf()`.
+
+**4. "41/4947". Clarified.** It appears only in the body of
+`cf6d7649a1`: SITL range fusions in `EK3_AglKfVelForVelD`, counted with
+temporary counters, that landed on a `posVelFusionDelayed` step and so
+fused the previous sample again (41 of 4947, none with that commit). It
+is unrelated to the step hold. The 2026-10-10 triage note placed it in
+the 2026-10-08 PR comment; it is not there.
+
+**5. Commit messages. RESOLVED.** `365c1b06dd` still carried the
+subjects of the two test commits folded into it on 2026-10-08; its
+amend! retitles it "autotest: add tests for the AGL KF velD fusion" and
+describes all three tests. The amend! messages for `4a1e0994ed` and
+`0f6e2e789d` add XKFA.VHold, the real-sensor hold fractions and the new
+assertion. The other four messages were checked: no leftover subjects,
+ASCII, no attribution.
+
+Tests (SITL, fix tree):
+
+- `EK3_AglKfVelForVelD`, extended to assert VHold is set during the hold
+  and clear after it: PASSED. Ground drops / rises 1 m: drift 0.22 /
+  0.24 m, VHold set for 5.0 s each.
+- Flag write removed: FAILED at "XKFA.VHold never showed the step hold"
+  (drift 0.23 m; the hold itself still worked).
+- Flag latched (250 ms window removed): FAILED at "XKFA.VHold still set
+  after the step hold" (9.2 s).
+- Final run of the three AGL KF tests at the fix tree, 2026-10-11: all
+  PASSED. EK3_AglKfVelForVelD: off 3.47, matched 1.28, settled 0.17 m/s;
+  climb 0.01 m/s mean AGL KF error; steps 0.21 / 0.22 m drift, VHold
+  5.0 s; speed gate fused up to 2.7 m/s at a 2.0 m/s gate.
+  EK3_AglKfVelMixedSources: max SV 0.00 and 0.01.
+  EK3_AglKfVelYieldsToOtherVelD: 0 claims with GPS (137 valid samples)
+  and with body odometry (140).
+- Copter SITL with `EK3_FEATURE_OPTFLOW_AGL_KF=0` builds.
+
+Which archived numbers move: none, the change is log only. The step-leg
+drift (0.21-0.24 m over this round's six runs, including the two
+mutations and the two Replay-harness runs)
+matches the 0.22-0.24 m recorded at `e1c297f748`. Observed, not
+investigated: the matched-window leg read 1.27-1.29 m/s in all six runs,
+against the 1.15 m/s recorded at `e17a1c28bf` (2026-09-10). That leg
+runs on the deweighted baro, where the hold does not apply, and this
+round is log only, so the difference presumably comes from the estimator
+commits between those heads; not bisected.
+
+Pushed 2026-10-11: `pr-ekf3-aglkf-veld` `0f6e2e789d` -> `d0c4056d36` (force), autosquashed and rebased onto master `00bf6ac82b`; the one conflict, AP_NavEKF3.h, keeps master's `AP_UInt32 _options;` and adds `AP_Float _aglKfVelMaxSpd;` after it. The whole-PR diff is unchanged but for context lines. copter and Replay build at all 7 commits; EK3_AglKfVelForVelD, EK3_AglKfVelMixedSources and EK3_AglKfVelYieldsToOtherVelD pass at the head. Mechanical gate clean. PR replies drafted, not posted.
