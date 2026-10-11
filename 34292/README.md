@@ -7,6 +7,11 @@ source and measured worse are in the "Measured and rejected" tables under
 round 3 (2026-09-17) and the round of 2026-09-29 at the end. Read both
 before touching the gate.
 
+2026-10-11: PR head `5240bea63a`, 17 commits on `1f1251a67e`, pushed
+2026-10-08. The fix round for the AP-Review of that head is on the local
+branch `fix/pr-flow-hgt-min`, not pushed; see the last two sections. The
+next paragraph is the header as of 2026-09-29.
+
 Current head `2714d632d1` (branch `pr-flow-hgt-min`, andyp1per fork), 20
 commits rebased onto master on 2026-09-29; the previous head was
 `2f411ad1c4`. See "Round of 2026-09-29" at the end. The rest of this
@@ -589,6 +594,30 @@ The paragraph above is left in place because the "travels with the sample"
 argument is still why the value is in the DAL at all, rather than read from a
 parameter inside the EKF.
 
+### Superseded 2026-10-11: no misparse at the new base, but ROFM is still needed
+
+The rebase onto `1f1251a67e` brought in `9610cb59b7` ("Replay: cope with
+logged messages of a different length"): `copy_message()` now zeroes the
+struct and copies only the shorter of the logged and compiled lengths, so a
+grown `log_ROFH` would no longer read past the record and a new field would
+replay as 0. The logm2_log4 numbers above (quality 89, -1.15e14) were taken
+with a Replay older than that commit and keep their values.
+
+ROFM is still the right layout, for another reason. `log_ROFH` ends in
+`uint8_t rawFlowQuality` and the DAL structs are not packed, so an appended
+float sits at offset 40 behind three bytes of padding the format string
+cannot describe. Measured 2026-10-11 (tier 2) on the fix branch tip with
+the float appended: SITL boot prints "Calculated message length for (ROFH)
+based on format field (ffffIffffBf) does not match structure size (44 !=
+47)" and "Config Error: See console: Log structures invalid". Inserted
+before `rawFlowQuality` instead, the sizes agree (44 and 44), but an old
+log's 37-byte payload puts the quality byte into the float and leaves the
+quality 0, which `writeOptFlowMeas()` rejects, so every flow sample of an
+old log would be dropped on replay (derived from `copy_message()` and the
+struct offsets, not measured). The cb90789621 message now gives this
+reason. The section above stays because it is the reasoning ROFM was
+chosen on, true for the Replay of its day.
+
 ## Default
 
 0, off, in the manner of `VISO_QUAL_MIN`. Sensors do not share a focus height.
@@ -777,6 +806,13 @@ re-raised: the suggested `log_##sname msg{};` does not fix the misparse
 (memcpy overwrites the zeroed bytes), and "the first ROFH field whose garbage
 value changes behaviour" is false - `heightOverride` was added identically in
 2022 by `b15cb46d25` with the same `> 0` gate.
+
+Superseded 2026-10-11, items 2 and the first wrong claim: both describe the
+Replay before `9610cb59b7`, which is in the `1f1251a67e` base. Its
+`copy_message()` zeroes the struct and clamps the copy to the logged length,
+so the memcpy no longer overwrites the zeroed tail and a grown struct no
+longer misparses. See "Superseded 2026-10-11" under "How the value reaches
+the EKF" for why ROFM is still kept.
 
 ### tridge automated pass 2, 2026-09-05 (head 7d8ec8f344)
 
@@ -1429,6 +1465,14 @@ left as it was built. A reviewer may ask why the default is back: the answer
 is bisectability, and it is `= 0`, the heightOverride convention, not
 `= 0.0`.
 
+#### Superseded 2026-10-11: "all 20 commits build" was copter only
+
+Replay was never built per commit. Built on 2026-10-10 at `5240bea63a`,
+`tool/Replay` fails at cb90789621 (the EKF2 and EKF3 `writeOptFlowMeas()`
+calls in `AP_DAL::handle_message(ROFH)`) and at c6b3a151bc (the EKF3 call),
+the commits that were e1cad3f6a5 and 438e9b46d6 before the squash; copter
+built at all 17. See the round of 2026-10-11.
+
 ### The staleness bug, reproduced
 
 SITL on the #34380 stack (the flight needs the height limit removed),
@@ -1746,6 +1790,8 @@ changes.
   build alone were a pre-existing split problem, not new.
 - Measured: all 20 commits build; plane builds; copter builds with
   `AP_RANGEFINDER_ENABLED 0`.
+  Superseded 2026-10-11: copter and plane only; Replay failed at two
+  commits. See "Superseded 2026-10-11" under round 3.
 
 The gate itself is unchanged in logic. Re-read at `2714d632d1`
 (`AP_NavEKF3_OptFlowFusion.cpp`, `SelectFlowFusion`): fresh range under
@@ -1887,12 +1933,28 @@ report quality 0 at the ground store no sample, so get no benefit (safe).
 Pushed 2026-10-03: 34be757539 -> e36aab7b08 (fast-forward; RangeFinder and DAL before the EKF commit; every commit builds).
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/34292#issuecomment-5973856808
 
+Superseded 2026-10-11 by a SITL run: "(safe)" in the Open paragraph held
+only for the first flight after boot. The rest reading added on
+2026-10-04 (fce18e43fe) was cleared only at EKF init, so a sensor that
+stores no sample on the ground before a later flight left the previous
+flight's reading in place, and a hover within 5 cm of it fused zero flow:
+40 and 45 zero-flow fusions in a 0.44-0.47 m hover under a 1 m floor at
+the 5240bea63a code, 0 with the reading cleared on disarm (round of
+2026-10-11). The 2026-10-05 reply 5991533245 rests on the same claim. And
+"every commit builds" in the push line was copter only: Replay failed at
+e1cad3f6a5 and 438e9b46d6.
+
 ## 2026-10-08: squashed after flight test
 
 Head 4566254c91 -> d3b59dec34, 33 -> 17 commits on the same base, content identical
 (empty diff against the pre-squash head); every commit builds on its own. Follow-ups folded into their
 commits. The four drop-the-default commits stay separate: each can only land after every caller further
 up the DAL -> EKF -> AHRS -> OpticalFlow chain passes the argument, and folding them earlier breaks the build.
+
+Superseded 2026-10-11: "every commit builds on its own" was copter only.
+Replay failed at 339643ebf2 and b8811e996b (cb90789621 and c6b3a151bc after
+the rebase), because the `handle_message(ROFH)` hunk stayed in the ROFM
+commit; the 2026-10-04 reply had promised that move for this squash.
 
 - 715bc01889 SITL: add SIM_FLOW_OFS optical flow rate offset for fault injection
 - 29700f3ff8 AP_OpticalFlow: apply SIM_FLOW_OFS offset to the SITL flow rate
@@ -1911,3 +1973,202 @@ up the DAL -> EKF -> AHRS -> OpticalFlow chain passes the argument, and folding 
 - e6fc7d245f AP_NavEKF3: fuse zero flow on the ground below the focus floor
 - e94b68d217 Replay: handle the ROFM optical flow metadata message
 - d3b59dec34 autotest: cover the optical flow focus height floor
+
+## 2026-10-04 to 2026-10-08: the rest reading, the flight, the rebase
+
+Added 2026-10-11; the record had stopped at the 2026-10-08 squash.
+
+- 2026-10-04, AP-Review at e36aab7b08 (comment 5979260726): the landing
+  failsafe still fired when the landed range read more than 5 cm above
+  RNGFNDx_GNDCLR (its SITL: SIM_SONAR_OFFSET 0.2, landed 0.19 m, GNDCLR
+  0.10, FLOW_HGT_MIN 0.3, LOITER, DISARM_DELAY 10). Fixed by amending
+  fce18e43fe: the rest test also accepts a range within 5 cm of the one
+  read on the ground before takeoff (`flowFocusRestRng`, learned while
+  disarmed from each stored flow sample, kept only under the floor). SITL:
+  that 0.19 m LOITER landing ends in "EKF variance" at e36aab7b08 and
+  disarms in LOITER with the reading. Replay of 12 flow logs unchanged.
+  20c92dbfc4 writes ROFM again in a log that starts after the first. Reply
+  5979802458 promised the Replay-per-commit move "in the final squash"; it
+  was not made there (see 2026-10-11).
+- 2026-10-04, AP-Review at 20c92dbfc4 (5983530344): nothing blocking. A
+  landing that reads more than 5 cm further than the takeoff still
+  failsafes; the reference is missed when the sensor reports quality 0
+  before arming or FLOW_HGT_MIN is set after arming.
+- 2026-10-05 09:14, reply 5991533245: same-level ground is the stated
+  assumption, now in the FLOW_HGT_MIN description (4566254c91); with no
+  reading learned the test falls back to on_ground() against GNDCLR. Wrong
+  after the first flight after boot: see the superseded note under the
+  round of 2026-09-30, and the round of 2026-10-11.
+- 2026-10-05, AP-Review at 4566254c91 (5994333673): raised the carry-over
+  (`flowFocusRestRng` cleared only at EKF init, so a later flight with no
+  flow sample on the ground uses the previous flight's reading) and the
+  wording at AP_OpticalFlow.cpp:110. Neither was answered that day.
+- 2026-10-05, flight test (tier 1), reply 5998718622: FLOW_HGT_MIN 0.15,
+  flow lane primary. In a 12-17 s hover at 0.12-0.18 m the flow
+  innovations stopped updating below the floor; relative aiding was kept
+  through the low hover and 8 s armed on the ground; both takeoffs and
+  landings were clean, no failsafe. The range finder read out of range low
+  on the ground, so on_ground() held the rest and the learned reading was
+  not exercised. Flow-lane velocity error below 0.15 m was 0.06-0.09 m/s
+  with the floor and the same without, so the floor's benefit was not
+  measured on this airframe. Replay reproduced the flight exactly. The log
+  is not named in this repo (owed, with a REPLAY_LOGS.md row).
+- 2026-10-08: after the squash above (d3b59dec34), rebased onto 1f1251a67e
+  as 5240bea63a. `git range-diff` (2026-10-11): 16 of 17 commits
+  identical, 89b643d0d9 differing only in a context line (`_options` is
+  AP_UInt16 on the new base). AP-Review of 5240bea63a: comment 6066298755.
+
+## 2026-10-11: AP-Review round at 5240bea63a, fixes
+
+On local `fix/pr-flow-hgt-min` (not pushed), from `andyp1per/pr-flow-hgt-min`
+5240bea63a. Findings from comment 6066298755.
+
+### H1, the rest reading carried over between flights: RESOLVED
+
+d644bd73ce (fixup! 13a42b2c36) clears `flowFocusRestRng` on the disarm edge
+in `controlFilterModes()`, beside `timeAtArming_ms`. `motorsArmed` comes from
+`dal.get_armed()`, so it replays, and nothing in it is vehicle-specific. A
+flight now uses only a reading taken after the last disarm. The core.h
+comment says so (same fixup).
+
+Test: a two-flight leg at the end of FlowFocusHoldAfterLanding (04eebe9097),
+no reboot between flights. FLOW_HGT_MIN 1.0 and SIM_SONAR_OFFSET 0.8, so the
+ground reads 0.79 m and is learned; ALT_HOLD flight to 2 m and land;
+SIM_FLOW_OFS_X 5 from touchdown until the second flight is armed; disarm;
+SIM_SONAR_OFFSET 0 (ground reads 0.00 m); arm; offset off; hover. The 5 rad/s
+rate is over the EKF's 4.2 rad/s corrupt-data limit, so `writeOptFlowMeas()`
+still runs (takeOffDetected resets on the ground) but no sample is stored,
+as with quality 0. SIM_FLOW_ENABLE 0, the first idea, stops the callbacks
+altogether and leaves takeOffDetected stale from the last flight, which a
+quality-0 sensor does not. The leg checks that no flow was fused between the
+flights (XKF5 flow innovations unchanged), that the hover range is within
+0.05 of the first ground reading, then 0 fusions in the hover and "EKF3 IMU0
+stopped aiding".
+
+| build (tier 2, SITL) | hover | hover range max | fusions between flights | fusions in hover | stopped aiding | result |
+|---|---|---|---|---|---|---|
+| fix, probe copy of the leg | 0.41 m | 0.51 m | 0 | 0 | yes | pass |
+| fix, full test at the tip | 0.42 m | 0.52 m | 0 | 0 | yes | pass |
+| clear reverted, probe copy | 0.47 m | 0.55 m | 0 | 45 | no | fail, intended assertion |
+| clear reverted, full test | 0.44 m | 0.53 m | 0 | 40 | no | fail, intended assertion |
+
+Every other leg of FlowFocusHoldAfterLanding passed in the reverted run.
+
+Not covered (derived from the source, not measured, not raised by the bot):
+the reading is the last stored sample while disarmed on the ground, so a
+sensor that stops storing samples as it is set down, for instance lowered
+by hand through its focus limit, keeps a reading from wherever its last
+sample was taken, if that was under the floor. The disarm clear does not
+reach that within one flight. Replay: the clear can change a replay only
+where no flow sample is stored between a disarm and the next takeoff
+(derived from the source); the 14-log Replay is not re-run at this code
+(owed).
+
+### H2, Replay did not build at two commits: RESOLVED, needs a move in the squash
+
+7c406392dd (fixup! cb90789621) takes the `handle_message(ROFH)` hunk out of
+the ROFM commit and 709a4f499d re-adds it as its own commit, "AP_DAL: pass
+the logged flow focus height to the estimators in Replay", which must sit
+directly after 0e57f0384e (both estimators then take `minHeight`) and before
+340e4a8254 / 2128795a35 (the EKF2 default goes at 67e0ab68c4, so it cannot
+go later).
+
+Verified without a rebase on `tmp/34292-reordered`, built from 1f1251a67e by
+cherry-picking in the final order with the fixups and amend! messages
+applied: its tree equals the fix branch tip's (7abce4841d both).
+Built 2026-10-11 at every one of its 18 commits: `./waf copter` and
+`./waf --targets tool/Replay` both succeed at all 18, including the ROFM and
+EKF2 commits that failed before (2026-10-10 at 5240bea63a: Replay failed at
+cb90789621 and c6b3a151bc only).
+
+Todo order for the squash (`git rebase -i --autosquash 1f1251a67e` on
+`fix/pr-flow-hgt-min`, then move one line):
+
+```
+pick 367ac1bd68 SITL: add SIM_FLOW_OFS ...
+pick 629245031e AP_OpticalFlow: apply SIM_FLOW_OFS ...
+pick eeb9ab632f AP_RangeFinder: add on_ground() ...
+fixup -C fb91e97c80 amend! AP_RangeFinder: add on_ground() ...
+pick c6f58774cb AP_DAL: force out an IFCHANGED block ...
+pick cb90789621 AP_DAL: carry the flow minimum focus height in a new ROFM message
+fixup 7c406392dd fixup! AP_DAL: carry ...
+fixup -C f224417f9a amend! AP_DAL: carry ...
+pick c6b3a151bc AP_NavEKF2: pass the optical flow minimum focus height to the DAL
+pick 0e57f0384e AP_NavEKF3: discard optical flow below the sensor's focus height
+fixup -C 53b3ff785a amend! AP_NavEKF3: discard ...
+pick 709a4f499d AP_DAL: pass the logged flow focus height to the estimators in Replay   <- moved here
+pick 340e4a8254 AP_AHRS: forward the optical flow minimum focus height
+pick 89b643d0d9 AP_OpticalFlow: add FLOW_HGT_MIN ...
+fixup ea0e473533 fixup! AP_OpticalFlow: add FLOW_HGT_MIN ...
+fixup -C bb84b728dd amend! AP_OpticalFlow: add FLOW_HGT_MIN ...
+pick 2128795a35 AP_DAL: drop the default ...
+pick 67e0ab68c4 AP_NavEKF2: drop the default ...
+pick bdde7d8f18 AP_NavEKF3: drop the default ...
+pick e4616b3914 AP_AHRS: drop the default ...
+pick 833ed8ba6b AP_DAL: give the range finder backend on_ground()
+pick 13a42b2c36 AP_NavEKF3: fuse zero flow on the ground below the focus floor
+fixup d644bd73ce fixup! AP_NavEKF3: fuse zero flow ...
+fixup -C a19a06d706 amend! AP_NavEKF3: fuse zero flow ...
+pick 777d06c625 Replay: handle the ROFM optical flow metadata message
+pick 5240bea63a autotest: cover the optical flow focus height floor
+fixup 04eebe9097 fixup! autotest: cover ...
+fixup -C 3d7b69ce0f amend! autotest: cover ...
+```
+
+After the squash the tree should be 7abce4841d, the same as
+`tmp/34292-reordered`, whose 18 commit messages are the ones intended.
+
+### H3, cb90789621's stale reason for ROFM: RESOLVED (message)
+
+f224417f9a (amend!) replaces the misparse argument with the current one,
+measured above under "How the value reaches the EKF": an appended float
+fails SITL's structure check at boot (44 != 47), and one inserted before the
+quality makes old logs replay with quality 0 (derived). The EKF3 playbook's
+"Never grow an existing DAL struct" paragraph has the same stale reasoning;
+it is for the main session to update.
+
+### H4, the FLOW_HGT_MIN wording: RESOLVED
+
+ea0e473533 (fixup! 89b643d0d9): "assumes the rangefinder reads no more than
+0.05 further at landing than before that flight's takeoff", replacing
+"lands on ground level with where it took off".
+
+### H5, the bot's other notes: DEFERRED
+
+A landing that reads more than 0.05 further than before takeoff still
+discards the flow (maintainer call; the description now states the exact
+assumption). Two downward range finders: the DAL on_ground() uses the
+orientation-wide clearance and the reading has no sensor index (rare,
+acknowledged 2026-10-04). `rofm_resend` is not serialised with the flow
+write path (no change asked, matches base's ROFH writes).
+
+### Commit messages
+
+amend! commits rewrite every squash-concatenated message so each describes
+the final change: eeb9ab632f (fb91e97c80), cb90789621 (f224417f9a),
+0e57f0384e (53b3ff785a; also restores the sentence the 10-08 squash lost,
+"#34380 proposes) and no user settings, 5 runs each: without it none of",
+from d0c1f6a5e0), 89b643d0d9 (bb84b728dd), 13a42b2c36 (a19a06d706; it
+never described the rest reading the 10-04 amend added) and 5240bea63a
+(3d7b69ce0f). 367ac1bd68 and 629245031e are left: they are shared verbatim
+with #33484 (25b2b7c2b4, f7d496a483), whose single-axis lockout their
+first message names.
+
+### Tests at the fix tip (tier 2)
+
+All four pass, binary built at the fix branch tip: OpticalFlowFocusHeight
+(landings: 59 and 61 flow fusions after the bad flow, drift 0.03 and
+0.02 m; old range: 83 updates in 8.4 s), FlowHeightMinTerrainPath (AFI low
+leg max 0, high leg 62), FlowFocusHoldAfterLanding (low hover 0 fusions in
+66 XKF5 at 0.41 m; LOITER landings at 0.00 m and 0.19 m ground range; the
+new leg as in the table), FlowFocusHoldReleasesWithDeadRangeFinder.
+
+### Reply draft (not posted)
+
+Thanks. The carry-over your 2026-10-05 review raised was real, and the reply that day missed it: the rest reading was only cleared at EKF init, so after the first flight a sensor that stored no flow sample on the ground kept the previous flight's reading. It is now cleared on disarm, and FlowFocusHoldAfterLanding has a two-flight leg without a reboot: with the reading kept, a 0.44-0.47 m hover under a 1 m floor fused zero flow 40-45 times; cleared, the flow is discarded (0) and aiding stops.
+
+- Replay at every commit: the handle_message(ROFH) change is now its own AP_DAL commit after the EKF3 one, and copter and Replay build at every commit.
+- cb90789621's message now gives the current reason for ROFM: log_ROFH ends in a uint8_t, so an appended float brings padding and SITL rejects the structure at boot (44 != 47), while inserting it before the quality makes older logs replay with quality 0.
+- The FLOW_HGT_MIN text now says it assumes the rangefinder reads no more than 0.05 further at landing than before that flight's takeoff.
+
+Pushed 2026-10-11: `pr-flow-hgt-min` `5240bea63a` -> `f9cae55929` (force, autosquashed), 18 commits, the ROFH handler moved into its own AP_DAL commit after the EKF3 one; every commit's tree identical to the reordered branch that built copter and Replay at each commit. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
