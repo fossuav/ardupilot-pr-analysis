@@ -1052,3 +1052,5 @@ section's "then climbs out" (the climb was dropped). The log36 tier-1b
 Replay under 2026-10-06 is still neither posted nor in the description.
 
 Pushed 2026-10-11: `pr-terrain-reset-ge` `9fb70f0f8d` -> `a3ec1e8016` (force, autosquashed), 2 commits, messages only (every tree unchanged). Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
+
+Reply to the AP-Review round posted 2026-10-11 (issue comment 6110170989), the text drafted above.

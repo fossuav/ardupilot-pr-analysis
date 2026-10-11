@@ -650,3 +650,5 @@ replayed IMU data come from the DAL, so the sweep needs a SITL
 Replay build.
 
 Pushed 2026-10-11: `pr-rng-aglkf-terrain` `5c5441d830` -> `a1f5a87074` (force, autosquashed), 6 commits; final tree identical to the tested fix branch; copter and Replay build at every commit. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
+
+Reply to the AP-Review round posted 2026-10-11 (issue comment 6110170529), the text drafted above.

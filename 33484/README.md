@@ -1054,3 +1054,5 @@ It cannot show L3: `7b0e4dd8` already cleared the latch on every disarmed
 step (see the 2026-10-11 note under the Codex cold read).
 
 Pushed 2026-10-11: `pr-vel-flow-axis-gate` `71719dd7d4` -> `f0804c0644` (force), autosquashed and rebased onto master `00bf6ac82b`; the one conflict, AP_NavEKF3.h, keeps master's `AP_UInt32 _options;` and adds `AP_Int16 _flowQualMin;` after it. The whole-PR diff is unchanged but for that context line. copter and Replay build at all 6 commits; EK3_FlowAxisLockoutRecovery passes at the head. Mechanical gate clean. PR replies drafted, not posted.
+
+Reply to the AP-Review round posted 2026-10-11 (issue comment 6110170245), the text drafted above.

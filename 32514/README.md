@@ -577,3 +577,5 @@ returns; it does not mean no other backend can lack a horizontal source.
 Derived from the source and the parameter descriptions, not measured.
 
 Pushed 2026-10-11: `ekf-check-source-reset` `c6ce4344c1` -> `2de6865b39` (force, autosquashed), 5 commits, messages only (every tree unchanged). Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
+
+Reply to the AP-Review round posted 2026-10-11 (issue comment 6110170855), the text drafted above.
