@@ -313,6 +313,27 @@ The third commit's `terrainStable = true` override is what lets the height switc
 
 That is correct for this PR's purpose and is not being changed here. It did, however, silently disable [#32768](../32768/)'s arm-time baro drift reset, which refused any height source but baro or GPS: `EKF_ALT_RESET` at arm went 1 -> 0 with `EK3_RNG_USE_HGT` alone (measured 2026-09-05, see `../32768/README.md`). The fix is on the #32768 side - allow the reset when the *configured* primary is baro or GPS and the vehicle is stationary - so nothing here moves. Recorded in both directories because either PR read alone looks complete.
 
+### Superseded 2026-10-11 in part by SITL and Replay with a source probe
+
+"Copter's own `terrain_hgt_stable` is false unless taking off or
+landing, so before this PR the on-ground switch could not fire" holds
+only once the vehicle has flown in that boot. On a fresh boot the EKF
+cores read the flag true until the first takeoff: a flow-only SITL
+copter at `5c5441d830` plus a temporary statustext probe switched to the
+range finder pre-arm with the flag reading true, and Replay of log29,
+log30, log35 and log224 (upstream branch, same probe) shows it true at
+the first arming. Mechanism, from the source and not measured:
+`AP_AHRS::set_terrain_hgt_stable()` drops a value equal to its own
+cached state, and Copter's first `false` arrives before the cores exist,
+so they keep their initialised `true`. After a flight the flag is false
+while disarmed, and there the override is what engages the switch on
+the ground (log224's ground switch-ins, flag false, disarmed). The text
+above is left in place because the arm-time reset is still disabled
+whenever the switch is engaged at arming, by either route; the 1 -> 0
+"with `EK3_RNG_USE_HGT` alone" is consistent with the stale flag
+(interpretation, not re-measured). Item 4 of the 2026-09-10 review above
+rests on the same sentence.
+
 ## Round of 2026-09-30 (AP-Review at f48c851e1b), fixed 2026-10-03
 
 On local branch fix/33359-carry (not pushed), over the PR head. SITL (tier 2)
@@ -519,3 +540,113 @@ Head 1b221ab4a1 -> 5c5441d830, 12 -> 6 commits on the same base, content identic
 - e94afecc47 AP_NavEKF3: run the AGL KF on every filter step
 - d15264bc96 AP_NavEKF3: do not fuse a range sample twice in the AGL KF
 - 5c5441d830 autotest: check the AGL KF height keeps up with a climb and descent
+
+## 2026-10-11: AP-Review round at `5c5441d830`, fixes
+
+Local branch `fix/pr-rng-aglkf-terrain` (not pushed), over
+`5c5441d830`: `4ea485ebe2` fixup of the switch commit (T1),
+`547d3f3402` fixup of the autotest commit (new test), and amend!
+messages for `39dee56c7f`, `39dc3fe860`, `e94afecc47`, `d15264bc96`,
+`5c5441d830` (T3). Bot review (COMMENT):
+https://firmware.ardupilot.org/Tools/APReview/DevCallReviews/PRReviews/ardupilot/ardupilot/33359/9.html
+
+### T1 (no speed gate without a velocity estimate): RESOLVED in `4ea485ebe2`
+
+The override now needs `onGround || (filterStatus.flags.horiz_vel &&
+PV_AidingMode != AID_NONE)`, and `aglOnlyStable` is
+`terrainStable && !terrainHgtStable` so the step-up reset and the wait
+follow the same condition.
+
+Why not the bot's `horiz_vel` alone (measured, tier 2): after optical
+flow is lost the EKF goes to constant position mode and `horiz_vel`
+stays set (the mode's position reset clears the timeouts), while its
+speed reads 0.0. With a probe at the head, both cores took the range
+finder 0.04 s after "stopped aiding", the simulator at 4.8 m/s. So the
+`!horiz_vel` branch the bot named is the narrow case; constant position
+mode is the wide one, and `horiz_vel` alone leaves it open.
+
+Why `onGround` (inspection): it is `!motorsArmed` in both branches of
+`detectFlight()`, so it means disarmed on every vehicle, and it keeps
+the pre-arm switch-in. Only Copter calls `set_terrain_hgt_stable()`, so
+on every other vehicle `terrainHgtStable` stays at its initial true and
+the override, gated or not, changes nothing.
+
+Also measured: on all five logs below `horiz_vel` is set on the ground
+from about 6 s after boot (probe), so "a flow vehicle on the ground has
+`horiz_vel` false" is not what rules out the plain gate. A flow-only
+SITL copter toggles it in constant position mode until relative aiding
+starts on the ground, and holds it set from then.
+
+SITL, new `EK3_RngHgtSwitchNoVelocity` (flow-only, `EK3_RNG_USE_HGT 12`,
+`EK3_RNG_USE_SPD 2`, ALT_HOLD at ~2 m, flow lost at 3.5 m/s, then
+`SIM_SONAR_OFFSET -1` for 5 s at 4.78-4.92 m/s with range 0.97-2.05 m):
+worst EKF height against the simulator's, from the pre-loss offset.
+
+| code | worst height error |
+|---|---|
+| fix (`4ea485ebe2`), two runs | 0.10 m, 0.10 m |
+| fix reverted (= head) | 1.69 m (fails at the assertion) |
+| head + probe build | 1.67 m |
+| `horiz_vel` alone (bot's proposal) | 1.69 m |
+
+Replay (tier 1b), upstream PR head against head + fix, each with the
+probe. log29 (3408138/567), log30 (571), log35 (582) as flown;
+log224 (260) and log225 (261) with `EK3_RNG_USE_HGT 3`, the
+log280/281 setting. Every EKF message identical (log224/log225 output
+BINs byte-identical; log29/30/35 differ only in 3-7 `OF` records with
+garbage payloads, a format-table artefact of the fork logs), the same
+height source sequence (8, 36, 12, 0, 36 switches), and the condition
+the fix changes never arose on any of them. `replay_sweep.py --compare`
+moved no row. These are head-against-fix numbers on the upstream branch,
+not comparable with the beta numbers in the tables above.
+
+UNCONFIRMED: log280, log281 and log31 do not resolve on this machine
+(only `/mnt/c/support`), so the indoor flights this PR is credited with
+were not replayed with the change. Owed before push. Not exercised by
+any log or test: the `onGround` term with the vehicle flag false and the
+EKF in constant position mode on the ground (a second flight in a boot
+on a flow sensor reading quality 0 on the floor).
+
+Measured and rejected, for the "Measured and rejected" habit: gating the
+override on `horiz_vel` alone, argued for as the obvious fix by the bot
+and by our own 2026-09-10 review (:100-105); 1.69 m in the test above,
+the same as no gate.
+
+### T2 (dependency on #33507): DEFERRED, answered
+
+Safe by default: everything here is behind `EK3_OPTIONS` bit 3. With bit
+3 set it should land after #33507, whose AGL KF accel bias state removes
+the lag this fuses into altitude, and after #32768, because the
+pre-arm switch disables the arm-time datum reset whose fix is on the
+#32768 side (:310-314). The "0.3 m per 0.05 m/s2" in `39dc3fe860`'s
+message is the 2026-09-10 model at `bba45ab742` (:54-58), taken before
+`e09f450f30` changed the velocity decay it modelled; not re-run, so it is
+dropped from the amended message rather than quoted as measured.
+
+### T3 (commit text): RESOLVED by amend! commits
+
+`39dee56c7f`: one subject and one account of the switch, without the
+stale "This commit alone does not engage the switch" and "which the
+series does not yet address". `39dc3fe860`: the tilt/terrain-gradient
+term is added on both paths (the "drops" sentence is gone), and the
+0.3 m figure is removed. `5c5441d830`: one subject, all three tests.
+Also found: `e94afecc47` quoted a velD error with the AGL KF velocity
+fused, which is #33478's feature, not this PR's; `d15264bc96` named
+`EK3_AglKfVelForVelD`, a test on #33478 only. Both amended.
+`e09f450f30` is unchanged.
+
+### T4 (cross-covariance with the main filter's accel): DEFERRED
+
+Still owed. `Tools/Replay` has no accel-bias injection (its options are
+`--parm`, `--param-file`, `--force-ekf2/3`, `--progress`), and the
+replayed IMU data come from the DAL, so the sweep needs a SITL
+`SIM_ACC1_BIAS_Z` A/B instead.
+
+### PR tests at the fix head (SITL)
+
+`EK3_RngHgtSwitchStepUp` -0.06 m (worst 0.19 m), vehicle 0.35 m;
+`EK3_AglKfVerticalMotion` worst 0.15 m (bias -0.03 m);
+`EK3_RngHgtSwitchNoVelocity` 0.10 m. All pass; flake8 clean; copter and
+Replay build.
+
+Pushed 2026-10-11: `pr-rng-aglkf-terrain` `5c5441d830` -> `a1f5a87074` (force, autosquashed), 6 commits; final tree identical to the tested fix branch; copter and Replay build at every commit. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
