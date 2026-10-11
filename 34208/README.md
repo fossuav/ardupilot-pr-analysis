@@ -13,10 +13,14 @@ Rebased onto master, the std::atomic sequence replaced by a volatile one,
 
 ## Status (one line)
 
-Opened 2026-08-29. Four commits: the interpolation in the copter rate thread,
-the RATE.*Des logging fix it exposed, the SITL gyro rate following
+Opened 2026-08-29 with four commits: the interpolation in the copter rate
+thread, the RATE.*Des logging fix it exposed, the SITL gyro rate following
 INS_GYRO_RATE so the effect can be reproduced in SITL, and a SITLGyroRate
-autotest. SITL A/B measured, flown on a 4 inch quad, awaiting review.
+autotest. The last two moved to [#34642](../34642/) on 2026-10-06, so this PR
+has no test of its own; since the 2026-10-08 squash it is three commits (the
+sequenced target publish and RATE.*Des logging, the interpolation, and the
+removal of the two argument `rate_controller_run_dt()`). SITL A/B measured,
+flown on a 4 inch quad, awaiting review.
 
 ## The problem
 
@@ -37,9 +41,12 @@ SITL it took -19 dB off the fundamental and -0.7 dB off the second harmonic.
 Ramp the target across the fast loop steps instead. `rate_controller_run_dt()`
 now takes the target, so the ramp state stays owned by the rate thread and the
 main loop path is unchanged; sysid is added downstream so chirps still inject as
-steps. The ramp restarts when the target changes (not on the decimation counter,
-which drifts against the asynchronous main loop) and resyncs to the live target
-after the thread has been idle or the step count has changed.
+steps. The ramp restarts when the main loop publishes a new target, read from
+the publication sequence (`rate_thread.cpp:272` at `3878be001a`), not on the
+decimation counter, which drifts against the asynchronous main loop; at
+`32829ea806` it restarted when the target value changed, which let a partly
+written target become the endpoint. It resyncs to the live target after the
+thread has been idle or the step count has changed.
 
 ## SITL A/B (controlled)
 
@@ -171,16 +178,21 @@ were not archived. The setup to redo them is below.
 ```
 git checkout pr-rate-target-interp
 ./waf configure --board sitl && ./waf copter
-Tools/autotest/autotest.py --no-configure test.Copter.SITLGyroRate           # 1/2/4 kHz
 Tools/autotest/autotest.py --no-configure test.Copter.DynamicRpmNotchesRateThread
+Tools/autotest/autotest.py --no-configure test.Copter.RateThreadPostFilterGyroLog
+Tools/autotest/autotest.py --no-configure test.Copter.CompassMotFastRate
 ```
 
+`SITLGyroRate` (1/2/4 kHz) is in [#34642](../34642/) since 2026-10-06, not
+on this branch.
+
 For the A/B: `SCHED_LOOP_RATE=200 FSTRATE_ENABLE=3 FSTRATE_DIV=1 INS_GYRO_RATE=1`
-(2 kHz gyro on this branch), `ATC_RAT_RLL_FLTT=100 ATC_RAT_RLL_FLTD=100
-ATC_RAT_RLL_D_FF=0.001`, log PIDR at full rate, fly a 1 Hz full-stick roll sine
-in AltHold, and compare PSDs of `PIDR.Tar/P/D/DFF` against the parent commit
-(ZOH). Use a fixed rate: above `SIM_RATE_HZ` the SITL gyro samples arrive in
-bursts, which the dynamic rate mode reads as the thread running slow.
+(a 2 kHz SITL gyro needs #34642 applied on top),
+`ATC_RAT_RLL_FLTT=100 ATC_RAT_RLL_FLTD=100 ATC_RAT_RLL_D_FF=0.001`, log PIDR
+at full rate, fly a 1 Hz full-stick roll sine in AltHold, and compare PSDs
+of `PIDR.Tar/P/D/DFF` against the parent commit (ZOH). Use a fixed rate:
+above `SIM_RATE_HZ` the SITL gyro samples arrive in bursts, which the
+dynamic rate mode reads as the thread running slow.
 
 ## Branches and people
 
@@ -243,3 +255,50 @@ Head 3561165628 -> 3878be001a, 8 -> 3 commits on the same base, content identica
 - b78e1da8b1 AC_AttitudeControl: pass rate target to rate_controller_run_dt(), log it
 - 029a4b132f Copter: interpolate the rate target in the fast rate thread
 - 3878be001a AC_AttitudeControl: drop the two argument rate_controller_run_dt()
+
+## 2026-10-11: AP-Review round at 3878be001a, fixes
+
+AP-Review round 6 (2026-10-08, COMMENT) at `3878be001a`: code fine, history
+not. `b78e1da8b1` adds the std::atomic publisher and `3878be001a` replaces
+it with the volatile one under a subject that does not mention it, and the
+three messages are git's concatenated squash defaults.
+
+Local branch `fix/pr-rate-target-interp` on `3878be001a`, not pushed:
+
+- `249f9ab523`, `1efacaa357`, both `fixup!` of `b78e1da8b1`. The first puts
+  the std::atomic lines back as `b78e1da8b1` has them, the second restores
+  the final volatile form, so on the branch they cancel (tree identical to
+  `3878be001a`). Under autosquash they fold into `b78e1da8b1` as one change:
+  the volatile publisher and getter, the final header comments, no unused
+  plain `get_ang_vel_body_rads()`, and the `.cpp` description of
+  `rate_controller_run_dt()`. `3878be001a` then only drops the two argument
+  `rate_controller_run_dt()`, which cannot go earlier because the rate
+  thread calls it until `029a4b132f`. A single fixup cannot do this: at the
+  head the code is already volatile, so it would have no diff to carry.
+- `b96c1f750c`, `cf620fd152`, `ea35c70af8`: amend! messages for the three
+  commits. The first is retitled "pass a sequenced rate target to the rate
+  PIDs, log it" and describes the volatile publisher and its multi-core
+  caveat; the Copter one describes the ramp starting on the publication
+  sequence and drops the value-comparison paragraph.
+
+Verified without a rebase: `tmp/34208-reordered` built from the merge-base
+`9dd2e0f350` by `cherry-pick -n` of each commit with its fixups folded in,
+in autosquash order: `bb9f94f11b`, `4979e8aaf2`, `9522acd441`. No pick
+conflicted. Its final tree equals `andyp1per/pr-rate-target-interp`'s, and
+`./waf copter plane heli sub` succeeds at all three commits (12 of 12,
+SITL, 2026-10-11). The last commit's diff is the two removed lines only.
+
+- History request (volatile publisher in the first commit, reword three
+  messages): RESOLVED by the commits above, pending the main session's
+  autosquash.
+- Weakly ordered multi-core Linux can pass a mixed target: no change asked;
+  already the accepted gap recorded under 2026-10-06, and now stated in
+  the first commit's message.
+
+This record's stale text corrected the same day: the Status line and
+Reproduce section still named `SITLGyroRate` and a 2 kHz SITL gyro "on this
+branch", both moved to #34642 on 2026-10-06; and "The fix" said the ramp
+restarts when the target changes, where at `3878be001a` it restarts on the
+publication sequence (`rate_thread.cpp:272`).
+
+Pushed 2026-10-11: `pr-rate-target-interp` `3878be001a` -> `d9825b9c83` (force, autosquashed), 3 commits, each tree identical to the reordered branch that built copter, plane, heli and sub. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
