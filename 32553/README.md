@@ -1,6 +1,9 @@
-# PR #32553 - Reset terrain offset from baro when ground effect clears (EKF3)
+# PR #32553 - Reopen the terrain variance after takeoff ground effect (EKF3)
 
 Analysis archive for [ArduPilot/ardupilot#32553](https://github.com/ArduPilot/ardupilot/pull/32553).
+Retitled 2026-10-03 with the code; it was "Reset terrain offset from baro
+when ground effect clears", and this record kept that title until
+2026-10-11.
 Branch `pr-terrain-reset-ge`, base master. No logs committed; numbers
 are from a BF_X indoor quad (SmallFastDronev1 board, Mar 2026), cited
 inline.
@@ -1005,3 +1008,47 @@ Head c7e1dff234 -> 9fb70f0f8d, 8 -> 2 commits on the same base, content identica
 
 - b8cf8b32ab AP_NavEKF3: reset terrain offset from baro when ground effect clears
 - 9fb70f0f8d autotest: record terrain offset after the ground effect baro error
+
+## 2026-10-11: AP-Review round at 9fb70f0f8d, fixes
+
+AP-Review round 4 (2026-10-08, COMMENT) at `9fb70f0f8d`: the squash passes
+check_branch_conventions and the abandoned baro-reset commit is gone; the
+reopen, the disarm clear and the test check out (independent SITL: 0.27 m
+rms at head against the 0.42 m bound, base EKF3 0.51 m). One request before
+merge: the squash concatenated the old messages.
+
+Local branch `fix/pr-terrain-reset-ge` on `9fb70f0f8d`, not pushed; two
+empty amend! commits, tree unchanged:
+
+- `50ed7b5799` for `b8cf8b32ab`: retitled "AP_NavEKF3: reopen the terrain
+  variance after takeoff ground effect", the PR's title since 2026-10-03.
+  The old subject and its five opening paragraphs described the baro reset
+  that the reopen replaced (pushed 2026-10-03, head `42bd10926d`); the
+  message now describes only the one-shot
+  `Popt` reopen, its `takeoff_expected` latch, the disarm clear and the
+  SITL numbers.
+- `31d117b2b0` for `9fb70f0f8d`: retitled "autotest: check the height above
+  ground error in a ground effect dwell". The old opening described the
+  climb to 12-20 m, the 0.15 m limit on the offset above 5 m and the
+  `disabled_tests()` entry, none of which the test has now. The message
+  describes the test as it is: the 25 s ALT_HOLD dwell, the HAGL error
+  against the range finder 5-20 s after arming under 0.42 m rms, the
+  reopen status text during the dwell, the dwell height bound and the
+  on-ground offset check.
+
+Both review requests RESOLVED by these, pending the main session's
+autosquash. No build or SITL run this round: commit text only.
+
+Not recorded before: the test's bound moved from 0.35 m (the 2026-10-03
+section above) to 0.42 m before the squash, because one build stack whose
+hover settled lower read 0.33-0.37 m with the reopen (from the folded
+commit "autotest: bound the ground effect dwell error between the two
+cases"; that run's head and log are not in this record).
+
+The PR description is also stale and is for the main session to edit:
+"The reset commit is kept in the history, and the next commit replaces it
+with the reopen alone" (gone since the 2026-10-08 squash), and the Testing
+section's "then climbs out" (the climb was dropped). The log36 tier-1b
+Replay under 2026-10-06 is still neither posted nor in the description.
+
+Pushed 2026-10-11: `pr-terrain-reset-ge` `9fb70f0f8d` -> `a3ec1e8016` (force, autosquashed), 2 commits, messages only (every tree unchanged). Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
