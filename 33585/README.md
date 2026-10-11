@@ -1375,3 +1375,5 @@ Head dbc79586ae -> b0c3cb87ce, 6 -> 4 commits on the same base, content identica
 - 0e008302ec AP_NavEKF: add optflow_enabled() for any source set
 - 784c750af1 AP_NavEKF3: keep optical flow nav alive above the rangefinder range
 - b0c3cb87ce autotest: cover optical flow nav above the rangefinder range
+
+Pushed 2026-10-11: `pr-optflow-flat-ground` `b0c3cb87ce` -> `7f5f8ffe85` (force, autosquashed), 4 commits, messages only (every tree unchanged). Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
