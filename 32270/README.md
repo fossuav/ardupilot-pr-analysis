@@ -493,3 +493,5 @@ came in e2b1ffc6, 2025-08-04). Once both merge, #32270 bumps
 `modules/mavlink` and the test can use the mode name.
 
 Pushed 2026-10-11: `copter-valt-mode` `d40430bce0` -> `08c5182c90` (force, autosquashed), 14 commits; two mode.h conflicts resolved (the private member and the ground-idle override); final tree identical to the tested fix branch; copter builds at every commit. Mechanical gate: one should-fix left as is - mode_valt.cpp has no licence header, like every ArduCopter mode_*.cpp. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
+
+Found 2026-10-11 porting to the SFD beta (topup15): with #34362 on the stack (AP_GroundEffect: stop touchdown_expected latching in cruise) the ground-effect subtest's window closes inside the baro glitch, at 142.0 s, so the tightened check at `08c5182c90` fails there and the subtest exercises nothing. On master it holds today. Once #34362 lands, this subtest needs another way to keep touchdown_expected set through the glitch. The beta keeps the old check and says so in REFRESH_NOTES.
