@@ -556,12 +556,126 @@ a range finder whose minimum is well above its clearance (review); no latch
 left a 0.35 m sawtooth. Known gap: a range finder whose minimum is over
 0.5 m above its clearance never gets the hold.
 
+### Superseded 2026-10-11 by 0c76bb6a54: the last reading is the last fused one
+
+"Recorded for every sample, fused or not" let a reading the AGL KF gate
+rejected arm the hold in flight. SITL at 22821432da
+(OpticalFlowAGLKfNoFloorHoldInHover, 10 m hover, one 0.2 m Good reading
+then out of range low): the AGL KF height was held at 0.10 m, still
+valid, from 1.0 s after the reading. On the fix branch the last reading is
+recorded only where the filter fuses it or re-initialises from it, and the
+same run holds 9.97 m. No reason for counting rejected readings was ever
+recorded here. The Replay result above was taken on the every-sample
+version and has not been re-run on the fused-only one (see the 2026-10-11
+section). Left in place because it is what the hold was measured as when
+it went to the PR.
+
 ## 2026-10-08: pushed
 
 Head ec3c439aec -> 7f83487786: the two floor-hold commits (931be4dc21, 7f83487786) on top of the five flown ones, review fixes folded in before the push. Not yet flown.
+
+### Superseded 2026-10-11: flown on TD25, where the hold is inert
+
+The floor hold has since flown on TD25 (per the 2026-10-11 AP-Review
+triage, not re-checked here). TD25's range finder never reports
+OutOfRangeLow, so `rngOutOfRangeLowTime_ms` stays 0 and the hold can never
+arm there: those flights neither exercise nor clear it. It still has no
+flight on a sensor that reports out of range low.
 
 ## 2026-10-08: on the 4.7 beta (topup13)
 
 Carried as 29fef9c3a2 and db4abcbff0. OpticalFlowAGLKfNoCoastAfterTouchdown failed its precondition there: the 4.7 SITL range finder reads 0.55 m on the ground, not the ~0.1 m the test assumed, so RNGFND1_MIN 0.5 never took it out of range low. Beta commit 80626ee223 sets RNGFND1_GNDCLR from the RANGEFINDER reading on the ground and raises the minimum 0.4 m above it; owed to this PR, where it is a no-op on master. Beta: 0.29 m with the hold, 1.47 m with the OptFlowFusion change removed.
 
 Pushed as 22821432da (2026-10-08), fast-forward on 7f83487786, message reworded for master. On master the test passes with a 0.27 m rise (0.30 m before).
+
+### Superseded 2026-10-11: the 0.55 m is SITL's terrain tile, not the 4.7 build
+
+What the SITL range finder reads on the ground depends on whether AP_Terrain
+has the CMAC tile, not on the branch. With the tile (SIM_TERRAIN 1, the
+default) `height_agl` is taken over SRTM terrain, which at CMAC home is
+583.54 m against the 584 m home: about 0.55 m on the ground. Without it the
+flat earth fallback reads 0.0 m. Evidence: the main clone, where the beta
+ran, carries a populated `terrain/S36E149.DAT` (2.1 MB); fresh worktrees
+have an empty one and log TERR Status 1, Loaded 0, and read 0.0 m (the
+"~0.1 m" assumption was never measured; RNGFND1_GNDCLR's default is 0.1).
+#33507's CI run at c34e097cc4 had the tile (TERR TerrH 583.536, CHeight
+0.554, Loaded 504) and its RFND read 0.56 m on the ground, status Good with
+RNGFND1_MIN 0.5, which is the "range finder was not below its minimum"
+failure there. So 80626ee223's change is not a no-op on master: it is what
+makes the test pass wherever the tile is present, CI included (measured
+2026-10-11, below).
+
+## 2026-10-11: AP-Review round at 22821432da, fixes
+
+Local branch `fix/pr-aglkf-floor-velocity` on 22821432da, not pushed. For
+the squash: fixups 0c76bb6a54 (AP_NavEKF3, into 931be4dc21), deaf5a44d2
+(into 7f83487786), ed0346272e and b2ec664be9 (into 22821432da); amend!
+6e3856216e (931be4dc21), 136ee6b5c0 (7f83487786, new subject "autotest:
+check when the AGL KF holds its floor"), and two for 22821432da: 174a38a812
+then b0cd0a7b9b, which supersedes it (the first still blamed the 4.7
+build). Applying the fixups at their autosquash positions with a scratch
+index reproduces the branch tip's tree exactly.
+
+Same in-flight pin as the 2026-10-02 landed hold (":83-86" above), which
+was rejected because `takeoff_expected` could pin the AGL height in a slow
+hover. The floor hold reintroduced the same failure class through a
+different door, a rejected range sample, and the record said "fused or
+not" without a reason.
+
+| Finding | Status | Fix |
+|---|---|---|
+| F1 rejected short reading arms the hold in flight | RESOLVED | 0c76bb6a54: `aglKfLastRngHgt` written only after the gate accepts (`= hgtMeas`, next to `lastAglRngFuseTime_ms`) and at the 5 s re-init (`= aglKfH`); the write before the tilt return is gone. New test OpticalFlowAGLKfNoFloorHoldInHover (deaf5a44d2) |
+| F2 RNGFND1_GNDCLR set to 0.0, below its 0.05 minimum | RESOLVED | ed0346272e/b2ec664be9: `max(reading, 0.05)`; message no longer claims ~0.1 m on master |
+| F3 touchdown test's velD and rise checks pass on NaN | RESOLVED | deaf5a44d2: raises on any non-finite velD or valid-sample height first |
+
+The new test: GUIDED takeoff to 10 m with `WP_RFND_USE 0` (without it the
+GUIDED takeoff targets height above the range finder and the vehicle climbs
+after the short reading, which spoilt the first draft: it failed at 1.20 m
+because the filter legitimately accepted the reading as the copter rose
+through it). At speedup 1, `SIM_SONAR_OFFSET` = 0.2 m minus the hover
+reading, then `RNGFND1_MIN` 0.5 sent directly (no read-back), 3.5 s, restore.
+It asserts a short Good RFND then status 2, HAglStd growth (one gate
+rejection is x1.41), every XKFA sample from the short reading to 0.8 s
+after the low reports valid, finite and above 5 m (else "provocation ran
+too long"), and from then to the restore at least 20 samples, valid, finite,
+min above 5 m. Margin: two rejections per run against about eight before
+the gate accepts a 9.8 m innovation (derived from the source, not
+measured).
+
+All runs SITL copter, single EKF3 lane, worktree build (no terrain tile
+unless stated):
+
+| Run | Code | Result |
+|---|---|---|
+| FloorVelocity | 22821432da / fix tip | rise 3.10 / 3.10 m, HAgl 0.100 / 0.100, VAgl 0.0001 / 0.0001, pass / pass |
+| NoCoastBelowMin | 22821432da / fix tip | step vel 0.037 / 0.039, rise 0.000 / 0.000, pass / pass |
+| NoCoastAfterTouchdown | 22821432da / fix tip | GNDCLR set 0.0 / 0.05; velD 2.77 / 2.70; height 0.050-0.332 / 0.050-0.340; pass / pass |
+| NoCoastAfterTouchdown, hold block removed | fix tip, temporary edit | velD 2.80, 0.063-2.191 m: FAIL "coasted 2.13 m" |
+| NoFloorHoldInHover | 22821432da binary | short 0.30 s before low, std 0.125 -> 0.295, FAIL "held at 0.10 m" |
+| NoFloorHoldInHover | fix tip, 3 runs | short 0.20 s, std 0.126 -> 0.288 / 0.284 / 0.284, height 9.97 m (32 samples), pass x3 |
+| NoFloorHoldInHover, F1 fix reverted | fix tip, temporary edit, rebuilt | std 0.126 -> 0.293, FAIL "held at 0.10 m" |
+| NoCoastAfterTouchdown, CMAC tile | fix tip | GNDCLR 0.5454, MIN 0.9454, status [2], 0.545-0.840 m, pass (first attempt died on "Did not get SYSTEM_TIME" at takeoff, host load 6.4; rerun) |
+| NoFloorHoldInHover, CMAC tile | fix tip | std 0.125 -> 0.286, 10.52 m, pass |
+
+flake8 clean on the tip and on the intermediate (7f83487786 + fixup) file.
+
+The SFD beta (OptFlowFusion.cpp:1221 at 38c627cb2b) carries the same
+every-sample write. The fix is the same three lines but does not apply as a
+patch (core.h and both fusion-time contexts differ); the equivalent diff
+is the PR's with `aglKfLastRngHgt = aglKfH` after the re-init's
+`lastAglRngFuseTime_ms` and `aglKfLastRngHgt = hgtMeas` before
+`aglKfLastHgtInnov = hgtInnov`. Not built or tested on the beta.
+
+#33507 restacks onto the fix tip with no conflicts (33507/README.md).
+
+Still owed:
+
+- Replay of logs 31-44 with the fused-only record. Only log35 is on this
+  machine (SFD-O4/refresh10), and the acro-sortie lane that motivated the
+  hold is not named in this record. The amend! message 6e3856216e keeps the
+  "Replay of fourteen flights" sentence from the old message: re-run it or
+  drop the sentence before the squash. REPLAY_LOGS.md has no row for the
+  floor hold.
+- The floor hold has no flight on a sensor that reports out of range low.
+
+Pushed 2026-10-11: `pr-aglkf-floor-velocity` `22821432da` -> `b17402187a` (force, autosquashed), 8 commits; final tree identical to the tested fix branch; copter and Replay build at the changed hold commit. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
