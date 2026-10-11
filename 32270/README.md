@@ -5,6 +5,18 @@ Branch `copter-valt-mode` (andyp1per fork), base `master`. No logs are
 committed here; the validation is the `ModeVAltHold` autotest and real flights
 that stay private.
 
+### Head superseded 2026-10-11: GitHub head `d40430bce0`
+
+The GitHub head is `d40430bce0`, pushed by 2026-10-10. Since the
+2026-09-29 rebase it gained `60b7940641` (test-list placement only, code
+commits unchanged) and two commits on top: `d5672e0d6e` "Copter: add
+FS_EKF_ACTION 4 to switch to VALT" and `d40430bce0`, its test. Four
+automated reviews went unrecorded here: 2026-09-12 at `d6d572ad43`,
+2026-09-30 at `8727f57fcd`, 2026-10-03 at `60b7940641` and 2026-10-10
+at `d40430bce0`, all REQUEST CHANGES. The 2026-10-11 section at the end
+answers the last one; its fixes are on the local branch
+`fix/copter-valt-mode` as fixup!/amend! commits, not pushed.
+
 ### Head superseded 2026-09-29: rebased onto master, head `8727f57fcd`
 
 Rebased onto master on 2026-09-29; the GitHub head is now `8727f57fcd`.
@@ -26,6 +38,11 @@ inert. Code fixed and squashed back into the commits that introduced the
 problems (old head 973cf77117, new head d6d572ad43, twelve commits, each
 builds); not pushed, and the PR body is not yet updated. A maintainer's
 objection to the mode's existence stands unanswered by design.
+
+Superseded 2026-10-11: pushed since; the GitHub head is `d40430bce0` (see
+the head note above). The PR body now has the ground-idle and
+ground-effect sections but says nothing about FS_EKF_ACTION 4, and
+@lthall's objection is still unanswered in the thread.
 
 ## What the mode is
 
@@ -180,6 +197,16 @@ the original fault.
 Still needed: a companion mavlink PR adding `COPTER_MODE_VALT = 29`; the pinned
 pymavlink still names mode 29 `RATE_ACRO`, which is what MAVProxy prints.
 
+### Superseded 2026-10-11: mode 29 is free in MAVLink
+
+`ardupilotmega.xml` no longer has a mode 29: upstream MAVLink removed
+`COPTER_MODE_RATE_ACRO` in 72868697 (2026-07-05), and both this PR's
+pinned `modules/mavlink` (5cce5df6) and upstream master's pin (0d734a41,
+master a04e2c9334 of 2026-10-09) carry that commit; `COPTER_MODE` ends at
+28. The pymavlink half above still stands: `mode_mapping_acm` in the
+pinned pymavlink (b7527da9) still maps `29 : 'RATE_ACRO'`, so a pymavlink
+change is needed alongside the mavlink one. Neither PR exists yet.
+
 ## Key findings from flight
 
 - The clamp does what it says and no more. SkySakuraH743 quad log81, 47 s
@@ -250,6 +277,12 @@ pymavlink still names mode 29 `RATE_ACRO`, which is what MAVProxy prints.
 - Mode number 29 is contested: `pr-mode-rate-acro` assigns it to `RATE_ACRO`
   and the pinned pymavlink already carries `29 : 'RATE_ACRO'`. Needs a decision
   and a linked mavlink PR adding `COPTER_MODE_VALT`.
+
+  Superseded 2026-10-11: not contested. `pr-mode-rate-acro` is dead
+  (ArduPilot/ardupilot#30570 closed 2025-09-27, checked with `gh pr view`)
+  and upstream MAVLink removed `COPTER_MODE_RATE_ACRO` in 72868697; see
+  the superseded note under "What the rebase fixed". Still open: the
+  mavlink and pymavlink PRs (drafted in the 2026-10-11 section).
 - The PR body's ground-effect section says the snap "wandered 0.5-1.0 m per
   20 s" as the reason to prefer the clamp; the duration-matched A/B above puts
   the snap at 0.663 +/- 0.158 m against the clamp's 0.851 +/- 0.212 m and
@@ -303,3 +336,160 @@ at spool-up and -16 to -21 m at touchdown).
   was present and `copter.avoid.adjust_roll_pitch_rad()` was restored on
   2026-09-04), @lthall (does not see the justification for the mode; not
   argued, though the numbers to argue it exist - see the self-review).
+
+## 2026-10-11: AP-Review round at d40430bce0, fixes
+
+Answers the AP-Review of 2026-10-10 at `d40430bce0` (REQUEST CHANGES)
+and one item from the 2026-09-12 round. Fixes are on the local branch
+`fix/copter-valt-mode`, head `31c98cd5e5`: nine fixup! and four amend!
+commits on `andyp1per/copter-valt-mode`, not pushed. SITL numbers are at
+that head unless marked; "fix reverted" means only that fix was undone
+in the working tree for the run.
+
+Folding the fixups in was simulated with merge-tree (no ref moved). The
+final tree equals the branch head, and the folded first commit, the
+blend commit and the ground-idle commit each build. `ArduCopter/mode.h`
+conflicts twice, at `429e9fe1d8` and again at `5286cc1243`, because the
+new private member and the ground-idle override both go at the end of
+`ModeVelAltHold`. Resolution both times: keep the side without the
+`private:` block and append the block at the end of the class.
+
+- V1, GCS take-off in VALT at mid-stick: RESOLVED, `25711cb746` (into
+  `5286cc1243`). `get_alt_hold_state_D_ms()` requests THROTTLE_UNLIMITED
+  in its take-off branch when `!spool_up_at_zero_climb_on_ground()` and
+  the stick is not below mid. AltHold's virtual returns true, so its path
+  is unchanged. The 2026-10-10 scratch fix (THROTTLE_UNLIMITED
+  unconditionally in `ModeAltHold::run()`'s Takeoff case) was withdrawn
+  because it changed AltHold. The land-detector guard of
+  `../analysis/topics/valt_takeoff_landdetector_internal_error.md` stays
+  unreachable this way: a GCS take-off sets `takeoff.running()` before the
+  branch runs, so `is_taking_off()` is true on every cycle that requests
+  the spool, and the pilot-triggered path is already unlimited. Derived
+  from the source. New subtest "GCS take-off in VALT from mid-stick":
+  first sample inside the 9-11 m gate at 9.26 and 9.20 m in two runs;
+  fix reverted, "Failed to attain Altitude want 10.0, reached 0.003" after
+  the 30 s timeout. Throwaway probe,
+  GCS take-off to 10 m, max altitude over 15 s, two runs per build:
+
+  | mode, throttle stick | head `d40430bce0` | fix |
+  |---|---|---|
+  | ALT_HOLD 1500 | 10.00, 10.00 m | 10.00, 10.00 m |
+  | ALT_HOLD 1300 | 0.23, 0.23 m | 0.23, 0.21 m |
+  | VALT 1300 | 0.40, 0.39 m | 0.12, 0.38 m |
+  | VALT 1500 | 0.00, 0.00 m | 10.01, 10.00 m |
+
+  Every below-mid case ends at servo1 1100. VALT below mid runs the same
+  code on both builds, so 0.12 against 0.38 is run-to-run spread. Seen in
+  passing and not investigated: a GCS take-off below mid in AltHold hops
+  about 0.2 m before settling at idle, on code this PR does not touch.
+- V2, surface-tracking round trip: RESOLVED, `dab887965a` (into
+  `f5c29c9efe`). New `SurfaceTracking::reset_target_on_next_update()`,
+  called from `ModeVelAltHold::init()`. New subtest: analog rangefinder,
+  LOITER at 10 m, SIM_SONAR_OFFSET -1, VALT and LOITER by DO_SET_MODE
+  back to back, height held to 0.3 m for 10 s. Fix: held 10.56 m and
+  10.61 m in two runs; reset call removed: 10.54 to 11.55 m (+1.01 m),
+  fails.
+- V3, EKF height reset applied twice: RESOLVED by inspection, not
+  measured. `429e9fe1d8` (into `f5c29c9efe`) skips the snap and blend on
+  the cycle `get_position_D_reset_count()` changes, because
+  `D_handle_ekf_reset()` then shifts pos_desired by new minus previous
+  estimate. No test: on the hard cutoff the error lives one 400 Hz loop
+  (the next snap clears it), PSCD is logged at 10 Hz (one loop in 40),
+  and the vehicle's response to a one-loop position error is below what
+  an autotest can assert.
+- V4, ground-effect guard on unrelated windows: RESOLVED, `dcb1cd1247`
+  (into `91a81b18b1`). The check now reads XKF4 core 0 between the sim
+  times the glitch was set and cleared and requires SS bit 12 on every
+  sample: 64 of 64 in three runs. Test of the test: climbing through the
+  glitch (stick 1650 for 1350), the old max(durations) check still passed
+  on durations [3.30, 0.60, 2.20, 0.50, 5.40, 0.10, 1.10, 22.90] s (22.9 s
+  is the RTL landing) and the new one failed, "ground effect window was
+  closed at 144.8 s, inside the baro glitch". Two other breaks left the
+  window open (64 of 64): stick at 1500, and GNDEFF_ALT 5. The vehicle is
+  over 20 m from its take-off point after the lateral leg, where
+  AP_GroundEffect drops the GNDEFF_ALT gate, and a residual negative
+  vel_desired at mid-stick counts as a demanded descent (mechanism read
+  from AP_GroundEffect.cpp:133-160, not measured). The test's comments on
+  the descent and on GNDEFF_ALT 30 name sufficient conditions, not the
+  ones holding this window open; left as written.
+- V5, flake8 E131: RESOLVED, `f9db3a1977` (into `9b809631bc`).
+- INITIAL_MODE @Values: RESOLVED, `55636ef354` (into `f5c29c9efe`), gains
+  29:VALT. The list stops at 26 upstream (no 27 Auto RTL or 28 Turtle,
+  neither a boot mode).
+- V6, mode 29 in MAVLink: DEFERRED. Free, see the superseded notes above.
+  The mavlink and pymavlink changes are drafted below, not opened.
+- V7, FS_EKF_ACTION 4 fallbacks: PARTIAL. New subtest: FS_THR_ENABLE 1
+  and SIM_RC_FAIL 1 put the vehicle in RTL, then GPS off gives "EKF
+  Failsafe: changed to Land Mode" and LAND; with the `failsafe.radio`
+  branch disabled it went to VALT and the subtest failed. VALT refused
+  with AltHold accepted is not tested: VALT and AltHold share every
+  `set_mode()` refusal (manual-throttle flag, RC-failsafe entry, fence
+  recovery, position), and VALT's `init()` cannot fail, so the fallback is
+  reachable only in a build without VALT. Derived from the source. The PR
+  description does not mention action 4; addition drafted below.
+- V8, unanswered thread: replies drafted below, not posted.
+- 2026-09-12 item, `init_pos_terrain_D_m()` keeps `_vel_terrain_d_ms`:
+  DEFERRED, measured. Probe: analog rangefinder, LOITER at 10 m, a 1 m
+  SIM_SONAR_OFFSET step, VALT entered 0.4 s later while surface tracking
+  was still slewing (PSOT.VOT 0.36-0.41 m/s), then 6 s at mid-stick; four
+  entries per build.
+
+  | build | max abs(PD - PD at entry) | PSOT after entry |
+  |---|---|---|
+  | fix head, velocity kept | 0.194, 0.193, 0.232, 0.220 m | POT reaches 0.134-0.138 m |
+  | also zeroing terrain vel and accel | 0.118, 0.163, 0.148, 0.114 m | none (POT stays 0) |
+
+  Drift 6 s after entry is the same in both (0.02-0.06 m). Clearing the
+  rates takes about 0.07 m off an entry made within a second of a terrain
+  step. Not changed: `init_pos_terrain_D_m()` is also called by AC_WPNav's
+  terrain legs, ModeGuided and surface tracking's own re-initialisation,
+  which would all change unmeasured, and a VALT-only version needs a new
+  AC_PosControl entry point. Left for a decision.
+
+All of ModeVAltHold, ModeAltHold, ModeLoiter, TakeoffCheck,
+GroundEffectCompensation_takeOffExpected and
+GroundEffectCompensation_touchDownExpected pass at `31c98cd5e5`.
+VALT_POS_EXPO mean |DPD - PD| in the three runs whose ground-effect and
+blend subtests were unmodified: 0.0000 m at 0 every time, and 0.0421,
+0.0448, 0.0452 m at 3. Apart from the new VALT subtest no autotest flies a
+GCS take-off in AltHold or Loiter (the other NAV_TAKEOFFs in
+arducopter.py are GUIDED or mission items), so the AltHold side of V1
+rests on the probe table above.
+
+### Drafts, not posted
+
+PR description, new section:
+
+> ### EKF failsafe action 4
+> If you fly an airframe whose baro is too disturbed for AltHold's trajectory, an EKF failsafe in Loiter or PosHold switches you into AltHold. FS_EKF_ACTION=4 switches to VALT instead, so the stick keeps commanding a climb rate. It falls back as action 2 does: Land during a radio failsafe, AltHold when VALT is not built in, Land if AltHold is refused too. ModeVAltHold covers the switch to VALT and the radio-failsafe Land; the AltHold fallback is reachable only in a build without VALT, since set_mode() refuses VALT and AltHold for the same reasons.
+
+Reply to @lthall (2026-02-23):
+
+> The case is small high-disc-loading copters whose baro is metres wrong near the ground: on a baro-only quad it read 3.7 m std in descent, jumped 15.28 m in 0.1 s and sat -11 m in ground effect, while VALT held 0.095 m std at 3.5 m against 0.27 m of baro noise. Parameters can't do it: PSC_D_POS_P=0 with surface tracking off also removes the position loop at stick centre, and keeping it there while dropping it off-centre is the mode.
+
+Reply to @peterbarker on surface tracking (mode_valt.cpp, 2026-02-23):
+
+> You're right that VALT gives that up: it skips surface tracking, so like AltHold without a downward rangefinder it holds EKF height and won't climb away from rising ground. Adding the velocities was the first version, and surface tracking's velocity offset then absorbed about 90% of the stick's authority near the ground, where this mode is meant to be flown; a pilot who wants the protection keeps it in AltHold or Loiter.
+
+Reply to @peterbarker on avoidance (mode_althold.cpp, 2026-03-18):
+
+> Thanks, you were right: only the climb-rate call was there. VALT's flying state now calls copter.avoid.adjust_roll_pitch_rad() as AltHold does.
+
+MAVLink, a one-commit PR to ArduPilot/mavlink in the format of 72868697,
+subject "ardupilotmega: `COPTER_MODE` add `COPTER_MODE_VALT`", adding
+after `COPTER_MODE_TURTLE` in `message_definitions/v1.0/ardupilotmega.xml`:
+
+```
+      <entry value="29" name="COPTER_MODE_VALT">
+        <description>VALT</description>
+      </entry>
+```
+
+with a body naming ArduPilot/ardupilot#32270 and noting that 29 was
+RATE_ACRO until 72868697 (that mode was never merged, #30570 closed).
+A matching ArduPilot/pymavlink PR changes `mode_mapping_acm` in
+`mavutil.py` from `29 : 'RATE_ACRO'` to `29 : 'VALT'` (the RATE_ACRO entry
+came in e2b1ffc6, 2025-08-04). Once both merge, #32270 bumps
+`modules/mavlink` and the test can use the mode name.
+
+Pushed 2026-10-11: `copter-valt-mode` `d40430bce0` -> `08c5182c90` (force, autosquashed), 14 commits; two mode.h conflicts resolved (the private member and the ground-idle override); final tree identical to the tested fix branch; copter builds at every commit. Mechanical gate: one should-fix left as is - mode_valt.cpp has no licence header, like every ArduCopter mode_*.cpp. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
