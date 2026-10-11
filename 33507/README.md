@@ -727,6 +727,8 @@ change; the default should show a slope well under 1 at high correlation.
 - `pr-agl-kf-zbias` - the PR branch (three commits: state, autotest,
   decoupled process noise).
 - Author: @andyp1per. No maintainer review yet.
+  - Superseded 2026-10-11: rishabsingh3003 APPROVED on 2026-10-07 and asked
+    for the conflict resolved and the commits squashed (top of this file).
 - Consumed by #33478 (`../33478/`), whose flight validation ran this filter
   at 0.3; #33359's `aglKfH` fusion needs it.
 - Reviewer question (LupusTheCanine): a shared AccZ bias? The AGL KF bias
@@ -799,3 +801,53 @@ Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/33507#issue
 ## 2026-10-08: rebased onto #34457
 
 Head d48bf30698 -> c34e097cc4: its own two commits (a14ef99f77, c34e097cc4) rebased onto #34457 7f83487786, patches unchanged apart from context lines. Copter builds; OpticalFlowAGLKalmanFilter and OpticalFlowAGLKfNoCoastAfterTouchdown pass.
+
+## 2026-10-11: AP-Review round at c34e097cc4, and the restack onto #34457's fix
+
+AP-Review REQUEST CHANGES at c34e097cc4. Its main finding is #34457's: the
+floor hold's last reading was written for every range sample, before the
+tilt return and the gate, so a rejected short reading at height armed the
+hold and pinned a valid AGL height to the floor. RESOLVED in #34457's fix
+branch (`fix/pr-aglkf-floor-velocity`, 0c76bb6a54 and test deaf5a44d2; see
+34457/README.md 2026-10-11).
+
+Restack: scratch branch `tmp/33507-restack` at the fix tip, then this PR's
+own two commits cherry-picked (a14ef99f77 -> fbc2bfd285, c34e097cc4 ->
+c2e5be9ccd). No conflicts: the fix's two new writes sit next to
+`lastAglRngFuseTime_ms`, one line from this PR's `aglKfP[2][2]` additions.
+Copter builds. All five AGL KF tests pass on it (SITL, no terrain tile):
+OpticalFlowAGLKalmanFilter (bias std on the floor 1.0003, with the offset
+1.0006; excursion peak deviation 0.06 m, bias -0.011 -> 0.000; learned
+0.343), FloorVelocity (rise 3.32 m, HAgl 0.100, VAgl -0.0002),
+NoCoastBelowMin (step 0.072 m/s, rise 0.000), NoCoastAfterTouchdown
+(0.050-0.326 m, velD 2.73) and the new NoFloorHoldInHover (std 0.139 ->
+0.462, 9.80 m). The height std grew x3.3 here against x2.3 on #34457 alone
+for the same 0.2 s provocation, so the bias state leaves the hover test
+less margin before the gate accepts the short reading; one run, not
+characterised further.
+
+CI failure at c34e097cc4 (tests1d, OpticalFlowAGLKfNoCoastAfterTouchdown,
+"range finder was not below its minimum on the ground"): from the CI log and
+BIN, RFND read 0.56 m, status Good, through the window, AGL KF height
+0.640-1.805 m. The CI SITL had the CMAC terrain tile (TERR TerrH 583.536,
+CHeight 0.554 on the ground, Loaded 504), so the range finder reads about
+0.55 m on the ground there, above the test's fixed RNGFND1_MIN 0.5 at
+7f83487786. Reproduced locally by copying the tile into the worktree and
+running c34e097cc4's version of the test on the restack: same failure,
+status [4], 0.653-1.753 m. With the restack's version (#34457's 22821432da,
+ground clearance from the reading): GNDCLR 0.5454, MIN 0.9454, status [2],
+0.545-0.822 m, pass. So the restack fixes it; the hover test also passes
+with the tile (10.42 m).
+
+F4 (bot, non-blocking): once latched after a real touchdown, a liftoff
+within the 5 s window stays on the floor until the range finder passes its
+minimum. DEFERRED, unchanged by the F1 fix: that fix changes what arms the
+hold (a fused reading near the floor, which a real touchdown has), not what
+releases it. Derived from the source, not measured: the error is bounded
+by the minimum's height above the ground clearance and lasts until about
+0.1 s after the first Good reading (three stored samples for the median);
+after 5 s on the ground the filter is invalid anyway and re-initialises
+from the first reading. Releasing it on a liftoff cue would need a flying
+flag the EKF must not trust (EKF3 playbook, flight-state flags).
+
+Pushed 2026-10-11: `pr-agl-kf-zbias` `c34e097cc4` -> `3f85870eb4` (force, autosquashed), its two commits restacked on #34457's b17402187a; tree identical to the tested restack. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
