@@ -302,3 +302,62 @@ Head c982c2d7f6 -> c436f781dc, 14 -> 2 commits on the same base, content identic
 
 - 0b7942a9f6 AP_NavEKF3: no flow height limit where flow nav carries on above it
 - c436f781dc autotest: flow height limit tests
+
+## 2026-10-11: AP-Review round at c436f781dc, fixes
+
+AP-Review round 11 (2026-10-09, REQUEST CHANGES) at `c436f781dc`: the
+squash is tree-identical, CI's only failure is an unrelated stm32h7 gradle
+fetch. Three points.
+
+- Short-reach band (RNGFND1_MAX 40, a 27.5 m reach let up to 28.5 m, loses
+  relative position there with the stick centred, where master holds 27 m
+  in reach): still blocking for the bot. DEFERRED to the maintainers. Our
+  2026-10-07 reply (issuecomment-6039251667) asked for a maintainer's view
+  on accepting the band; as of 2026-10-11 no maintainer has commented or
+  reviewed since (issue comments, review comments and reviews checked).
+  The bot's own counter, that a correctly set maximum does not rule the
+  band out because reach also falls on poor surfaces, is unanswered.
+- The 2 s checks that end a return run on raw range samples, including
+  gate-rejected ones (bot, extracted-code probe only, not flown). Not a
+  regression (master behaves the same) and the lines are #33585's
+  (`784c750af1`). DEFERRED; no change this round.
+- Stale commit text: RESOLVED by amend! commits on local branch
+  `fix/pr-avoid-flow-ceiling-backup` (on `c436f781dc`, not pushed, tree
+  unchanged):
+  - `2f2c9b3f8e` for `0b7942a9f6`: the message said "The limit comes back
+    there once the range data has been stale for 5 s" for a range finder
+    whose reach is short of 0.7 x its maximum, but the code
+    (`AP_NavEKF3_Outputs.cpp:123-128`) raises the limit only within 0.5 s
+    of a fusion, so for that case it comes back 0.5 s after the ground
+    stops being measured; 5 s (the terrain offset's validity) applies only
+    where the fallback is refused or ends. Rewritten as one description of
+    the final code: no limit once the last fused range reaches the
+    fallback's threshold, the 1.5 m raise within 0.5 s of a fusion, the
+    accepted band, and where the limit stays. The stub paragraph "say what
+    the raised flow height limit costs ... Comment only" is folded into the
+    band paragraph. Numbers kept are the ones recorded on 2026-10-06 (25 m
+    reach 27.1 m; 27.5 m reach 28.4 m, kept) plus the raise-held-while-stale
+    mutation (lost at 28.7 m) from the old message.
+  - `e110db867f` for `c436f781dc`: the message gave 27 m reach bounds
+    (27.8-30.5 m) the test no longer uses and six concatenated subjects.
+    Rewritten from `arducopter.py` at the head: reaches of 25 m (stop by
+    29 m, must lose relative position) and 27.5 m (full stick: above the
+    27.6 m floor, under 30.5 m, back in reach, relative position kept;
+    centred: under 29.5 m, height held within 1 m, relative position
+    lost), each out of reach for over 1 s on the RFND log.
+  - `9c46221458`, `26306dfaee`: the same two amend! commits as #33585's
+    `fix/pr-optflow-flat-ground` (`eff570bf06`, `6c3b9377c1`) for
+    `784c750af1` and `b0c3cb87ce`, with byte-identical messages, so both
+    branches squash to the same text. They drop the kept fixup subjects
+    and make `784c750af1` consistent: it said "Vehicles without optical
+    flow are unchanged" two paragraphs before the terrain-state carry on
+    height resets, which applies to any vehicle fusing a range finder into
+    the terrain state; it now says the fallback and anchoring need optical
+    flow and the carry applies with or without it.
+
+The other commits on the stack (`4c036f5be8` AP_DAL, `0e008302ec`
+AP_NavEKF) were read against their diffs and need no change. No build or
+SITL run this round: commit text only. The #33585 record was not edited
+this round.
+
+Pushed 2026-10-11: `pr-avoid-flow-ceiling-backup` `c436f781dc` -> `732913562e` (force, autosquashed), 6 commits on #33585's 7f5f8ffe85; the shared commits are #33585's own; final tree unchanged. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
