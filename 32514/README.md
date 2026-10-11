@@ -529,3 +529,51 @@ Head be426a9a42 -> c6ce4344c1, 11 -> 5 commits on the same base, content identic
 - 099b9dad50 Copter: expect a position only where the mode or source set needs one
 - 5253105497 Copter: hold the EKF failsafe count while landed
 - c6ce4344c1 autotest: check the EKF failsafe follows the selected source set
+
+## 2026-10-11: AP-Review round at c6ce4344c1, fixes
+
+AP-Review round 10 (2026-10-09, COMMENT) at `c6ce4344c1`: code unchanged by
+the squash, `EKFSourceSetFailsafe` passes, reducing the landed hold to
+land_complete alone still fails the spool-up leg. One non-blocking point:
+the squash kept the follow-up commits' messages.
+
+Local branch `fix/ekf-check-source-reset` on `c6ce4344c1`, not pushed;
+four empty amend! commits, tree unchanged:
+
+- `e9631d7988` for `5671f6cada` (AP_NavEKF3): drops the leftover subject
+  "say the horizontal source query is about the source set"; says the query
+  describes the configuration, not delivery.
+- `4b59791828` for `01ca8a6ab2` (AP_AHRS): the message described an alias
+  for the old name and ended with "AP_AHRS: drop the old horizontal source
+  query name", though the commit only adds
+  `configured_to_use_horizontal_position_or_velocity_source()`. Rewritten to
+  describe that function, and to say EKF2 with `EK2_GPS_TYPE 3` and DCM with
+  `AHRS_GPS_USE 0` can also be set up without a horizontal source and keep
+  master's behaviour by answering true.
+- `db1c43668d` for `099b9dad50` (Copter): drops "Copter: use the renamed
+  horizontal source configuration query".
+- `2fd4ffed23` for `c6ce4344c1` (autotest): the three concatenated test
+  messages become one describing the five source-set legs and the three
+  landed-hold legs, with what each fails on.
+
+`5253105497` has no leftover subject and is unchanged. The bot finding is
+RESOLVED by these, pending the main session's autosquash. peterbarker's
+Estimates question and rmackay9's policy question remain DEFERRED to the
+maintainers. No build or SITL run this round: commit text only.
+
+### Correction posted 2026-10-07, recorded here
+
+Our reply to peterbarker on 2026-10-06 (discussion_r4198128295, under
+"2026-10-06: peterbarker's structure review" above) said "no other backend
+can be configured without a horizontal source". That was wrong, and we
+corrected it on GitHub on 2026-10-07 (review comment 4207419819): EKF2 with
+`EK2_GPS_TYPE 3` and DCM with `AHRS_GPS_USE 0` can be configured without
+one. Both answer true from
+`configured_to_use_horizontal_position_or_velocity_source()`, which keeps
+master's failsafe for them, so the behaviour change is still confined to
+EKF3 source sets. The bullet above "Only EKF3 has source sets; every other
+backend's answer is `true`" stays right as a statement of what the code
+returns; it does not mean no other backend can lack a horizontal source.
+Derived from the source and the parameter descriptions, not measured.
+
+Pushed 2026-10-11: `ekf-check-source-reset` `c6ce4344c1` -> `2de6865b39` (force, autosquashed), 5 commits, messages only (every tree unchanged). Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
