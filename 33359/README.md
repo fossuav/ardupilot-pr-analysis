@@ -600,9 +600,10 @@ the fix changes never arose on any of them. `replay_sweep.py --compare`
 moved no row. These are head-against-fix numbers on the upstream branch,
 not comparable with the beta numbers in the tables above.
 
-UNCONFIRMED: log280, log281 and log31 do not resolve on this machine
-(only `/mnt/c/support`), so the indoor flights this PR is credited with
-were not replayed with the change. Owed before push. Not exercised by
+UNCONFIRMED: log280, log281 and log31 are not under the local log roots
+(`find_log.py` finds no match), so the indoor flights this PR is credited
+with were not replayed with the change. Still owed: the change was pushed
+on 2026-10-11 on the five flights that did replay identically. Not exercised by
 any log or test: the `onGround` term with the vehicle flag false and the
 EKF in constant position mode on the ground (a second flight in a boot
 on a flow sensor reading quality 0 on the floor).
