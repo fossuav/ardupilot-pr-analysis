@@ -112,9 +112,10 @@ commit `e825b34855`, on base `fd37f6f5fa`. The guard is gone from
 The "no autotest proposed" position above is withdrawn. It was aimed at a
 test that asserts a message exists, which discriminates nothing; a test
 that also requires the two cores to *differ* does discriminate, and that
-is what was written. `EK3_PerCoreOptflowLogging` in
-`Tools/autotest/arducopter.py` flies the `EKF3SRCPerCore` configuration
-(GPS on core 0, VICON on core 1 via `EK3_SRC_OPTIONS=8`) with
+is what was written. `EK3_PerCoreLogging` (`EK3_PerCoreOptflowLogging`
+on the SFD branch) in `Tools/autotest/arducopter.py` flies the
+`EKF3SRCPerCore` configuration (GPS on core 0, VICON on core 1 via
+`EK3_SRC_OPTIONS=8`) with
 `EK3_OPTIONS` bit 3 set so `XKFA` is written at all, glitches VICON to
 force the lanes apart, and then requires both messages to carry `C=0` and
 `C=1` and their `HAGL`/`HAgl` series not to be a prefix of one another.
@@ -194,3 +195,54 @@ Head 54b54b6057 -> af037c533d, 3 -> 2 commits on the same base, content identica
 
 - 5c5228b08e AP_NavEKF3: log XKF5 and XKFA for every core
 - af037c533d autotest: check XKF5 and XKFA are logged for every core
+
+## 2026-10-11: AP-Review round at af037c533d, fixes
+
+Local branch `fix/ekf3-percore-optflow-logging` on top of `af037c533d`, not
+pushed; the main session autosquashes it.
+
+Bot rounds this record had not logged, all on the PR thread:
+
+| Date | Head | Verdict | Substance |
+|---|---|---|---|
+| 2026-09-12 | `38f4f2d1ee` | REQUEST CHANGES | `DataFlashErase` over its ceiling by 476 B; comment inside the `#if` |
+| 2026-09-12 | `759e895374` | COMMENT | both resolved; `check_replay.py:52` KeyError note |
+| 2026-09-30 | `61e71f4ac0` (round 2) | ACCEPT | its 1992 KiB suggestion withdrawn as wrong arithmetic |
+| 2026-10-03 | `54b54b6057` (round 3) | REQUEST CHANGES | flake8 E131 at `arducopter.py:19184` |
+| 2026-10-08 | `af037c533d` (round 4) | REQUEST CHANGES | the same E131, still there after the squash |
+
+The E131 was raised twice and survived the 2026-10-08 squash, which kept
+the tree identical. Per bot round 3 the rebase that produced `54b54b6057`
+introduced it (one extra leading space on the registration line) and the
+file was clean at `61e71f4ac0`; not re-checked here.
+
+The `DataFlashErase` first-log ceiling change is part of the PR and was
+not in this record: `vehicle_test_suite.py` raises it from 1980 to 1990 KiB
+(both assertions on log 1). SITL runs two EKF3 cores, Copter logs the EKF
+at 10 Hz whatever `LOG_BITMASK` says, and XKF5 for the second core put the
+rotation check at 2027996 B, 476 B over 1980 KiB (CI, 2026-09-12, at
+`38f4f2d1ee`). The bot measured the margin under 1990 KiB as 9514 B at
+`759e895374` and 9264 B at `af037c533d`; not measured here.
+
+- E131 (blocking): RESOLVED by `295fc417cb` "fixup! autotest: check XKF5
+  and XKFA are logged for every core", which removes the extra space.
+  `flake8 Tools/autotest/arducopter.py` is clean afterwards (flake8 7.3.0,
+  2026-10-11); `vehicle_test_suite.py` is clean too.
+- Commit message of `af037c533d` carried the squashed commit's subject
+  ("autotest: allow for per-core XKF5 in DataFlashErase log sizes") as a
+  paragraph heading: RESOLVED by `5e5b9ed485` (amend!), which folds the
+  ceiling change into one message describing the final commit.
+- ManualLaneSwitch pin (`EK3_OPTIONS` bits 1 and 3) so a lane switch to
+  core 1 cannot hide a restored guard: DEFERRED, non-blocking per the bot.
+  Every guard-restored run so far (2026-09-12 and bot rounds 2 to 4) failed
+  at "XKF5 was not logged for both cores (saw [0])", so no switch has hidden
+  it yet; the hardening is optional and not taken this round.
+- `check_replay.py:52` KeyError on cross-version Replay comparisons:
+  DEFERRED, optional follow-up per the bot; CI records and replays with one
+  build.
+- About 450 B/s per extra core: a maintainer scope call (peterbarker's
+  open review), unchanged.
+
+No SITL run this round; the change is whitespace and commit text only.
+
+Pushed 2026-10-11: `ekf3-percore-optflow-logging` `af037c533d` -> `0eb1fc7a2f` (force, autosquashed), 2 commits. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
