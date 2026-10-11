@@ -879,3 +879,5 @@ round is log only, so the difference presumably comes from the estimator
 commits between those heads; not bisected.
 
 Pushed 2026-10-11: `pr-ekf3-aglkf-veld` `0f6e2e789d` -> `d0c4056d36` (force), autosquashed and rebased onto master `00bf6ac82b`; the one conflict, AP_NavEKF3.h, keeps master's `AP_UInt32 _options;` and adds `AP_Float _aglKfVelMaxSpd;` after it. The whole-PR diff is unchanged but for context lines. copter and Replay build at all 7 commits; EK3_AglKfVelForVelD, EK3_AglKfVelMixedSources and EK3_AglKfVelYieldsToOtherVelD pass at the head. Mechanical gate clean. PR replies drafted, not posted.
+
+Reply to the AP-Review round posted 2026-10-11 (issue comment 6110170371), the text drafted above.

@@ -711,3 +711,5 @@ this round. The PR description's "#34380 addresses it" wording noted under
 the 2026-10-03 round was not re-checked here.
 
 Pushed 2026-10-11: `pr-flow-aiding` `32ebf12db0` -> `125490400d` (force, autosquashed), 3 commits, messages only (every tree unchanged). Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
+
+Reply to the AP-Review round posted 2026-10-11 (issue comment 6110171441), the text drafted above.

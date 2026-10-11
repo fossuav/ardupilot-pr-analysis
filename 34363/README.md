@@ -246,3 +246,5 @@ rotation check at 2027996 B, 476 B over 1980 KiB (CI, 2026-09-12, at
 No SITL run this round; the change is whitespace and commit text only.
 
 Pushed 2026-10-11: `ekf3-percore-optflow-logging` `af037c533d` -> `0eb1fc7a2f` (force, autosquashed), 2 commits. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
+
+Reply to the AP-Review round posted 2026-10-11 (issue comment 6110170674), the text drafted above.

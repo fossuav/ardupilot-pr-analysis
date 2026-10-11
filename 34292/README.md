@@ -2172,3 +2172,5 @@ Thanks. The carry-over your 2026-10-05 review raised was real, and the reply tha
 - The FLOW_HGT_MIN text now says it assumes the rangefinder reads no more than 0.05 further at landing than before that flight's takeoff.
 
 Pushed 2026-10-11: `pr-flow-hgt-min` `5240bea63a` -> `f9cae55929` (force, autosquashed), 18 commits, the ROFH handler moved into its own AP_DAL commit after the EKF3 one; every commit's tree identical to the reordered branch that built copter and Replay at each commit. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
+
+Reply to the AP-Review round posted 2026-10-11 (issue comment 6110170098), the text drafted above.

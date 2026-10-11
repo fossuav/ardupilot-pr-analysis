@@ -679,3 +679,5 @@ Still owed:
 - The floor hold has no flight on a sensor that reports out of range low.
 
 Pushed 2026-10-11: `pr-aglkf-floor-velocity` `22821432da` -> `b17402187a` (force, autosquashed), 8 commits; final tree identical to the tested fix branch; copter and Replay build at the changed hold commit. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
+
+Reply to the AP-Review round posted 2026-10-11 (issue comment 6110169753), the text drafted above.

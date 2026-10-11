@@ -361,3 +361,5 @@ SITL run this round: commit text only. The #33585 record was not edited
 this round.
 
 Pushed 2026-10-11: `pr-avoid-flow-ceiling-backup` `c436f781dc` -> `732913562e` (force, autosquashed), 6 commits on #33585's 7f5f8ffe85; the shared commits are #33585's own; final tree unchanged. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
+
+Reply to the AP-Review round posted 2026-10-11 (issue comment 6110171287), the text drafted above.
