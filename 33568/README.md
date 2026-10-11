@@ -677,3 +677,37 @@ Head b249f0778e -> 32ebf12db0, 8 -> 3 commits on the same base, content identica
 - cb5d41828a AP_NavEKF3: drop to relative aiding when flow replaces a lost GPS
 - 0e6198857b AP_NavEKF3: log the EKF aiding mode in XKF4
 - 32ebf12db0 autotest: cover the GPS-to-flow relative-aiding fallback
+
+## 2026-10-11: commit messages tidied after the squash
+
+The 2026-10-08 squash kept the folded commits' subject lines inside two
+messages: `cb5d41828a` ("AP_NavEKF3: keep the states on a fall back to
+relative aiding", "AP_NavEKF3: take the ExtNav age signed in the flow fall
+back") and `32ebf12db0` (three autotest subjects, one of them only a flake8
+re-indent). `0e6198857b` is clean.
+
+Local branch `fix/pr-flow-aiding` on `32ebf12db0`, not pushed; two empty
+amend! commits, tree unchanged:
+
+- `6d04a0dac1` for `cb5d41828a`: one message for the final code. The reset
+  skip, the posTimeout clear and the signed ExtNav age are described as
+  what the commit does rather than as follow-ups, and the 21 m / 5.9 m/s
+  and 5-of-29 numbers are kept as the case with the mode change resets
+  in place. It drops "Replay-validated on a flow flight: AMode 0->2 ...
+  VGain 1.0 -> 4/HAGL, ~0.09 at 45 m". That claim was already flagged
+  under "Round 4" ("Replay owed") and in `REPLAY_LOGS.md`: the flight is
+  not named in this archive, the run was at an earlier head, and the
+  replay against the PR's real flight is still owed. It is removed rather
+  than restated; it should come back only with a named flight and a
+  replay at the current head.
+- `9374d18701` for `32ebf12db0`: the three test descriptions as one
+  message, the flake8 re-indent subject dropped; the
+  `OpticalFlowFallbackHeightLimit` disabled_tests() entry until #34380
+  lands is still stated, as it is still true.
+
+The PR still blocks only on merge order (#33585, then #34380, then the
+disabled_tests() entry dropped here); no code touched, no build or SITL run
+this round. The PR description's "#34380 addresses it" wording noted under
+the 2026-10-03 round was not re-checked here.
+
+Pushed 2026-10-11: `pr-flow-aiding` `32ebf12db0` -> `125490400d` (force, autosquashed), 3 commits, messages only (every tree unchanged). Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
