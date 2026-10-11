@@ -38,6 +38,12 @@ It was asked for alongside an `FS_EKF_ACTION` value for VALT, which went
 to #32270 instead (`d5672e0d6e`, `d40430bce0` on local `copter-valt-mode`,
 not pushed). With both, a flow vehicle goes Loiter -> VALT -> Loiter.
 
+*Updated 2026-10-11:* both commits were pushed to #32270 on 2026-10-09
+(head `d40430bce0`). "The QMIN latch holds until disarm" above is true of
+the flown firmware `7b0e4dd8` only; on #33484 as posted the latch clears
+only when a flow sample arrives while disarmed (`../33484/README.md`,
+2026-10-11).
+
 ## The design at `6d0d18631e`
 
 `failsafe_ekf_event()` records the mode it changed from when that mode was
