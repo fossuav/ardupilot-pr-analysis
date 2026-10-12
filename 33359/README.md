@@ -653,3 +653,186 @@ Replay build.
 Pushed 2026-10-11: `pr-rng-aglkf-terrain` `5c5441d830` -> `a1f5a87074` (force, autosquashed), 6 commits; final tree identical to the tested fix branch; copter and Replay build at every commit. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
 
 Reply to the AP-Review round posted 2026-10-11 (issue comment 6110170529), the text drafted above.
+
+## 2026-10-12: AP-Review round at a1f5a87074, fixes
+
+Local branch `fix2/pr-rng-aglkf-terrain` (not pushed), over
+`a1f5a87074`: `8363d97a20` fixup of the switch commit `ff486499a1`
+(B1), `bb6c793f6f` fixup of `f032135480` (option text), `21e2645b65`
+fixup of the autotest commit `a1f5a87074`, and amend! messages
+`c953ae7afa` (for `ff486499a1`) and `e763ef9d19` (for `a1f5a87074`).
+Autosquash order simulated on a scratch index: applies cleanly and gives
+the branch's tree; `ff486499a1` plus its fixup builds copter and Replay.
+Bot review (REQUEST CHANGES):
+https://firmware.ardupilot.org/Tools/APReview/DevCallReviews/PRReviews/ardupilot/ardupilot/33359/10.html
+
+### B1 (flow regained in flight): RESOLVED in `8363d97a20`
+
+Reproduced first (tier 2). `EK3_RngHgtSwitchNoVelocity` gained a second
+leg: after the flow-lost leg the 1 m rise is removed, flow is re-enabled
+with the vehicle still at 4.9 m/s, and once core 0 reports "started
+relative aiding" the 1 m rise is applied again for 5 s. At the PR head
+the EKF height moved 1.49 m against the simulator's on that leg (the
+bot's flight: 1.5 m).
+
+Mechanism, from the SITL logs (tier 2): the bot's proposal, "wait until
+flow has passed its innovation check since aiding started", does not
+work as written, for two reasons.
+
+- `flowFusionActive` (the "fusing optical flow" latch) is set in
+  constant position mode. Core 0 printed "fusing optical flow" at
+  38.96 s and "started relative aiding" only at 47.45 s, 8.5 s later
+  (aiding restarts once `delAngBiasLearned`; master's
+  `FlowAidingRestartsWithoutYawFusion` documents the same wait), so the
+  latch is already true when relative aiding starts and zeroes the
+  velocity.
+- `prevFlowFuseTime_ms` is updated per flow axis. From the relative
+  start XKF5.NI stayed between 160 and 255 for over 6 s, yet aiding did
+  not time out: the axis across the track (flow near zero, EKF velocity
+  zero) passes at any speed. A "pass since the start" test on that
+  timestamp is satisfied within one flow sample.
+
+The fix: per-axis masks `flowFusedAxes` and `bodyVelFusedAxes`, set in
+the pass branches of `FuseOptFlow()` and `FuseBodyVel()`, cleared at the
+AID_RELATIVE transition and in `InitialiseVariables()`. The override now
+needs `onGround`, or `horiz_vel` with AID_ABSOLUTE, or `horiz_vel` with
+AID_RELATIVE and every flow axis (0x3) or every odometry axis (0x7)
+passed since relative aiding started. EKF-internal state only, so it
+replays; no vehicle-specific term; the disarmed switch-in is unchanged.
+
+SITL, `EK3_RngHgtSwitchNoVelocity` (flow-only, `EK3_RNG_USE_HGT 12`,
+`EK3_RNG_USE_SPD 2`, GUIDED takeoff to 2 m then ALT_HOLD at 4.9 m/s),
+worst EKF height against the simulator's, each leg from the mean error
+over the seconds before it:
+
+| code | flow lost | flow regained |
+|---|---|---|
+| head `a1f5a87074` | 0.16 m | 1.49 m (fails) |
+| fix with the new condition removed (break run) | 0.15 m | 1.47 m (fails) |
+| any flow pass since a stored aiding start time (first attempt) | 0.15 m | 1.49 m (fails) |
+| no velocity condition (override on `aglKfValid` alone) | 1.61 m (fails) | - |
+| `horiz_vel` alone | 1.60 m (fails) | - |
+| fix, 7 runs | 0.14-0.16 m | 0.06 m every run |
+
+The head run took off with the first version of the new leg (a final
+wait on "fusing optical flow" that the fix run then showed cannot work,
+see below); the flight up to the measured windows is the same. The two
+"-" rows stop at the first leg. Leg-one numbers are on the rewritten
+test and are a different measurement from the 0.10 m / 1.69 m of
+2026-10-11 (LOITER takeoff then).
+
+Measured and rejected, for the habit: gating on flow having passed
+since relative aiding started, using `prevFlowFuseTime_ms` against a
+stored start time. Argued for by the bot and by this round's brief;
+1.49 m, the same as no gate, because the cross-track axis passes.
+`flowFusionActive` as the signal: not run, ruled out by the measured
+message order above (true 8.5 s before relative aiding started).
+
+Not exercised: odometry relative aiding (no SITL leg); the mask is the
+same per-axis bookkeeping in `FuseBodyVel()`, derived from the source,
+not measured.
+
+### Test flake (takeoff, stale statustext): RESOLVED in `21e2645b65`
+
+- Takeoff is now GUIDED to 2 m with `altitude_max` 2.5 m held for 2 s:
+  the position controller stops the climb at the target, so a late
+  altitude report cannot overshoot it. An `altitude_max` on the LOITER
+  takeoff alone would not have caught the bot's failing run, first seen
+  at 2.85 m inside a 3 m bound with the overshoot coming after. Seven
+  takeoffs reached 2.02-2.07 m.
+- The STATUSTEXT collection is cleared before flow is disabled and again
+  before it is re-enabled, so "stopped aiding" and "started relative
+  aiding" can only match messages after those points; the second now
+  starts the measured leg.
+- The landing no longer waits on a message. A wait on "fusing optical
+  flow" after re-aiding timed out at 60 s on the first fix attempt:
+  `flowFusionActive` (untouched by either attempt) was already set before
+  aiding restarted, so the message does not repeat. Landing in ALT_HOLD
+  needs no horizontal aiding.
+
+7 of 7 runs at the fix head pass (5 alone, 1 with the other two tests,
+1 earlier with the same flight). Observed, not acted on: the vehicle
+touches down at about 3 m/s, as the old test's did, and with the fix
+the EKF speed then rises to 5.6-5.7 m/s on the ground for about 7 s
+until disarm, flow rejected on both axes with the AGL KF height at its
+0.1 m floor. In the break run (range finder height through the leg) it
+decayed from 3.9 to 1.1 m/s instead, with the AGL KF height held at
+2.04 m. After the measured window; mechanism not investigated.
+
+#### Superseded 2026-10-12 by more runs and a Replay A/B: pre-existing, not the fix
+
+The break-run sentence above is wrong. It read core 0, but a lane switch
+at 53.73 s had made core 1 primary, and XKF5/XKFA log only the primary,
+so the 2.04 m "AGL KF height" was a value frozen at the switch. Core 1
+fell to 0.37 m/s once flow passed at 61.6 s, then rose to 3.66 m/s on
+the ground by disarm, and core 0 rose again to 2.0 m/s. Neither build
+decays reliably.
+
+Primary-core EKF speed, touchdown to disarm (about 12 s, vehicle still):
+
+| build / config | runs | peak | at disarm |
+|---|---|---|---|
+| fix, bit 3 | 8 | 4.42-6.07 m/s | 0.06-0.10 (4 runs), 3.26-3.57 (4) |
+| head and break builds, bit 3 | 3 | 4.28-4.33 | 3.30-3.61 |
+| fix binary, `EK3_OPTIONS 0` | 3 | 4.48-6.06 | 0.09, 2.96, 3.43 |
+| Replay of one bit-3 flight (`LOG_REPLAY 1`): head / fix / fix with `EK3_OPTIONS 0` | 1 | 4.27 / 4.51 / 4.53 | 3.35-3.51 / 3.35-3.40 / 3.43-3.45 |
+
+The runs that decayed peaked near 6 m/s, and those that held peaked near
+4.5 m/s, whatever the build or option. The fix Replay reproduces its
+live flight (4.51/3.40).
+
+Mechanism (tier 2, the same in every build): relative aiding restarts
+at 4.9 m/s with the velocity zeroed. The along-track flow axis is
+rejected, but the cross-track axis keeps passing, so aiding never times
+out and resets. The EKF velocity keeps the whole error, so when the
+vehicle slows before landing it swings to +2.4 to +2.8 m/s east against
+a true -2.54. Touchdown adds about 2 m/s (IMU X -22.9 m/s/s at impact),
+and on the ground flow at the 0.1 m height floor predicts tens of rad/s,
+so the along-track axis stays rejected. This is the single-axis lockout
+#33484 addresses (the TD25 class). Whether #33484 clears this flight was
+not checked. No code change here; the test's measured windows end
+before it.
+
+### Option text: RESOLVED in `bb6c793f6f`
+
+The bit 3 description said the AGL KF replaces the raw range in the
+height switch; the switch used `terrainState - position.z`. It now says
+the AGL KF gives the height the switch tests in place of the main
+filter's height above its terrain estimate, and that bit 3 lets the
+switch engage in hover and slow flight, not only during takeoff and
+landing.
+
+### Covariance (T4): DEFERRED
+
+Still owed: the `SIM_ACC1_BIAS_Z` A/B.
+
+### Replay at the fix (tier 1b)
+
+Head `a1f5a87074` against the fix, `replay_sweep.py` and a per-type
+record hash of the whole output. log29 (3408138/567), log30 (571),
+log35 (582) as flown; log224 (260) and log225 (261) with
+`EK3_RNG_USE_HGT 3`. log224/log225 outputs byte-identical. log29/30/35:
+every message type identical except 4, 3 and 7 `OF` records whose
+`TimeUS` is garbage (8115 us and similar, the artefact noted
+2026-10-11); XKF1 PD identical on every re-run core; `--compare` moved
+no row. A probe Replay shows relative aiding started only on the ground
+in all five (core 1 of log29/30/35 and both cores of log224 at 5.2 s,
+log225 never), and the state the fix gates on (airborne, `horiz_vel`,
+AID_RELATIVE, not every flow axis fused) never arose. So these flights
+cannot show the fix working, only that it changes nothing they did.
+Limit: the #32553 record notes log224 drops 37% of DAL frames in the
+air. UNCONFIRMED as before: log280, log281 and log31 are not under the
+local log roots.
+
+### PR tests at the fix head (SITL)
+
+`EK3_RngHgtSwitchStepUp` -0.05 m (worst 0.17 m), vehicle 0.33 m;
+`EK3_AglKfVerticalMotion` worst 0.15 m (bias -0.03 m);
+`EK3_RngHgtSwitchNoVelocity` 0.14 m / 0.06 m. All pass; flake8 clean;
+copter and Replay build.
+
+### Note 2026-10-13: unflown fixes squashed into flown commits
+
+The 2026-10-11 push (`a1f5a87074`) autosquashed review fixes that change behaviour into commits that had flown: the first commit now also gates the terrain-stable override on a measured velocity outside constant position mode. That breaks the rule now in the root playbook (never squash an unflown behaviour change into a flown commit), so the flight evidence recorded above for those commits covers the code before that push, not this part of it. Not rewritten again, to spare reviewers the churn; the beta carries the change as its own commit (topup15 `b2eaa6f864`), and flight results on it will be recorded against that commit. From 2026-10-12 review fixes that change behaviour go on top as new commits.
+
+Pushed 2026-10-13: `a1f5a87074` -> `708c152394` (force). New commits on top: `0c2e335f61` (per-axis aiding gate), `708c152394` (regain leg and flake fixes). Only the EK3_OPTIONS bit 3 text was squashed, into `d50dcb9994`; every flown commit otherwise unchanged. Mechanical gate clean. Replies not posted yet.
