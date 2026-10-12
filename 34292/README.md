@@ -2312,3 +2312,5 @@ Thanks, confirmed and fixed: while disarmed the rest reading is now also cleared
 The 2026-10-11 push (`f9cae55929`) autosquashed review fixes that change behaviour into commits that had flown: the zero-flow-at-rest commit now also carries the disarm-edge clear of the rest reading (the FLOW_HGT_MIN text and the Replay commit move do not change behaviour). That breaks the rule now in the root playbook (never squash an unflown behaviour change into a flown commit), so the flight evidence recorded above for those commits covers the code before that push, not this part of it. Not rewritten again, to spare reviewers the churn; the beta carries the change as its own commit (topup15 `11d7e1336f`), and flight results on it will be recorded against that commit. From 2026-10-12 review fixes that change behaviour go on top as new commits.
 
 Pushed 2026-10-13: `f9cae55929` -> `9e086e9d5d` (fast-forward): `16506a6866` (one-second rest-reading clear), `9e086e9d5d` (its test). Nothing squashed. Mechanical gate clean. Replies not posted yet.
+
+Reply to the second AP-Review round posted 2026-10-13 (issue comment 6134597795).
