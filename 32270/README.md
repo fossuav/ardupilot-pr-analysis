@@ -5,6 +5,13 @@ Branch `copter-valt-mode` (andyp1per fork), base `master`. No logs are
 committed here; the validation is the `ModeVAltHold` autotest and real flights
 that stay private.
 
+### Head superseded 2026-10-12: GitHub head `08c5182c90`
+
+The GitHub head is `08c5182c90`, the 2026-10-11 fixes autosquashed and
+force-pushed (see the end of the 2026-10-11 section). AP-Review reviewed
+it (report 7, REQUEST CHANGES); the 2026-10-12 section at the end answers
+it, with fixes on the local branch `fix2/copter-valt-mode`, not pushed.
+
 ### Head superseded 2026-10-11: GitHub head `d40430bce0`
 
 The GitHub head is `d40430bce0`, pushed by 2026-10-10. Since the
@@ -495,3 +502,137 @@ came in e2b1ffc6, 2025-08-04). Once both merge, #32270 bumps
 Pushed 2026-10-11: `copter-valt-mode` `d40430bce0` -> `08c5182c90` (force, autosquashed), 14 commits; two mode.h conflicts resolved (the private member and the ground-idle override); final tree identical to the tested fix branch; copter builds at every commit. Mechanical gate: one should-fix left as is - mode_valt.cpp has no licence header, like every ArduCopter mode_*.cpp. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
 
 Found 2026-10-11 porting to the SFD beta (topup15): with #34362 on the stack (AP_GroundEffect: stop touchdown_expected latching in cruise) the ground-effect subtest's window closes inside the baro glitch, at 142.0 s, so the tightened check at `08c5182c90` fails there and the subtest exercises nothing. On master it holds today. Once #34362 lands, this subtest needs another way to keep touchdown_expected set through the glitch. The beta keeps the old check and says so in REFRESH_NOTES.
+
+## 2026-10-12: AP-Review round at 08c5182c90, fixes
+
+Answers the AP-Review at `08c5182c90` (report 7, REQUEST CHANGES).
+Fixes are on the local branch `fix2/copter-valt-mode`, head
+`2b7d8a04e7`: four fixup!, six amend! and one new commit on
+`andyp1per/copter-valt-mode`, not pushed. SITL numbers are from a binary
+built at `56eb699e52`, whose code equals the head (every later commit is
+an empty amend!). "Fix reverted" means only that fix was undone in the
+working tree and rebuilt for the run.
+
+Folding the fixups in was simulated with merge-tree and commit-tree (no
+ref moved); the final tree equals the branch head. `ArduCopter/mode_valt.cpp`
+conflicts twice, because the fixup into the first commit is written
+against the snap as the blend commit restructured it: at that fixup, and
+again when the blend commit is picked onto the result. Resolution both
+times: keep that commit's own snap code, add the line
+`const float pos_snap_m = pos_control->get_pos_estimate_U_m() - pos_control->get_pos_offset_U_m() + pos_control->get_pos_terrain_D_m();`
+before it (in the blend commit, before `const float expo`), have the hard
+snap set `pos_desired` to `pos_snap_m`, and append to the snap comment
+"The target is pos_desired plus the position offset and the
+(Down-positive) terrain offset, so those come off too or they would sit
+in the error." In the blend commit the blend keeps its own `pos_est_m`;
+the next fixup removes it. The folded first and blend commits'
+`mode_valt.cpp` pass `-fsyntax-only` with the SITL flags against the
+head's headers; whole trees were not built. The new calls are
+AC_PosControl getters and `G_Dt`, present and unchanged since the merge
+base `e204ca77a8` (derived from the source).
+
+- R1, vertical offset carried into VALT: RESOLVED for a held offset,
+  PARTIAL for one already unwinding. `61b3d1b2d3` (into `b6f407d3dd`) and
+  `b573aa893f` (into `bad5da6436`) snap and blend pos_desired towards the
+  estimate less the position offset and the terrain offset, so the target
+  D_update_controller() builds (pos_desired + offset + terrain) lands on
+  the estimate. New commit `bd310bdf11` (with `fe88341f9f` and amend!
+  `56eb699e52`): copter-posoffset.lua holds PSC_OFS_POS_D -3 in Loiter
+  (the vehicle rose 2.97-2.98 m), VALT is entered at mid-stick, the stick
+  goes to 1600 (0.018 m/s demand) and the height must stay within -0.5 m
+  and +1.0 m of entry for 10 s. Fix: 0.18 m in two runs. Fix reverted:
+  "Failed to attain Altitude want 12.738, reached 63.882", climbing from
+  12.49 m at about 2.5 m/s. A first fix-reverted run died on a
+  GLOBAL_POSITION_INT timeout in the RTL of the EKF failsafe leg, before
+  the new leg, while another clone's autotest held the host; rerun once.
+  A first version of the leg used stick 1620 (0.14 m/s demand) and climbed
+  1.38 m against a 1.5 m bound, too close; hence 1600.
+
+  Throwaway probe (not committed), same setup, 9 s windows sampled from
+  LOCAL_POSITION_NED at 20 Hz:
+
+  | case, stick 1600 | VALT, fix reverted | VALT, fix | AltHold |
+  |---|---|---|---|
+  | offset held | +22.76 m, 1.9 to 2.7 m/s up | +0.160 m | +0.162, +0.163 m |
+  | offset cleared at the stick move | +3.98 m, -0.34 to +2.66 m/s | -2.85 m, peak 2.03 m/s down | -2.84 m, peak 2.13 m/s down |
+
+  The bot measured 7.6 m in 9 s for the held case; same mechanism, its
+  setup differed. With the fix an unwinding offset moves the vehicle by
+  what is left of it, as AltHold does: the offset's velocity feed-forward
+  (`_vel_offset_ned_ms`, added to the velocity target in
+  D_update_controller()) is outside pos_desired, so no snap reaches it.
+  Closing that needs the inherited offset cleared at VALT entry.
+  `pos_control->D_init_controller()` in `init()` would (D_init_offsets()
+  absorbs a held offset into pos_desired and zeroes a timed-out one), but
+  it also resets the velocity and acceleration integrators on every
+  in-flight entry, which AltHold avoids by initialising only an inactive
+  controller; the alternative is a new AC_PosControl call. Neither tried
+  or measured; left for a decision.
+- R2, VALT_POS_EXPO loop rate: RESOLVED, `6bf3aedf1a` (into
+  `bad5da6436`), commit message via amend! `2b7d8a04e7`. The weight is
+  computed as before and raised to 400 * G_Dt, G_Dt being the nominal loop
+  period. At 400 Hz 400 * G_Dt rounds to 1.0f, so the weight is unchanged
+  (derived, not checked bit for bit). The blend subtest's mean
+  |DPD - PD| at expo 3: 0.0451, 0.0437, 0.0436 m, and 0.0435, 0.0452 m
+  with the R1 fix reverted, against 0.0421-0.0452 m last round. That
+  subtest cannot see this change: at full deflection the weight is 1 at
+  any rate (derived). Throwaway probe for the decay: expo 1.5, 4 s of full
+  down, then stick 1031 (control_in 1, deflection 0.9975, weight 0.99638
+  per 400 Hz loop, snap time constant 0.69 s derived), |DPD - PD| from
+  PSCD at 10 Hz, time to fall to half (and to 1/e) of the first sample
+  after the step:
+
+  | build | 400 Hz | 200 Hz |
+  |---|---|---|
+  | fix | 0.28, 0.33 s (1/e 0.36, 0.43 s) | 0.38 s (0.54 s) |
+  | loop-rate scaling reverted | 0.40 s (0.50 s) | 0.66 s (0.90 s) |
+
+  The decay includes the position loop's own correction, so it is not the
+  snap's 0.69 s. With the scaling the 200 Hz decay sits at the top of the
+  400 Hz spread; without it, it is about twice as slow. One run per arm at
+  200 Hz. 800 Hz could not be flown: SITL's 1000 Hz gyro fails the 1.8x
+  loop-rate pre-arm and the main loop reached 641 Hz. The bot's shape
+  point stands and is arithmetic (expo 3, 1% stick: weight 0.9703, 83 ms
+  at 400 Hz): from expo about 1.5 the blend is a hard snap except within
+  about 1% of centre and of full stick. Kept, because it is the 400 Hz
+  shape log77-80 flew; reshaping the valley is a design change to fly
+  first. DEFERRED. The VALT_POS_EXPO description says nothing per-cycle;
+  unchanged.
+- R3, round-trip subtest: RESOLVED, `d0b1329531` (into `e1b8015fee`).
+  After the 10 s height check the subtest reads MODE from the log and
+  requires VALT to have lasted under 1.0 s (SURFACE_TRACKING_TIMEOUT_MS).
+  Measured 0.196, 0.220, 0.383, 0.340 and 0.170 s. Test of the test: a
+  1.5 s delay_sim_time between the two DO_SET_MODEs fails it with "VALT
+  lasted 2.038 s, past the surface tracking timeout"; the height check
+  itself passed in that run, since a timed-out tracker re-initialises
+  anyway, which is the bot's point.
+- Mode number 29: DEFERRED to the MAVLink and pymavlink PRs drafted in
+  the 2026-10-11 section, still not opened.
+- FS_EKF_ACTION 4 missing from the PR description: DEFERRED, description
+  not edited in this round; the 2026-10-11 draft stands.
+- Unanswered thread (@lthall, @peterbarker): replies drafted 2026-10-11,
+  still not posted.
+- Not raised by the bot: `73b2935f87`, `d7abd63bb7` and `5d39ec06b8`, as
+  pushed, end in a `Claude-Session:` trailer. amend! `dca13b221a`,
+  `a0b1683f3b` and `f2c6d88372` drop it, messages otherwise unchanged. The
+  first commit's message said pos_desired is set to the current position
+  off-centre; amend! `e9dcc86446` says the target, offsets included, is.
+
+ModeVAltHold (all subtests) and ModeAltHold pass at the head. The flake8
+check on arducopter.py and astyle on mode_valt.cpp are clean.
+
+### Drafts, not posted
+
+Replies to the AP-Review:
+
+> Vertical offset: the snap now puts the controller's target (pos_desired plus the position and terrain offsets) on the estimate, so with a script holding a 3 m offset VALT follows the stick, 0.16 m in 9 s for a 0.16 m demand against 22.8 m before, and ModeVAltHold covers it. An offset still unwinding on entry now moves the vehicle by what is left of it, as AltHold does (2.85 m against 2.84 m), through the offset's velocity feed-forward.
+
+> VALT_POS_EXPO: the weight is now the error kept per 400 Hz loop raised to 400 x loop period, so 400 Hz is unchanged; in SITL the 200 Hz decay went from twice as slow to within the 400 Hz spread.
+
+> Round trip: the subtest now reads the time in VALT from the log and fails at 1 s or more; it measured 0.17-0.38 s, and a 1.5 s stay fails it.
+
+### Note 2026-10-13: unflown fixes squashed into flown commits
+
+The 2026-10-11 push (`08c5182c90`) autosquashed review fixes that change behaviour into commits that had flown: the VALT commits now also carry the GCS take-off spool-up, the surface tracking re-init on entry and the single application of an EKF height reset. That breaks the rule now in the root playbook (never squash an unflown behaviour change into a flown commit), so the flight evidence recorded above for those commits covers the code before that push, not this part of it. Not rewritten again, to spare reviewers the churn; the beta carries the change as its own commit (topup15 `a1916a5c35`), and flight results on it will be recorded against that commit. From 2026-10-12 review fixes that change behaviour go on top as new commits.
+
+Pushed 2026-10-13: `08c5182c90` -> `16e20eba19` (force). The behaviour fixes are new commits on top, not squashed: `ee9dc05040` (offset snap, loop-rate scaling), `16e20eba19` (held-offset test). Squashed, as they change no behaviour: the round-trip timing check into `05fa0cf5e1`, and the `Claude-Session:` trailers dropped from `9122517612`, `1eb1248eb0`, `0fb02e707c`. The amend!s that described the new behaviour in the flown commits' messages were dropped. Every flown commit keeps its code (non-test diff 0 against the previous push). Mechanical gate clean. Replies not posted yet.
