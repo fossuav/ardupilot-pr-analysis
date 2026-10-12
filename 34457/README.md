@@ -681,3 +681,9 @@ Still owed:
 Pushed 2026-10-11: `pr-aglkf-floor-velocity` `22821432da` -> `b17402187a` (force, autosquashed), 8 commits; final tree identical to the tested fix branch; copter and Replay build at the changed hold commit. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
 
 Reply to the AP-Review round posted 2026-10-11 (issue comment 6110169753), the text drafted above.
+
+### Note 2026-10-13: unflown fixes squashed into flown commits
+
+The 2026-10-11 push (`b17402187a`) autosquashed review fixes that change behaviour into commits that had flown: the hold commit now also carries the change that arms the floor hold only from a fused reading. That breaks the rule now in the root playbook (never squash an unflown behaviour change into a flown commit), so the flight evidence recorded above for those commits covers the code before that push, not this part of it. Not rewritten again, to spare reviewers the churn; the beta carries the change as its own commit (topup15 `25b2081449`), and flight results on it will be recorded against that commit. From 2026-10-12 review fixes that change behaviour go on top as new commits.
+
+Pushed 2026-10-13: `b17402187a` -> `a7841c86c4` (force): the touchdown test fix folded into the test commit that added it, with the merged message (test only, no behaviour change). The hold commit `a23f3bfc65` is unchanged. Mechanical gate clean. Replies not posted yet.
