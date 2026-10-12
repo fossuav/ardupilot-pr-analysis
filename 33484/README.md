@@ -1056,3 +1056,7 @@ step (see the 2026-10-11 note under the Codex cold read).
 Pushed 2026-10-11: `pr-vel-flow-axis-gate` `71719dd7d4` -> `f0804c0644` (force), autosquashed and rebased onto master `00bf6ac82b`; the one conflict, AP_NavEKF3.h, keeps master's `AP_UInt32 _options;` and adds `AP_Int16 _flowQualMin;` after it. The whole-PR diff is unchanged but for that context line. copter and Replay build at all 6 commits; EK3_FlowAxisLockoutRecovery passes at the head. Mechanical gate clean. PR replies drafted, not posted.
 
 Reply to the AP-Review round posted 2026-10-11 (issue comment 6110170245), the text drafted above.
+
+### Note 2026-10-13: unflown fixes squashed into flown commits
+
+The 2026-10-11 push (`f0804c0644`) autosquashed review fixes that change behaviour into commits that had flown: the recovery commit now also clears the latch from controlFilterModes() while disarmed instead of on a flow sample. That breaks the rule now in the root playbook (never squash an unflown behaviour change into a flown commit), so the flight evidence recorded above for those commits covers the code before that push, not this part of it. Not rewritten again, to spare reviewers the churn; the beta carries the change as its own commit (not ported: the beta already clears it on every disarmed step through #32232's `3ebeb38816`, which is the flown behaviour this matches), and flight results on it will be recorded against that commit. From 2026-10-12 review fixes that change behaviour go on top as new commits.
