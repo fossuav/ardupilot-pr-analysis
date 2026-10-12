@@ -7,6 +7,11 @@ source and measured worse are in the "Measured and rejected" tables under
 round 3 (2026-09-17) and the round of 2026-09-29 at the end. Read both
 before touching the gate.
 
+2026-10-12: PR head `f9cae55929`, 18 commits on `1f1251a67e`, pushed
+2026-10-11. The fix round for its AP-Review is on the local branch
+`fix2/pr-flow-hgt-min`, not pushed; see the last section. The next
+paragraph is the header as of 2026-10-11.
+
 2026-10-11: PR head `5240bea63a`, 17 commits on `1f1251a67e`, pushed
 2026-10-08. The fix round for the AP-Review of that head is on the local
 branch `fix/pr-flow-hgt-min`, not pushed; see the last two sections. The
@@ -2064,6 +2069,10 @@ where no flow sample is stored between a disarm and the next takeoff
 (derived from the source); the 14-log Replay is not re-run at this code
 (owed).
 
+2026-10-12: that gap is closed by the one-second clear of the round of
+2026-10-12, which the bot raised as the same mechanism before the first
+flight.
+
 ### H2, Replay did not build at two commits: RESOLVED, needs a move in the squash
 
 7c406392dd (fixup! cb90789621) takes the `handle_message(ROFH)` hunk out of
@@ -2174,3 +2183,132 @@ Thanks. The carry-over your 2026-10-05 review raised was real, and the reply tha
 Pushed 2026-10-11: `pr-flow-hgt-min` `5240bea63a` -> `f9cae55929` (force, autosquashed), 18 commits, the ROFH handler moved into its own AP_DAL commit after the EKF3 one; every commit's tree identical to the reordered branch that built copter and Replay at each commit. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
 
 Reply to the AP-Review round posted 2026-10-11 (issue comment 6110170098), the text drafted above.
+
+## 2026-10-12: AP-Review round at f9cae55929, fixes
+
+On local `fix2/pr-flow-hgt-min` (not pushed), from
+`andyp1per/pr-flow-hgt-min` f9cae55929. Findings from the AP-Review of that
+head (Verdict: COMMENT, nothing blocking). It confirmed last round's fixes:
+the two-flight leg passed 5 of 5 SITL runs with 0 hover fusions and
+failed with 43 when the disarm clear was removed; copter and Replay build
+at all 18 commits; the ROFH padding argument in 121a9b686b's message is
+right.
+
+### R1, a rest reading learned before the first arming goes stale: RESOLVED
+
+The bot's probe at f9cae55929 (its SITL, tier 2): 0.79 m learned after
+boot, flow samples stopped, ground then reading 0.00 m, a 0.38 m hover
+under a 1.0 m floor fused zero flow 33 times with aiding kept (25 on a
+second run). The disarm clear does not fire before a first flight, and the
+reading is only refreshed from a stored sample.
+
+8cda174a54 (fixup! b5cd1c907f): in `SelectFlowFusion()`, beside the
+refresh, the reading is cleared while on the ground (`onGround`, which is
+`!motorsArmed` on every vehicle class) once
+`imuSampleTime_ms - flowValidMeaTime_ms > 1000`. The disarm-edge clear in
+`controlFilterModes()` stays. Both inputs are EKF core state built from
+DAL data, so it replays; nothing in it is vehicle-specific. It only ever
+removes a reading, so it cannot make zero flow fuse where it did not.
+
+Which timestamp, from the source (derived, not measured):
+`flowMeaTime_ms` is set on every `writeOptFlowMeas()` call that passes the
+rate limit, before the quality and 4.2 rad/s test, so it is not the time
+of a stored sample. `flowValidMeaTime_ms` is set beside `storedOF.push()`,
+and also to now on entry to AID_RELATIVE (`setAidingMode()`); with quality-0
+samples still arriving the EKF re-enters relative aiding every 5 s, so the
+clear can be put off by up to a second after such an entry. Nothing
+relearns the reading without a stored sample, so that only delays it.
+`flowDataValid` cannot be used: the pre-takeoff path forces it true.
+
+This also closes last round's "Not covered" note (a sensor that stops
+storing samples as it is set down kept a reading from its last sample).
+
+Test (672ebdfe57, fixup! f9cae55929): the two-flight leg at the end of
+FlowFocusHoldAfterLanding is now a loop of two variants. The new one
+reproduces the probe with no first flight: SIM_SONAR_OFFSET 0.8 and
+FLOW_HGT_MIN 1.0, reboot, ready to arm (ground reads 0.79 m, learned),
+ALT_HOLD, SIM_FLOW_OFS_X 5 (over the 4.2 rad/s limit, the quality-0
+stand-in) until "stopped aiding", SIM_SONAR_OFFSET 0 (ground 0.00 m), arm,
+offset off, hover. Same checks as the two-flight variant: no flow fused
+while no sample is stored, hover range within 0.05 of the learned reading,
+then 0 fusions in the hover and "EKF3 IMU0 stopped aiding".
+
+| build (tier 2, SITL, 2026-10-12) | variant | hover | hover range max | fusions, no sample stored | fusions in hover | result |
+|---|---|---|---|---|---|---|
+| fix, leg run | two flights | 0.42 m | 0.52 m | 0 | 0 | pass |
+| fix, leg run | after boot | 0.42 m | 0.51 m | 0 | 0 | pass |
+| fix, all-four run | two flights | 0.44 m | 0.53 m | 0 | 0 | pass |
+| fix, all-four run | after boot | 0.43 m | 0.52 m | 0 | 0 | pass |
+| one-second clear reverted, run 1 | two flights | 0.43 m | 0.52 m | 0 | 0 | pass |
+| one-second clear reverted, run 1 | after boot | 0.44 m | 0.52 m | 0 | 42 | fail, intended assertion |
+| one-second clear reverted, run 2 | two flights | 0.44 m | 0.53 m | 0 | 0 | pass |
+| one-second clear reverted, run 2 | after boot | 0.42 m | 0.51 m | 0 | 39 | fail, intended assertion |
+| disarm clear removed, one-second clear kept | two flights | 0.41 m | 0.51 m | 0 | 0 | pass |
+| disarm clear removed, one-second clear kept | after boot | 0.44 m | 0.52 m | 0 | 0 | pass |
+
+Every other leg of FlowFocusHoldAfterLanding passed in every run above.
+
+The last two rows mean the two-flight variant no longer isolates the
+disarm-edge clear: with samples stopped for 5 s while disarmed, the
+one-second clear covers it too (1 run). The edge clear is kept for what
+the one-second clear cannot reach (derived from the source, not measured):
+a sensor that stops reporting altogether, so `writeOptFlowMeas()` is not
+called, leaves `takeOffDetected` latched from the flight (only
+`detectOptFlowTakeoff()` resets it, and only from that call), so the
+`!takeOffDetected` branch holding the new clear is not reached after the
+landing; and a re-arm within a second of disarm. No test covers either; a
+SIM_FLOW_ENABLE 0 variant would reach the first.
+
+Replay: the 14-log Replay is still not re-run at this code (owed). The
+one-second clear can change a replay only where a reading under the floor
+was learned and the sensor then stored nothing for a second while disarmed
+(derived from the source).
+
+### R2, the bot's unchanged notes: DEFERRED
+
+As last round (H5): a landing reading more than 0.05 above both
+RNGFNDx_GNDCLR and the reading before takeoff still discards flow below
+the floor (documented, maintainer call); two downward range finders share
+the orientation-wide clearance and the reading has no sensor index;
+`rofm_resend` is not serialised with the flow write path, as with base's
+ROFH writes. No change asked.
+
+### Commit messages
+
+48ba55b983 (amend! b5cd1c907f) rewrites the rest-reading paragraph to
+describe both clears, with the numbers above and last round's 40 and 45
+(neither clear, two flights). 20a524ca76 (amend! f9cae55929) describes the
+leg's two variants. Every other paragraph is unchanged.
+
+### Builds and tests (2026-10-12)
+
+`./waf copter` and `./waf --targets tool/Replay` succeed at the fix tip
+20a524ca76 and on scratch branch `tmp/34292-fix2-ekf` (b5cd1c907f with
+8cda174a54 cherry-picked as a189ddfc5c), the commit the fixup lands in.
+The two commits after it (749bcd09c0 Replay, f9cae55929 autotest) carry no
+EKF change, so with the fixup their C++ trees equal the tip's. flake8 on
+arducopter.py clean; astyle leaves the new lines alone; `git diff --check`
+clean.
+
+All four flow focus tests pass at the tip binary, one run:
+OpticalFlowFocusHeight (landings: 46 and 53 flow fusions after the bad
+flow, drift 0.01 and 0.03 m; old range: 83 updates in 8.4 s),
+FlowHeightMinTerrainPath (AFI low leg max 0, high leg 62),
+FlowFocusHoldAfterLanding (low hover 0 fusions in 66 XKF5 at 0.45 m;
+LOITER landings at 0.00 m and 0.19 m ground range; the stale-reading legs
+as in the table), FlowFocusHoldReleasesWithDeadRangeFinder.
+
+Squash: an autosquash onto 1f1251a67e places 8cda174a54 and 48ba55b983
+after b5cd1c907f, and 672ebdfe57 and 20a524ca76 after f9cae55929; no line
+needs moving and no conflict is expected (the EKF fixup cherry-picked
+cleanly onto b5cd1c907f).
+
+### Reply draft (not posted)
+
+Thanks, confirmed and fixed: while disarmed the rest reading is now also cleared once no flow sample has been stored for a second, alongside the disarm clear. FlowFocusHoldAfterLanding has your probe as a second variant of the stale-reading leg (0.79 m learned after boot, samples stopped, ground then 0 m, a 0.42-0.44 m hover under a 1 m floor): 42 and 39 zero-flow fusions without the new clear, 0 with it and aiding stopped.
+
+### Note 2026-10-13: unflown fixes squashed into flown commits
+
+The 2026-10-11 push (`f9cae55929`) autosquashed review fixes that change behaviour into commits that had flown: the zero-flow-at-rest commit now also carries the disarm-edge clear of the rest reading (the FLOW_HGT_MIN text and the Replay commit move do not change behaviour). That breaks the rule now in the root playbook (never squash an unflown behaviour change into a flown commit), so the flight evidence recorded above for those commits covers the code before that push, not this part of it. Not rewritten again, to spare reviewers the churn; the beta carries the change as its own commit (topup15 `11d7e1336f`), and flight results on it will be recorded against that commit. From 2026-10-12 review fixes that change behaviour go on top as new commits.
+
+Pushed 2026-10-13: `f9cae55929` -> `9e086e9d5d` (fast-forward): `16506a6866` (one-second rest-reading clear), `9e086e9d5d` (its test). Nothing squashed. Mechanical gate clean. Replies not posted yet.
