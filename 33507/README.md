@@ -853,3 +853,5 @@ flag the EKF must not trust (EKF3 playbook, flight-state flags).
 Pushed 2026-10-11: `pr-agl-kf-zbias` `c34e097cc4` -> `3f85870eb4` (force, autosquashed), its two commits restacked on #34457's b17402187a; tree identical to the tested restack. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
 
 Reply to the AP-Review round posted 2026-10-11 (issue comment 6110169924), the text drafted above.
+
+Pushed 2026-10-13: `3f85870eb4` -> `ad18eb6aff` (force): its two commits restacked on #34457's `a7841c86c4`, trees unchanged. Mechanical gate clean. Replies not posted yet.
