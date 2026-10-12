@@ -855,3 +855,5 @@ Pushed 2026-10-11: `pr-agl-kf-zbias` `c34e097cc4` -> `3f85870eb4` (force, autosq
 Reply to the AP-Review round posted 2026-10-11 (issue comment 6110169924), the text drafted above.
 
 Pushed 2026-10-13: `3f85870eb4` -> `ad18eb6aff` (force): its two commits restacked on #34457's `a7841c86c4`, trees unchanged. Mechanical gate clean. Replies not posted yet.
+
+Reply to the second AP-Review round posted 2026-10-13 (issue comment 6134598413).

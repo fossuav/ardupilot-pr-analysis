@@ -836,3 +836,5 @@ copter and Replay build.
 The 2026-10-11 push (`a1f5a87074`) autosquashed review fixes that change behaviour into commits that had flown: the first commit now also gates the terrain-stable override on a measured velocity outside constant position mode. That breaks the rule now in the root playbook (never squash an unflown behaviour change into a flown commit), so the flight evidence recorded above for those commits covers the code before that push, not this part of it. Not rewritten again, to spare reviewers the churn; the beta carries the change as its own commit (topup15 `b2eaa6f864`), and flight results on it will be recorded against that commit. From 2026-10-12 review fixes that change behaviour go on top as new commits.
 
 Pushed 2026-10-13: `a1f5a87074` -> `708c152394` (force). New commits on top: `0c2e335f61` (per-axis aiding gate), `708c152394` (regain leg and flake fixes). Only the EK3_OPTIONS bit 3 text was squashed, into `d50dcb9994`; every flown commit otherwise unchanged. Mechanical gate clean. Replies not posted yet.
+
+Reply to the second AP-Review round posted 2026-10-13 (issue comment 6134598110).

@@ -451,3 +451,5 @@ Not run: Replay of log308 (the REPLAY_LOGS.md row for #33585 is still
 owed), feature-off builds, hardware.
 
 Pushed 2026-10-13: `732913562e` -> `7aa5017103` (fast-forward): `4c3f1a7724` (flat-ground return timed on fused readings), `7aa5017103` (its test). #33585 untouched. Mechanical gate clean. Replies not posted yet.
+
+Reply to the second AP-Review round posted 2026-10-13 (issue comment 6134597960).
