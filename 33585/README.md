@@ -1379,3 +1379,5 @@ Head dbc79586ae -> b0c3cb87ce, 6 -> 4 commits on the same base, content identica
 Pushed 2026-10-11: `pr-optflow-flat-ground` `b0c3cb87ce` -> `7f5f8ffe85` (force, autosquashed), 4 commits, messages only (every tree unchanged). Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
 
 Reply to the AP-Review round posted 2026-10-11 (issue comment 6110171140), the text drafted above.
+
+2026-10-12: the raw-sample timing of the 2 s and 500 ms return checks (`784c750af1`'s lines, AP-Review's non-blocking point) is fixed on #34380 (`fix2/pr-avoid-flow-ceiling-backup` `4c3f1a7724`, test `7aa5017103`); #33585 unchanged. See ../34380/README.md, "2026-10-12: AP-Review round at 732913562e, fixes".
