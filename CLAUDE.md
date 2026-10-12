@@ -161,6 +161,14 @@ PR's directory in the same session as the change, not "later", whenever:
 - CI changes what is known: a new failure, or a red gate going green;
 - the PR description is edited.
 
+Flight evidence belongs to the code that flew. A review fix that changes
+behaviour is never squashed into a commit that has flown (root playbook,
+commit conventions); it goes on top as its own commit until it has flown,
+and the record says which head the flights were on. Only changes that do
+not affect behaviour - messages, comments, parameter docs, test fixes - are
+folded into flown commits. The 2026-10-11 push broke this on five PRs; each
+of their READMEs carries a 2026-10-13 note saying which part is unflown.
+
 At minimum refresh the head commit and the date. Then re-read the sections
 that describe mechanism, because a design that moved makes the prose wrong
 rather than merely old, and prose describing code that no longer exists is
