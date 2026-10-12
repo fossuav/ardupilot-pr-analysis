@@ -363,3 +363,91 @@ this round.
 Pushed 2026-10-11: `pr-avoid-flow-ceiling-backup` `c436f781dc` -> `732913562e` (force, autosquashed), 6 commits on #33585's 7f5f8ffe85; the shared commits are #33585's own; final tree unchanged. Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
 
 Reply to the AP-Review round posted 2026-10-11 (issue comment 6110171287), the text drafted above.
+
+## 2026-10-12: AP-Review round at 732913562e, fixes
+
+AP-Review round 12 (REQUEST CHANGES) at `732913562e`: tree identical to
+`c436f781dc`, only the messages changed, and the bot accepts those. Two
+points.
+
+- Short-reach band: unchanged and still blocking for the bot. DEFERRED
+  to the maintainers; not addressed this round, by instruction. New in
+  the bot's text: at full stick in the band the vehicle cycled
+  27.1-28.4 m every 3.6-3.9 s, out of reach 68% of the time, so letting
+  go mid-climb is likely to leave it above the reach (the bot's own
+  inference from that split, not flown by us).
+- The 2 s that ends a brief return, and the 500 ms break that restores
+  the saved ground, were timed on raw range samples, including ones the
+  terrain innovation gate rejects. The bot has now flown it: at 21 m,
+  0.2 s of a fused 1.76 m return then 3.5 s of rejected 7.3 m readings
+  dropped the saved ground, left height above ground at 1.8 m and lost
+  relative position; cut to 1.3 s the sequence restored 21 m. RESOLVED
+  on local branch `fix2/pr-avoid-flow-ceiling-backup` (on `732913562e`,
+  not pushed), two new commits; #33585 is untouched, although the lines
+  are its (`784c750af1`). This supersedes the DEFERRED status the
+  2026-10-11 section gave this point.
+  - `4c3f1a7724` AP_NavEKF3: `terrainRngFuseTime_ms`, set where a range
+    reading passes the gate in `EstimateTerrainOffset()`;
+    `updateFlatGroundAssumed()` times the 500 ms break and both 2 s
+    checks on it, except with the range finder as the height source,
+    where nothing is fused into the terrain state and
+    `rngValidMeaTime_ms` is used as before. `gndHgtValidTime_ms` was not
+    reused: flow terrain fusion (EK3_FLOW_USE 2 with GPS) refreshes it
+    too, and the restore winds it back. The run restarts if a height
+    source change moves the time backwards, which would otherwise wrap
+    the unsigned subtraction (derived from the source, not exercised).
+  - `7aa5017103` autotest: a leg in EK3_OptflowAboveRangefinder flying
+    the bot's sequence (8 m range finder, about 21 m, 1.76 m for 0.2 s
+    then 7.3 m for 3.5 s, both set from the measured altitude).
+
+Measured (SITL, tier 2, 2026-10-12). The sequence comes from
+`SIM_SONAR_SCALE` sets that do not wait for the acknowledgement, so the
+phases ran longer than requested; lengths are from the RFND log.
+
+| build | obstacle read | 7.3 m read | XKF5 with the obstacle held against 7.3 m | height above ground after | relative position |
+|---|---|---|---|---|---|
+| `732913562e` + leg (no fix) | 0.4 s | 3.6 s | 37 | 1.8 m | lost 5.2 s after the obstacle's last reading |
+| fix | 0.1 s | 3.8 s | 4 | 7.3 m | held |
+| fix, regression run | 0.5 s | 3.7 s | 3 | 7.3 m | held |
+
+The no-fix row is the break-the-fix run: the pre-fix binary with the
+leg, the other legs skipped by a temporary edit; it failed at the
+intended assertion ("the obstacle was left as the ground: height above
+ground 1.8 m at 21.2 m up"). XKF4.SS lost horiz_pos_rel at that time.
+
+With the fix the bot's sequence does not end at 21 m. The obstacle is
+undone 0.6 s after its last reading (one XKF5 record at 21.26 m), then
+the next 7.3 m reading resets the terrain state (over 5 s since the
+saved ground's last fusion), is fused, and after 2 s the lower surface
+is the ground: 7.3 m, relative position held after the offset times
+out (7.3 m is over the 5.6 m re-engagement threshold). A return over
+2 s is the ground by design, so the leg asserts that the obstacle is
+not left as the ground and that relative position holds, not which
+surface is kept. A leg asserting the saved ground kept needs the 7.3 m
+readings under 2 s once judged afresh but over 2 s in total, a window
+of about 0.3 s that the parameter-send jitter above cannot hit
+reliably; not added.
+
+Considered and not taken (inspection only, not measured): keeping the
+500 ms break on raw samples and timing only the 2 s on fused ones would
+have restored 21 m for the bot's 3.5 s sequence, but holds the obstacle
+as the ground, scaling flow by 1.8 m over a surface 7.3 m down, for as
+long as rejected readings keep arriving, up to the 5 s terrain reset.
+
+Regression at `7aa5017103` (SITL, 2026-10-12), all pass:
+EK3_OptflowAboveRangefinder (brief returns 0.4/0.7/1.8/1.6 s, height
+above ground after 20.9-21.3 m; bound drop 212 m at 21.2 m),
+EK3_OptflowAnchoredTerrain, EK3_TerrainStateFollowsHeightReset,
+EK3_TerrainStateFollowsDatumReset, EK3_TerrainStateHeldOnDriftReset,
+FlowCeilingBacksDownIntoRange (back at 16.8 m),
+FlowCeilingShortRangeFinder (25 m reach lost at 27.1 m; 27.5 m reach
+28.4 m, kept; centred, held 28.4-28.5 m, lost at 28.5 m),
+OpticalFlowLimits, OpticalFlow, EK3_OptflowTerrainScaleHeight, Replay.
+Replay's first attempt died on a GLOBAL_POSITION_INT timeout in its GPS
+bit, after 96 s spent building Replay alongside other sessions; it
+passed on rerun. Copter, plane and rover build. flake8 clean.
+
+Not run: Replay of log308 (the REPLAY_LOGS.md row for #33585 is still
+owed), feature-off builds, hardware.
+
+Pushed 2026-10-13: `732913562e` -> `7aa5017103` (fast-forward): `4c3f1a7724` (flat-ground return timed on fused readings), `7aa5017103` (its test). #33585 untouched. Mechanical gate clean. Replies not posted yet.
