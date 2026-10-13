@@ -638,3 +638,13 @@ The 2026-10-11 push (`08c5182c90`) autosquashed review fixes that change behavio
 Pushed 2026-10-13: `08c5182c90` -> `16e20eba19` (force). The behaviour fixes are new commits on top, not squashed: `ee9dc05040` (offset snap, loop-rate scaling), `16e20eba19` (held-offset test). Squashed, as they change no behaviour: the round-trip timing check into `05fa0cf5e1`, and the `Claude-Session:` trailers dropped from `9122517612`, `1eb1248eb0`, `0fb02e707c`. The amend!s that described the new behaviour in the flown commits' messages were dropped. Every flown commit keeps its code (non-test diff 0 against the previous push). Mechanical gate clean. Replies not posted yet.
 
 PR description updated 2026-10-14 (FS_EKF_ACTION 4, the 2026-10-11/13 fixes, no hardware claim for unflown parts); no reply posted.
+
+## 2026-10-14: no further work on the PR
+
+The AP-Review round at `16e20eba19` (REQUEST CHANGES: mode 29 not in
+ardupilotmega.xml, unanswered February questions from lthall and Peter
+Barker, partial-stick `VALT_POS_EXPO` coverage) is left unanswered by
+decision: lthall does not like the PR, and it stays open so the SFD
+branches can track it. The mode-number MAVLink PR and the replies are
+dropped from the open items. Its "note AI assistance" item is not acted on
+in any case (playbook: no claim either way).

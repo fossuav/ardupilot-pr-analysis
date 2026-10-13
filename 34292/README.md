@@ -2442,3 +2442,41 @@ Thanks, reproduced: with the autotest and 8 busy loops pinned to four cores the 
 Pushed 2026-10-14: `9e086e9d5d` -> `8cd64105c4` (force): the climb flake fixes folded into the two test commits (test only). No C++ change. Mechanical gate clean. Replies and description not posted yet.
 
 PR description updated and reply to the third AP-Review round posted 2026-10-14 (issue comment 6153655559).
+
+## 2026-10-14: AP-Review round at 8cd64105c4, a Rover fix
+
+(The section above carries 2026-10-14 but was written on 2026-10-13.)
+
+AP-Review (REQUEST CHANGES, one new blocker): an armed Rover with a downward
+range finder fused zero flow while it drove. On a Rover the EKF counts the
+first turn as a takeoff, and the range finder then reads within 5 cm of its
+ground clearance all the time, so every sample took the "resting below the
+floor" branch. Reproduced in SITL at `8cd64105c4`: a flow-only Rover with
+`FLOW_HGT_OVR` 1.5 and both sensors 1.5 m up read 0.01 m/s driving at
+0.39 m/s.
+
+Pushed 2026-10-14 as commits on top (`8cd64105c4..c0498ea0d5`):
+
+- `244d608769` a sample with a declared sensor height (`heightOverride`,
+  from `FLOW_HGT_OVR`) skips the focus floor and clears both its flags.
+  0.40 m/s after, 2 of 2. Copter cannot reach the branch:
+  `FLOW_HGT_OVR` is a Rover-only parameter, so `heightOverride` is 0.
+- `a0ab050ad6` the SITL flow model took its range only for
+  `height_agl > 0`, so a Rover at zero height saw no translational flow
+  however high its sensor; it now uses the sensor's own height. No test sets
+  a flow sensor offset, so nothing else moves.
+- `c0498ea0d5` `OpticalFlowRangefinderOnGround` (rover.py).
+
+Rejected: the bot's `VehicleClass::GROUND` condition. The EKF playbook rules
+out vehicle-specific code, and this PR's own history records the vehicle
+class and `get_fly_forward()` gates being tried and dropped. A Rover with a
+downward range finder and no `FLOW_HGT_OVR` stays the stated limitation.
+
+Quick review (Codex cold read, framing-free): the bypass left the focus
+flags stale if `FLOW_HGT_OVR` was set while armed, and the test passed if
+the Rover never moved; both fixed before the push. A first cut of the flag
+clearing read `heightOverride` before any sample had been recalled and
+tripped SITL's floating point trap (NaN in an ordered compare); it is
+guarded by `flowDataToFuse`. `FlowFocusHoldAfterLanding` passes at
+`c0498ea0d5`. Description updated, reply posted. Ported to the beta as
+topup20.

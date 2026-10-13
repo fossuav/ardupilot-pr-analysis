@@ -556,3 +556,13 @@ session), hardware.
 Pushed 2026-10-14: `7aa5017103` -> `d1f9ef8d72` (force): the test leg fixes folded into #34380's own test commit (`801b551d56`, test only), the position-reset known-limit comment as its own commit `d1f9ef8d72`. #33585's commits and `4c3f1a7724` unchanged. Mechanical gate clean. Replies and description not posted yet.
 
 PR description updated and reply to the third AP-Review round posted 2026-10-14 (issue comment 6153655195).
+
+## 2026-10-14: AP-Review round at d1f9ef8d72, no change
+
+Both points from the last round closed (the rejected-readings leg fails
+3 of 3 with 4c3f1a7724 reverted). The blocker is the short-reach band kept
+on 2026-10-06 and put to a maintainer on 2026-10-07; the bot holds it open
+until one answers, and nothing new is asked. The test failing on a host
+with 40 CPU burners (6 of 10) is in lines shared with #33585 and stays with
+its follow-up. Its description complaints were written before the
+2026-10-13 description update.

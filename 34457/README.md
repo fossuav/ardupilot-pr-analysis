@@ -693,3 +693,9 @@ Reply to the second AP-Review round posted 2026-10-13 (issue comment 6134598251)
 Pushed 2026-10-14: `a7841c86c4` -> `04341318b9` (force): the known-limit comment folded into the hold commit (comment only; every commit's code unchanged). Mechanical gate clean. Replies and description not posted yet.
 
 PR description updated and reply to the third AP-Review round posted 2026-10-14 (issue comment 6153655917).
+
+## 2026-10-14: AP-Review round at 04341318b9
+
+COMMENT, nothing blocks; the review predates the 2026-10-13 description
+update, which already covers what it asks (the floor hold and its tests,
+"Tested on hardware" unticked).
