@@ -857,3 +857,5 @@ Reply to the AP-Review round posted 2026-10-11 (issue comment 6110169924), the t
 Pushed 2026-10-13: `3f85870eb4` -> `ad18eb6aff` (force): its two commits restacked on #34457's `a7841c86c4`, trees unchanged. Mechanical gate clean. Replies not posted yet.
 
 Reply to the second AP-Review round posted 2026-10-13 (issue comment 6134598413).
+
+Pushed 2026-10-14: `ad18eb6aff` -> `d9e44e3e46` (force): restacked on #34457's `04341318b9`, and the test commit's message corrected (on-ground bias std 1.0 with the final gate, 0.047 was the earlier gate). Mechanical gate clean. Replies and description not posted yet.
