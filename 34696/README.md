@@ -3,8 +3,9 @@
 **Open as [#34696](https://github.com/ArduPilot/ardupilot/pull/34696)**,
 opened 2026-10-09 from `andyp1per/copter-ekf-fs-restore` at
 `6d0d18631e`: three commits on master `1f1251a67e`. Record written
-2026-10-09. *2026-10-13*: two commits on top, local head `ec0722bbed`,
-not yet pushed; see "2026-10-13: flown, and refused without a position".
+2026-10-09. *2026-10-13*: two commits on top, head `ec0722bbed`, pushed
+and the description updated the same day; see "2026-10-13: flown, and
+refused without a position".
 
 | commit | subject |
 |---|---|
