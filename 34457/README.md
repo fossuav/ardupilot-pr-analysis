@@ -689,3 +689,5 @@ The 2026-10-11 push (`b17402187a`) autosquashed review fixes that change behavio
 Pushed 2026-10-13: `b17402187a` -> `a7841c86c4` (force): the touchdown test fix folded into the test commit that added it, with the merged message (test only, no behaviour change). The hold commit `a23f3bfc65` is unchanged. Mechanical gate clean. Replies not posted yet.
 
 Reply to the second AP-Review round posted 2026-10-13 (issue comment 6134598251).
+
+Pushed 2026-10-14: `a7841c86c4` -> `04341318b9` (force): the known-limit comment folded into the hold commit (comment only; every commit's code unchanged). Mechanical gate clean. Replies and description not posted yet.
