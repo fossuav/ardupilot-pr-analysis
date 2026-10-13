@@ -732,6 +732,16 @@ Not exercised: odometry relative aiding (no SITL leg); the mask is the
 same per-axis bookkeeping in `FuseBodyVel()`, derived from the source,
 not measured.
 
+#### Superseded 2026-10-14 by a SITL turn leg: "passed since" is a latch
+
+The mask above (pushed as `0c2e335f61`) only ever set bits, so it was
+met once each axis had passed once. The 2026-10-13 review flew the
+turn that defeats it (flow regained at speed, nose turned 73-80 deg
+while holding the track, range finder taken at an EKF speed of 1.2-1.6
+m/s against 4.5 m/s true); reproduced here at 1.47-1.49 m in 4 of 4
+runs. Fixed in `3eeee55f04`, see "2026-10-14" below. The numbers above
+stand for the regain leg, which has no turn.
+
 ### Test flake (takeoff, stale statustext): RESOLVED in `21e2645b65`
 
 - Takeoff is now GUIDED to 2 m with `altitude_max` 2.5 m held for 2 s:
@@ -838,3 +848,171 @@ The 2026-10-11 push (`a1f5a87074`) autosquashed review fixes that change behavio
 Pushed 2026-10-13: `a1f5a87074` -> `708c152394` (force). New commits on top: `0c2e335f61` (per-axis aiding gate), `708c152394` (regain leg and flake fixes). Only the EK3_OPTIONS bit 3 text was squashed, into `d50dcb9994`; every flown commit otherwise unchanged. Mechanical gate clean. Replies not posted yet.
 
 Reply to the second AP-Review round posted 2026-10-13 (issue comment 6134598110).
+
+## 2026-10-14: AP-Review round at 708c152394, fixes
+
+Local branch `fix4/pr-rng-aglkf-terrain` (not pushed), over
+`708c152394`: `3eeee55f04` (AP_NavEKF3, gate) and `9a76d63933`
+(autotest, turn leg), both new commits on top; no fixup or amend, so
+no flown commit changes. Numbers taken 2026-10-13 in SITL and Replay
+on this branch. Bot review (REQUEST CHANGES):
+https://firmware.ardupilot.org/Tools/APReview/DevCallReviews/PRReviews/ardupilot/ardupilot/33359/11.html
+
+### B2 (the per-axis gate is a latch): RESOLVED in `3eeee55f04`
+
+Reproduced (tier 2). `EK3_RngHgtSwitchNoVelocity` gained a third leg:
+`EK3_RNG_USE_SPD 3`, flow lost and regained at 4 m/s, nose turned 80
+deg with the lean held along the track, the 1 m rise as the turn ends.
+With temporary per-sample probes (flow axis pass/fail, mask, override,
+height source) at `708c152394`: the axis across the track passes from
+the restart, fails from about 30 deg of turn, and the other axis first
+passes at 65-80 deg; the latched mask is then full and core 0 takes the
+range finder at once, with the EKF speed at 0.7-1.0 m/s against
+3.7-4.4 m/s true in the runs that failed. The rise then lands under the
+range finder height.
+
+The fix: a bit is cleared when its axis's sample is not fused, so the
+masks say which axes passed their latest sample; `allAxesFusedTime_ms`
+is stamped whenever every flow axis (or every odometry axis) has its
+bit; relative aiding counts as a measured velocity while that stamp is
+under `ALL_AXES_FUSED_HOLD_MS` (500 ms) old. Stamp and masks reset at
+the AID_RELATIVE transition. EKF-internal, so it replays; no
+vehicle-specific term.
+
+| code | flow lost | flow regained | regained, then turn |
+|---|---|---|---|
+| `708c152394` (= fix reverted), 4 runs | 0.15 m | 0.06 m | 1.47-1.49 m (fails, 4 of 4) |
+| `3eeee55f04`, 6 runs | 0.15-0.16 m | 0.06 m | 0.09-0.17 m |
+| per-axis hold (rejected, below), 2 runs | 0.15 m | 0.06 m | 0.10 m |
+
+At the fix, probes show the mask full only after the rise, once both
+axes pass with the EKF caught up; a switch taken then re-seeds the
+terrain offset from the range (the step-up logic), so the height does
+not move.
+
+Choosing the hold (tier 1b for the flicker side). Per-sample flow
+pass/fail from a Replay probe on the flow lane (core 1) of log29
+(3408138/567), log30 (571) and log35 (582), 480 s airborne in relative
+aiding; override drops counted offline for each hold:
+
+| hold | log29 | log30 | log35 |
+|---|---|---|---|
+| none (clear on any rejected sample, the review's direction) | 7 | 44 | 9 |
+| 100 ms | 3 | 15 | 2 |
+| 200 ms | 1 | 7 | 0 |
+| 300 ms | 0 | 5 | 0 |
+| 500 ms (adopted) | 0 | 1 | 0 |
+| 1000 ms | 0 | 0 | 0 |
+
+Longest single-axis rejection run away from the ground: 0.28 s (log29),
+0.23 s (log30), 0.17 s (log35). log30's longer runs (0.34-1.21 s) are
+all in a touch-and-go at 0.1-0.3 m range, where the flight's own
+lockout recovery (the beta carries #33484) logged four "flow vel reset
+(axis lockout)" messages, plus 0.38 s at a takeoff. log224 (260,
+`EK3_RNG_USE_HGT 3`) rejects 12-68% of its samples while relative
+aiding (both cores); drops 1 and 3 at 500 ms. A SITL flow-only LOITER
+(throwaway harness: 2 m, legs at 3 m/s and six 90 deg turns, 104 s)
+rejected 1 sample per axis in 1043, at touchdown. SITL flow is too
+clean to set the hold; the real logs set it.
+
+Replay A/B, `708c152394` against `3eeee55f04` (tier 1b), same
+`--parm` as before (log224/log225 with `EK3_RNG_USE_HGT 3`): log224 and
+log225 outputs byte-identical; log29 and log35 every replayed XKF1
+identical (raw-decoded, the input FMT desyncs DFReader on XKF1) and no
+other C>=100 record differs. log30: the GPS lane (core 100) is
+identical; the flow lane (core 101) differs from 198.97 s, max PD
+difference 0.375 m. It left the range finder for 0.12 s at 198.84 (the
+one hold expiry, the 0.55 s rejection) and for 0.45 s at 202.45 with
+its mask full (not this gate; cause not traced). Landing back on the
+step top at 225 s: PD 0.19 m against 0.30 m at the head (GPS lane 0.01
+m both). No truth separates the two there. The as-flown limit stands:
+log280, log281 and log31 are not under the local log roots.
+
+Measured and rejected, for the habit:
+
+- A per-axis hold: clear an axis's bit on a rejected sample once it has
+  not passed for 500 ms (the obvious hysteresis, and #33484's lockout
+  time). Passes the turn leg (2 runs, 0.10 m), but it can still
+  be met mid-turn: the gap between the first axis's last pass and the
+  second's first pass was 0.7-1.6 s in the SITL turns, 0.7 s in two of
+  them, so a faster turn would put the second pass inside the hold
+  (derived from the probe sequences, not flown faster). On log30 it
+  drops the override 3 times, and its switch to baro at 202.85 s took a
+  ground-effect baro sample: the flow lane's height stepped 0.75 m, and
+  it landed at PD 0.01 m against 0.30 m at the head. The adopted
+  stamp needs both axes passing at the same moment, so it has no
+  turn-rate window and expired once on log30.
+- No hold (clear on any rejected sample): kept the range finder out of
+  the review's 32 yaw runs, but 60 override drops over the three logs
+  against 1, table above.
+- A consecutive-failure count: not built; the EKF takes flow at up to 20
+  Hz and SITL sends 10 Hz, so a count is a different time on each.
+
+Test design notes (for the next person to touch the leg):
+
+- `SIM_SONAR_OFFSET` moves only the range finder; SITL flow uses the
+  true height. With bit 3 the AGL KF scales flow by the shorter range,
+  so over the rise the EKF speed settles near 0.6 of the vehicle's.
+- Rise at the flow restart (as the regain leg): the axis across the
+  track then keeps passing through the turn, the mask fills only with
+  both axes passing, and the head passed (0.11-0.12 m, 2 runs).
+- Rise before the mask fills (at 54-77 deg of turn): the switch-in
+  waits for the AGL KF to agree with the range within 0.15 m, the EKF
+  speed is above 2 m/s by then, and the head passed (0.10-0.21 m, 6
+  runs).
+- Rise after the switch-in at 4.4-4.9 m/s (lean 175-200 pwm): the EKF
+  speed passed 3 m/s and the switch let go 1-1.6 s after taking the
+  range finder in 13 of 16 runs (4 of them without probes), and the
+  head passed at 0.14-0.31 m; 3 held and failed at 1.43-1.52 m.
+- Adopted: 4 m/s (lean 150 pwm), yaw at 1650 pwm, the rise issued as
+  the yaw stops at 78 deg. The rise lands 0.4-0.5 s after the switch-in
+  and the switch holds, since 0.6 of 4 m/s is under the 3 m/s let-go:
+  the head failed at 1.43-1.52 m in 9 of 9 runs at this speed (5 with
+  probes, 4 final).
+- The turn ends at 80-88 deg (final runs).
+
+### Covariance A/B (T4): PARTIAL, the review ran it
+
+The review's SITL A/B (2026-10-13, reviewer runs, not ours): a
+`SIM_ACC1_BIAS_Z` step in a 2 m hover, core 0's height against the
+simulator's, two runs per case.
+
+| config | 0.1 m/s/s | 0.5 m/s/s |
+|---|---|---|
+| raw range fused (`EK3_SRC1_POSZ 2`, bit 3 off) | 0.31 m | 1.5 m |
+| AGL KF height fused (bit 3 on) | 0.71-0.72 m | 3.3-3.4 m |
+| this PR's configuration | 0.73-0.74 m | 3.4 m |
+| baro, bit 3 off | 0.64 m | 3.2 m |
+
+The accel bias state converged at the same rate in all four, so no
+instability or slower bias learning, but the AGL KF height carries a
+little over twice the raw range's accel-bias error, about the same as
+baro, and its variance does not show it (0.11 m standard deviation
+while 1.4 m off). It supports landing bit 3 after #33507, the T2 merge
+order. Our own sweep is still not run.
+
+### PR description (non-blocking): drafted, not posted
+
+The description draft corrects the covariance statement (the AGL KF
+variance floored at the range finder noise, plus the tilt and
+terrain-gradient term `d50dcb9994` adds on both paths), and adds the
+three autotests, the terrain offset re-seed, the merge order and a
+short version of the A/B above.
+
+### Not acted on
+
+#33507, #32768 and #33478 still open; #33478 and #33507 conflict with
+this head in three AP_NavEKF3 files (review's note, not re-checked).
+Steps of 0.3 m or less are still not re-seeded (documented tradeoff).
+Not exercised: hardware, the 0.70-0.71 tilt band, and relative aiding
+from odometry; the odometry masks follow the same rule, derived from
+the source, not measured. The gate commit is unflown.
+
+### PR tests at the fix head (SITL)
+
+`EK3_RngHgtSwitchNoVelocity` 0.15-0.16 / 0.06 / 0.09-0.17 m (6 of 6);
+`EK3_RngHgtSwitchStepUp` -0.07 m (worst 0.21 m), vehicle 0.38 m;
+`EK3_AglKfVerticalMotion` worst 0.15 m (bias -0.03 m). flake8 clean;
+changed C++ lines astyle-clean; copter and Replay build.
+
+Pushed 2026-10-14: `708c152394` -> `9a76d63933` (fast-forward): `3eeee55f04` (relative aiding counts as velocity only while all axes pass, 500 ms hold), `9a76d63933` (turn-after-reacquisition leg). Nothing squashed. Mechanical gate clean. Replies and description not posted yet.
