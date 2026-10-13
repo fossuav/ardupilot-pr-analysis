@@ -1018,3 +1018,46 @@ changed C++ lines astyle-clean; copter and Replay build.
 Pushed 2026-10-14: `708c152394` -> `9a76d63933` (fast-forward): `3eeee55f04` (relative aiding counts as velocity only while all axes pass, 500 ms hold), `9a76d63933` (turn-after-reacquisition leg). Nothing squashed. Mechanical gate clean. Replies and description not posted yet.
 
 PR description updated and reply to the third AP-Review round posted 2026-10-14 (issue comment 6153654857).
+
+## 2026-10-14: AP-Review round at 9a76d63933, the speed hidden at height
+
+(The section above carries 2026-10-14 but was written on 2026-10-13.)
+
+AP-Review (REQUEST CHANGES): a flow innovation is a rate, so every axis
+passing does not bound the speed error once the vehicle is high. Reproduced
+in a new test at `9a76d63933`: flow regained at 12 m and 4-5 m/s, ground
+stepped 1 m up, EKF height moved 1.49 m (the bot: 1.46-1.57 m).
+
+Pushed 2026-10-14 as commits on top (`9a76d63933..0d4748cbb4`):
+
+- `b90ab20bcc` an axis counts only while its innovation times the flow
+  range, on both axes together (x 1/sqrt 2), fits between the speeds at
+  which the switch takes hold and lets go: 0.71 m/s at the default
+  `EK3_RNG_USE_SPD` 2. The take-hold speed moved into `rngSwitchInSpeed()`,
+  used by the switch and the gate. 0.09 m on the 12 m flight.
+- `2ad9b21f5a` the all-axes stamp after the per-axis loop (flow and
+  odometry), as the comment said.
+- `c49e2632f4` `EK3_RngHgtSwitchRegainHigh`: 1.49 m without the limit,
+  0.09-0.18 m with it (master and beta). `EK3_RNG_USE_HGT` 50 (switch in
+  below 14 m): at 45 the range in forward flight reached 13.1 m, outside
+  the region.
+- `0d4748cbb4` the turning leg checks its own 3 m/s gate and leans 180
+  rather than 150 (the turn's lean had stayed at 150 whatever the pitch):
+  3 of 3.
+
+Measured and rejected:
+
+| change | argument for | result |
+|---|---|---|
+| half `EK3_RNG_USE_SPD` per axis (the bot's direction, first cut) | simple, bounds the error by the gate | Codex: the switch takes hold below max(SPD-1, SPD/2), so at SPD 6 a counted speed error of 3 m/s per axis passes 4.9 m/s estimated at 7.8 m/s true; replaced by the hysteresis gap |
+| larger velocity variance at the in-flight reset (the bot's second direction) | covers the case at its source | reaches every optical flow user; not tried |
+
+Coverage now overlaps: with the axis bits latched rather than cleared on a
+rejected sample (the `3eeee55f04` mechanism), the turning leg failed 1 of 2
+runs (0.50 m, then 0.18 m), against 4 of 4 before the new limit. Both are
+kept; the leg's discrimination of the clear is partial and its commit says
+so. Body odometry innovations are already speeds and were left unscaled.
+`EK3_RngHgtSwitchNoVelocity`, `EK3_RngHgtSwitchStepUp` and
+`EK3_AglKfVerticalMotion` pass at `0d4748cbb4`. Quick review (Codex cold):
+the margin finding above, fixed before the push. Description updated,
+reply posted. Ported to the beta as topup20.
