@@ -157,6 +157,21 @@ predates the new term.
 "Not covered by a subtest ... `fail_count != 0` on its own" below is
 unchanged by this.
 
+Quick review at `ec0722bbed` (2026-10-13; full reviews are kept for
+opening a PR and its first push): the gate, a framing-free Codex cold
+read and one reviewer agent. No defects. Left as they are:
+
+- The test's subject is 73 characters (gate note).
+- "requires position" is matched whole; the PosHold text is 54
+  characters and arrives split, so the check would miss it if the leg
+  ever used PosHold. It uses Loiter (47).
+- "they pass a second after the failsafe": strictly the checks pass at
+  once and the failsafe clears a second later, which is what the
+  restore keys on.
+- The agent marked "fails without the hold on the beta" UNCONFIRMED,
+  finding no transcript; the run above is that reverse run (beta
+  `9a15a8a32c` plus the leg, "restore attempted without a position").
+
 ## Review history
 
 Three rounds, each a set of Claude reviewers plus Codex cold, verification
