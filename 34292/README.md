@@ -7,6 +7,11 @@ source and measured worse are in the "Measured and rejected" tables under
 round 3 (2026-09-17) and the round of 2026-09-29 at the end. Read both
 before touching the gate.
 
+2026-10-13: PR head `9e086e9d5d`, 20 commits on `1f1251a67e`, pushed
+2026-10-13. The fix round for its AP-Review (two test-only fixups) is on
+the local branch `fix4/pr-flow-hgt-min`, not pushed; see the last
+section. The next paragraph is the header as of 2026-10-12.
+
 2026-10-12: PR head `f9cae55929`, 18 commits on `1f1251a67e`, pushed
 2026-10-11. The fix round for its AP-Review is on the local branch
 `fix2/pr-flow-hgt-min`, not pushed; see the last section. The next
@@ -2314,3 +2319,124 @@ The 2026-10-11 push (`f9cae55929`) autosquashed review fixes that change behavio
 Pushed 2026-10-13: `f9cae55929` -> `9e086e9d5d` (fast-forward): `16506a6866` (one-second rest-reading clear), `9e086e9d5d` (its test). Nothing squashed. Mechanical gate clean. Replies not posted yet.
 
 Reply to the second AP-Review round posted 2026-10-13 (issue comment 6134597795).
+
+## 2026-10-14: AP-Review round at 9e086e9d5d, fixes
+
+On local `fix4/pr-flow-hgt-min` (not pushed), from
+`andyp1per/pr-flow-hgt-min` 9e086e9d5d. Findings from the AP-Review of
+that head (Verdict: COMMENT, nothing blocking). It confirmed last round's
+fix: with the one-second clear FlowFocusHoldAfterLanding passed 3 of 3
+with 0 fusions in both stale-reading hovers; without it the after-boot leg
+failed 2 of 2 with 37 and 44 fusions. Every run below was made on
+2026-10-13 by the host clock; the heading follows the round's name.
+
+### A1, the low climbs can step over their altitude band: RESOLVED (test only)
+
+The bot's finding (its SITL, tier 2): each climb into the low hover waits
+for one SIM_STATE.alt sample between 0.25 and 0.5 m above the ground, and
+each sample is a poll round trip. Under busy-loop CPU load it failed 6 of
+78, all at the stale-reading loop's climb (its arducopter.py:18337,
+which both of that leg's variants use), one with samples a simulated
+second apart reading 584.29 and 584.69 either side of a 584.34-584.59
+band; a variant at SIM_SPEEDUP 5
+for just the climb passed 40 of 40 under the same load.
+
+Reproduced here (tier 2). Load: 8 busy loops pinned to CPUs 12-15 with
+`taskset`, and the autotest (harness and SITL) pinned to the same four,
+so other sessions on the host were not loaded. Unmodified test at
+9e086e9d5d, fix binary: 4 failures in 24 runs (1 of 4 in a probe, 3 of
+20 in the A/B below), every one "Failed to attain Altitude want 584.47"
+after the samples 584.09-584.10 then 584.60-584.65. All three climb sites
+failed at least once: the low hover leg twice, the two-flight leg once,
+the after-boot leg once.
+
+Fix, following the bot's variant: b91380bbc0 (fixup! f9cae55929) adds
+`climb_to_low_hover()` inside FlowFocusHoldAfterLanding, which sets the
+speedup to 5 with `context_set_speedup()`, raises the throttle to 1650
+until SIM_STATE.alt is 0.25-0.5 m above the ground, centres it, and puts
+the speedup back; the low hover leg uses it. cdb9bdc78a (fixup!
+9e086e9d5d) uses it for the stale-reading loop. The band, the throttle,
+the hover and every check are unchanged, and the hover itself runs at the
+original speedup. Slowing the sim also bounds how far a late poll lets
+the vehicle climb before the stick is centred, which a wider band alone
+would not: the unmodified test's passing runs under load hovered higher
+(table).
+
+| tier 2, SITL, fix binary | runs | pass | low hover | stale-reading hovers | their range max |
+|---|---|---|---|---|---|
+| new test, no load | 6 | 6 | 0.38-0.41 m | 0.37-0.42 m | 0.45-0.50 m |
+| new test, loaded (A/B, alternated) | 20 | 20 | 0.38-0.47 m | 0.37-0.44 m | 0.40-0.51 m |
+| old test, loaded (A/B, alternated) | 20 | 17 | 0.37-0.54 m | 0.40-0.57 m | 0.50-0.59 m |
+| old test, loaded (probe) | 4 | 3 | 0.42-0.48 m | 0.40-0.49 m | 0.51-0.55 m |
+
+The no-load row counts the first check run and five repeats. 0 fusions in
+every hover of every passing run. The range max has to stay under the
+learned 0.79 m plus 0.05 for the stale-reading legs to mean anything.
+
+Break-the-fix, new test (temporary source edits, rebuilt, restored):
+
+| EKF build | load | two flights, fusions in hover | after boot, fusions in hover | result |
+|---|---|---|---|---|
+| one-second clear (16506a6866) removed | none | 0 | 45 | fail, intended assertion |
+| one-second clear removed | pinned | 0 | 46 | fail, intended assertion |
+| both clears removed | none | 44 | not reached | fail, intended assertion |
+| both clears removed | pinned | 48 | not reached | fail, intended assertion |
+| rest test forced true below the floor | none | not reached | not reached | fail at the low hover: "aiding carried on in a hover below the floor" |
+
+The last row checks that the slowed climb did not weaken the low hover
+leg. Every earlier leg passed in each of these runs.
+
+Squash: an autosquash puts b91380bbc0 after f9cae55929 and cdb9bdc78a
+after 9e086e9d5d. Checked in a scratch index (no rebase): f9cae55929,
+b91380bbc0, 16506a6866, 9e086e9d5d and cdb9bdc78a apply in that order
+without conflict and give the fix tip's tree, e21b88ad88. After the squash
+f9cae55929 still has the old inline climb in its single stale-reading
+leg, which 9e086e9d5d replaces. Commit messages are unchanged; neither
+describes how the climb is made.
+
+### A2, the PR description out of date in three places: RESOLVED (draft)
+
+Draft in the session scratchpad (`desc/34292.md`), not applied to the PR.
+FlowFocusHoldAfterLanding is now described as failing if aiding stops
+through the landing; the "aiding that times out while the vehicle sits on
+the floor stays off" paragraph is replaced by zero flow at rest, the
+learned reading, its disarm and one-second clears, and the readiness
+check now said to apply off the ground below the floor; the ROFM
+paragraph gives the padding reason from 121a9b686b's message instead of
+reading past the record. Also brought in line with the code (derived from
+the source): ROFM is written at the start of every log, so "nothing at
+all at the default" is gone; a dead range finder held low now has zero
+flow fused through a climb rather than costing aiding, since out of range
+low reads as on the ground; quality 0 from the library would now also stop
+the zero fusion on the ground. "A default airframe (GNDCLR 0.10) gets
+0.15 m, which no flight has used" is dropped: the 2026-10-05 flight flew
+FLOW_HGT_MIN 0.15. That flight is now named, with the learned reading
+unexercised and the two clears unflown.
+
+### A3, the bot's unchanged notes: DEFERRED
+
+As R2 of 2026-10-12: a landing reading more than 0.05 above both
+RNGFNDx_GNDCLR and the reading before takeoff still discards the flow;
+the one-second clear adds one way to have no reading before takeoff (no
+flow sample stored in the last second before arming); two downward range
+finders share the orientation-wide clearance; `rofm_resend` is not
+serialised with the flow write path. No change asked. Keeping 16506a6866
+and 9e086e9d5d on top is fine by the bot.
+
+### Tests at the fix tip (tier 2)
+
+flake8 on arducopter.py clean, `git diff --check` clean. Copter binary
+built at the fix tip (C++ unchanged from 9e086e9d5d). All four flow focus
+tests pass in one run: OpticalFlowFocusHeight (landings: 52 and 57 flow
+fusions after the bad flow, drift 0.01 and 0.03 m; old range: 83 updates
+in 8.4 s), FlowHeightMinTerrainPath (AFI low leg max 0, high leg 62),
+FlowFocusHoldAfterLanding (low hover 0 fusions in 64 XKF5 at 0.39 m;
+LOITER landings at 0.00 m and 0.19 m ground range; stale-reading hovers
+0.41 and 0.42 m, 0 fusions), FlowFocusHoldReleasesWithDeadRangeFinder.
+The 14-log Replay is still owed at this code (unchanged by this round).
+
+### Reply draft (not posted)
+
+Thanks, reproduced: with the autotest and 8 busy loops pinned to four cores the unmodified test failed 4 of 24, at all three climbs, each time one sample just off the ground and the next at 0.51-0.56 m. The climbs now share a helper that drops SIM_SPEEDUP to 5 until the hover throttle, as you suggested: 20 of 20 under the same load, 6 of 6 without, and still a fail with 44-48 fusions without the one-second clear or without both clears. The description is updated in the three places, and now covers zero flow at rest, the learned reading and its two clears.
+
+Pushed 2026-10-14: `9e086e9d5d` -> `8cd64105c4` (force): the climb flake fixes folded into the two test commits (test only). No C++ change. Mechanical gate clean. Replies and description not posted yet.
