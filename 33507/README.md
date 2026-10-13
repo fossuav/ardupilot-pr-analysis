@@ -859,3 +859,5 @@ Pushed 2026-10-13: `3f85870eb4` -> `ad18eb6aff` (force): its two commits restack
 Reply to the second AP-Review round posted 2026-10-13 (issue comment 6134598413).
 
 Pushed 2026-10-14: `ad18eb6aff` -> `d9e44e3e46` (force): restacked on #34457's `04341318b9`, and the test commit's message corrected (on-ground bias std 1.0 with the final gate, 0.047 was the earlier gate). Mechanical gate clean. Replies and description not posted yet.
+
+PR description updated and reply to the third AP-Review round posted 2026-10-14 (issue comment 6153656264).

@@ -691,3 +691,5 @@ Pushed 2026-10-13: `b17402187a` -> `a7841c86c4` (force): the touchdown test fix 
 Reply to the second AP-Review round posted 2026-10-13 (issue comment 6134598251).
 
 Pushed 2026-10-14: `a7841c86c4` -> `04341318b9` (force): the known-limit comment folded into the hold commit (comment only; every commit's code unchanged). Mechanical gate clean. Replies and description not posted yet.
+
+PR description updated and reply to the third AP-Review round posted 2026-10-14 (issue comment 6153655917).

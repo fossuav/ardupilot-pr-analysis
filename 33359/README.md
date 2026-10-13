@@ -1016,3 +1016,5 @@ the source, not measured. The gate commit is unflown.
 changed C++ lines astyle-clean; copter and Replay build.
 
 Pushed 2026-10-14: `708c152394` -> `9a76d63933` (fast-forward): `3eeee55f04` (relative aiding counts as velocity only while all axes pass, 500 ms hold), `9a76d63933` (turn-after-reacquisition leg). Nothing squashed. Mechanical gate clean. Replies and description not posted yet.
+
+PR description updated and reply to the third AP-Review round posted 2026-10-14 (issue comment 6153654857).

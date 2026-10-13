@@ -554,3 +554,5 @@ Not run this round: OpticalFlowLimits, Replay and the other flow tests
 session), hardware.
 
 Pushed 2026-10-14: `7aa5017103` -> `d1f9ef8d72` (force): the test leg fixes folded into #34380's own test commit (`801b551d56`, test only), the position-reset known-limit comment as its own commit `d1f9ef8d72`. #33585's commits and `4c3f1a7724` unchanged. Mechanical gate clean. Replies and description not posted yet.
+
+PR description updated and reply to the third AP-Review round posted 2026-10-14 (issue comment 6153655195).

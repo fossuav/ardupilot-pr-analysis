@@ -2440,3 +2440,5 @@ The 14-log Replay is still owed at this code (unchanged by this round).
 Thanks, reproduced: with the autotest and 8 busy loops pinned to four cores the unmodified test failed 4 of 24, at all three climbs, each time one sample just off the ground and the next at 0.51-0.56 m. The climbs now share a helper that drops SIM_SPEEDUP to 5 until the hover throttle, as you suggested: 20 of 20 under the same load, 6 of 6 without, and still a fail with 44-48 fusions without the one-second clear or without both clears. The description is updated in the three places, and now covers zero flow at rest, the learned reading and its two clears.
 
 Pushed 2026-10-14: `9e086e9d5d` -> `8cd64105c4` (force): the climb flake fixes folded into the two test commits (test only). No C++ change. Mechanical gate clean. Replies and description not posted yet.
+
+PR description updated and reply to the third AP-Review round posted 2026-10-14 (issue comment 6153655559).
