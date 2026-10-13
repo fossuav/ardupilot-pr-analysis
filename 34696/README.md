@@ -3,7 +3,8 @@
 **Open as [#34696](https://github.com/ArduPilot/ardupilot/pull/34696)**,
 opened 2026-10-09 from `andyp1per/copter-ekf-fs-restore` at
 `6d0d18631e`: three commits on master `1f1251a67e`. Record written
-2026-10-09.
+2026-10-09. *2026-10-13*: two commits on top, local head `ec0722bbed`,
+not yet pushed; see "2026-10-13: flown, and refused without a position".
 
 | commit | subject |
 |---|---|
@@ -17,6 +18,11 @@ Opened after three `/pr-review` rounds (verdict COMMENT, no must-fix
 left); SITL only, not flown. `EKFFailsafeRestoreMode` has 14 subtests,
 and 14 of the restore's conditions were each shown to fail their own
 subtest when removed.
+
+*2026-10-13*: flown on the SFD beta (`6f5d6dc0`, TD25, ten logs). With
+#32514 alongside, the restore fired without a position and was refused
+in 6 of 13 attempts; held until `position_ok()` in `0a4ae24f1e`, with a
+15th subtest in `ec0722bbed`. Those two are SITL only.
 
 ## Where it came from
 
@@ -99,6 +105,57 @@ comes at least 3 s after the clear, which the test accepts. The extra
 0.6-0.8 s over 3 s in every passing run is consistent with checks failing
 intermittently while GPS re-acquires and restarting the timer; that is
 inference, not instrumented.
+
+## 2026-10-13: flown, and refused without a position
+
+The SFD beta at `6f5d6dc0` carries this PR with #32514 and #32270's
+`FS_EKF_ACTION=4` (VALT). TD25 flew the field plan's T2-T4 with
+`FS_OPTIONS=80` and a source set switch to set 2, which has no horizontal
+source: 16 failsafe cycles over seven logs (`t2f1`-`t3f3`, `t4`; the
+private record is `../analysis/logs/td25_sfd472_field.md`). These are
+the first flights of the restore.
+
+| outcome | cycles |
+|---|---|
+| restored | 7 |
+| **refused**: "Mode change to Loiter failed: requires position", restore spent, Loiter never came back | 6 |
+| cancelled by the pilot choosing Acro | 1 |
+| not attempted: fourth in a flight (cap) | 1 |
+| not attempted: sticks never centred 3 s | 1 |
+
+Every refusal came 3.0-3.2 s after the sticks were last off centre, all
+on set 2. Mechanism, derived from the source and then reproduced in
+SITL: in VALT on set 2 #32514's check expects no position, so
+`fail_count` reaches 0 and the failsafe clears 1.0 s after it triggers;
+the restore tested `fail_count`, other failsafes and the sticks, never
+the position. On master the checks need a position, so `fail_count == 0`
+implies one and it cannot happen: it is this PR meeting #32514.
+
+The stick hold, the cap and the mode-change cancel all behaved as the
+subtests say. Two restores came 3.1 s after the switch back to set 1
+with the sticks already centred for longer, which looks like one failed
+check at the switch restarting the timer (inference, not instrumented).
+
+### The fix: `0a4ae24f1e`, test `ec0722bbed`
+
+The restore also holds while `!position_ok()`, the test `set_mode()`
+applies to Loiter and PosHold. A commit on top rather than squashed,
+because the commits below it have flown. New subtest "on a source set
+with no position the restore waits for one": Loiter, switch to a set
+with no horizontal source, AltHold, sticks centred 6 s, no restore and
+no "requires position", switch back, Loiter restored. Run 2026-10-13:
+
+| tree | without the hold | with it |
+|---|---|---|
+| SFD beta `9a15a8a32c` + subtest | fails: cleared on set 2, then "requires position" | passes; restored 3.1 s after the switch back |
+| this PR `6d0d18631e` + subtest | passes: no clear on set 2 | passes |
+
+So the subtest discriminates only with #32514's check. The whole test
+passes at `ec0722bbed`. Not re-run: the mutation table above, which
+predates the new term.
+
+"Not covered by a subtest ... `fail_count != 0` on its own" below is
+unchanged by this.
 
 ## Review history
 

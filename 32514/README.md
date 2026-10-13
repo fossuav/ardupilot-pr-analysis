@@ -13,6 +13,21 @@ committed; the field numbers are from real throws on the first design.
 > in this file was taken on the first design or without the PR, never on
 > the current head.
 
+## 2026-10-13: flown on the beta, and what "cleared" no longer means
+
+The SFD beta at `6f5d6dc0` carries the current design. TD25's field
+test (`../34696/README.md`, 2026-10-13) switched 16 times from Loiter to
+source set 2, which has no horizontal source. Each time the failsafe
+tripped 5.9-6.0 s after the switch (position lost, Loiter requires one),
+changed to VALT, and cleared 1.0 s later: in VALT on set 2 no position
+is expected. That is the design, now flown.
+
+The consequence for other code: once this merges, "EKF failsafe
+cleared" (`fail_count == 0`, `failsafe.ekf` false) no longer implies a
+position. #34696's restore assumed it did and was refused 6 times in 13;
+it now tests `position_ok()` itself (`0a4ae24f1e` there). Any other
+reader of the clear that then asks for a position mode needs the same.
+
 ## 2026-10-02 second review round: landed means ground idle (pushed as `591e6bfe4b`)
 
 A second Codex cold read of the squashed `16f69f0849` found that
