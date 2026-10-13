@@ -453,3 +453,104 @@ owed), feature-off builds, hardware.
 Pushed 2026-10-13: `732913562e` -> `7aa5017103` (fast-forward): `4c3f1a7724` (flat-ground return timed on fused readings), `7aa5017103` (its test). #33585 untouched. Mechanical gate clean. Replies not posted yet.
 
 Reply to the second AP-Review round posted 2026-10-13 (issue comment 6134597960).
+
+## 2026-10-14: AP-Review round at 7aa5017103, fixes
+
+AP-Review round 13 (REQUEST CHANGES) at `7aa5017103`. It confirms the
+timing fix (`4c3f1a7724`): flown at that head, 7.3 m and relative
+position held 5 of 5; with its library files reverted, 1.8 m in 2 of 2.
+Local branch `fix4/pr-avoid-flow-ceiling-backup` on `7aa5017103`, not
+pushed; #33585 untouched:
+
+- `d5213772b5` fixup! for `7aa5017103` (test only)
+- `e68fe021f8` AP_NavEKF3: note that a position reset leaves the ground
+  location (comment only, new commit)
+- `6aee91bd96` amend! for `7aa5017103` (message)
+
+Findings:
+
+- Short-reach band (RNGFND1_MAX 40, a 27.5 m reach let up to 28.5 m,
+  centred stick holds 28.3-28.6 m and loses relative position where
+  master holds 27.2 m): unchanged, still blocking for the bot. DEFERRED
+  to the maintainers; no maintainer view yet. The description draft now
+  states it in the summary for a maintainer to judge.
+- The gate leg can pass without the fix: RESOLVED in `d5213772b5`. Past
+  5 s after the obstacle's last fused reading a lower reading resets the
+  terrain state to 7.3 m whatever was held, so a long run of lower
+  readings passes the height-above-ground check with or without the fix.
+  The leg now (a) asserts the obstacle is held against the rejected
+  readings for under 1 s, timed from the first to the last XKF5 row with
+  HAGL < 3 m and rng 6.3-7.9 m, and (b) flies the sequence again, up to
+  three attempts, when the obstacle is read over 1.5 s or the lower
+  readings fall outside 2.5-4.5 s. After each flight it re-sets
+  SIM_SONAR_SCALE with an acknowledged set, so a lost unacknowledged set
+  cannot carry into the next attempt. Why the bot's control run had
+  11 s of lower readings was not established; 3.5 + 8 s (the requested
+  phase plus the wait after it) would fit a restore that never landed,
+  but that is inference only.
+- Flake in the shared test (3 of 21 at the bot: the 1.6 s brief return
+  measured 1.5 and 2.1 s, the 7 m takeoff read 8.07 m): DEFERRED as a
+  #33585 follow-up. Both checks (`arducopter.py` brief-return window and
+  `assert_rangefinder_between(5.8, 7.9)` in the carry-over leg) are owned
+  by `7f5f8ffe85`, #33585's test commit, which must not move. Shape of
+  the follow-up: wrap each brief-return case, and the carry-over
+  takeoff, in a bounded retry on the precondition instead of raising,
+  windows unchanged. Not seen in this round's runs (the windows read
+  0.4-0.5, 0.5-0.6, 1.7-1.9 and 1.5-1.6 s).
+- Horizontal position reset leaves `gndKnownNE`: documented, not
+  carried, by the user's decision (edge cases, more EKF state).
+  `e68fe021f8` adds one comment line at the 10 x bound
+  (`AP_NavEKF3_Control.cpp`), a new commit because the bound and the
+  declaration are #33585's (`0b7027979e`). Listed as a known limit in the
+  description draft. Derived from the source, not measured: none of the
+  horizontal resets moves it (`ResetPosition()` at
+  `AP_NavEKF3_PosVelFusion.cpp:116-149`, `ResetPositionNE()` from
+  `setLatLng()`, the GPS reset and the external nav reset), only the
+  origin move does (`AP_NavEKF3_core.cpp:2299`); it is refreshed every
+  frame while the range finder measures the ground and while the terrain
+  anchor drives the state, so the limit bites only in the flat-ground
+  fallback above the range. The bot's numbers (300 m external position
+  estimate at 21 m cleared relative position; 100 m kept it; carried
+  through `ResetPositionNE`, 300 m kept it) are the bot's, not re-run.
+- Stale description: RESOLVED in the draft (scratchpad
+  `desc/34380.md`): five commits, when the cap is lifted (latest fused
+  reading at 0.7 x max and under 5 s old, or the fallback engaged; the
+  1.5 m raise within 0.5 s of a fusion), AC_Avoid acting only against a
+  climb demand, the return-timing commit, the band, and the position
+  reset limit. Not posted.
+
+Measured (SITL, tier 2, 2026-10-13, debug SITL build: the worktree has
+been configured `--debug` since the 2026-10-12 Replay run). Gate leg,
+`obstacle / lower readings / held against them / height above ground
+after`:
+
+| build | runs | obstacle | lower | held (XKF5 rows) | after | result |
+|---|---|---|---|---|---|---|
+| fix branch | 5 + 1 | 0.3 s | 3.7 s | 0.3-0.4 s (4-5) | 7.3 m | pass |
+| fix branch, attempt 1 forced to miss | 1 | 0.1 / 0.6 s | 3.7 / 3.7 s | 0.4 / 0.2 s (5 / 3) | 7.3 m | re-flown, pass |
+| `4c3f1a7724` library reverted | 1 | 0.5 s | 3.7 s | 3.7 s (38) | 1.8 m | fails "held ... for 3.7 s" |
+| reverted, lower 10 s, length check off | 1 | 0.2 s | 10.1 s | 4.9 s (50) | 7.3 m | fails "held ... for 4.9 s" |
+
+The last row is the bot's control case: height above ground ends at
+7.3 m, which the old leg accepted, and the hold check fails it. The
+break-the-fix rows skipped the other legs by a temporary edit.
+
+Full-test runs at the fix tip: EK3_OptflowAboveRangefinder 5 passes in
+6 runs. Run 5 died on "Did not get SYSTEM_TIME message after 60 s"
+inside a delay in #33585's second brief-return case, the host-stall
+shape in the autotest playbook; the next test run wiped its logs, so the
+.BIN check was not done; rerun passed. In the passing runs: brief
+returns 0.4-0.5, 0.5-0.6, 1.7-1.9, 1.5-1.6 s, height above ground after
+20.9-21.1 m; bound dropped at 211-213 m at 21.0 m up. Also passing:
+FlowCeilingShortRangeFinder (25 m reach: highest 27.1 m, lost at
+27.1 m; 27.5 m reach full stick: highest 28.4 m, kept; centred: held
+28.5-28.6 m, lost at 28.6 m), FlowCeilingBacksDownIntoRange (back at
+16.7 m), MaxAltFenceAvoid, MinAltFenceAvoid. flake8 clean; pr_review
+checks clean apart from the two autosquash markers.
+
+Not run this round: OpticalFlowLimits, Replay and the other flow tests
+(the only non-test change is a comment; last passed at `7aa5017103` on
+2026-10-12), the autosquash itself (rebase is not granted to this
+session), hardware.
+
+Pushed 2026-10-14: `7aa5017103` -> `d1f9ef8d72` (force): the test leg fixes folded into #34380's own test commit (`801b551d56`, test only), the position-reset known-limit comment as its own commit `d1f9ef8d72`. #33585's commits and `4c3f1a7724` unchanged. Mechanical gate clean. Replies and description not posted yet.
