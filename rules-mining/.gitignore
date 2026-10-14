@@ -1,0 +1,6 @@
+data/comments.jsonl
+data/comments.jsonl.empty
+data/chunks/
+data/extract/
+data/principles_compact.txt
+__pycache__/

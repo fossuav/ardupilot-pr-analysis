@@ -15,6 +15,11 @@ have no flight that can show the defect at all, is
 [REPLAY_LOGS.md](REPLAY_LOGS.md). `find_log.py` resolves a log name to a path
 on whatever machine you are on.
 
+Not a PR: [rules-mining/](rules-mining/README.md) mines the architectural
+rules maintainers hold from their review comments on these PRs, and records
+which became playbook rules and what is left to do. Its `data/` holds
+public review comments and what was extracted from them, not flight data.
+
 ## Conventions
 
 - One directory per PR, named by number (e.g. `32768/`).

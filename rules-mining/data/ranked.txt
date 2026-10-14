@@ -1,0 +1,169 @@
+themes 85, ids missing 0, ids duplicated 0
+ 88  30 PRs  style        names_say_what_things_are          lthall,peterbarker,rmackay9,tridge
+      Names must describe what the thing actually is or does, be positive and consistent.  [23 general]
+ 82  28 PRs  style        comment_quality                    lthall,peterbarker,rmackay9,tridge
+      Comments must be accurate, concise, say why not what, and appear once in the right place.  [12 general]
+ 76  25 PRs  architecture feature_guards_compile_out_cleanly peterbarker,rmackay9,tridge
+      Optional features need their own enable macro (defined 0/1 in the library _config.h, listed in build_options.py) and every dependent declaration, call and member must be compiled out when it is off.  [29 general]
+ 66  20 PRs  testing      test_quality                       peterbarker,rmackay9,tridge
+      Tests must assert what they claim, cover edge cases, be cheap and robust, and actually exercise the changed code.  [13 general]
+ 59  21 PRs  process      pr_description_and_testing_stateme peterbarker,rmackay9,tridge
+      Every PR needs a description stating the problem, impact and what testing was done.  [19 general]
+ 56  21 PRs  architecture reuse_existing_code_dont_duplicate lthall,peterbarker,rmackay9,tridge
+      Reuse existing code and utilities by factoring or subclassing instead of copying or reimplementing them.  [19 general]
+ 56  18 PRs  architecture failsafe_and_safety_design         lthall,peterbarker,rmackay9,tridge
+      Failsafe and safety logic must fail in the safe direction, handle combined and on-ground cases, and not disable or be bypassed by unrelated logic.  [12 general]
+ 55  21 PRs  architecture avoid_unneeded_complexity          lthall,peterbarker,rmackay9,tridge
+      Prefer the simplest design; do not add complexity, options or mechanisms for small or hypothetical gains.  [13 general]
+ 52  19 PRs  architecture state_flash_cpu_ram_cost           peterbarker,tridge
+      State the flash, CPU and RAM cost of a change, and justify it, especially for boards with little flash.  [13 general]
+ 48  19 PRs  architecture bounds_null_and_input_validation   peterbarker,rmackay9,tridge
+      Bound loops and buffers, check pointers and return values, validate external or user-supplied values, and guard domain maths.  [13 general]
+ 48  18 PRs  architecture hwdef_conventions                  peterbarker,rmackay9,tridge
+      Follow hwdef conventions: shared .inc files, generic defaults from hwdef rather than board hacks, tooling kept generic.  [8 general]
+ 43  17 PRs  style        types_and_units                    peterbarker,rmackay9,tridge
+      Use appropriately sized fixed-width types, unit suffixes and sizeof/constants instead of literals.  [8 general]
+ 42  10 PRs  architecture ekf_ahrs_changes_need_scrutiny     peterbarker,rmackay9,tridge
+      EKF/AHRS and flight-state-dependent changes are high risk: keep them minimal, backend-agnostic, plumb data through DAL, and test across vehicles and edge cases.  [7 general]
+ 40  14 PRs  architecture respect_layering_use_abstractions  peterbarker,rmackay9,tridge
+      Respect layering: lower layers must not call up, and callers use the abstraction layer (AHRS, SRV_Channels, library owner) instead of reaching into backends or internals.  [13 general]
+ 39  16 PRs  architecture scheduler_and_periodic_cpu         lthall,peterbarker,rmackay9,tridge
+      Periodic work goes in the normal scheduler table at a rate chosen by measured CPU cost, and expensive calls are kept out of hot paths.  [10 general]
+ 39  15 PRs  architecture memory_allocation_and_init_safety  peterbarker,rmackay9,tridge
+      Avoid unnecessary or static allocation, handle allocation failure, allocate only when the hardware or feature is present, and keep memory initialisation safe.  [16 general]
+ 38  15 PRs  process      evidence_and_repro_for_fixes       lthall,peterbarker,rmackay9,tridge
+      Fixes and behaviour changes need evidence: logs, repro steps, measurements and a correct explanation.  [10 general]
+ 37  11 PRs  logging_gcs  gcs_text_volume                    lthall,peterbarker,rmackay9,tridge
+      Keep GCS status text low volume, rate-limited, via GCS_SEND_TEXT, and actionable.  [6 general]
+ 36  16 PRs  testing      test_on_real_hardware              peterbarker,rmackay9,tridge
+      Changes must be tested on real hardware and relevant variants, not just compiled.  [2 general]
+ 36  14 PRs  architecture new_features_default_off           peterbarker,rmackay9,tridge
+      New or niche features default to off and are enabled only on the boards and vehicles that need them.  [13 general]
+ 35  15 PRs  architecture backward_compat_existing_users     lthall,peterbarker,rmackay9,tridge
+      Do not break existing users, GCS clients, APIs or stored configuration; behaviour changes need impact assessment.  [12 general]
+ 35  12 PRs  architecture logic_belongs_in_owning_class      peterbarker,rmackay9,tridge
+      Put logic and state in the class or library that owns them, avoid roundabout data paths, and do not duplicate decisions across callers.  [5 general]
+ 35  11 PRs  process      split_unrelated_changes            peterbarker,rmackay9,tridge
+      Keep PRs and commits to a single issue and split out unrelated, refactor or easily-mergeable changes.  [15 general]
+ 34  11 PRs  process      commit_conventions                 peterbarker,rmackay9,tridge
+      Follow commit conventions: correct subsystem prefix, commits that compile, no fixups or accidental changes.  [9 general]
+ 33  14 PRs  architecture shared_state_thread_safety         peterbarker,tridge
+      Data shared between threads needs proper protection (WITH_SEMAPHORE, consistent snapshots, bounded waits), and primitives must be used correctly.  [12 general]
+ 33  11 PRs  process      release_and_backport_hygiene       lthall,peterbarker,rmackay9,tridge
+      Respect release timing: no large or risky changes late, backports via separate PRs, and note user-visible changes.  [6 general]
+ 33  11 PRs  architecture sensor_driver_care                 peterbarker,rmackay9,tridge
+      Sensor driver changes must be robust (timeouts, glitches, variants), consistent with sibling backends, and not break other chip variants.  [5 general]
+ 33  10 PRs  architecture prearm_checks_design               lthall,peterbarker,rmackay9,tridge
+      Add pre-arm checks for configurations that would silently misbehave, make them specific, and put them in the shared or owning library.  [11 general]
+ 32  14 PRs  process      board_addition_and_build_housekeep peterbarker,tridge
+      New boards and build variants need their registrations, READMEs and build-script entries; keep build output structure working.  [6 general]
+ 32  13 PRs  logging_gcs  log_field_design                   lthall,peterbarker,rmackay9,tridge
+      Log messages: stable short fields, new fields at the end, documented, no duplicate messages.  [6 general]
+ 31  11 PRs  style        macros_use_if_and_ifndef           peterbarker,tridge
+      Define macros always, test with #if, wrap tunable defaults in #ifndef and keep defines out of headers.  [11 general]
+ 31  11 PRs  architecture remove_dead_code                   lthall,peterbarker,rmackay9,tridge
+      Remove unused, broken or obsolete code rather than keeping it.  [5 general]
+ 31  10 PRs  parameters   param_doc_metadata_complete        peterbarker,rmackay9,tridge
+      Every parameter needs complete documentation: description, Range, Units, Values/Bitmask, matching the code.  [6 general]
+ 30  13 PRs  architecture control_and_filter_changes_need_ev lthall,tridge
+      Control-law, gain-scaling and filter changes can destabilise tuned aircraft and need frequency/time-domain justification and A/B evidence.  [7 general]
+ 25  10 PRs  architecture no_blocking_in_main_thread         peterbarker,tridge
+      Never block or busy-wait in the main thread; do waits and slow work asynchronously via a state machine or other thread.  [9 general]
+ 24   9 PRs  parameters   dont_add_parameters_needlessly     lthall,peterbarker,tridge
+      Do not add a parameter where a constant, default, automatic behaviour or existing storage will do; keep the parameter count down.  [8 general]
+ 24   8 PRs  style        enum_class_and_switch_no_default   peterbarker
+      Use enum class and switch without default so the compiler flags new values.  [8 general]
+ 23   9 PRs  architecture explicit_state_machines            lthall,peterbarker,rmackay9,tridge
+      Model driver and feature state explicitly in one state machine, and update state only where the action actually succeeds.  [2 general]
+ 23   9 PRs  style        avoid_flash_costly_constructs      peterbarker,rmackay9,tridge
+      Avoid constructs that cost flash for little gain (bitfields, packed structs, virtuals, copies).  [6 general]
+ 21   8 PRs  testing      test_on_all_affected_vehicles      peterbarker,rmackay9,tridge
+      Shared changes must be tested on every affected vehicle type.  [4 general]
+ 20   7 PRs  architecture generic_features_in_shared_librari lthall,peterbarker,rmackay9,tridge
+      Generic features belong in shared libraries usable by every vehicle, not in one vehicle directory or vehicle-specific code.  [5 general]
+ 20   6 PRs  testing      tests_cover_new_code               peterbarker,rmackay9,tridge
+      New code and fixes need regression tests that fail before and pass after.  [5 general]
+ 19   7 PRs  style        member_initialisation              peterbarker,rmackay9,tridge
+      Initialise members in-class and do not zero-initialise needlessly.  [5 general]
+ 19   7 PRs  architecture minimal_boards_no_new_features     peterbarker,rmackay9,tridge
+      Do not add features to minimal-flash boards or minimal peripheral firmware; do not use blanket feature stripping as the way to recover flash.  [5 general]
+ 18   6 PRs  style        narrow_interfaces_const_refs       peterbarker
+      Minimise public interface; use const, references and accessors appropriately.  [6 general]
+ 18   6 PRs  testing      tests_clean_up_after_themselves    peterbarker
+      Tests must restore state and parameters (try/finally, context push/pop) and clean up what they load.  [6 general]
+ 18   6 PRs  parameters   options_bitmask_parameters         peterbarker,rmackay9,tridge
+      Use a 32-bit _OPTIONS bitmask for orthogonal options, with clear precedence and no reuse of bits.  [6 general]
+ 17   7 PRs  style        time_arithmetic_wrap_safe          peterbarker,tridge
+      Use elapsed-time differences from a stored start, not added timestamps.  [5 general]
+ 17   7 PRs  architecture hal_abstraction                    peterbarker,tridge
+      Hardware- and platform-specific code goes through AP_HAL and HAL setup hooks, not shared libraries or vehicle code.  [3 general]
+ 17   7 PRs  architecture vehicle_modes_hooks                lthall,peterbarker,rmackay9,tridge
+      Keep vehicle code thin and consistent; give mode hooks defaults and call them polymorphically, and require overrides via pure virtual.  [5 general]
+ 17   6 PRs  architecture fix_root_cause_not_symptom         lthall,peterbarker,rmackay9
+      Fix the problem at its root, in the layer that decides the behaviour, rather than papering over it downstream.  [3 general]
+ 17   5 PRs  style        prefer_early_return                lthall,peterbarker,rmackay9
+      Prefer early returns over nested conditionals.  [2 general]
+ 17   4 PRs  architecture home_vs_origin                     peterbarker,rmackay9,tridge
+      Home, EKF origin and position are distinct concepts and must be handled and named accordingly.  [3 general]
+ 16   4 PRs  parameters   param_naming                       lthall,peterbarker,rmackay9,tridge
+      Parameter names and display names are specific, lead with the feature name, use standard terms and keep prefixes short.  [2 general]
+ 15   7 PRs  testing      features_testable_in_sitl          lthall,peterbarker,tridge
+      Hardware-backed and new features must be runnable and tested in SITL.  [6 general]
+ 15   7 PRs  parameters   dont_modify_user_params            peterbarker,tridge
+      Avoid changing user-set parameters from code; if needed use set_and_save_ifchanged, make it opt-in, and use set() so the GCS is informed.  [7 general]
+ 15   6 PRs  architecture internal_error_usage               peterbarker,tridge
+      Use internal_error for impossible states and genuine misuse so they surface in logs, not for external input or harmless cases.  [6 general]
+ 15   6 PRs  logging_gcs  libraries_own_their_logging        lthall,peterbarker,tridge
+      Libraries log their own data with their own log bit, not vehicle or unrelated code.  [2 general]
+ 15   6 PRs  parameters   default_value_changes              lthall,rmackay9,tridge
+      Default changes need care: use set_default, keep exceptions explicit, and weigh impact on existing users.  [1 general]
+ 15   5 PRs  logging_gcs  informative_user_errors            peterbarker,rmackay9,tridge
+      Report failures clearly to the user through an appropriate channel.  [3 general]
+ 14   5 PRs  process      ai_generated_text                  peterbarker,rmackay9,tridge
+      Authors must review and trim AI-generated code, comments and replies themselves.  [5 general]
+ 13   6 PRs  architecture hwdef_hal_changes_test_all_boards  rmackay9,tridge
+      Changes to hwdef scripts, DMA or shared HAL code must be checked against all boards (configure_all.py) and test-built.  [6 general]
+ 13   5 PRs  architecture scripting_api_design               peterbarker,rmackay9,tridge
+      Scripting bindings should not break existing APIs, should return ready-to-use values with frames, and need examples.  [3 general]
+ 12   4 PRs  architecture third_party_code                   peterbarker,tridge
+      Bring in third-party code as a submodule or isolated directory and do not modify the vendored source.  [3 general]
+ 12   4 PRs  process      mainline_maintenance_burden        lthall,peterbarker,rmackay9
+      Code in mainline is a permanent burden: it must be well designed, justified and not narrow special-purpose.  [6 general]
+ 12   3 PRs  architecture avoid_extra_state                  peterbarker,rmackay9
+      Avoid adding new state flags or variables when the source of truth already exists; do not repurpose existing ones.  [1 general]
+ 11   5 PRs  architecture protocol_parsing_robustness        peterbarker,tridge
+      Protocol code should use clear decoders and packed structs, be bounds-safe, and be robust to garbage input.  [7 general]
+ 11   4 PRs  architecture singleton_and_instance_design      peterbarker,tridge
+      Use singletons only where exactly one instance is intended; backends are not singletons.  [4 general]
+ 11   4 PRs  parameters   dont_change_param_meaning          peterbarker,tridge
+      Never change or overload the meaning of an existing parameter; add a new one.  [4 general]
+ 11   4 PRs  parameters   param_conversion_needed            peterbarker,rmackay9,tridge
+      Renamed or re-encoded parameters need a dated conversion that preserves user settings.  [3 general]
+ 11   3 PRs  process      verify_noop_refactors              peterbarker,tridge
+      Verify no-op refactors by identical compiler output rather than by reasoning.  [3 general]
+ 10   4 PRs  process      discuss_big_changes_first          rmackay9,tridge
+      Risky or controversial changes go through a dev call or discussion before code review.  [1 general]
+ 10   2 PRs  architecture library_detects_vehicle_acts       lthall,rmackay9,tridge
+      Libraries detect faults; the vehicle code decides and takes the action, and checks needing vehicle context live in vehicle code.  [3 general]
+  9   3 PRs  logging_gcs  log_bandwidth_cost                 peterbarker
+      Log bandwidth is finite; quantify and limit added log output.  [2 general]
+  9   3 PRs  parameters   validate_param_values              peterbarker,rmackay9
+      Validate parameter values and handle runtime changes safely.  [2 general]
+  9   2 PRs  architecture arming_side_effects                peterbarker,rmackay9
+      Arming checks must have no side effects; state changes belong in arm().  [3 general]
+  8   3 PRs  style        named_predicate_helpers            peterbarker,tridge
+      Factor repeated conditions into a named predicate method.  [0 general]
+  8   2 PRs  logging_gcs  log_timestamp_semantics            lthall,peterbarker,rmackay9
+      Log timestamps must be monotonic and reflect the data time.  [2 general]
+  6   3 PRs  parameters   param_index_placement              lthall,tridge
+      Never reuse or move an AP_GROUPINFO index; new parameters go at the end and optional ones in optional objects.  [2 general]
+  6   2 PRs  testing      wait_on_condition_not_delay        peterbarker
+      Autotests wait on a defined condition rather than a fixed delay.  [2 general]
+  6   2 PRs  style        avoid_default_arguments            peterbarker,rmackay9
+      Avoid default arguments with a single caller or where callers must choose.  [1 general]
+  5   2 PRs  process      no_duplicated_documentation        peterbarker,tridge
+      Avoid duplicated documentation that will go stale; point to one canonical source.  [2 general]
+  4   2 PRs  testing      new_code_built_in_ci               tridge
+      New code must be built by at least one board in CI.  [2 general]
+  2   1 PRs  architecture core_math_changes                  tridge
+      Changes to core math helpers need unit tests of boundary values, consistent zero/sign semantics and flight testing.  [5 general]
