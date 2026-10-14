@@ -1060,3 +1060,62 @@ Reply to the AP-Review round posted 2026-10-11 (issue comment 6110170245), the t
 ### Note 2026-10-13: unflown fixes squashed into flown commits
 
 The 2026-10-11 push (`f0804c0644`) autosquashed review fixes that change behaviour into commits that had flown: the recovery commit now also clears the latch from controlFilterModes() while disarmed instead of on a flow sample. That breaks the rule now in the root playbook (never squash an unflown behaviour change into a flown commit), so the flight evidence recorded above for those commits covers the code before that push, not this part of it. Not rewritten again, to spare reviewers the churn; the beta carries the change as its own commit (not ported: the beta already clears it on every disarmed step through #32232's `3ebeb38816`, which is the flown behaviour this matches), and flight results on it will be recorded against that commit. From 2026-10-12 review fixes that change behaviour go on top as new commits.
+
+## 2026-10-14: latch release and the range step, from an outdoor flight
+
+TD25 flew Loiter outdoors over grass and concrete on the SFD beta at
+`6f5d6dc0` (the private record is `../analysis/logs/td25_sfd472_field.md`).
+Two things this PR does went wrong there.
+
+**The car bonnet.** Flying onto a car bonnet, the range fell from 1.41 m
+to 0.33 m while the AGL KF was still easing down through 1.03 m. A flow
+axis locked out over the shiny surface at quality 75-120, and the
+recovery reset velocity to one sample scaled by that 1.03 m: 0.82, 0.37
+-> 0.00, 2.31 m/s N, E. Loiter rolled 25 degrees against the phantom
+speed and the vehicle hit a wall. `EK3_FLOW_QMIN` could not stop it: the
+sample's quality was well above it.
+
+**The latch to disarm.** Over bright concrete the sensor dropped to
+quality 0 for 0.6-8.6 s at a time (median 114 otherwise). Twice a lockout
+at the edge of a dropout met a sample of quality 2 or 8 and latched flow
+out until disarm, though quality was back above 100 within seconds.
+
+Commits on top (local, `fix5/pr-vel-flow-axis-gate`, not pushed;
+the commits below have flown):
+
+- `20de7edcea` (with its amend) the latch lets go after 50 consecutive
+  samples at `EK3_FLOW_QMIN` plus 10%, at most 255, counted in
+  `writeOptFlowMeas()` so a dropout's quality 0 samples (discarded before
+  buffering) and a gap over 0.5 s break the run.
+- `7d7d00f035` a reset is deferred while the AGL KF height and the latest
+  range differ by more than 20% plus 5 cm ("flow recovery deferred, range
+  step").
+- `4c062624dc` (with its amend) `EK3_FlowAxisLockoutRecovery` legs:
+  quality 42 against a minimum of 40 does not release, nor quality
+  flickering 0/60 every 0.5 s, a steady 60 does; a bonnet-like range step
+  (to 0.5 m) reports "range step", every reset over it is made with the
+  heights agreeing (read from the log), and a fresh lockout once the
+  range is back is recovered. Each leg fails with its change removed
+  (latch: "flow quality recovered" never comes; flicker with the first
+  cut's delayed-path count: "latch let go while quality flickered to 0";
+  guard: "range step" never comes).
+
+Replay on the beta, before and after (`XKF7` of core 0): the bonnet reset
+at 209.07 s is deferred and the later resets at good quality are
+unchanged; the latches release 3-12 s after quality returns; log 3 of
+8 October loses one of five resets (72.64 s); t4, t1f1 and t2f3 (indoor,
+quality 35-59) are identical, their latches clearing only at disarm.
+
+Quick review (Codex cold read, framing-free) on the first cut found four
+things, all fixed before any push: quality 0 samples never reached the
+delayed-path counter (High), `EK3_FLOW_QMIN` above 232 made release
+impossible, the step leg did not require recovery to resume, and the
+`FLOW_QMIN` documentation still promised a latch to disarm.
+
+Measured and rejected:
+
+| change | argument for | result |
+|---|---|---|
+| step leg expecting a reset once the AGL KF settles on the stepped range | proves the deferral is not a permanent block | `SIM_SONAR_OFFSET` moves only the range finder, so with the AGL KF on 0.5 m the flow is scaled six times wrong and the lockout ended on its own on master (no reset in 30 s) while the beta reset at once; replaced by checking every reset's heights in the log and a fresh lockout after the range is restored |
+| release when both axes pass with quality above QMIN (the user's first framing) | tests the flow itself | while latched the filter is out of relative aiding and does not fuse flow, so no axis can be seen to pass; the sensor's own quality is what is left |
+
