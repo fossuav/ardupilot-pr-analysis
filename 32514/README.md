@@ -13,6 +13,18 @@ committed; the field numbers are from real throws on the first design.
 > in this file was taken on the first design or without the PR, never on
 > the current head.
 
+## 2026-10-14: the design against rmackay9's stricter view
+
+rmackay9 wrote on this PR that the EKF failsafe should trigger without a
+good position "regardless of what sources are being used"
+(https://github.com/ArduPilot/ardupilot/pull/32514#issuecomment-4124383538).
+The user holds that this is not correct: a failsafe triggers on the loss
+of what the current flight depends on, and a source set with no horizontal
+source does not depend on a position. That is now the playbook's ARCH-5
+("Safety logic is judged by what it does when it is wrong", aap 1.7.39),
+so a later review that raises his wording against this design is answered
+by the rule, not by re-arguing it.
+
 ## 2026-10-13: flown on the beta, and what "cleared" no longer means
 
 The SFD beta at `6f5d6dc0` carries the current design. TD25's field
