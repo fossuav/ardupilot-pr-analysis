@@ -1162,3 +1162,7 @@ good phase reached the 2 s release; `41896f2610` uses
 `send_set_parameter`, 3 of 3 pass, and a mutant where quality 0 does not
 break the run still fails it.
 
+Pushed 2026-10-14 as `fa48510515..55f1220054`: `f004d070f5` the speed
+form (tilt fixup folded in), `76a86a0e67` its test check, `55f1220054`
+the flicker fix. Description updated.
+
