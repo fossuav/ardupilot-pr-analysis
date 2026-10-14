@@ -1152,3 +1152,13 @@ t2f3 identical; t4 gains one deferral with no change to its latches.
 |---|---|---|
 | defer while the AGL KF height and the range differ by more than 20% plus 5 cm (`af5be0a966`) | a 20% height error is a 20% speed error | the margin was a guess; it defers a near-still hover that would adopt almost no error and allows 0.12 m (0.4 m/s at 3.4 rad/s) at the bonnet's height; replaced by the speed form |
 
+Quick review of the speed form (Codex cold): the height difference is
+vertical while the reset multiplies by the slant range, so the error was
+under-counted when tilted; divided by the tilt cosine as the range is
+(fixup on `6cd1211161`). Replay of the five logs is unchanged by that.
+The flicker leg was found flaky on correct code (1 run in 3):
+`set_parameter`'s read-back took 1.5-2 s of sim time, so a "half second"
+good phase reached the 2 s release; `41896f2610` uses
+`send_set_parameter`, 3 of 3 pass, and a mutant where quality 0 does not
+break the run still fails it.
+
