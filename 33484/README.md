@@ -1080,8 +1080,10 @@ quality 0 for 0.6-8.6 s at a time (median 114 otherwise). Twice a lockout
 at the edge of a dropout met a sample of quality 2 or 8 and latched flow
 out until disarm, though quality was back above 100 within seconds.
 
-Commits on top (local, `fix5/pr-vel-flow-axis-gate`, not pushed;
-the commits below have flown):
+Commits on top, pushed 2026-10-14 as `f0804c0644..fa48510515` after an
+autosquash of their review fixes (final hashes `0aa635b90f` latch release,
+`af5be0a966` range step, `fa48510515` test; the hashes below are the
+pre-squash ones; the commits under them have flown):
 
 - `20de7edcea` (with its fixups and amend) the latch lets go once the
   sensor has reported quality at `EK3_FLOW_QMIN` plus 10%, at most 255,
