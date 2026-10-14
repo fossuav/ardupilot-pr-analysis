@@ -1133,3 +1133,22 @@ after they are set on the outdoor log, its third latch no longer forms,
 and the indoor logs and log 3 are as reported above. The test passes on
 both branches.
 
+## 2026-10-14: the range step judged by speed error
+
+The deferral's 20% plus 5 cm was chosen by hand (the user asked where it
+came from; it was not derived or measured). What matters is the speed
+error a height difference puts into the reset, |flow rate| x |AGL KF
+height - range|, since the reset multiplies the two. `6cd1211161` defers
+while that exceeds the flow noise term the reset already uses in its own
+variance, `MAX(EK3_FLOW_M_NSE, 0.05)` times the range; `02ebde5653`
+checks the step leg's resets in that form. Local, not pushed yet.
+
+Replay on the beta, the 20% version against the speed version: the
+bonnet reset deferred in both; the outdoor log's takeoff reset at 160.17
+moves to 160.07 (a near-still sample now let through); log 3, t1f1 and
+t2f3 identical; t4 gains one deferral with no change to its latches.
+
+| change | argument for | result |
+|---|---|---|
+| defer while the AGL KF height and the range differ by more than 20% plus 5 cm (`af5be0a966`) | a 20% height error is a 20% speed error | the margin was a guess; it defers a near-still hover that would adopt almost no error and allows 0.12 m (0.4 m/s at 3.4 rad/s) at the bonnet's height; replaced by the speed form |
+
