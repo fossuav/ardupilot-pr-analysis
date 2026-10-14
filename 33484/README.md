@@ -1083,10 +1083,14 @@ out until disarm, though quality was back above 100 within seconds.
 Commits on top (local, `fix5/pr-vel-flow-axis-gate`, not pushed;
 the commits below have flown):
 
-- `20de7edcea` (with its amend) the latch lets go after 50 consecutive
-  samples at `EK3_FLOW_QMIN` plus 10%, at most 255, counted in
-  `writeOptFlowMeas()` so a dropout's quality 0 samples (discarded before
-  buffering) and a gap over 0.5 s break the run.
+- `20de7edcea` (with its fixups and amend) the latch lets go once the
+  sensor has reported quality at `EK3_FLOW_QMIN` plus 10%, at most 255,
+  for 2 s with no gap over 0.5 s. Checked at the top of
+  `writeOptFlowMeas()`, ahead of the rate limit, so every sample the
+  sensor sends breaks or extends the run: the quality 0 samples a dropout
+  gives and samples inside the sensor interval are both discarded before
+  buffering. A time, not a count: the first cut's 50 samples is 0.5 s at
+  TD25's ~100 Hz flow.
 - `7d7d00f035` a reset is deferred while the AGL KF height and the latest
   range differ by more than 20% plus 5 cm ("flow recovery deferred, range
   step").
@@ -1118,4 +1122,12 @@ Measured and rejected:
 |---|---|---|
 | step leg expecting a reset once the AGL KF settles on the stepped range | proves the deferral is not a permanent block | `SIM_SONAR_OFFSET` moves only the range finder, so with the AGL KF on 0.5 m the flow is scaled six times wrong and the lockout ended on its own on master (no reset in 30 s) while the beta reset at once; replaced by checking every reset's heights in the log and a fresh lockout after the range is restored |
 | release when both axes pass with quality above QMIN (the user's first framing) | tests the flow itself | while latched the filter is out of relative aiding and does not fuse flow, so no axis can be seen to pass; the sensor's own quality is what is left |
+
+Second Codex cold read over the whole range: samples inside the sensor
+interval returned before the counter (fixed by moving the check above the
+rate limit). Then the count was replaced by 2 s, for the rate reason
+above. Final Replay (beta, 2026-10-14): latches release 2.6 s and 11.6 s
+after they are set on the outdoor log, its third latch no longer forms,
+and the indoor logs and log 3 are as reported above. The test passes on
+both branches.
 
