@@ -1,0 +1,1597 @@
+[
+ {
+  "key": "reuse_existing_code_dont_duplicate",
+  "rule": "Reuse existing code and utilities by factoring or subclassing instead of copying or reimplementing them.",
+  "kind": "architecture",
+  "ids": [
+   0,
+   47,
+   80,
+   109,
+   258,
+   269,
+   281,
+   282,
+   308,
+   317,
+   321,
+   330,
+   331,
+   513,
+   540,
+   609,
+   634,
+   640,
+   641,
+   659,
+   671,
+   704,
+   742,
+   931,
+   933,
+   951
+  ]
+ },
+ {
+  "key": "dont_add_parameters_needlessly",
+  "rule": "Do not add a parameter where a constant, default, automatic behaviour or existing storage will do; keep the parameter count down.",
+  "kind": "parameters",
+  "ids": [
+   1,
+   7,
+   8,
+   10,
+   25,
+   239,
+   240,
+   297,
+   619,
+   620,
+   714,
+   768,
+   856,
+   865,
+   932
+  ]
+ },
+ {
+  "key": "generic_features_in_shared_libraries",
+  "rule": "Generic features belong in shared libraries usable by every vehicle, not in one vehicle directory or vehicle-specific code.",
+  "kind": "architecture",
+  "ids": [
+   2,
+   3,
+   38,
+   352,
+   361,
+   558,
+   615,
+   871,
+   944,
+   945,
+   955
+  ]
+ },
+ {
+  "key": "feature_guards_compile_out_cleanly",
+  "rule": "Optional features need their own enable macro (defined 0/1 in the library _config.h, listed in build_options.py) and every dependent declaration, call and member must be compiled out when it is off.",
+  "kind": "architecture",
+  "ids": [
+   4,
+   36,
+   45,
+   60,
+   101,
+   105,
+   119,
+   120,
+   134,
+   139,
+   141,
+   155,
+   156,
+   174,
+   189,
+   191,
+   195,
+   208,
+   211,
+   212,
+   226,
+   228,
+   257,
+   268,
+   279,
+   302,
+   354,
+   533,
+   656,
+   667,
+   668,
+   753,
+   755,
+   802,
+   813,
+   866,
+   905
+  ]
+ },
+ {
+  "key": "singleton_and_instance_design",
+  "rule": "Use singletons only where exactly one instance is intended; backends are not singletons.",
+  "kind": "architecture",
+  "ids": [
+   5,
+   102,
+   143,
+   144,
+   969
+  ]
+ },
+ {
+  "key": "param_doc_metadata_complete",
+  "rule": "Every parameter needs complete documentation: description, Range, Units, Values/Bitmask, matching the code.",
+  "kind": "parameters",
+  "ids": [
+   6,
+   374,
+   429,
+   475,
+   476,
+   479,
+   542,
+   560,
+   598,
+   637,
+   880
+  ]
+ },
+ {
+  "key": "prefer_early_return",
+  "rule": "Prefer early returns over nested conditionals.",
+  "kind": "style",
+  "ids": [
+   9,
+   108,
+   232,
+   343,
+   520,
+   735
+  ]
+ },
+ {
+  "key": "prearm_checks_design",
+  "rule": "Add pre-arm checks for configurations that would silently misbehave, make them specific, and put them in the shared or owning library.",
+  "kind": "architecture",
+  "ids": [
+   11,
+   28,
+   241,
+   307,
+   448,
+   460,
+   525,
+   545,
+   716,
+   717,
+   718,
+   798,
+   805,
+   821,
+   892,
+   906
+  ]
+ },
+ {
+  "key": "no_blocking_in_main_thread",
+  "rule": "Never block or busy-wait in the main thread; do waits and slow work asynchronously via a state machine or other thread.",
+  "kind": "architecture",
+  "ids": [
+   12,
+   17,
+   73,
+   190,
+   318,
+   367,
+   649,
+   679,
+   898,
+   938,
+   972
+  ]
+ },
+ {
+  "key": "explicit_state_machines",
+  "rule": "Model driver and feature state explicitly in one state machine, and update state only where the action actually succeeds.",
+  "kind": "architecture",
+  "ids": [
+   13,
+   273,
+   294,
+   425,
+   471,
+   511,
+   631,
+   736,
+   833,
+   862
+  ]
+ },
+ {
+  "key": "time_arithmetic_wrap_safe",
+  "rule": "Use elapsed-time differences from a stored start, not added timestamps.",
+  "kind": "style",
+  "ids": [
+   14,
+   34,
+   91,
+   270,
+   663,
+   665,
+   790,
+   992
+  ]
+ },
+ {
+  "key": "narrow_interfaces_const_refs",
+  "rule": "Minimise public interface; use const, references and accessors appropriately.",
+  "kind": "style",
+  "ids": [
+   15,
+   33,
+   48,
+   62,
+   171,
+   266,
+   272,
+   337
+  ]
+ },
+ {
+  "key": "bounds_null_and_input_validation",
+  "rule": "Bound loops and buffers, check pointers and return values, validate external or user-supplied values, and guard domain maths.",
+  "kind": "architecture",
+  "ids": [
+   16,
+   19,
+   31,
+   95,
+   145,
+   188,
+   196,
+   199,
+   205,
+   289,
+   290,
+   299,
+   316,
+   416,
+   595,
+   618,
+   670,
+   688,
+   787,
+   822,
+   868,
+   897,
+   904,
+   985
+  ]
+ },
+ {
+  "key": "memory_allocation_and_init_safety",
+  "rule": "Avoid unnecessary or static allocation, handle allocation failure, allocate only when the hardware or feature is present, and keep memory initialisation safe.",
+  "kind": "architecture",
+  "ids": [
+   18,
+   23,
+   227,
+   264,
+   278,
+   295,
+   412,
+   498,
+   612,
+   624,
+   633,
+   645,
+   646,
+   647,
+   680,
+   750,
+   819,
+   831,
+   858,
+   895,
+   899,
+   957
+  ]
+ },
+ {
+  "key": "avoid_unneeded_complexity",
+  "rule": "Prefer the simplest design; do not add complexity, options or mechanisms for small or hypothetical gains.",
+  "kind": "architecture",
+  "ids": [
+   20,
+   26,
+   184,
+   202,
+   356,
+   380,
+   390,
+   411,
+   527,
+   541,
+   544,
+   596,
+   597,
+   601,
+   703,
+   715,
+   743,
+   754,
+   771,
+   794,
+   838,
+   849,
+   912,
+   965,
+   987
+  ]
+ },
+ {
+  "key": "member_initialisation",
+  "rule": "Initialise members in-class and do not zero-initialise needlessly.",
+  "kind": "style",
+  "ids": [
+   21,
+   58,
+   263,
+   332,
+   563,
+   632,
+   664
+  ]
+ },
+ {
+  "key": "enum_class_and_switch_no_default",
+  "rule": "Use enum class and switch without default so the compiler flags new values.",
+  "kind": "style",
+  "ids": [
+   22,
+   30,
+   56,
+   65,
+   78,
+   79,
+   114,
+   223,
+   267,
+   336
+  ]
+ },
+ {
+  "key": "avoid_flash_costly_constructs",
+  "rule": "Avoid constructs that cost flash for little gain (bitfields, packed structs, virtuals, copies).",
+  "kind": "style",
+  "ids": [
+   24,
+   149,
+   280,
+   346,
+   415,
+   660,
+   762,
+   775,
+   803
+  ]
+ },
+ {
+  "key": "scheduler_and_periodic_cpu",
+  "rule": "Periodic work goes in the normal scheduler table at a rate chosen by measured CPU cost, and expensive calls are kept out of hot paths.",
+  "kind": "architecture",
+  "ids": [
+   27,
+   35,
+   87,
+   488,
+   489,
+   515,
+   518,
+   610,
+   652,
+   653,
+   774,
+   782,
+   791,
+   792,
+   837,
+   844,
+   857,
+   873,
+   929
+  ]
+ },
+ {
+  "key": "macros_use_if_and_ifndef",
+  "rule": "Define macros always, test with #if, wrap tunable defaults in #ifndef and keep defines out of headers.",
+  "kind": "style",
+  "ids": [
+   29,
+   32,
+   59,
+   115,
+   255,
+   275,
+   276,
+   323,
+   326,
+   342,
+   387,
+   638,
+   836
+  ]
+ },
+ {
+  "key": "misc",
+  "rule": "Principles that fit no repeated theme.",
+  "kind": "process",
+  "ids": [
+   37,
+   49,
+   57,
+   148,
+   277,
+   284,
+   300,
+   325,
+   406,
+   464,
+   492,
+   495,
+   496,
+   502,
+   575,
+   635,
+   842,
+   949,
+   950,
+   959,
+   962,
+   991
+  ]
+ },
+ {
+  "key": "comment_quality",
+  "rule": "Comments must be accurate, concise, say why not what, and appear once in the right place.",
+  "kind": "style",
+  "ids": [
+   39,
+   64,
+   90,
+   96,
+   123,
+   124,
+   201,
+   252,
+   256,
+   310,
+   338,
+   365,
+   389,
+   404,
+   405,
+   454,
+   470,
+   482,
+   512,
+   519,
+   522,
+   529,
+   600,
+   604,
+   613,
+   650,
+   691,
+   697,
+   834,
+   848,
+   935,
+   968
+  ]
+ },
+ {
+  "key": "commit_conventions",
+  "rule": "Follow commit conventions: correct subsystem prefix, commits that compile, no fixups or accidental changes.",
+  "kind": "process",
+  "ids": [
+   40,
+   116,
+   216,
+   322,
+   350,
+   392,
+   393,
+   394,
+   500,
+   501,
+   573,
+   574,
+   765,
+   999
+  ]
+ },
+ {
+  "key": "minimal_boards_no_new_features",
+  "rule": "Do not add features to minimal-flash boards or minimal peripheral firmware; do not use blanket feature stripping as the way to recover flash.",
+  "kind": "architecture",
+  "ids": [
+   41,
+   140,
+   147,
+   250,
+   430,
+   625,
+   816
+  ]
+ },
+ {
+  "key": "test_on_real_hardware",
+  "rule": "Changes must be tested on real hardware and relevant variants, not just compiled.",
+  "kind": "testing",
+  "ids": [
+   42,
+   74,
+   97,
+   449,
+   644,
+   669,
+   673,
+   757,
+   785,
+   789,
+   800,
+   832,
+   869,
+   907,
+   934,
+   956
+  ]
+ },
+ {
+  "key": "new_features_default_off",
+  "rule": "New or niche features default to off and are enabled only on the boards and vehicles that need them.",
+  "kind": "architecture",
+  "ids": [
+   43,
+   104,
+   207,
+   265,
+   271,
+   285,
+   329,
+   487,
+   510,
+   537,
+   538,
+   666,
+   801,
+   853,
+   894,
+   900,
+   960
+  ]
+ },
+ {
+  "key": "names_say_what_things_are",
+  "rule": "Names must describe what the thing actually is or does, be positive and consistent.",
+  "kind": "style",
+  "ids": [
+   44,
+   55,
+   61,
+   82,
+   112,
+   154,
+   242,
+   245,
+   293,
+   298,
+   358,
+   407,
+   409,
+   423,
+   440,
+   444,
+   446,
+   447,
+   461,
+   463,
+   465,
+   466,
+   474,
+   484,
+   485,
+   509,
+   524,
+   528,
+   559,
+   562,
+   564,
+   594,
+   611,
+   648,
+   696,
+   712,
+   713,
+   763,
+   908,
+   948
+  ]
+ },
+ {
+  "key": "backward_compat_existing_users",
+  "rule": "Do not break existing users, GCS clients, APIs or stored configuration; behaviour changes need impact assessment.",
+  "kind": "architecture",
+  "ids": [
+   46,
+   53,
+   67,
+   71,
+   204,
+   477,
+   684,
+   727,
+   760,
+   861,
+   875,
+   879,
+   937,
+   943,
+   952,
+   988,
+   989
+  ]
+ },
+ {
+  "key": "tests_clean_up_after_themselves",
+  "rule": "Tests must restore state and parameters (try/finally, context push/pop) and clean up what they load.",
+  "kind": "testing",
+  "ids": [
+   50,
+   51,
+   89,
+   135,
+   152,
+   315,
+   381
+  ]
+ },
+ {
+  "key": "test_quality",
+  "rule": "Tests must assert what they claim, cover edge cases, be cheap and robust, and actually exercise the changed code.",
+  "kind": "testing",
+  "ids": [
+   52,
+   77,
+   92,
+   106,
+   125,
+   161,
+   173,
+   200,
+   234,
+   311,
+   314,
+   339,
+   382,
+   385,
+   486,
+   531,
+   535,
+   539,
+   568,
+   572,
+   812,
+   863,
+   874,
+   940,
+   961,
+   982
+  ]
+ },
+ {
+  "key": "third_party_code",
+  "rule": "Bring in third-party code as a submodule or isolated directory and do not modify the vendored source.",
+  "kind": "architecture",
+  "ids": [
+   54,
+   100,
+   639,
+   642,
+   924
+  ]
+ },
+ {
+  "key": "features_testable_in_sitl",
+  "rule": "Hardware-backed and new features must be runnable and tested in SITL.",
+  "kind": "testing",
+  "ids": [
+   63,
+   672,
+   734,
+   925,
+   946,
+   947,
+   975
+  ]
+ },
+ {
+  "key": "remove_dead_code",
+  "rule": "Remove unused, broken or obsolete code rather than keeping it.",
+  "kind": "architecture",
+  "ids": [
+   66,
+   137,
+   244,
+   319,
+   408,
+   547,
+   565,
+   681,
+   745,
+   817,
+   886,
+   918
+  ]
+ },
+ {
+  "key": "split_unrelated_changes",
+  "rule": "Keep PRs and commits to a single issue and split out unrelated, refactor or easily-mergeable changes.",
+  "kind": "process",
+  "ids": [
+   68,
+   69,
+   103,
+   192,
+   197,
+   215,
+   235,
+   260,
+   261,
+   324,
+   348,
+   480,
+   553,
+   554,
+   872
+  ]
+ },
+ {
+  "key": "pr_description_and_testing_statement",
+  "rule": "Every PR needs a description stating the problem, impact and what testing was done.",
+  "kind": "process",
+  "ids": [
+   70,
+   93,
+   157,
+   167,
+   259,
+   292,
+   357,
+   431,
+   432,
+   433,
+   434,
+   435,
+   436,
+   437,
+   438,
+   439,
+   549,
+   843,
+   909,
+   919,
+   976
+  ]
+ },
+ {
+  "key": "logic_belongs_in_owning_class",
+  "rule": "Put logic and state in the class or library that owns them, avoid roundabout data paths, and do not duplicate decisions across callers.",
+  "kind": "architecture",
+  "ids": [
+   72,
+   209,
+   210,
+   262,
+   345,
+   410,
+   413,
+   414,
+   418,
+   424,
+   459,
+   469,
+   497,
+   591,
+   927
+  ]
+ },
+ {
+  "key": "shared_state_thread_safety",
+  "rule": "Data shared between threads needs proper protection (WITH_SEMAPHORE, consistent snapshots, bounded waits), and primitives must be used correctly.",
+  "kind": "architecture",
+  "ids": [
+   75,
+   175,
+   217,
+   254,
+   377,
+   629,
+   820,
+   828,
+   850,
+   851,
+   877,
+   901,
+   902,
+   903,
+   930,
+   966,
+   973
+  ]
+ },
+ {
+  "key": "internal_error_usage",
+  "rule": "Use internal_error for impossible states and genuine misuse so they surface in logs, not for external input or harmless cases.",
+  "kind": "architecture",
+  "ids": [
+   76,
+   127,
+   213,
+   766,
+   827,
+   928
+  ]
+ },
+ {
+  "key": "avoid_extra_state",
+  "rule": "Avoid adding new state flags or variables when the source of truth already exists; do not repurpose existing ones.",
+  "kind": "architecture",
+  "ids": [
+   81,
+   421,
+   441,
+   593
+  ]
+ },
+ {
+  "key": "dont_change_param_meaning",
+  "rule": "Never change or overload the meaning of an existing parameter; add a new one.",
+  "kind": "parameters",
+  "ids": [
+   83,
+   186,
+   395,
+   878
+  ]
+ },
+ {
+  "key": "options_bitmask_parameters",
+  "rule": "Use a 32-bit _OPTIONS bitmask for orthogonal options, with clear precedence and no reuse of bits.",
+  "kind": "parameters",
+  "ids": [
+   84,
+   419,
+   422,
+   543,
+   675,
+   811,
+   824
+  ]
+ },
+ {
+  "key": "state_flash_cpu_ram_cost",
+  "rule": "State the flash, CPU and RAM cost of a change, and justify it, especially for boards with little flash.",
+  "kind": "architecture",
+  "ids": [
+   85,
+   113,
+   121,
+   122,
+   151,
+   176,
+   178,
+   180,
+   181,
+   375,
+   379,
+   614,
+   623,
+   628,
+   655,
+   661,
+   749,
+   808,
+   829,
+   840,
+   888,
+   923
+  ]
+ },
+ {
+  "key": "libraries_own_their_logging",
+  "rule": "Libraries log their own data with their own log bit, not vehicle or unrelated code.",
+  "kind": "logging_gcs",
+  "ids": [
+   86,
+   169,
+   170,
+   224,
+   719,
+   720,
+   920
+  ]
+ },
+ {
+  "key": "log_bandwidth_cost",
+  "rule": "Log bandwidth is finite; quantify and limit added log output.",
+  "kind": "logging_gcs",
+  "ids": [
+   88,
+   164,
+   391
+  ]
+ },
+ {
+  "key": "log_field_design",
+  "rule": "Log messages: stable short fields, new fields at the end, documented, no duplicate messages.",
+  "kind": "logging_gcs",
+  "ids": [
+   94,
+   98,
+   182,
+   399,
+   505,
+   685,
+   686,
+   722,
+   723,
+   724,
+   784,
+   804,
+   893,
+   971,
+   980,
+   994
+  ]
+ },
+ {
+  "key": "dont_modify_user_params",
+  "rule": "Avoid changing user-set parameters from code; if needed use set_and_save_ifchanged, make it opt-in, and use set() so the GCS is informed.",
+  "kind": "parameters",
+  "ids": [
+   99,
+   630,
+   651,
+   772,
+   867,
+   958,
+   964
+  ]
+ },
+ {
+  "key": "hwdef_conventions",
+  "rule": "Follow hwdef conventions: shared .inc files, generic defaults from hwdef rather than board hacks, tooling kept generic.",
+  "kind": "architecture",
+  "ids": [
+   107,
+   118,
+   126,
+   128,
+   219,
+   220,
+   221,
+   249,
+   344,
+   371,
+   376,
+   548,
+   622,
+   752,
+   783,
+   786,
+   814,
+   818,
+   823,
+   860,
+   967
+  ]
+ },
+ {
+  "key": "release_and_backport_hygiene",
+  "rule": "Respect release timing: no large or risky changes late, backports via separate PRs, and note user-visible changes.",
+  "kind": "process",
+  "ids": [
+   110,
+   158,
+   445,
+   456,
+   457,
+   481,
+   516,
+   517,
+   590,
+   726,
+   815,
+   830
+  ]
+ },
+ {
+  "key": "gcs_text_volume",
+  "rule": "Keep GCS status text low volume, rate-limited, via GCS_SEND_TEXT, and actionable.",
+  "kind": "logging_gcs",
+  "ids": [
+   111,
+   177,
+   193,
+   194,
+   206,
+   248,
+   274,
+   426,
+   472,
+   506,
+   508,
+   626,
+   737
+  ]
+ },
+ {
+  "key": "fix_root_cause_not_symptom",
+  "rule": "Fix the problem at its root, in the layer that decides the behaviour, rather than papering over it downstream.",
+  "kind": "architecture",
+  "ids": [
+   117,
+   396,
+   499,
+   577,
+   587,
+   588,
+   738
+  ]
+ },
+ {
+  "key": "respect_layering_use_abstractions",
+  "rule": "Respect layering: lower layers must not call up, and callers use the abstraction layer (AHRS, SRV_Channels, library owner) instead of reaching into backends or internals.",
+  "kind": "architecture",
+  "ids": [
+   129,
+   130,
+   159,
+   163,
+   243,
+   246,
+   286,
+   291,
+   296,
+   304,
+   334,
+   340,
+   359,
+   360,
+   398,
+   530,
+   692,
+   910,
+   911,
+   913,
+   998
+  ]
+ },
+ {
+  "key": "board_addition_and_build_housekeeping",
+  "rule": "New boards and build variants need their registrations, READMEs and build-script entries; keep build output structure working.",
+  "kind": "process",
+  "ids": [
+   131,
+   150,
+   203,
+   370,
+   621,
+   693,
+   751,
+   756,
+   776,
+   806,
+   825,
+   876,
+   953,
+   954
+  ]
+ },
+ {
+  "key": "failsafe_and_safety_design",
+  "rule": "Failsafe and safety logic must fail in the safe direction, handle combined and on-ground cases, and not disable or be bypassed by unrelated logic.",
+  "kind": "architecture",
+  "ids": [
+   132,
+   136,
+   218,
+   230,
+   306,
+   341,
+   453,
+   455,
+   467,
+   473,
+   483,
+   569,
+   581,
+   582,
+   602,
+   701,
+   702,
+   708,
+   709,
+   799,
+   881,
+   882,
+   891,
+   914,
+   977
+  ]
+ },
+ {
+  "key": "types_and_units",
+  "rule": "Use appropriately sized fixed-width types, unit suffixes and sizeof/constants instead of literals.",
+  "kind": "style",
+  "ids": [
+   133,
+   165,
+   179,
+   288,
+   327,
+   402,
+   428,
+   514,
+   551,
+   636,
+   662,
+   676,
+   683,
+   687,
+   764,
+   841,
+   915
+  ]
+ },
+ {
+  "key": "verify_noop_refactors",
+  "rule": "Verify no-op refactors by identical compiler output rather than by reasoning.",
+  "kind": "process",
+  "ids": [
+   138,
+   187,
+   328,
+   936
+  ]
+ },
+ {
+  "key": "param_conversion_needed",
+  "rule": "Renamed or re-encoded parameters need a dated conversion that preserves user settings.",
+  "kind": "parameters",
+  "ids": [
+   142,
+   401,
+   599,
+   983
+  ]
+ },
+ {
+  "key": "validate_param_values",
+  "rule": "Validate parameter values and handle runtime changes safely.",
+  "kind": "parameters",
+  "ids": [
+   146,
+   462,
+   493
+  ]
+ },
+ {
+  "key": "hal_abstraction",
+  "rule": "Hardware- and platform-specific code goes through AP_HAL and HAL setup hooks, not shared libraries or vehicle code.",
+  "kind": "architecture",
+  "ids": [
+   153,
+   225,
+   369,
+   769,
+   770,
+   845,
+   997
+  ]
+ },
+ {
+  "key": "sensor_driver_care",
+  "rule": "Sensor driver changes must be robust (timeouts, glitches, variants), consistent with sibling backends, and not break other chip variants.",
+  "kind": "architecture",
+  "ids": [
+   160,
+   183,
+   231,
+   233,
+   251,
+   521,
+   689,
+   690,
+   694,
+   758,
+   809,
+   864,
+   917,
+   963,
+   981,
+   990
+  ]
+ },
+ {
+  "key": "log_timestamp_semantics",
+  "rule": "Log timestamps must be monotonic and reflect the data time.",
+  "kind": "logging_gcs",
+  "ids": [
+   162,
+   504,
+   721
+  ]
+ },
+ {
+  "key": "test_on_all_affected_vehicles",
+  "rule": "Shared changes must be tested on every affected vehicle type.",
+  "kind": "testing",
+  "ids": [
+   166,
+   168,
+   427,
+   503,
+   793,
+   795,
+   807,
+   847,
+   916,
+   984
+  ]
+ },
+ {
+  "key": "tests_cover_new_code",
+  "rule": "New code and fixes need regression tests that fail before and pass after.",
+  "kind": "testing",
+  "ids": [
+   172,
+   198,
+   214,
+   363,
+   388,
+   605,
+   788
+  ]
+ },
+ {
+  "key": "evidence_and_repro_for_fixes",
+  "rule": "Fixes and behaviour changes need evidence: logs, repro steps, measurements and a correct explanation.",
+  "kind": "process",
+  "ids": [
+   185,
+   229,
+   372,
+   373,
+   557,
+   583,
+   584,
+   585,
+   606,
+   732,
+   826,
+   846,
+   870,
+   896,
+   942,
+   993
+  ]
+ },
+ {
+  "key": "ai_generated_text",
+  "rule": "Authors must review and trim AI-generated code, comments and replies themselves.",
+  "kind": "process",
+  "ids": [
+   222,
+   578,
+   579,
+   580,
+   995
+  ]
+ },
+ {
+  "key": "home_vs_origin",
+  "rule": "Home, EKF origin and position are distinct concepts and must be handled and named accordingly.",
+  "kind": "architecture",
+  "ids": [
+   236,
+   237,
+   238,
+   309,
+   523,
+   576,
+   586,
+   970
+  ]
+ },
+ {
+  "key": "arming_side_effects",
+  "rule": "Arming checks must have no side effects; state changes belong in arm().",
+  "kind": "architecture",
+  "ids": [
+   247,
+   458,
+   526
+  ]
+ },
+ {
+  "key": "named_predicate_helpers",
+  "rule": "Factor repeated conditions into a named predicate method.",
+  "kind": "style",
+  "ids": [
+   253,
+   383,
+   883
+  ]
+ },
+ {
+  "key": "protocol_parsing_robustness",
+  "rule": "Protocol code should use clear decoders and packed structs, be bounds-safe, and be robust to garbage input.",
+  "kind": "architecture",
+  "ids": [
+   283,
+   287,
+   301,
+   643,
+   658,
+   695,
+   835,
+   884,
+   885
+  ]
+ },
+ {
+  "key": "wait_on_condition_not_delay",
+  "rule": "Autotests wait on a defined condition rather than a fixed delay.",
+  "kind": "testing",
+  "ids": [
+   303,
+   320
+  ]
+ },
+ {
+  "key": "scripting_api_design",
+  "rule": "Scripting bindings should not break existing APIs, should return ready-to-use values with frames, and need examples.",
+  "kind": "architecture",
+  "ids": [
+   305,
+   312,
+   313,
+   490,
+   491,
+   852,
+   939
+  ]
+ },
+ {
+  "key": "ekf_ahrs_changes_need_scrutiny",
+  "rule": "EKF/AHRS and flight-state-dependent changes are high risk: keep them minimal, backend-agnostic, plumb data through DAL, and test across vehicles and edge cases.",
+  "kind": "architecture",
+  "ids": [
+   333,
+   347,
+   351,
+   362,
+   364,
+   366,
+   368,
+   384,
+   552,
+   566,
+   567,
+   570,
+   571,
+   589,
+   592,
+   603,
+   978,
+   979,
+   986,
+   996
+  ]
+ },
+ {
+  "key": "mainline_maintenance_burden",
+  "rule": "Code in mainline is a permanent burden: it must be well designed, justified and not narrow special-purpose.",
+  "kind": "process",
+  "ids": [
+   335,
+   534,
+   728,
+   729,
+   730,
+   731,
+   733
+  ]
+ },
+ {
+  "key": "no_duplicated_documentation",
+  "rule": "Avoid duplicated documentation that will go stale; point to one canonical source.",
+  "kind": "process",
+  "ids": [
+   349,
+   654
+  ]
+ },
+ {
+  "key": "param_naming",
+  "rule": "Parameter names and display names are specific, lead with the feature name, use standard terms and keep prefixes short.",
+  "kind": "parameters",
+  "ids": [
+   353,
+   355,
+   403,
+   494,
+   555,
+   556,
+   561,
+   710,
+   854,
+   855
+  ]
+ },
+ {
+  "key": "vehicle_modes_hooks",
+  "rule": "Keep vehicle code thin and consistent; give mode hooks defaults and call them polymorphically, and require overrides via pure virtual.",
+  "kind": "architecture",
+  "ids": [
+   378,
+   417,
+   442,
+   443,
+   617,
+   698,
+   699,
+   706,
+   922
+  ]
+ },
+ {
+  "key": "avoid_default_arguments",
+  "rule": "Avoid default arguments with a single caller or where callers must choose.",
+  "kind": "style",
+  "ids": [
+   386,
+   507
+  ]
+ },
+ {
+  "key": "informative_user_errors",
+  "rule": "Report failures clearly to the user through an appropriate channel.",
+  "kind": "logging_gcs",
+  "ids": [
+   397,
+   420,
+   478,
+   773,
+   797,
+   839
+  ]
+ },
+ {
+  "key": "default_value_changes",
+  "rule": "Default changes need care: use set_default, keep exceptions explicit, and weigh impact on existing users.",
+  "kind": "parameters",
+  "ids": [
+   400,
+   450,
+   550,
+   674,
+   725,
+   887
+  ]
+ },
+ {
+  "key": "library_detects_vehicle_acts",
+  "rule": "Libraries detect faults; the vehicle code decides and takes the action, and checks needing vehicle context live in vehicle code.",
+  "kind": "architecture",
+  "ids": [
+   451,
+   452,
+   468,
+   700,
+   796
+  ]
+ },
+ {
+  "key": "hwdef_hal_changes_test_all_boards",
+  "rule": "Changes to hwdef scripts, DMA or shared HAL code must be checked against all boards (configure_all.py) and test-built.",
+  "kind": "architecture",
+  "ids": [
+   532,
+   677,
+   678,
+   759,
+   761,
+   810,
+   941
+  ]
+ },
+ {
+  "key": "discuss_big_changes_first",
+  "rule": "Risky or controversial changes go through a dev call or discussion before code review.",
+  "kind": "process",
+  "ids": [
+   536,
+   546,
+   657,
+   890
+  ]
+ },
+ {
+  "key": "param_index_placement",
+  "rule": "Never reuse or move an AP_GROUPINFO index; new parameters go at the end and optional ones in optional objects.",
+  "kind": "parameters",
+  "ids": [
+   607,
+   608,
+   767
+  ]
+ },
+ {
+  "key": "control_and_filter_changes_need_evidence",
+  "rule": "Control-law, gain-scaling and filter changes can destabilise tuned aircraft and need frequency/time-domain justification and A/B evidence.",
+  "kind": "architecture",
+  "ids": [
+   616,
+   627,
+   682,
+   705,
+   707,
+   711,
+   739,
+   740,
+   741,
+   744,
+   746,
+   747,
+   748,
+   859,
+   889,
+   921
+  ]
+ },
+ {
+  "key": "core_math_changes",
+  "rule": "Changes to core math helpers need unit tests of boundary values, consistent zero/sign semantics and flight testing.",
+  "kind": "architecture",
+  "ids": [
+   777,
+   778,
+   779,
+   780,
+   781
+  ]
+ },
+ {
+  "key": "new_code_built_in_ci",
+  "rule": "New code must be built by at least one board in CI.",
+  "kind": "testing",
+  "ids": [
+   926,
+   974
+  ]
+ }
+]
