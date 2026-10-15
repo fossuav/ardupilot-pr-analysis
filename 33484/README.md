@@ -1166,3 +1166,37 @@ Pushed 2026-10-14 as `fa48510515..55f1220054`: `f004d070f5` the speed
 form (tilt fixup folded in), `76a86a0e67` its test check, `55f1220054`
 the flicker fix. Description updated.
 
+## 2026-10-15: reset only on a sample the other axis passed
+
+From TD25's dim-light indoor flight (beta topup22): a lockout reset taken
+during a fast pitch reversal adopted 3 m/s that the filter's own flow
+fusion undid within 0.5 s, while Loiter leaned 14-22 deg chasing it. The
+flow trailed the sensor's own gyro by about 40 ms in that light (the
+sensor gyro is within 2-4 ms of the FC IMU), but compensating with a
+delayed gyro in Replay did not remove the reset, so the lag is part of
+that sample's error, not all of it. Replayed on six logs: latching on any
+sub-QMIN sample in the last 0.5 s lost the four good outdoor resets;
+deferring above 1 rad/s needed an arbitrary threshold; resetting from a
+100 ms mean left the reset in place; resetting only on a sample the other
+axis passed removed it and left the outdoor resets identical. That last
+one was taken (`09039b50d6`), with a test leg (`9c00ef9b47`) that holds a
+Y offset across an X lockout: a 2.6 m/s forward-speed jump without the
+change, 0.15 m/s at most with it, and a per-trial check from the logged
+PARM times that the burst started in the 0.2-0.5 s window where only the
+gate makes a difference. The bot's text finding (three places still said
+the latch lasts the flight) was fixed in the same push. Pushed as
+`9c00ef9b47`.
+
+## 2026-10-16: the latch release squashed as flown
+
+TD25's dim-light flight on topup22 ran the latch release: it let go 3.9 s
+and 40.6 s after it was set, and Loiter came back each time. Squashed:
+the release into the base recovery commit, its legs and the flicker fix
+into the base test commit, with the mixed test commit split so the range
+step leg stays on top. Not squashed, because no flight has run them: the
+range step deferral and its speed form (that flight never stepped) and
+the other-axis gate (not yet flown). Head `9c00ef9b47` -> `f5509009fb`,
+10 commits to 8, identical tree; the squashed base commits build and pass
+`EK3_FlowAxisLockoutRecovery` on their own. The beta picks this up at its
+next refresh.
+
