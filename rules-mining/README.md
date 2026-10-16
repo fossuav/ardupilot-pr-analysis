@@ -13,7 +13,7 @@ SmallFastDrone branches go in that repository's
 
 ## Where it stands
 
-Confirmed into the root playbook's Architectural Principles (`aap` 1.7.39):
+Confirmed into the root playbook's Architectural Principles (`aap` 1.7.43):
 
 | rule | from |
 |---|---|
@@ -27,6 +27,11 @@ Confirmed into the root playbook's Architectural Principles (`aap` 1.7.39):
 | ARCH-8 Reuse before you write | mined: reuse_existing_code_dont_duplicate (21 PRs) |
 | ARCH-9 The main loop never waits (merged into "Scheduler Integration") | mined: no_blocking_in_main_thread, scheduler_and_periodic_cpu, shared_state_thread_safety (36 PRs) |
 | ARCH-10 Nothing from outside is trusted | mined: bounds_null_and_input_validation (19 PRs) |
+| ARCH-12 Memory is paid for only where it is used (in "Memory") | mined: memory_allocation_and_init_safety (15 PRs), 2026-10-16 |
+| ARCH-13 A driver change holds for every variant and failure it can meet | mined: sensor_driver_care (11 PRs), 2026-10-16 |
+| ARCH-15 internal_error is for the impossible, not the unexpected | mined: internal_error_usage (6 PRs), 2026-10-16 |
+| ARCH-17 Libraries carry no vehicle-specific code; the vehicle moderates them | #34292's Rover floor, second draft with the user's scope, 2026-10-16 |
+| ARCH-19 New behaviour is opt-in, and lands as the last and smallest commits of a PR | from the user, 2026-10-16 |
 
 Rejected drafts and the reasons are kept in `RULES_PROPOSED.md`: the first
 drafts of ARCH-1 and SFD-1 were too specific (the user: a rule must make
@@ -34,6 +39,13 @@ sense to a maintainer who has never heard of the incident), and ARCH-5's
 first draft carried rmackay9's #32514 trigger unscoped.
 
 ## What is next
+
+0. **Second batch, still open (2026-10-16).** In `aap`'s
+   `RULES_PROPOSED.md`: ARCH-14 (do not add code before it is used, remove
+   what the change orphans), ARCH-16 (home, origin and position differ;
+   one example is rmackay9's objection on #32768) and ARCH-18 (know which
+   threads call a function before giving it state) await the user. ARCH-11
+   (pre-arm checks) is parked: no clear consensus between reviewers yet.
 
 1. **Architecture themes not yet used**, from `data/ranked.txt`. Several
    overlap the playbook already; check each against it first.
