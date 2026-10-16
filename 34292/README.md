@@ -2480,3 +2480,22 @@ tripped SITL's floating point trap (NaN in an ordered compare); it is
 guarded by `flowDataToFuse`. `FlowFocusHoldAfterLanding` passes at
 `c0498ea0d5`. Description updated, reply posted. Ported to the beta as
 topup20.
+
+## 2026-10-16: AP-Review round at c0498ea0d5, the floor out of Rover builds
+
+AP-Review kept the Rover blocker: a flow Rover with a downward range finder
+and FLOW_HGT_OVR 0 fused zero flow driving (0.01 against 0.39 m/s), as
+did a small Rover 0.14 m up with the default ground clearance; and
+FLOW_HGT_OVR set by name on a Copter switched the floor off. It pointed at
+upstream precedent for a vehicle-class test (`assume_zero_sideslip()`,
+and the Rover-only FLOW_HGT_OVR range override). Decided with the user:
+compile-time, not a runtime class test. The whole focus-floor block is
+`#if ... && !APM_BUILD_TYPE(APM_BUILD_Rover)` and the FLOW_HGT_OVR bypass
+is gone (`b43ace7296`), FLOW_HGT_MIN says Rover does not use it
+(`a0e43dce3e`), and OpticalFlowRangefinderOnGround drives three Rovers,
+checking the range sits within 5 cm of the ground clearance throughout
+and allowing 5 s per message after one GPS_RAW_INT timed out (0.40, 0.40,
+0.43 m/s against 0.39; the second fails at 0.01 with the floor built in).
+Known limit, in the commit and description: Replay is its own build, so
+it runs the floor on a Rover log, like the existing Rover-only override.
+Copter focus tests pass unchanged. Pushed as `b582cc7fe7`.
