@@ -83,3 +83,38 @@ Head be2961c02b -> 3d3a382b3f, 12 -> 7 commits on the same base, content identic
 - a7c2c673b6 AP_OSD: map the symbols after SYM_LQ for MSP DisplayPort
 - 3dfe60f0bb AP_OSD: show the status of each EKF lane
 - 3d3a382b3f autotest: check the OSD EKF lane items
+
+## 2026-10-16: Peter's AHRS objection, the flow signal strength
+
+peterbarker on #34630 (2026-10-06, on the `EKF0_EN` parameter text, so
+about this PR's items): "Our abstraction is AHRS. Just looking through
+that abstraction layer into the EKF isn't really appropriate." An
+AHRS-only rework (one item from `get_filter_status_for_configured_backend()`
+and a flow quality item from AP_OpticalFlow, no AHRS or EKF changes,
++264 bytes on MatekF405) was built and tested on local branch
+`osd-postype-ahrs` and set aside: the user wants the per-core data when
+running one source set per core (`EK3_SRC_OPTIONS` bit 3), which the
+active estimate cannot give. Replied on #34630
+(https://github.com/ArduPilot/ardupilot/pull/34630#discussion_r4299809682)
+with that case and the precedent of `set_posvelyaw_source_set()` /
+`get_posvelyaw_source_set()`, which already pass straight to EKF3,
+offering to put the interface in source-set terms. The user's position
+went into aap RULES_PROPOSED as ARCH-3a.
+
+Pushed `3d3a382b3f` -> `023c651ac8` (fast-forward, unflown):
+
+- `1a6a4aa58e` the lane items take the AHRS semaphore (open finding from
+  2026-10-05).
+- `c9fa328041` a flow core shows the flow sensor's signal strength after
+  `SYM_RSSI`, 0-99 from quality 0-255, before the axis arrows, `--`
+  flashing with no flow data. The user chose RSSI style over a battery
+  glyph gauge, ASCII bars or new glyphs: no font (analog, HD WS/WTFOS,
+  and by their codepoint map SneakyFPV's) has graded signal bars, and
+  the 256-glyph map has no room for a series.
+- `023c651ac8` `OSDEKFLanes` checks the gauge, `--` and the shifted
+  arrows. Passes; the log shows `C1 REL\x0120` then the arrows (SITL
+  flow quality 51).
+
+Description rewritten to the flown display plus the gauge, with the
+per-core source set case. Scaling from `EK3_FLOW_QMIN` (QMIN at 50,
+flashing below) needs #33484 and belongs on #34630.
