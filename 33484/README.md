@@ -1200,3 +1200,17 @@ the other-axis gate (not yet flown). Head `9c00ef9b47` -> `f5509009fb`,
 `EK3_FlowAxisLockoutRecovery` on their own. The beta picks this up at its
 next refresh.
 
+
+## 2026-10-16: AP-Review ACCEPT at 9c00ef9b47, and the latch stores ordered
+
+AP-Review accepted the other-axis gate (5 of 5 mutants fail without it,
+8 of 8 passes with it) and corrected its own earlier note: a disarm part
+way through a release run left the run start set, and a PX4Flow sample on
+its bus thread (multi-core Linux only) landing between the latch's two
+stores could release at once. Its suggested fix, clearing the start on
+disarm, was taken, but a framing-free Codex read showed it does not close
+the race: a sample already past its latch test can write the start just
+after the clear. The latch now zeroes the start before it sets the flag,
+and the disarm clear stays. That orders the stores; it does not make the
+fields thread-safe, as nothing else in writeOptFlowMeas is (takeOffDetected
+included), and the commit says so. Pushed as `edb0cc387e`.

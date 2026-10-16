@@ -1061,3 +1061,23 @@ so. Body odometry innovations are already speeds and were left unscaled.
 `EK3_AglKfVerticalMotion` pass at `0d4748cbb4`. Quick review (Codex cold):
 the margin finding above, fixed before the push. Description updated,
 reply posted. Ported to the beta as topup20.
+
+## 2026-10-16: AP-Review round at 0d4748cbb4, the odometry axes
+
+AP-Review's blocker: body odometry axes still counted on the 5-sigma gate
+alone, so low-confidence odometry regained between EK3_RNG_USE_SPD and
+about 1.4 times it took the range finder with the EKF speed near zero. Its
+suggested fix (flow's M_SQRT1_2 bound) was taken and then tightened after
+a Codex read: odometry has three body axes and a tilt can put all three
+errors into the horizontal, so the bound is 1/sqrt(3) of the gap
+(`d9aef83afa`). New EK3_RngHgtSwitchRegainOdometry (`6435f7fb78`):
+VISION_POSITION_DELTA at 2.6 m/s, 5 s outage, ground stepped 3 m as the
+odometry returns, in real time; 1.71 m without the limit, 0.05-0.11 m
+with it. Stepping the ground during the outage instead tested nothing:
+the switch-in resets the terrain offset from the range, so only a step
+while the range finder holds shows. The test checks from the log that it
+reached the case (EKF speed under 1 m/s at the regain, the step within 1 s
+of it and before the EKF speed reached EK3_RNG_USE_SPD, the range finder
+seeing 3 m) and fails as not a test otherwise. The misplaced
+selectHeightForFusion() comment was folded into `b19254da42`. Pushed as
+`6435f7fb78` (forced, for that fold).
