@@ -13,7 +13,7 @@ SmallFastDrone branches go in that repository's
 
 ## Where it stands
 
-Confirmed into the root playbook's Architectural Principles (`aap` 1.7.43):
+Confirmed into the root playbook's Architectural Principles (`aap` 1.7.47):
 
 | rule | from |
 |---|---|
@@ -32,6 +32,9 @@ Confirmed into the root playbook's Architectural Principles (`aap` 1.7.43):
 | ARCH-15 internal_error is for the impossible, not the unexpected | mined: internal_error_usage (6 PRs), 2026-10-16 |
 | ARCH-17 Libraries carry no vehicle-specific code; the vehicle moderates them | #34292's Rover floor, second draft with the user's scope, 2026-10-16 |
 | ARCH-19 New behaviour is opt-in, and lands as the last and smallest commits of a PR | from the user, 2026-10-16 |
+| ARCH-14 Do not add code before it is used, and remove what your change leaves unused | mined: remove_dead_code (11 PRs), 2026-10-16 |
+| ARCH-16 Use the weakest spatial reference the job needs, and name the one you use | mined: home_vs_origin (4 PRs), second draft with the user's Copter/Plane and position/location points, 2026-10-16 |
+| ARCH-18 Data crosses from a driver's thread to the main loop only at the frontend's copy | #33484's race and the user's backend/frontend point, 2026-10-16; led to #34783 |
 
 Rejected drafts and the reasons are kept in `RULES_PROPOSED.md`: the first
 drafts of ARCH-1 and SFD-1 were too specific (the user: a rule must make
@@ -40,12 +43,9 @@ first draft carried rmackay9's #32514 trigger unscoped.
 
 ## What is next
 
-0. **Second batch, still open (2026-10-16).** In `aap`'s
-   `RULES_PROPOSED.md`: ARCH-14 (do not add code before it is used, remove
-   what the change orphans), ARCH-16 (home, origin and position differ;
-   one example is rmackay9's objection on #32768) and ARCH-18 (know which
-   threads call a function before giving it state) await the user. ARCH-11
-   (pre-arm checks) is parked: no clear consensus between reviewers yet.
+0. **Second batch done (2026-10-16).** All confirmed except ARCH-11
+   (pre-arm checks), parked in `aap`'s `RULES_PROPOSED.md`: no clear
+   consensus between reviewers yet.
 
 1. **Architecture themes not yet used**, from `data/ranked.txt`. Several
    overlap the playbook already; check each against it first.
