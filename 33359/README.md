@@ -1081,3 +1081,35 @@ of it and before the EKF speed reached EK3_RNG_USE_SPD, the range finder
 seeing 3 m) and fails as not a test otherwise. The misplaced
 selectHeightForFusion() comment was folded into `b19254da42`. Pushed as
 `6435f7fb78` (forced, for that fold).
+
+## 2026-10-16: AP-Review COMMENT at 6435f7fb78, the sweep and the noise count
+
+The odometry blocker is closed (reviewer runs: 1.56-1.75 m with the limit
+reverted, 0.07-0.08 m with it). Answered the three non-blocking points:
+
+- The `bodyVelFusedAxes` comment now states its 1/sqrt(3) limit, folded
+  into the odometry commit. Pushed `6435f7fb78` -> `61307d3562` (forced,
+  comment only).
+- The SIM_ACC1_BIAS_Z sweep owed since 2026-10-08 (T4), run in SITL with a
+  throwaway harness at the PR head: a step in a 2 m Loiter hover, core 0's
+  height against the simulator, peak over 40 s. 0.1 / 0.5 m/s/s: raw range
+  0.33 / 1.50 m, AGL KF height fused 0.72 / 3.29 m, this PR's switch
+  configuration 0.71 / 3.39 m, baro 0.65 / 3.24 m; after 40 s the AGL KF
+  configurations -0.11 / -0.55 m, raw range -0.05 / -0.24 m, baro -0.16 /
+  -0.79 m. Matches the review's 2026-10-13 A/B; fusing the AGL KF height
+  carries about twice the raw range's accel-bias error, near baro's peak and
+  below baro's residual. #33507's bias state is the answer, hence the merge
+  order.
+- Real noise against the speed limits: Replay of the six TD25 logs on the
+  beta (which carries both limits) with EK3_RNG_USE_HGT forced to 50, and
+  temporary statustext counters in the EKF (log messages written by EKF
+  code do not survive a Replay build's FMT handling). 2.5-9.6% of
+  gate-passing flow samples were over the limit; with the 500 ms hold the
+  switch was identical with and without the limit on dim, grass, t1f1 and
+  t2f3, and switched in 6 vs 4 times on log3 and 9 vs 8 on t4, time on the
+  range finder within 6 s; every switch-in below 1 m/s. Flow only, 0.3-2 m;
+  no VIO or wheel encoder logs.
+
+Reply: https://github.com/ArduPilot/ardupilot/pull/33359#issuecomment-6206020683
+Description updated with the repeat and the Replay count. The beta does
+not carry the comment fix; the next refresh takes it.
