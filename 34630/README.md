@@ -142,3 +142,39 @@ Accepted as open:
 
 No estimator change: the lane status is output-only and the option gates
 a statustext. Nothing to replay; recorded in [REPLAY_LOGS.md](../REPLAY_LOGS.md).
+
+## 2026-10-16: rebuilt on the current bases, the quality floor added
+
+Pushed `749bf16701` -> `b081354744` (forced). The stack is rebuilt on
+#33484 at `edb0cc387e` (the D gate and the latch store ordering) and
+#34543 at `023c651ac8` (squashed, plus the AHRS semaphore and the RSSI
+style flow signal strength): the ten #34543 commits cherry-picked, then
+seven of this PR's eight. Resolutions:
+
+- "AP_NavEKF3: report the status of each lane": #33484's
+  `flowFuseTimeAxis_ms` block kept as #33484 has it, #34543's
+  `flowPassTimeAxis_ms` added beside it.
+- `25a994f29f`: the reset-axis stamp added under #33484's
+  `otherAxisPassed` gate; the lane status reads `flowPassTimeAxis_ms`.
+- `1527cf8116`: #34543's parameter text, with "going out once when a
+  velocity reset recovers it" added.
+- `6eeb42eb08` (the timer rename) skipped: the first resolution already
+  makes that split.
+- `89955625d3`, `749bf16701` not carried: #34543's squash holds them.
+
+Checked against the old head: AP_NavEKF3 differs only by #33484's own
+changes since `669172801f`; AP_AHRS, AP_NavEKF and AP_OSD only by
+master's and the two new #34543 commits.
+
+New here, unflown: `0fea569c8b` (AP_NavEKF) and `935a53cde6`
+(AP_NavEKF3) put `EK3_FLOW_QMIN` in the lane status; `8fafff1900`
+(AP_OSD) shows it as 50 on the signal strength, flashing below it, 0-99
+over 0-255 with no floor; `b081354744` an `OSDEKFLanes` subtest. Why 50:
+on TD25 indoors `OF.Qual` sat at median 58 against QMIN 60, which a
+scale from QMIN to 255 would show as 0-3.
+
+`OSDEKFLanes` passes (QMIN 51 a steady `50`, 102 `25` flashing, 0 back
+to `20`, SITL quality 51); `EK3_FlowAxisLockoutRecovery` passes, all ten
+subtests including the quiet option and "Both axes wrong". Title now
+"AP_NavEKF3: show flow resets and the quality floor on the OSD, make
+reset messages optional"; description updated.
