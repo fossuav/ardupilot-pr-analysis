@@ -1,5 +1,14 @@
 # EKF3: select the lane that runs the source set being asked for
 
+**Correction 2026-10-18:** the PR head is now `44fe0dba8b`, which carries
+the 2026-10-03 redesign (the last section, which still says "local, not
+pushed"; AP-Review reviewed this head on 2026-10-04). A selection under
+`EK3_SRC_OPTIONS` bit 3 latches `sourceSetLane`, which `UpdateFilter()`
+uses as the user primary; `EK3_PRIMARY` is never written. The Summary,
+Conclusion and Key findings below describe the earlier design at
+`0b1f1fb7ff`, which wrote `EK3_PRIMARY` with `set_and_notify()`; read
+them as history.
+
 **Open as [#34456](https://github.com/ArduPilot/ardupilot/pull/34456)**,
 opened 2026-09-21 from `pr-srcset-selects-lane` at `de049bb620`. Head now
 `0b1f1fb7ff` (pushed 2026-09-29, eleven commits, rebased onto master the
@@ -413,7 +422,7 @@ For the test:
 Tools/autotest/autotest.py test.Copter.EK3_SourceSetSelectsLane
 ```
 
-## Redesign for tridge and peterbarker (2026-10-03, local, not pushed)
+## Redesign for tridge and peterbarker (2026-10-03; pushed as `44fe0dba8b`)
 
 tridge (CHANGES_REQUESTED 2026-09-30): why is Lua different from RC; make
 it all EKF internal. peterbarker: set the lane in the loop. User chose the
