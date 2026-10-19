@@ -2499,3 +2499,34 @@ and allowing 5 s per message after one GPS_RAW_INT timed out (0.40, 0.40,
 Known limit, in the commit and description: Replay is its own build, so
 it runs the floor on a Rover log, like the existing Rover-only override.
 Copter focus tests pass unchanged. Pushed as `b582cc7fe7`.
+
+## 2026-10-18: Replay follows the logged vehicle class
+
+AP-Review at `b582cc7fe7` (2026-10-16, COMMENT): Replay is its own build
+and kept the focus floor, so a replayed Rover flow log fused zero flow
+from the first turn (the floor's `GNDCLR + 0.05` term catches a rover at
+its ground clearance whatever `FLOW_HGT_MIN` is; `takeOffDetected`
+latches on the first turn over 0.1 rad/s). Its suggested run-time
+`dal.get_vehicle_class()` test in vehicle builds is the kind ARCH-17
+forbids; the user proposed the class check in Replay only, and ARCH-17
+was refined to allow exactly that (aap 1.7.48).
+
+`3917ef38f2` (pushed, fast-forward): under `APM_BUILD_TYPE(APM_BUILD_Replay)`
+the floor's in-flight branch runs only for a non-GROUND logged class;
+vehicle builds compile it as `true`. Measured on SITL Rover flow logs
+recorded with `LOG_REPLAY` (the test's three legs, a local patch to set
+it, not committed), XKF1 matched by TimeUS:
+
+| leg | before replayed / flown | after worst speed / position diff |
+|---|---|---|
+| FLOW_HGT_OVR 1.5 | 0.04 / 0.33 m/s, 4.59 m | 0.023 m/s, 0.09 m (master's override gap) |
+| no declared height | 0.03 / 0.34 m/s, 4.64 m | 0.000 m/s, 0.00 m |
+| 0.14 m sensors | 0.01 / 0.31 m/s, 4.42 m | 0.000 m/s, 0.00 m |
+
+`check_replay` failed every log before and after: the replay's first EKF
+frame is one frame after the flight's, so its in-order pairing mismatches
+every message. `test.Copter.Replay` passes with the gate. Reply:
+https://github.com/ArduPilot/ardupilot/pull/34292#issuecomment-6257283968;
+description gained the Rover/Replay paragraph. Master's Rover-only
+`FLOW_HGT_OVR` override has the same Replay gap and could take the same
+gate (ROFH carries heightOverride) - a separate PR.
