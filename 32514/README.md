@@ -606,3 +606,33 @@ Derived from the source and the parameter descriptions, not measured.
 Pushed 2026-10-11: `ekf-check-source-reset` `c6ce4344c1` -> `2de6865b39` (force, autosquashed), 5 commits, messages only (every tree unchanged). Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
 
 Reply to the AP-Review round posted 2026-10-11 (issue comment 6110170855), the text drafted above.
+
+## 2026-10-21: the landed hold covers the motor spool down
+
+Head `f272495d31` (`ekf-check-source-reset`), two commits on top of
+`2de6865b39`, pushed 2026-10-21 with the PR description patched to match.
+
+SFD-O4 log47 (refresh28 analysis, `../analysis/logs/sfdo4_refresh28_20261020.md`;
+flown on a build before the SFD beta's topup29): a flow-only copter lost
+relative position as it touched down (243.8 s), land_complete followed
+0.7 s later, and the failsafe fired at 244.7 s, 0.2 s after land
+complete, switching the landed vehicle to ALT_HOLD before the disarm at
+245.9 s. The landed hold of `591e6bfe4b` took ground idle and stopped
+motors, but not the `SPOOLING_DOWN` state that follows land_complete, so
+the count went on there.
+
+- `32b818463e` Copter: `SPOOLING_DOWN` joins `GROUND_IDLE` and
+  `SHUT_DOWN` in the landed hold. Spooling up is still left out, so a
+  takeoff without a position trips as before.
+- `f272495d31` autotest: `EKFSourceSetFailsafe` gains a leg that lands in
+  LOITER with `MOT_SPOOL_TIM_DN` 15, so the motors are still spooling
+  down when the EKF loses its position 7.8 s after GPS is disabled. The
+  leg fails without the `SPOOLING_DOWN` term (the failsafe trips and
+  switches the landed vehicle to ALT_HOLD) and passes with it; all eight
+  legs pass at the head (SITL, 2026-10-21).
+
+Vehicle code, so Replay cannot show it (the DAL re-feeds the recorded
+flags). Carried by the SFD beta from topup29 (2026-10-21); unflown there
+as of 2026-10-23. The SFD-O4 log54 touchdown failsafe of 2026-10-22 is a
+different mechanism (the position went before land complete, through
+the EKF's ground offset); that is #34851.
