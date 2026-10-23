@@ -240,6 +240,13 @@ commits used to make.
 
 ## Status (one line)
 
+2026-10-23: head `be00cf53c3`, 51 commits on master `2f3644c90e`;
+everything but four STM32-changing commits leaves STM32 output unchanged.
+Open: ChibiOS#113 not merged; CHANGES_REQUESTED from tpwrules, Peter and
+tridge with their comments answered; the 2026-10-22/23 changes are unflown.
+
+Earlier:
+
 2026-10-01: 53 commits; the first 45 leave STM32 output unchanged. Open:
 the RPI_UAVFC README image (CI), ChibiOS#113 not merged, tridge's
 CHANGES_REQUESTED. The automated reviews were answered in
@@ -929,6 +936,10 @@ two checks remain, both in `GCS_FTP.cpp`.
 The middle two are genuinely good and load-bearing, so they want spinning out
 rather than deleting.
 
+2026-10-23: the AP_Param row is resolved. Laurel and RPI_UAVFC no longer
+use @READONLY, the commit is out of the PR, and #34443 carries a newer
+version of the fix upstream.
+
 **Unmeasured claim.** The new registry asserts `-O2` is needed on 13 files.
 Thomas's (now resolved) comment argued `-Os` is faster given the flash
 bottleneck, and nothing in the branch puts a number on it. Worth a Laurel A/B
@@ -1023,6 +1034,151 @@ rest is not:
   (issuecomment-5671163072). Andy's hardware test of the change set is
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
+
+## 2026-10-23: rebased onto master, and the review commits squashed
+
+Rebased onto master `3868711713`. Upstream gave 7160-7169 to Viima, so
+the boards moved to 7180 (RPI_UAVFC), 7181 (Pico2) and 7182 (Laurel),
+with the bootloaders rebuilt; the block is reserved separately in
+#34857. `ALLOW_ARM_NO_COMPASS` is gone upstream (ineffective since
+2019; the runtime equivalent is `ARMING_SKIPCHK` 4, the compass bit)
+and was dropped from the Laurel and RPI_UAVFC
+hwdefs. RP2350 has no EXTI, so the new interrupt storm crash trigger is
+left out there.
+
+Then the 34 review commits of 10-22/23 (thread core table, AP_ names,
+docs, cheap fixes, core1 start) were folded into the commits they
+belong to: 91 commits to 54, tree identical to the pre-squash head
+`2b0c874cbf` (backup branch `pre-squash/rp2350-v5-20261023`), pushed as
+`9ee03b3bc7`. 57 (Copter pinned rate thread) folded into 24: with
+`thread_create()` back, its STM32 change vanishes. 40 (SMP API in SITL)
+and 43 (Matt's `OSD.md`) emptied, since their files are gone. 47
+(`AP_Param` @READONLY) moved after 52, so the no-change block is
+unbroken. Stale-comment fixes went to the commit that made the comment
+stale, not the one that wrote the line: the OSD back-frame comment to
+Matt's double-buffer commit, the line-count comment to the scan-out
+commit.
+
+Method: each commit's tree computed directly. A file a recent commit
+touched takes its final content from its placement commit on, with any
+later commit's change reverse-applied in between; a failed
+reverse-apply marks a hunk that belongs later. Two files needed
+hunk-level splits (`AP_OSD_pico.h`, `PIOUART.h` placed whole at 36).
+
+Verified with `--consistent-builds`, 253 builds, no failures:
+
+| | MatekH743 copter | CubeOrange copter |
+|---|---|---|
+| master and new #1-#52 | `78d37bd9006d` | `220b8666965e` |
+| 47 `AP_Param` | unchanged | `f1e161d0e88f` |
+| 53 UART race | `45b3a11b597d` | `46acf6f804fc` |
+| 54 RCOutput | `ac6421f0452b` | `6409f08852db` |
+| 55 INS | `161e0ba321d2` | `a6fa35bbf140` |
+| 56 SPI guard (tip) | `5532a473c873` | `2c91403ed7a3` |
+
+All equal the old series at the same commits. MatekH743 alone misses
+`AP_Param`: only CubeOrange shows it. SITL copter at every commit;
+Pico2, Laurel and RPI_UAVFC copter from their board commits; MatekF405
+bootloader `70b7f05b0e12`, equal to master, at the 8 commits touching
+common or bootloader code. A bootloader built in the same build
+directory as the app fails on missing DroneCAN headers, so use a board
+nothing else builds.
+
+Second squash the same day: the nine review fixes (Peter's five
+comments, the bot's RAMFUNC2/NODMA/heap-report items, the docs) and the
+RP2350 ESC.Err counting were folded the same way, 63 commits to 53,
+pushed as `723e5723e7` (backup `pre-squash2/rp2350-v5-20261023` at
+`17cf914775`). "AP_Scheduler: support the RP2350 task timing" emptied
+and dropped. 102 builds: the folded no-change commits keep master's
+hashes, the five STM32-changing ones keep the table above, and
+RPI_UAVFC, Laurel and Pico2 build at every commit from their board
+commits. Scratch Y is at 4088/4096 after ESC.Err, so the next addition
+there needs something moved out.
+
+### Later on 2026-10-23
+
+Board IDs: #34857 merged as `2f3644c90e`, so the PR was rebased onto it and
+its own AP_Bootloader commit dropped as already applied (head
+`e32d68d42e`).
+
+@READONLY and AP_Param: Laurel's five @READONLY defaults (AHRS_ORIENTATION
+8, FS_THR_VALUE 925, BRD_OPTIONS 5, COMPASS_ENABLE 0, LOG_BACKEND_TYPE 1)
+and RPI_UAVFC's LOG_BACKEND_TYPE 1 were removed. LOG_BACKEND_TYPE 1 is the
+default on a board with microSD and no dataflash, the watchdog bit of
+BRD_OPTIONS is the ChibiOS default, the rest belong to the airframe, and
+COMPASS_ENABLE 0 also blocked the external compass the bot kept flagging.
+With nothing in the port using @READONLY, "AP_Param: enforce @READONLY
+defaults over stale stored values" was dropped from the PR (head
+`0a6d594d80`, 53 commits). #34443 carries the fix upstream in a newer form:
+`read_param_defaults_file()` saves the default over the stored value, with
+an autotest. The dropped copy, kept locally as
+`param-readonly-over-storage`, is the superseded 2026-09-20 version.
+Without it, CubeOrange copter at the tip is `b1a4fb2cb76e` and MatekH743 is
+still `5532a473c873`, and both equal master at the commit before the UART
+race, so four STM32-changing commits remain. The table above was taken with
+AP_Param in the series.
+
+Betaflight headers: osd_tx.pio and uart.pio got the copyright and GPLv3
+notice that dshot.pio has. The authors come from Betaflight's history:
+mjs1441 is Matthew Selby (the same email addresses) and wrote osd_tx.pio
+and uart_tx_program.c. osd_tx.pio is identical to Betaflight's current copy
+apart from 259 lines of trailing whitespace, now stripped.
+`rp2350_pioasm.py --check` with pioasm 2.2.0 passes, so the committed
+.pio.h files match their sources, which the bot had listed as not reviewed.
+
+Bootloaders: the committed RP2350 bootloaders rebuilt from `0a6d594d80`
+differ only in the 16-byte embedded git hash (offsets 801-816).
+
+Third squash: the @READONLY, notes and licence-header commits folded into
+their board, support-file and PIO commits, 54 to 51, identical tree, pushed
+as `be00cf53c3` on base `2f3644c90e`. Only RP2350 text changed, so the
+check was each board at its own commit and all three at the tip, with no
+@READONLY left in any embedded defaults. A first attempt parented the
+rebuilt series on `upstream/master` by name, which had just been fetched
+forward by three IndiH743 commits, so commit 1 would have reverted them;
+the commit-prefix check caught it and the rebuild uses the explicit base.
+
+### Review state at `be00cf53c3`
+
+Answered in the thread on 2026-10-23: Peter's five comments of 2026-10-07,
+and a status comment for AP-Review round 17 (issuecomment-6371628655). The
+chconf.h `defined() &&` construct now has a default (fixed), the compass
+list uses AP_COMPASS_I2C_BACKEND_DEFAULT_ENABLED (fixed) and the fast task
+modulo is gone (fixed).
+
+Rejected, with the reason, so they are not raised again:
+
+- Peter, sysperf.c: `const auto &_load = *load;`. The file is C, so there
+  are no references or auto; it stays a pointer.
+- Peter, Laurel defaults.parm: use enumeration names.
+  `AP_Param::parse_param_line()` reads the value with strtof(), so a name
+  would load as 0.
+- AP-Review, OSD flush() copying into the frame core1 may be reading: kept.
+  The copy writes the frame being shown, and render_block() reads `front`
+  once per 9-line block, so the worst case is half a character row mixing
+  old and new text for one field; write() and clear() only touch the back
+  frame. Derived from the source, not measured.
+
+Unflown: the last flights recorded here are 2026-10-03's (log142, log144).
+Nothing from 2026-10-22/23 is recorded as flown, and at Andy's request it
+was folded into commits that have flown, against the rule in this repo's
+CLAUDE.md: the thread core table, the core1 start under the kernel lock,
+the OS instances and idle stacks in .bss, the per-core load rescale, the
+ESC.Err counting and the Laurel default removals. On 2026-10-23 Andy ran it
+on the bench (boots, not flown) as `rp2350-flight-test` rebased onto
+`17cf914775`.
+
+Open: ChibiOS#113 unmerged, with no review since 2026-09-24, the only
+blocker. CHANGES_REQUESTED still stands from tpwrules (2026-05-10), Peter
+(2026-09-11) and tridge (2026-10-07), with every review comment answered
+except Peter's and tridge's 2026-10-07 threads on the removed Betaflight
+config header (the pinout is now in Laurel/HARDWARE.md). PIOUART
+half-duplex echo suppression needs a SmartAudio test; the ESC.Err counting
+and the buzzer pitch with a NeoPixel on output 5 are unchecked on hardware.
+The nine ways DEVELOPMENT.md says Laurel lags RPI_UAVFC all stand, among
+them the frame, notch and GPS_DRV_OPTIONS in defaults.parm, no
+AP_STORAGE_NO_WRITE_WHILE_ARMED, thread statistics on, HAL_OSD_TYPE_DEFAULT
+1 with no SPI OSD and the 9V rail without a relay.
 
 ## 2026-10-03: logging capacity lost in the 09-23 split, and the 1.4 kHz tone
 
