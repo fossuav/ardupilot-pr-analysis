@@ -1381,3 +1381,23 @@ Pushed 2026-10-11: `pr-optflow-flat-ground` `b0c3cb87ce` -> `7f5f8ffe85` (force,
 Reply to the AP-Review round posted 2026-10-11 (issue comment 6110171140), the text drafted above.
 
 2026-10-12: the raw-sample timing of the 2 s and 500 ms return checks (`784c750af1`'s lines, AP-Review's non-blocking point) is fixed on #34380 (`fix2/pr-avoid-flow-ceiling-backup` `4c3f1a7724`, test `7aa5017103`); #33585 unchanged. See ../34380/README.md, "2026-10-12: AP-Review round at 732913562e, fixes".
+
+## 2026-10-23: #34851 changes what gndOffsetValid means
+
+#34851 (opened 2026-10-22, `da86aaa70f`) keeps `gndOffsetValid` true for
+5 s after the last range finder height fusion that passed its innovation
+check, where master drops it in the cycle the height source leaves the
+range finder. This PR reads the old meaning in two places, derived from
+the source and not measured against #34851:
+
+- the `ResetPositionD()` comment that `gndOffsetValid` "goes false in the
+  very cycle the source changes", which is why the carry gate names
+  `prevHgtSource == RANGEFINDER` separately; with #34851 that term is
+  redundant for 5 s, not wrong;
+- the terrain-anchor fallback on `!gndOffsetValid && terrainAnchorValid`,
+  which would start up to about 4.5 s later after range finder height
+  ends.
+
+Whichever of the two merges second re-checks these. The SFD beta carries
+both since refresh11 topup1 (2026-10-22), with #34851's term also added
+to the flat-ground restore's recompute in `Control.cpp`.
