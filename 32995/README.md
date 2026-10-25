@@ -240,7 +240,8 @@ commits used to make.
 
 ## Status (one line)
 
-2026-10-25: head `90e876b1b1`, 51 commits, AP-Review round 21's fixes
+2026-10-25: local `1b8b7e68cf` (round 24's fixes squashed in, unpushed);
+pushed head `90e876b1b1`, 51 commits, AP-Review round 21's fixes
 squashed in and the SemaphoreRecursion example split out to #34877; STM32
 output unchanged commit for commit. Open as on 2026-10-23, plus the PIOUART
 half-duplex echo.
@@ -1161,6 +1162,22 @@ confirmed. Eleven additive commits on `90e876b1b1`, local tip
 Still open: the PIOUART half-duplex echo. Builds: RPI_UAVFC, Laurel,
 Pico2; MatekH743 `5532a473c873` and CubeOrange `b1a4fb2cb76e`, unchanged.
 Two subjects run over 72 characters (73, 85); they go with the squash.
+
+Squashed the same day at Andy's request (backup
+`pre-squash5/rp2350-v5-20261025` at `e8e24d00e2`), by blame, to local
+`1b8b7e68cf`, 51 commits: the PIO UART timestamp, the RC edge fix and
+the CTRL aliases into the PIO drivers commit (9); LC_ALL and the
+DEVELOPMENT.md notes into the shared support files (11); the generator
+into "waf: build RP2350 boards" (8); the flake8 markers into 7 and 32;
+the storage define into Pico2 (27) and Laurel (28); the README into
+RPI_UAVFC (29); keep_slice into RC input and output (14). Messages of
+8, 9 and 14 updated. The alias helpers moved from rp2350_pio.h, which
+only appears at 34 ("assemble ... from source", whose message promises
+unchanged state machine code), to file-static functions in
+RCOutput_pico.cpp, their only user; that is the only tree difference
+from `e8e24d00e2`. MatekH743 and CubeOrange hash to master's at 7 to 47
+and match the old series at 48 to 51; RPI_UAVFC builds at every commit
+from 29, Pico2 and Laurel where added and at the tip.
 
 ## 2026-10-23: rebased onto master, and the review commits squashed
 
