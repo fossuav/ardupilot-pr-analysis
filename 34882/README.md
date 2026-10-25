@@ -62,8 +62,13 @@ operator's `MSP_OPTIONS` 8 and `VTX_*` settings - which is what pointed at
 the script rather than the arm bit.
 
 On the SFD beta (refresh11 topup2, `a2d130878c` + `59386e92ba`, pushed
-2026-10-25) the same six MSP/OSD tests pass. **Bench test on the O4
-owed**: arm with the applet running and check the goggles leave low power.
+2026-10-25) the same six MSP/OSD tests pass.
+
+**Hardware (tier 1), 2026-10-25:** operator test on SFD-O4 with the beta
+build carrying the fix and the PR OSD applet drawing the OSD: the O4 now
+sees the vehicle arm and leaves low power ("works well"). Not logged; the
+beta's fix is the same code as the PR without its one comment line. PR
+description updated and "Tested on hardware" ticked the same day.
 
 ## Measured and rejected
 
