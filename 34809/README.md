@@ -46,3 +46,15 @@ framed as a fix to #32045.
 Pre-existing, not in this PR: with `OSD_TYPE` 0 and `OSD_TYPE2` set,
 `init()` leaves `_backends[0]` null with `_backend_count` 1 and
 `osd_thread()` dereferences it. A separate fix.
+
+## 2026-10-25: the port servicing never worked from a script
+
+The review note above says a script that never flushes stops the
+DisplayPort heartbeat and port servicing, because `flush()` does both.
+That was only half right on hardware: when a script calls `flush()`, it
+runs on the scripting thread, which cannot read the uart (ChibiOS and
+ESP32 let only the thread that opened it read), so the VTX's requests
+went unanswered even while the script flushed. A DJI O4 on SFD-O4 never
+saw arming with `sfd_pr_osd.lua` running. Fixed separately as #34882,
+which services the link from the OSD thread; see ../34882/README.md. The
+two PRs touch different parts of `AP_OSD.cpp` and apply in either order.
