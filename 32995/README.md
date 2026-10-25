@@ -240,9 +240,9 @@ commits used to make.
 
 ## Status (one line)
 
-2026-10-25: head `26ffacadeb`, ten fix commits for AP-Review round 21 on
-`be00cf53c3`; STM32 output unchanged. Open as on 2026-10-23,
-plus the PIOUART half-duplex echo.
+2026-10-25: head `485f751fe6`, 51 commits, AP-Review round 21's fixes
+squashed in; STM32 output unchanged commit for commit. Open as on
+2026-10-23, plus the PIOUART half-duplex echo.
 
 Earlier:
 
@@ -1093,6 +1093,28 @@ SmartAudio test.
 PR description refreshed with the push: #34438 merged on 2026-09-28,
 #34443 is no longer carried, and Laurel's watchdog is on through the
 ChibiOS BRD_OPTIONS default rather than `@READONLY`.
+
+Fourth squash, the same day, at Andy's request: each fix folded into the
+commit that introduced the lines it changes, by blame, and pushed as
+`485f751fe6` (backup `pre-squash4/rp2350-v5-20261025` at `26ffacadeb`;
+follow-up comment issuecomment-6399250111). The five tool fixes went into
+`c36860fa7e` (heap and RAMFUNC2 reports); frame_held() into `f28b021ebe`
+(PIO drivers) and the count into `d97f16f57a` (RC in and out); the
+generator into `d8e762586b`; the UART flag into `e419c7302c`; the SPI
+prescaler into `f519aca5a9` with its DEVELOPMENT.md note in `41f5adabe0`.
+The OSD comment blamed to the double-buffer commit but went into
+`4cf04d0d1d`, which adds the copy it describes. Three messages changed:
+the generator ("defines HAL_UART_NODMA"), SPI (the larger prescaler) and
+the heap report (hwdef.dat defines).
+
+Checks: the tree is identical to `26ffacadeb`. The generator's hwdef.h is
+identical, old against new, for all 22 HAL_UART_NODMA configs (ZubaxGNSS
+and the ten f103-periph boards, app and bootloader). MatekH743 and
+CubeOrange with `--consistent-builds` hash to master's `78d37bd9006d` and
+`220b8666965e` at commits 6 to 47, and commits 48 to 51 match the old
+series hash for hash, ending at `5532a473c873` and `b1a4fb2cb76e`.
+RPI_UAVFC builds at every commit from 29, Pico2 and Laurel where they are
+added and at the tip.
 
 ## 2026-10-23: rebased onto master, and the review commits squashed
 
