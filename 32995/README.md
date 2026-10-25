@@ -240,8 +240,8 @@ commits used to make.
 
 ## Status (one line)
 
-2026-10-25: ten fix commits for AP-Review round 21 on `be00cf53c3`, local
-tip `26ffacadeb`, unpushed; STM32 output unchanged. Open as on 2026-10-23,
+2026-10-25: head `26ffacadeb`, ten fix commits for AP-Review round 21 on
+`be00cf53c3`; STM32 output unchanged. Open as on 2026-10-23,
 plus the PIOUART half-duplex echo.
 
 Earlier:
@@ -1048,7 +1048,8 @@ REQUEST CHANGES on the ChibiOS#113 pin alone, with two should-fix and nine
 minor items. No human comments since the two Laurel header replies of
 2026-10-23 (discussion_r4363878843 and r4363879192).
 
-Ten additive commits on `be00cf53c3`, local tip `26ffacadeb`:
+Ten additive commits on `be00cf53c3`, pushed as `26ffacadeb`, with a
+status comment for the bot (issuecomment-6398918677):
 
 - `e6c8f1b17e`: the heap report reads padded `STACK= 416/1280` rows.
   Util.cpp pads with thread statistics on, so threads with under 1000
@@ -1089,9 +1090,9 @@ nothing at the end of the stop bit, so clearing it from the interrupt
 needs an `irq` in the program (29 of 32 instructions used) and a
 SmartAudio test.
 
-PR description refresh drafted, to go up with the push: #34438 merged on
-2026-09-28, #34443 is no longer carried, and Laurel's watchdog is on
-through the ChibiOS BRD_OPTIONS default rather than `@READONLY`.
+PR description refreshed with the push: #34438 merged on 2026-09-28,
+#34443 is no longer carried, and Laurel's watchdog is on through the
+ChibiOS BRD_OPTIONS default rather than `@READONLY`.
 
 ## 2026-10-23: rebased onto master, and the review commits squashed
 
