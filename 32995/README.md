@@ -240,8 +240,8 @@ commits used to make.
 
 ## Status (one line)
 
-2026-10-25: local `1b8b7e68cf` (round 24's fixes squashed in, unpushed);
-pushed head `90e876b1b1`, 51 commits, AP-Review round 21's fixes
+2026-10-25: head `1b8b7e68cf`, 51 commits, AP-Review rounds 21 and
+24's fixes
 squashed in and the SemaphoreRecursion example split out to #34877; STM32
 output unchanged commit for commit. Open as on 2026-10-23, plus the PIOUART
 half-duplex echo.
@@ -1178,6 +1178,7 @@ RCOutput_pico.cpp, their only user; that is the only tree difference
 from `e8e24d00e2`. MatekH743 and CubeOrange hash to master's at 7 to 47
 and match the old series at 48 to 51; RPI_UAVFC builds at every commit
 from 29, Pico2 and Laurel where added and at the tip.
+Pushed as `1b8b7e68cf`; status comment issuecomment-6401893031.
 
 ## 2026-10-23: rebased onto master, and the review commits squashed
 
