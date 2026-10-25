@@ -240,6 +240,12 @@ commits used to make.
 
 ## Status (one line)
 
+2026-10-25: ten fix commits for AP-Review round 21 on `be00cf53c3`, local
+tip `26ffacadeb`, unpushed; STM32 output unchanged. Open as on 2026-10-23,
+plus the PIOUART half-duplex echo.
+
+Earlier:
+
 2026-10-23: head `be00cf53c3`, 51 commits on master `2f3644c90e`;
 everything but four STM32-changing commits leaves STM32 output unchanged.
 Open: ChibiOS#113 not merged; CHANGES_REQUESTED from tpwrules, Peter and
@@ -1034,6 +1040,58 @@ rest is not:
   (issuecomment-5671163072). Andy's hardware test of the change set is
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
+
+## 2026-10-25: AP-Review round 21 at `be00cf53c3`
+
+The bot's review of `be00cf53c3` (2026-10-23 21:12, report 21.html) is
+REQUEST CHANGES on the ChibiOS#113 pin alone, with two should-fix and nine
+minor items. No human comments since the two Laurel header replies of
+2026-10-23 (discussion_r4363878843 and r4363879192).
+
+Ten additive commits on `be00cf53c3`, local tip `26ffacadeb`:
+
+- `e6c8f1b17e`: the heap report reads padded `STACK= 416/1280` rows.
+  Util.cpp pads with thread statistics on, so threads with under 1000
+  bytes free dropped out.
+- `4363f13f58`: `--apply` writes the timer, rcout, rcin, io and storage
+  stack sizes as hwdef.dat defines. It used to rewrite Scheduler.h's
+  shared #ifndef fallbacks for every ChibiOS board. Tested on scratch
+  copies.
+- `d4f1de215b`: MAIN_STACK is planned once, from the deeper of the two
+  ISR rows (`__c1_main_stack_size__ = __main_stack_size__`).
+- `d733d26892`: an `--hwdef` outside the checkout no longer raises
+  ValueError.
+- `2bbafa5c8c`: `rp2350_ramfunc2_sizes.py --update` keeps the markers;
+  29/2/2/10 in, 29/2/2/10 out on RPI_UAVFC.
+- `fb4fdd44c5`: ESC.Err counted one missed reply twice. The bot's fix in
+  read_telemetry() overflowed Scratch Y by 8 bytes (4088/4096 used), so
+  bdshot_count_reply(), in main SRAM, skips counting while write_frame()
+  holds a frame back. Scratch Y unchanged. Not checked against a log.
+- `de32d03d38`: found while testing the next one. The 2026-10-23
+  HAL_UART_NODMA generator fix only saw `define HAL_UART_NODMA 1`; boards
+  write it bare, which still failed with "too many initializers". It now
+  tests whether the define is present. ZubaxGNSS's hwdef.h is identical.
+- `8b30393db1`: `_device_initialised` is set after sioStart() in every
+  build, so SBus output's framing change applies under HAL_UART_NODMA.
+- `1d8fa05d9a`: the render_block() comment describes flush()'s copy.
+- `26ffacadeb`: an SPI request SCR cannot reach takes the smallest even
+  SSPCPSR that does, carried in bits 23:16 of the freq flag. 400 kHz runs
+  at 399 kHz (SSPCPSR 4, SCR 140); every request from 440 kHz up keeps its
+  divider. Not checked on hardware.
+
+Builds: RPI_UAVFC (also with a bare HAL_UART_NODMA), Laurel and Pico2.
+MatekH743 `5532a473c873` and CubeOrange `b1a4fb2cb76e` are identical at
+`be00cf53c3` and at the tip with `--consistent-builds`.
+
+Left open: the PIOUART half-duplex echo. The flag clears only from
+available() or flush(); the PIO UART has no thread, and uart_tx raises
+nothing at the end of the stop bit, so clearing it from the interrupt
+needs an `irq` in the program (29 of 32 instructions used) and a
+SmartAudio test.
+
+PR description refresh drafted, to go up with the push: #34438 merged on
+2026-09-28, #34443 is no longer carried, and Laurel's watchdog is on
+through the ChibiOS BRD_OPTIONS default rather than `@READONLY`.
 
 ## 2026-10-23: rebased onto master, and the review commits squashed
 
