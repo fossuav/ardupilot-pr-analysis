@@ -240,9 +240,10 @@ commits used to make.
 
 ## Status (one line)
 
-2026-10-25: head `485f751fe6`, 51 commits, AP-Review round 21's fixes
-squashed in; STM32 output unchanged commit for commit. Open as on
-2026-10-23, plus the PIOUART half-duplex echo.
+2026-10-25: head `90e876b1b1`, 51 commits, AP-Review round 21's fixes
+squashed in and the SemaphoreRecursion example split out to #34877; STM32
+output unchanged commit for commit. Open as on 2026-10-23, plus the PIOUART
+half-duplex echo.
 
 Earlier:
 
@@ -1115,6 +1116,14 @@ CubeOrange with `--consistent-builds` hash to master's `78d37bd9006d` and
 series hash for hash, ending at `5532a473c873` and `b1a4fb2cb76e`.
 RPI_UAVFC builds at every commit from 29, Pico2 and Laurel where they are
 added and at the tip.
+
+Later the same day the SemaphoreRecursion example left the PR for
+[#34877](../34877/), with a SITL fix it found. Commit 2 lost the two
+example files and its paragraph about them; every later commit differs
+from before only by those files, and examples are in no firmware build.
+Pushed as `90e876b1b1` (backup `pre-dropex/rp2350-v5-20261025` at
+`485f751fe6`), and the description's split-out table gained #34877.
+`rp2350-flight-test` still carries the example until its next rebase.
 
 ## 2026-10-23: rebased onto master, and the review commits squashed
 
