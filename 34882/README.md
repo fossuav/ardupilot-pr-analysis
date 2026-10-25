@@ -2,7 +2,8 @@
 
 **Open as [#34882](https://github.com/ArduPilot/ardupilot/pull/34882)**,
 opened 2026-10-25 from `andyp1per/pr-osd-displayport-script-replies` at
-`93244134b6`, two commits on master `e96bd9053e`. Record written
+`93244134b6`, two commits on master `e96bd9053e`; head `2ea4382b32` since
+the same day (a comment reworded, see "AP-Review round 1"). Record written
 2026-10-25.
 
 ## Why
@@ -105,3 +106,24 @@ Tools/autotest/autotest.py test.Copter.ScriptingOSDDisplayPortReplies
 The bug itself needs hardware: an MSP DisplayPort VTX that polls
 MSP_STATUS (a DJI O4), `SERIALn_PROTOCOL` 42, `OSD_TYPE` 5, and any script
 that calls an `osd:` method.
+
+## AP-Review round 1 (2026-10-25, at `93244134b6`)
+
+Verdict COMMENT. Its validation built a SITL model of the ChibiOS uart
+owner rule, and under it `ScriptingOSDDisplayPortReplies` **fails on
+master and passes with the change** - the discrimination this record's
+own runs could not show, since stock SITL has no owner rule (the bot's
+run, not reproduced here).
+
+One low finding, accepted: the scripting bindings take `_sem` per call
+(`take_blocking()`/`give()` around each generated `osd:` binding,
+checked in the generated bindings), so a reply can fall between a
+script's `write` and its `flush`, though never inside one MSP packet.
+The code comment ("out of a script's frame") and the description ("cannot
+land in the middle of a script's frame") read as screen-level
+atomicity. Reworded to "out of a script's OSD call"; folded into the fix
+commit as `0ccf84cd04` (comment only, no behaviour change, unflown),
+test commit unchanged (`2ea4382b32`), force-pushed 2026-10-25, PR body
+patched. No reply posted in the thread; the bot re-reviews the new head.
+The SFD beta's copy (`a2d130878c`) has no comment line there at all; the
+next refresh takes the PR head.
