@@ -1179,6 +1179,16 @@ and match the old series at 48 to 51; RPI_UAVFC builds at every commit
 from 29, Pico2 and Laurel where added and at the tip.
 Pushed as `1b8b7e68cf`; status comment issuecomment-6401893031.
 
+`rp2350-flight-test` followed both pushes: onto `485f751fe6` as
+`1cc7a9a8c3` (backup `pre-rebase3/rp2350-flight-test-20261025`), then
+onto `1b8b7e68cf` as `cfc250c56a` (backup
+`pre-rebase4/rp2350-flight-test-20261025`), which also drops the
+SemaphoreRecursion example. Each time the 20 extras applied cleanly and
+range-diff showed them unchanged, the branch moved by exactly the PR's
+own change, and RPI_UAVFC, Laurel and Pico2 built. Not flown; bench
+checks owed: the buzzer pitch with a NeoPixel strip on output 5, DShot
+start and recovery, the 399 kHz microSD init, and ESC.Err against a log.
+
 ## 2026-10-23: rebased onto master, and the review commits squashed
 
 Rebased onto master `3868711713`. Upstream gave 7160-7169 to Viima, so
