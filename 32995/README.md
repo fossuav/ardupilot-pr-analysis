@@ -240,11 +240,10 @@ commits used to make.
 
 ## Status (one line)
 
-2026-10-25: head `1b8b7e68cf`, 51 commits, AP-Review rounds 21 and
-24's fixes
-squashed in and the SemaphoreRecursion example split out to #34877; STM32
-output unchanged commit for commit. Open as on 2026-10-23, plus the PIOUART
-half-duplex echo.
+2026-10-25: head `1b8b7e68cf`, 51 commits, AP-Review rounds 21 and 24's
+fixes squashed in and the SemaphoreRecursion example split out to #34877;
+STM32 output unchanged commit for commit. Open as on 2026-10-23, plus the
+PIOUART half-duplex echo.
 
 Earlier:
 
