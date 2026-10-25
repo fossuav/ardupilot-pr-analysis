@@ -1125,6 +1125,43 @@ Pushed as `90e876b1b1` (backup `pre-dropex/rp2350-v5-20261025` at
 `485f751fe6`), and the description's split-out table gained #34877.
 `rp2350-flight-test` still carries the example until its next rebase.
 
+### AP-Review round 24 at `90e876b1b1`
+
+REQUEST CHANGES on the ChibiOS#113 pin alone; round 21's fixes all
+confirmed. Eleven additive commits on `90e876b1b1`, local tip
+`e8e24d00e2`, unpushed:
+
+- `66e572d11e`: PIORXDriver inherited the base
+  receive_time_constraint_us(), which returns now, so the FPort (2.5 ms),
+  SRXL2 (2 ms) and GHST (1 ms) late-reply guards never fired. The RX
+  interrupt now stamps arrivals. Scratch X +32 bytes, 304 free.
+- `b89bdf1b31`: the GPIO RC reader (Laurel, Pico2) assumed edges
+  alternate. The RP PAL handler clears a pin's latched events and calls
+  back once, so two edges before service read as one and reverse every
+  later pair. It now reads the level per edge and restarts the pair.
+- `f9a8726b93`: LC_ALL=C in rp2350_ramfunc2_sections.sh. The bot's
+  dropped-duplicate case was not reproduced (en_US.UTF-8 not installed);
+  the sorted order is the link order, so locale moved the layout. Lists
+  unchanged under C.UTF-8.
+- `170a624a93`, `ba939782a4`: AP_STORAGE_NO_WRITE_WHILE_ARMED on Laurel
+  and Pico2 (AP_Stats saves every 30 s), and Laurel's list loses it.
+- `de3815f645`: one rp2350_ramfunc2_gen task per build. Each program had
+  its own, all rewriting the same fragments; `--targets
+  bin/arducopter,bin/arduplane` now runs it once. `./waf copter` builds
+  only arducopter here, so the flight builds were not exposed.
+- `ed2d149501`: AP_FLAKE8_CLEAN on bin2uf2.py and rp2350_ramfunc2_sizes.py.
+- `8c8669b7c1`, `f84957b840`, `e8e24d00e2`: set_group_mode() stopped
+  PWMD1, shared on RPI_UAVFC by output 5 and the buzzer, and restarted it
+  at output 5's 1 MHz against the alarm's 1.5 MHz (4 kHz near 2.67 kHz).
+  An LED group on RP2350 now leaves the slice alone. Not checked on
+  hardware.
+- `63d22c9b04`: start_sm() and restart_sm() set and clear PIO2 CTRL bits
+  through the atomic aliases.
+
+Still open: the PIOUART half-duplex echo. Builds: RPI_UAVFC, Laurel,
+Pico2; MatekH743 `5532a473c873` and CubeOrange `b1a4fb2cb76e`, unchanged.
+Two subjects run over 72 characters (73, 85); they go with the squash.
+
 ## 2026-10-23: rebased onto master, and the review commits squashed
 
 Rebased onto master `3868711713`. Upstream gave 7160-7169 to Viima, so
