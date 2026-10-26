@@ -240,10 +240,10 @@ commits used to make.
 
 ## Status (one line)
 
-2026-10-25: head `1b8b7e68cf`, 51 commits, AP-Review rounds 21 and 24's
+2026-10-26: head `bf14656274`, 51 commits, AP-Review rounds 21, 24 and 25's
 fixes squashed in and the SemaphoreRecursion example split out to #34877;
 STM32 output unchanged commit for commit. Open as on 2026-10-23, plus the
-PIOUART half-duplex echo.
+PIOUART half-duplex echo; the AI-disclosure line is declined.
 
 Earlier:
 
@@ -1188,6 +1188,25 @@ range-diff showed them unchanged, the branch moved by exactly the PR's
 own change, and RPI_UAVFC, Laurel and Pico2 built. Not flown; bench
 checks owed: the buzzer pitch with a NeoPixel strip on output 5, DShot
 start and recovery, the 399 kHz microSD init, and ESC.Err against a log.
+
+### AP-Review round 25 at `1b8b7e68cf`, 2026-10-26
+
+REQUEST CHANGES on the ChibiOS#113 pin alone; round 24's fixes all
+confirmed. CI: `check-merge-commits` failed only on that pin ("exists in
+ArduPilot/ChibiOS but is not yet merged to master"), every other check in
+the job passing; `pre-commit` failed on ruff I001 in bin2uf2.py, fallout
+from dropping `flake8: noqa` in round 24 (pyproject's isort has
+lines-between-types = 1). One blank line fixes it; ruff 0.15.6 and flake8
+pass, and pre-commit excludes hwdef/scripts, so chibios_hwdef.py's
+BLE001 hits (on master too) do not count. Squashed into commit 7
+(`a93818b7d5`, backup `pre-squash6/rp2350-v5-20261026`) and pushed as
+`bf14656274`: commits 7 to 51 differ only by that line, and old and new
+bin2uf2.py write an identical UF2, so nothing was rebuilt.
+
+The bot also asked for the AGENTS.md section 8 line saying the PR was
+AI-assisted. Andy declined for #32995 and #34877: "AI agents have no
+agency, all code is human authored, AI is just a tool." Rejected; expect
+the bot to keep listing it.
 
 ## 2026-10-23: rebased onto master, and the review commits squashed
 
