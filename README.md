@@ -20,6 +20,9 @@ rules maintainers hold from their review comments on these PRs, and records
 which became playbook rules and what is left to do. Its `data/` holds
 public review comments and what was extracted from them, not flight data.
 
+Not a PR either: `issue-<number>/` directories record upstream issues we
+may pick up, listed under "Issues" below.
+
 ## Conventions
 
 - One directory per PR, named by number (e.g. `32768/`).
@@ -91,3 +94,9 @@ public review comments and what was extracted from them, not flight data.
 | [34851](34851/) | EKF3: count range finder height as a ground measurement | Opened 2026-10-22 at `da86aaa70f` after three /pr-review rounds, from SFD-O4 log54's EKF failsafe at touchdown (Replay-validated on the beta); the first version, stamping `gndHgtValidTime_ms`, was reviewed out because it stopped the terrain estimator's re-anchor; two-leg autotest fails on master (position lost 0.45 s after out of range low), on a hold that never ends, and without range finder height in use; unflown |
 | [34882](34882/) | AP_OSD: answer MSP DisplayPort requests from the OSD thread | Opened 2026-10-25 at `93244134b6`, head `2ea4382b32` after AP-Review's comment wording (its SITL owner-rule model fails the test on master): a DJI O4 never saw arming while a script drew the OSD, because a script's `flush()` ran on the scripting thread, which cannot read the uart on ChibiOS or ESP32; the link is now serviced from the OSD thread. SITL cannot show the bug (its uart has no owner rule), so the test guards the servicing path and the script's hold on the OSD; bench-tested on the O4 2026-10-25, the goggles now leave low power on arming |
 | [34877](34877/) | AP_HAL_SITL: fix main-thread BinarySemaphore waits, add a recursive semaphore example | Opened 2026-10-25 at `ede19eaf75`, split out of #32995. The SemaphoreRecursion example failed in SITL on master 14 runs in 40: BinarySemaphore::wait() from the main thread held the mutex signal() needs through its busy-wait and never checked `pending`. Fixed, 60 in 60. 2026-10-25 bot round 1: COMMENT; the example can false-FAIL under load (1/30), wait_blocking() suggested; not yet acted on |
+
+## Issues
+
+| Issue | Topic | State |
+|-------|-------|-------|
+| [34894](issue-34894/) | EKF3/EKF2: a lane whose updates are all refused by `FinishFusion()` keeps reporting healthy (crash report, EKF2 4.4.4) | Not ours; recorded 2026-10-27 in case we pick it up. Gap confirmed on master by reading; direction posted on the issue (stamp pass times only on applied fusions, so the existing timeout and `ResetHeight()` recover the lane); not run, no branch |
