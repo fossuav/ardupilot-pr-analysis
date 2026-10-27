@@ -1068,6 +1068,12 @@ tooling in `Tools/RP2350/`. `1b8b7e68cf` differs from the current head
 `bf14656274` only by round 25's blank line in bin2uf2.py. Its ChibiOS pin is
 `7e50cd016f`, #113 plus #115, the head of andyp1per/ChibiOS
 `rp2350-flight-test` and on no ArduPilot/ChibiOS branch.
+Later on 2026-10-27 it was pushed to a new fork, fossuav/ChibiOS, as branch
+`rp2350-releases` and tag `rp2350-20261027`, so the release clones whatever
+happens to `rp2350-flight-test`; `Tools/RP2350/build_release.sh` now refuses
+to stage a release whose pin is not one of those refs. This does nothing
+for #32995's `check-merge-commits` failure, which wants #113 merged to
+ArduPilot/ChibiOS master.
 
 Three commits on that branch correct the port's docs and are to be folded
 into #32995 at its next update. All three are documentation only, so they
