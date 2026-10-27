@@ -69,3 +69,6 @@ master, cause not confirmed by the bot.
   test_ok = true.
 
 Nothing changed yet. The 60 in 60 here was on an idle machine.
+
+2026-10-27: taken out of #32995's table of split-out PRs at Andy's
+request; it is just an example, and the port does not depend on it.
