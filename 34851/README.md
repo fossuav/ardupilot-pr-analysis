@@ -153,6 +153,14 @@ Rejected, with the reason:
   beta, where range height engages in hover, a Loiter landing does this
   while waiting out `DISARM_DELAY`, after land complete.
 - EKF2 has the same gap, left alone.
+- #34894 (issue, 2026-10-26): `FuseVelPosNED()` stamps its pass times at
+  the innovation gate, before `FinishFusion()` can refuse the update on a
+  negative variance, so a lane whose updates are all refused never times
+  out. `lastRngHgtPassTime_ms` is stamped at the same point and shares
+  that blind spot: a refused range height update would still hold the
+  ground offset valid. If the issue is fixed by stamping only applied
+  fusions, this stamp moves with them. Comment posted on the issue
+  2026-10-27 (derived from the source, not run).
 
 ## Reproduce
 
