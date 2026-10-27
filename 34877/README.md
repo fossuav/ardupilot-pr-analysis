@@ -50,3 +50,22 @@ with a timeout from the main thread: AP_Canard_iface waits from the CAN
 thread, FastRateBuffer and SIM_FlightAxis use wait_blocking(), and lwIP's
 `sys_arch` waits come from its own threads. So the fix should not move
 any autotest; none was run.
+
+## AP-Review round 1 at `ede19eaf75`, 2026-10-25
+
+COMMENT, not REQUEST CHANGES. The bot agrees the SITL fix is right and
+lowers the lost-wakeup rate. CI was red only on "test blimp", green on
+master, cause not confirmed by the bot.
+
+- Should fix, not yet checked here: in SITL examples the clock advances
+  only in the wait loop and never sleeps, so the example's 1 s worker
+  timeout is about 1.4 ms of real time. A slow worker wake-up prints
+  "worker completion: FAIL" and the late signal then satisfies the next
+  attempt. The bot saw 1 in 30 fail under load on a fresh build;
+  worker_done.wait_blocking() passed 30 of 30, at the cost of hanging
+  rather than printing FAIL on a broken HAL.
+- Minor: the class is only allocated with new, so the false and 0
+  initialisers on lines 42, 45 and 46 can go (CLAUDE.md agrees); keep
+  test_ok = true.
+
+Nothing changed yet. The 60 in 60 here was on an idle machine.
