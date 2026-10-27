@@ -240,10 +240,11 @@ commits used to make.
 
 ## Status (one line)
 
-2026-10-26: head `bf14656274`, 51 commits, AP-Review rounds 21, 24 and 25's
-fixes squashed in and the SemaphoreRecursion example split out to #34877;
-STM32 output unchanged commit for commit. Open as on 2026-10-23, plus the
-PIOUART half-duplex echo; the AI-disclosure line is declined.
+2026-10-27: head `bf14656274`, 51 commits, AP-Review rounds 21, 24 and 25's
+fixes squashed in; round 26 asks for nothing beyond the ChibiOS pin. STM32
+output unchanged commit for commit. Open as on 2026-10-23, plus the PIOUART
+half-duplex echo; the AI-disclosure line is declined. Three doc commits on
+fossuav/ardupilot-rp2350 wait to be folded in.
 
 Earlier:
 
@@ -1083,6 +1084,23 @@ may go into flown commits:
 
 The hashes are those at `1b8b7e68cf`; round 25's squash renumbered commits 7
 to 51 on `bf14656274`.
+
+### AP-Review round 26 at `bf14656274`
+
+REQUEST CHANGES on the ChibiOS#113 pin alone (2026-10-27 00:03, report
+26.html). It confirms round 25's ruff fix and a green pre-commit job, and
+asks for no change:
+
+- PIOUART half-duplex echo: still open, as before.
+- The AI-assistance line: declined by Andy on 2026-10-26, listed again.
+- The bootloader's fast erase (support.cpp:231) judges a 64 KB block by
+  its first 4 KB page. The bot calls it the documented trade-off, notes a
+  failed upload recovers on retry, and asks for nothing.
+- quadplane-tests1c also fails on master at the PR's base, so it is not
+  this PR's (the bot's finding, not checked here).
+
+No reply posted. #34877 was taken out of the description's split-out PR
+table the same day at Andy's request: it is just an example.
 
 ## 2026-10-25: AP-Review round 21 at `be00cf53c3`
 
