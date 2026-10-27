@@ -240,11 +240,11 @@ commits used to make.
 
 ## Status (one line)
 
-2026-10-27: head `bf14656274`, 51 commits, AP-Review rounds 21, 24 and 25's
-fixes squashed in; round 26 asks for nothing beyond the ChibiOS pin. STM32
-output unchanged commit for commit. Open as on 2026-10-23, plus the PIOUART
-half-duplex echo; the AI-disclosure line is declined. Three doc commits on
-fossuav/ardupilot-rp2350 wait to be folded in.
+2026-10-27: head `6cffb8ed11`, 51 commits, AP-Review rounds 21, 24 and 25's
+fixes and the three fossuav/ardupilot-rp2350 doc corrections squashed in;
+round 26 asks for nothing beyond the ChibiOS pin. STM32 output unchanged
+commit for commit. Open as on 2026-10-23, plus the PIOUART half-duplex
+echo; the AI-disclosure line is declined.
 
 Earlier:
 
@@ -1107,6 +1107,18 @@ asks for no change:
 
 No reply posted. #34877 was taken out of the description's split-out PR
 table the same day at Andy's request: it is just an example.
+
+The three doc commits from fossuav/ardupilot-rp2350 were then folded in,
+each into the commit blame gives for its lines: the RPI_UAVFC README
+change into "hwdef: add RPI_UAVFC", the Laurel README change into "hwdef:
+add Laurel", and the DEVELOPMENT.md change into "AP_HAL_ChibiOS: add the
+shared RP2350 support files". No message needed editing. The net change
+is exactly the three diffs; every later commit differs only in those
+files, so STM32 output and the RP2350 builds are as measured on
+2026-10-25. markdownlint clean. Pushed as `6cffb8ed11` (backup
+`pre-squash7/rp2350-v5-20261027` at `bf14656274`). The release branch
+still carries its own copies, which drop out when it next rebases onto
+the PR.
 
 ## 2026-10-25: AP-Review round 21 at `be00cf53c3`
 
