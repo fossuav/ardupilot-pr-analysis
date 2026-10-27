@@ -346,6 +346,10 @@ PIO1, which `pio1_claim(PIO1Owner::OSD)` takes on RPI_UAVFC - so a third
 PIO UART costs the analog OSD. SBUS therefore goes to the RADIO pad,
 SERIAL3, with `SERIAL3_OPTIONS` 1.
 
+**2026-10-27:** "Not yet run against a receiver" above is out of date: Buzz
+has since run SBUS with a receiver (reported by Andy; board, receiver and
+log not recorded here). See "2026-10-27" below.
+
 **ChibiOS submodule: the only remaining red check, and it is not fixable
 here.** `check_submodule_references_exist` requires the SHA to be reachable
 from **master** in the canonical repo, accepting only compare status `behind`
@@ -1041,6 +1045,44 @@ rest is not:
   (issuecomment-5671163072). Andy's hardware test of the change set is
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
+
+## 2026-10-27: SBUS run, garbled log names gone, and the release branch
+
+Reported by Andy on 2026-10-27, not measured here:
+
+- Buzz has run SBUS with a receiver. Board, receiver and log are not
+  recorded here.
+- The garbled log file names (`0000012B.IN` for `00000012.BIN`) are no
+  longer seen. The fix was not isolated. The candidates are ChibiOS
+  `773973509` (RP SPI abort and receive-overrun detection, 2026-09-07),
+  although the 2026-09-08 measurements recorded on `rp2350-v6`
+  (`c36765aa97`) found neither path taken in normal running, and
+  ArduPilot/ChibiOS#115 with #34477 (one SPI exchange per block). #32995
+  on its own carries the first and not the second.
+
+fossuav/ardupilot-rp2350 now publishes the port for users. Its default
+branch, `ArduPilot-4.8-rp2350`, is master `2f3644c90e`, then #32995 at
+`1b8b7e68cf`, then the follow-up PRs, with a top-level README and release
+tooling in `Tools/RP2350/`. `1b8b7e68cf` differs from the current head
+`bf14656274` only by round 25's blank line in bin2uf2.py. Its ChibiOS pin is
+`7e50cd016f`, #113 plus #115, the head of andyp1per/ChibiOS
+`rp2350-flight-test` and on no ArduPilot/ChibiOS branch.
+
+Three commits on that branch correct the port's docs and are to be folded
+into #32995 at its next update. All three are documentation only, so they
+may go into flown commits:
+
+- `342690e663` RPI_UAVFC README: enter BOOTSEL by holding BOOT while
+  plugging in USB; SBUS no longer marked untested. Folds into `f412580afd`
+  "hwdef: add RPI_UAVFC".
+- `00f9f2579d` Laurel README: the same BOOT button route. Folds into
+  `3d798ccd6f` "hwdef: add Laurel".
+- `323fb63aee` DEVELOPMENT.md: the BOOT button, and the log names as above.
+  Folds into `813cc4dca1` "AP_HAL_ChibiOS: add the shared RP2350 support
+  files".
+
+The hashes are those at `1b8b7e68cf`; round 25's squash renumbered commits 7
+to 51 on `bf14656274`.
 
 ## 2026-10-25: AP-Review round 21 at `be00cf53c3`
 
