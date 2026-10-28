@@ -240,6 +240,14 @@ commits used to make.
 
 ## Status (one line)
 
+2026-10-28: head `d5cb7ecb59`, 53 commits. Commits 1-49 leave STM32
+output unchanged (MatekH743 at 49 equals master) and 50-53 change it. The
+PIOUART half-duplex echo is fixed on the bench (48), not flown. Pico2 runs
+on real hardware with a clean pre-arm but for RC. Otherwise open as on
+2026-10-27.
+
+Earlier:
+
 2026-10-27: head `6cffb8ed11`, 51 commits, AP-Review rounds 21, 24 and 25's
 fixes and the three fossuav/ardupilot-rp2350 doc corrections squashed in;
 round 26 asks for nothing beyond the ChibiOS pin. STM32 output unchanged
@@ -1046,6 +1054,80 @@ rest is not:
   (issuecomment-5671163072). Andy's hardware test of the change set is
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
+
+## 2026-10-28: Pico2 hardware, the PIO UART fixes moved up
+
+Two commits went on top of `6cffb8ed11` earlier in the day and were pushed
+as `9a9765e128`: `7873a96aa0` ends the half-duplex echo window in the
+interrupt, and `9a9765e128` bounds the five receive FIFO loops at 16
+entries. Their messages carry the bench evidence (SmartAudio v2 on
+RPI_UAVFC SERIAL4, with AP_SmartAudio changed for the test to skip its
+flush and read 150 ms after each request: 276 bytes sent and none received
+in the 35 s after boot, against one request and its 11 byte reply); it was
+not re-measured here. Neither has flown.
+
+Pico2 hardware arrived (a Pico 2 on COM16, a Debugprobe on COM10). On the
+old head the board printed the `Perf:` report every 10 s and failed two
+pre-arm checks besides RC, with a third behind them:
+
+- "Logging failed": with no microSD or dataflash, MAVLink is the only
+  backend compiled in, so it was the default (`LOG_BACKEND_TYPE` read 2)
+  and it reports failed until a GCS streams it.
+- "3D Accel calibration needed": the two simulated IMUs had zero offsets.
+- Behind that, "Accels inconsistent", which the arming code holds for 10 s
+  after boot until the accels have agreed that long. It clears by itself.
+
+Fixed in `hwdef: add Pico2`: `AP_RP2350_DEBUG_REPORT_ENABLED 1` removed (the
+default is 0), `HAL_LOGGING_BACKENDS_DEFAULT 0`, and `defaults.parm` gives
+INS_ACC and INS_ACC2 offsets of 0.001 and scales of 1.001, as SITL's
+`copter.parm` and CubeOrange-SimOnHardWare do. On the board the pre-arm
+then reports only "RC not found". `LOG_BACKEND_TYPE` 2 and a reboot bring
+the MAVLink backend back ("Logging failed" again with no GCS streaming);
+the board was left at 0. A first attempt compiled logging out
+(`HAL_LOGGING_ENABLED 0`, 77.6 KB less flash); Andy preferred keeping
+MAVLink logging available. Laurel's debug report is off too. In
+DEVELOPMENT.md the storage section said only RPI_UAVFC sets
+`AP_STORAGE_NO_WRITE_WHILE_ARMED`, which has been wrong since round 24 set
+it on Laurel and Pico2; it now says all three do.
+
+The Pico2 commit message described an earlier design that its own hwdef no
+longer matched (an RP2350B on a sensor carrier at 250 MHz, SMP off, three
+PIO UARTs, SPI and I2C sensors). It was rewritten for the bare-module
+Simulation-on-Hardware target.
+
+One unexplained boot: with the logging-compiled-out build, the boot after
+two back-to-back uploads raised internal error 0x8000 (`main_loop_stk`,
+semaphore line 0): the main loop went 500 ms without patting the watchdog.
+That latches until a reboot and blocks arming. It did not recur in 9
+further boots of that build, a plain reflash and an old-to-new cross-flash
+among them, nor in 2 boots of the old firmware. Not attributed to the
+change; worth chasing if it comes back.
+
+Squash 8 (backup `pre-squash8/rp2350-v5-20261028` at `260486bb05`):
+
+- The four fixups folded into 11 (DEVELOPMENT.md), 27 (Pico2, with the new
+  message) and 28 (Laurel). Pico2 never flies and Laurel has no flight on
+  the current architecture.
+- 52 and 53 moved unchanged to 48 and 49, ahead of the four STM32-changing
+  commits, rather than folded by blame. Their hunks blame to 9 (the
+  driver), 34 (the PIO program), 44 and 11. Split that way, commits 9 to 33
+  would carry driver code waiting for an `irq` the program does not raise
+  until 34, and the fix is unflown while 9, 34 and 44 have flown.
+
+`git range-diff`: 50 commits identical, 11, 27 and 28 changed, the four
+fixups gone. The tree is identical to `260486bb05`.
+`check_branch_conventions.py` passes. MatekH743 copter with
+`--consistent-builds`, in a scratch worktree whose submodules were cloned
+from the main checkout: `78d37bd9006d` at the base `2f3644c90e` and at the
+new 49, `5532a473c873` at the tip, both as recorded before. RPI_UAVFC and
+Pico2 build at 48 and 49, Pico2 at 27 and Laurel at 28 (and both at the tip
+in the main checkout), with no warnings. Pushed as `d5cb7ecb59`, 53
+commits, matching GitHub's count.
+
+Process: `pre_bash_check.py` matches guarded git commands anywhere in a
+command line, so a grep for the string, or a comment naming the command,
+is blocked as well. Running `check_branch_conventions.py` needs `amend` in
+the grant for that reason.
 
 ## 2026-10-27: SBUS run, garbled log names gone, and the release branch
 
