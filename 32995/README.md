@@ -1186,7 +1186,7 @@ is not flash on RP2350; `AP_FILESYSTEM_SYS_FLASH_BASE` now defaults to
 that and PICO2.py sets `0x10000000`. pymavlink stops at 100,000 bytes,
 the fixed size `@SYS` stat reports, on any board.
 
-The Laurel beep: the Laurel schematic confirms BZ1 on GPIO5 is the
+The Laurel beep: Laurel's hwdef.dat names the GPIO5 buzzer as the
 RDTE-4.000-3030-NS1, which Raltron lists as an externally driven
 magnetic transducer, so `hwdef-bl.dat`'s "self-oscillating" was wrong
 and the beep thread could only click. `HAL_BOOTLOADER_BEEP_GPIO` and the
