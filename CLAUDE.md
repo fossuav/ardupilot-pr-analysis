@@ -205,6 +205,16 @@ Leaving a stale number beside new code is the same error as editing one.
   must never be committed; quote their numbers inline and name the log.
   SITL BINs are identifiable by their hundreds of `SIM_*` parameters and
   the CMAC default home (-35.36, 149.16).
+- Documents shared privately, such as board schematics, stay out of this
+  repo too. Restate what they settled from public sources (the hwdef,
+  datasheets, distributor listings) and leave out reference designators,
+  net names, document numbers and file paths; grep the write-up for them
+  before it is committed. The 2026-10-28 round-29 entry for #32995 carried
+  a designator from one until the next commit.
+- Nothing here can be committed or pushed from a Claude session. The
+  ArduPilot checkout's `pre_bash_check.py` wants a commit prefix starting
+  with a letter, so it rejects `32995:`, and it cannot authorise a push for
+  this repo. Stage the change and leave the commit and push to Andy.
 - Record the branch head commit and the date any set of numbers was taken
   at. A number without its commit cannot be reproduced.
 - A commit that exists on two branches (the `cb5026417f` / `361da5d064`
