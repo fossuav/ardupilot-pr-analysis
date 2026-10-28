@@ -2480,3 +2480,26 @@ reply whether he wants those gone too.
   worktree, or stale DroneCAN headers break it
 - After an SWD flash, power-cycle the board before measuring anything; see
   [bench-2026-10-01.md](bench-2026-10-01.md) section 2
+- Boards on Windows COM ports are driven with Windows `python.exe` from
+  WSL. On 2026-10-28 it had pyserial but no pymavlink; putting WSL's venv
+  (`\\wsl.localhost\Ubuntu\home\andy\venv-ardupilot\lib\python3.12\site-packages`)
+  on `sys.path` works without installing anything, and `uploader.py` and
+  `.apj` files run straight from `\\wsl.localhost` paths. The uploader's
+  raw MAVLink reboot needs no pymavlink, and its progress output is
+  `\r`-separated, so write it to a file. That day: Pico2 on COM16,
+  RPI_UAVFC on COM15, picoprobe on COM10.
+- A board's flash can be read back without SWD through the AP bootloader:
+  READ_MULTI (0x28, up to 252 bytes per request, streaming from offset 0)
+  dumps a 4 MB app area in about 142 s. Take one before overwriting a
+  board's firmware; it restores byte-exact as an `.apj`. A failed
+  `--verify-firmware-is` leaves the board in the bootloader, and GET_SYNC
+  then BOOT (`21 20`, `30 20`) starts the app.
+- The RPI_UAVFC bootloader over SWD (`init; halt`,
+  `program <board>_bl.bin 0x10000000 verify`, `reset run`) erased only
+  `0x10000000`-`0x10004fff` and left core1 running, rate loop up (one run,
+  2026-10-28). For BOOTSEL, copy the UF2 from `C:\temp` with PowerShell
+  `Copy-Item`: a `\\wsl.localhost` path in a bash double-quoted string
+  loses its backslashes.
+- `pre_bash_check.py` matches guarded git commands anywhere in a command
+  line, greps and comments included, and reads a heredoc's first line as
+  the commit message. Write scripts and messages to files first.
