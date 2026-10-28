@@ -237,6 +237,11 @@ commits used to make.
   rebooted and lost its GPS: the PIO UART lock deadlock caught on core0, an
   aborted DMA channel reading `TRANS_COUNT` as 0, and a CPU load A/B
   showing the fixed head costs nothing over the head before 2026-10-01.
+- [bench-2026-10-28.md](bench-2026-10-28.md) - the PIO UART half-duplex
+  echo fix on RPI_UAVFC R4 with a SmartAudio VTX: the late-reader A/B (276
+  bytes out and none back without it, one request and its reply with it),
+  fifteen SmartAudio regression runs across the builds, and the review
+  findings accepted and rejected, the port-lock timeout among them.
 
 ## Status (one line)
 
@@ -1065,6 +1070,12 @@ RPI_UAVFC SERIAL4, with AP_SmartAudio changed for the test to skip its
 flush and read 150 ms after each request: 276 bytes sent and none received
 in the 35 s after boot, against one request and its 11 byte reply); it was
 not re-measured here. Neither has flown.
+
+The bench session that wrote them recorded its measurements, the code
+state behind each, the SmartAudio regression runs before and after, and
+the review findings it accepted and rejected in
+[bench-2026-10-28.md](bench-2026-10-28.md). The VTX's SmartAudio version
+was not decoded there, so "v2" above is unconfirmed.
 
 Pico2 hardware arrived (a Pico 2 on COM16, a Debugprobe on COM10). On the
 old head the board printed the `Perf:` report every 10 s and failed two
