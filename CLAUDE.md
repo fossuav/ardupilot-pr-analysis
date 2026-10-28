@@ -214,7 +214,13 @@ Leaving a stale number beside new code is the same error as editing one.
 - Nothing here can be committed or pushed from a Claude session. The
   ArduPilot checkout's `pre_bash_check.py` wants a commit prefix starting
   with a letter, so it rejects `32995:`, and it cannot authorise a push for
-  this repo. Stage the change and leave the commit and push to Andy.
+  this repo: `grant_push.py` checks the branch against the repo it runs in,
+  while `pre_bash_check.py` resolves the token in the ArduPilot checkout,
+  so no grant satisfies both (found 2026-09-21; the offered fix, not
+  taken, is to tell `grant_push.py` which repo to check and to resolve the
+  git dir from the command's working directory). The `!` prefix counts as
+  a Claude session too. Stage the change and leave the commit and push to
+  Andy.
 - Record the branch head commit and the date any set of numbers was taken
   at. A number without its commit cannot be reproduced.
 - A commit that exists on two branches (the `cb5026417f` / `361da5d064`
