@@ -245,11 +245,12 @@ commits used to make.
 
 ## Status (one line)
 
-2026-10-28: head `d5cb7ecb59`, 53 commits. Commits 1-49 leave STM32
-output unchanged (MatekH743 at 49 equals master) and 50-53 change it. The
-PIOUART half-duplex echo is fixed on the bench (48), not flown. Pico2 runs
-on real hardware with a clean pre-arm but for RC. Otherwise open as on
-2026-10-27.
+2026-10-28: head `e45dae01b1`, 55 commits. Commits 1-51 leave STM32
+output unchanged (MatekH743 at 51 equals master) and 52-55 change it.
+Round 29's GET_CRC should-fix and the Laurel beep are fixed; the
+PIOUART half-duplex echo is fixed on the bench (48), not flown. Pico2
+runs on real hardware with a clean pre-arm but for RC. Otherwise open
+as on 2026-10-27.
 
 Earlier:
 
@@ -1139,6 +1140,70 @@ Process: `pre_bash_check.py` matches guarded git commands anywhere in a
 command line, so a grep for the string, or a comment naming the command,
 is blocked as well. Running `check_branch_conventions.py` needs `amend` in
 the grant for that reason.
+
+### AP-Review round 29 at `9a9765e128`, and squash 9
+
+REQUEST CHANGES on the ChibiOS#113 pin, with one should-fix: GET_CRC in
+a session that uploaded nothing returned the CRC of an all-erased image,
+so `uploader.py --verify-firmware-is` rejected a board running the
+matching firmware. Reproduced on the Pico2: `0xacf138cb`, which is
+exactly the CRC of 4,128,768 bytes of 0xFF. The round also repeated the
+minor Laurel bootloader beep item and the documented fast-erase
+trade-off.
+
+GET_CRC now returns the XIP readback it already computed when
+`prog_crc_len` is 0. On the Pico2 verify-only still failed, stably, at
+`0x9a0ad77f`. A dump of the whole app area through the bootloader's
+READ_MULTI (142 s for 4 MB) matched that CRC exactly and the image byte
+for byte; the only difference was a 256-byte page of 0xEF at the top of
+flash, the RP2350-E10 UF2 workaround block (addressed to `0x10ffff00`,
+wrapping on a 4 MB part). Neither `bin2uf2.py` nor `picotool uf2
+convert` 2.2.0 as waf runs it emits that block, so it came from some
+earlier UF2. The fast erase skipped its block because the first 4 KB
+page read erased. The readback was exact, which weakens the source
+comment's claim that XIP readback after programming is unreliable on
+Laurel; that may have been stale data too (not checked on a Laurel).
+
+The RPI_UAVFC (back on COM15, picoprobe on COM10, running `f88a2e79`,
+a build from outside this checkout) had a different stale area: 8 KB at
+app offsets `0x3cc000`-`0x3cdfff`, mid-block, with that block's first
+and last pages erased. Its whole app area was dumped first as a restore
+copy. So the erase now skips a block only when its first and last pages
+read erased, and CHIP_FULL_ERASE, which the RP2350 bootloader refused,
+erases every block (`uploader.py --force-erase`). Bench on RPI_UAVFC
+with the new bootloader written over SWD:
+
+| step | result |
+|---|---|
+| verify-only, `f88a2e79` | fail, `0xfb428d21` = CRC of the dump |
+| `--force-erase` upload, then verify-only | pass (upload 50 s) |
+| 0xEF page planted at the top, normal upload, verify-only | pass |
+| `@SYS/flash.bin` over MAVLink FTP | bootloader as programmed, then the AP_FlashStorage header at `0x10010000` |
+| `f88a2e79` restored from the dump, verify-only | pass; rate loop at 1611 Hz on core1 |
+
+`@SYS/flash.bin` had read from `0x08000000`, STM32's flash base, which
+is not flash on RP2350; `AP_FILESYSTEM_SYS_FLASH_BASE` now defaults to
+that and PICO2.py sets `0x10000000`. pymavlink stops at 100,000 bytes,
+the fixed size `@SYS` stat reports, on any board.
+
+The Laurel beep: the Laurel schematic confirms BZ1 on GPIO5 is the
+RDTE-4.000-3030-NS1, which Raltron lists as an externally driven
+magnetic transducer, so `hwdef-bl.dat`'s "self-oscillating" was wrong
+and the beep thread could only click. `HAL_BOOTLOADER_BEEP_GPIO` and the
+thread are gone; no other board used them.
+
+Squash 9 (backup `pre-squash9/rp2350-v5-20261028` at `ea2cf47daa`):
+the bootloader changes into 24 with its message rewritten, the
+binaries into 30, Laurel into 28, DEVELOPMENT.md into 11, and two new
+commits for `flash.bin` at 50 and 51, ahead of the four STM32-changing
+commits now at 52-55. Tree identical to `ea2cf47daa`; `range-diff`
+shows 11, 24 and 28 changed, 30 equal as text (binary), 50 and 51 new.
+MatekH743 copter `78d37bd9006d` at 51 and `5532a473c873` at the tip;
+MatekF405 bootloader `70b7f05b0e12` at 24 and at the tip; RPI_UAVFC and
+Pico2 build at 51, Pico2 at 27, Laurel at 28, no warnings;
+`check_branch_conventions.py` passes. Pushed as `e45dae01b1`, 55
+commits. The Pico2 still has the interim bootloader (GET_CRC only) and
+its 0xEF page.
 
 ## 2026-10-27: SBUS run, garbled log names gone, and the release branch
 
