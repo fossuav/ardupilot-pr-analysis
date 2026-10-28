@@ -2469,9 +2469,19 @@ reply whether he wants those gone too.
   2026-10-01. Check the commit count against GitHub before every push
 - Zero-context patches (`git apply --unidiff-zero`) can land a hunk at the
   wrong place and still give the right final tree. Build every commit
-  after a squash, not just the tip
+  after a squash, not just the tip: an STM32 board at every commit, an
+  RP2350 board from its hwdef commit on, and the `--consistent-builds`
+  hash again for every commit that claims no change. When a working-tree
+  diff is split into fixups, check that the staged hunks plus the ones
+  left out on purpose add up to the whole diff before committing; on
+  2026-10-01 a staged 5+/2- where 4+/1- was expected went unread, and
+  commits 13-44 did not compile
 - Grants for this branch need `--remote davidbuzz`; the default is
-  `origin`
+  `origin`, which is andyp1per's fork and not the PR head, so a push there
+  misses the PR without any error. Squashing fixups in wants `--force
+  --allow push,rebase,amend`: `amend` only because the hook refuses to run
+  `check_branch_conventions.py`, whose source contains that command. Check
+  the result with `gh pr view 32995 --json headRepositoryOwner,headRefOid`
 - Commit prefixes come from `Tools/scripts/allowed_subsystems.py`:
   `Tools/scripts/` is `Tools:` and `Tools/ardupilotwaf/` is `waf`, whatever
   the playbook says
@@ -2500,6 +2510,30 @@ reply whether he wants those gone too.
   2026-10-28). For BOOTSEL, copy the UF2 from `C:\temp` with PowerShell
   `Copy-Item`: a `\\wsl.localhost` path in a bash double-quoted string
   loses its backslashes.
+- Earlier Windows bench notes (2026-09-23 to 2026-10-01). Windows
+  `python.exe` is the route to a board on a Windows COM port; check these
+  notes rather than ask. usbipd is no use: the device is not shared and
+  binding needs admin. Files were staged under
+  `C:\support\raspberrypi\rp2350v2\`, where the SD retry test left
+  `bench\` helpers: `info.py` (board id, git, params), `setparam.py`,
+  `dumpparams.py` and `esctelem.py` (EDT temperatures prove DShot commands
+  reach the ESCs). Run `uploader.py` under `timeout 180`; the RP2350
+  bootloader comes up on the same COM port with no replug (3/3,
+  2026-09-23). After a MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN the traceback is
+  the port going away. pymavlink's mavftp writes to a hard-coded `/tmp`,
+  so `C:\tmp` has to exist. An idle Mission Planner did not hold the port
+  (COM40); a connected one does
+- With OpenOCD connected, do not use `uploader.py`: its reboot into the
+  bootloader left core1 locked up (PC `0xeffffffe`) and the board off USB,
+  2/2 on 2026-09-24. Flash over SWD instead, and shut OpenOCD down before
+  a MAVLink reboot. `set USE_SMP 0` lets core1 be poked alone (for
+  example masking its IRQ26 through NVIC_ICER0 `0xE000E180` to force the
+  XIP lockout timeout), but a `reset run` from that config once left core1
+  in the boot ROM and the board never came up; reset with the default SMP
+  config (`init; reset run; shutdown`). Halting core1 stalls core0's
+  MAVLink too, so a halt cannot be used to force a timeout. VTOR
+  (`0xE000ED08`) and the DWT PCSR (`0xE000101C`) read per core without
+  halting
 - `pre_bash_check.py` matches guarded git commands anywhere in a command
   line, greps and comments included, and reads a heredoc's first line as
   the commit message. Write scripts and messages to files first.
