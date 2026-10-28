@@ -1074,8 +1074,8 @@ not re-measured here. Neither has flown.
 The bench session that wrote them recorded its measurements, the code
 state behind each, the SmartAudio regression runs before and after, and
 the review findings it accepted and rejected in
-[bench-2026-10-28.md](bench-2026-10-28.md). The VTX's SmartAudio version
-was not decoded there, so "v2" above is unconfirmed.
+[bench-2026-10-28.md](bench-2026-10-28.md). The VTX is SmartAudio v2, as
+Andy confirmed.
 
 Pico2 hardware arrived (a Pico 2 on COM16, a Debugprobe on COM10). On the
 old head the board printed the `Perf:` report every 10 s and failed two
