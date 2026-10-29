@@ -1091,7 +1091,14 @@ duplex there, so commit 48's echo window is still unflown.
   identical, and `1f8685e9` fixed at once later. Two conclusions made on
   the way, board then firmware, are withdrawn in the note.
 - Upstream: GCS serial passthrough on USB leaves MAVLink unable to read
-  USB until a reboot (the port's owner becomes the timer thread).
+  USB until a reboot (the port's owner becomes the timer thread),
+  reported as ArduPilot/ardupilot#34935.
+- The release branch's two load measurement commits (`1eebac56d2`,
+  `c03191be64`) are not for this PR after all. They fix an upstream bug
+  (every other `threads.txt` read freezes LOAD and PEAK, on STM32 too),
+  which #33366's `ca78096f50` also fixes for one core, and they change
+  STM32 output, so they could not go into commits 1-51. They stay on the
+  release branch until #33366 merges.
 
 Details in [bench-2026-10-29.md](bench-2026-10-29.md).
 
