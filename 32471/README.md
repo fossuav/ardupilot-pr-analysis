@@ -828,6 +828,13 @@ the arm-release table, the platform case with its spread and the one run that
 learned the platform acceleration after arming, the acro-exit numbers, and the
 1/16 variant rejected. No code change.
 
+### Superseded 2026-10-29 for the acro exit
+
+A real acro exit carrying a velocity error had the restore learn it as
+-0.8 m/s/s of bias; see `../32473/` "2026-10-29". #32473 now skips the
+restore for a hold that stayed armed to its end, so S1 here is unchanged
+and an acro exit behaves as V2 in S2. The tables are left as measured.
+
 ## Review round of 2026-09-15 13:52Z: the learner saved one accel's bias under another (2026-09-17)
 
 The round found `getAccelBiasForIMU()` matching a core on `coreImuIndex[i]`,

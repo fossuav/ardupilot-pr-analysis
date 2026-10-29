@@ -363,6 +363,16 @@ inhibit, the in-flight bias step leaves 2.4x less height error at the exit
 case where holding learning costs most. Consistent with bit 3 staying off by
 default.
 
+### Superseded 2026-10-29 for the acro exit
+
+A flight (below, "2026-10-29") left acro carrying a vertical velocity error,
+and the restore learned it as -0.8 m/s/s of bias within a second; altitude
+hold then climbed the vehicle with the stick down. The A/B above injected
+a bias step in acro, the one case where the error at the exit is a bias. The
+restore now runs only for a hold that was disarmed at some point, so S1 above
+is unchanged and S2's V2 row is what an acro exit now does. The numbers above
+are left as measured: they are the cost of the change.
+
 ## Branches and people
 
 - `pr-acro-bias-inhibit` - depends on `pr-vrf-core` (#32471), `39c0642ed7` as
@@ -552,3 +562,103 @@ stated as a known limitation if raised.
 
 Pushed 2026-10-03: 82bd6cd00f -> adba7a0000 (force, restacked on 1f357b2429). a8267e13f1 reworded with the Replay A/B evidence (patch unchanged), 82bd6cd00f patch unchanged; new: flip-from-acro test, Copter comment, autotest comment/indent. AccelBiasLearningInhibitedInAcro, VibrationRectificationBiasLearning, AccelBiasMovingPlatform pass.
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-5973681037
+
+## 2026-10-29: the release restore learned a velocity error as bias
+
+Tier 1 and 1b. A T25 (MicoAir743v2, `REPLAY_INDEX` t25-308a-run,
+2818322/45) on SFD `308a7e73`, `ACC_ZBIAS_LEARN` 10 (bit 3 from the SFD
+defaults, plus bit 1), no GPS, `EK3_OPTIONS` 92 (AGL KF velocity fused as
+velD). Times are `TimeUS` seconds.
+
+- ACRO 92.6-108.3 s with the hold set. The EKF read a steady climb of +1.2 to
+  1.9 m/s while the range finder held about 1.1 m: a velocity offset, not a
+  growing error, left by earlier events in the boot (a switch disarm at 1.4 m
+  that tumbled the vehicle, and a hand release that dropped 1 m and clipped
+  the accelerometers on impact).
+- VALT at 108.3 s. The 1 Hz writer released the inhibit at 109.0 s and the
+  restore raised `XKV2.V15` from 5e-8 to 4e-6. At 110.0 s one AGL KF velD
+  fusion (innovation -1.09 m/s, test ratio 0.92) moved `XKF2.AZ` from 0.10 to
+  -0.70 m/s/s.
+- The EKF then read a 1.4 m/s descent while the range finder showed a climb
+  from 1.2 to 3.5 m with the stick fully down. Back to ACRO at 112.75 s, where
+  the hold froze the bias at -0.82 and the EKF height ran to -37 m.
+
+Replay through the flown build is bit-identical. With only the restore
+removed, the replay matches the flight to 109.2 s and the bias goes 0.17 to
+0.13 over the rest of the log; the fix below ported to the beta gives the
+same, first deviation at 109.2 s. Removing the acro inhibit or the AGL KF
+velD fusion instead also avoids the jump, but those replays depart earlier.
+The flight is not a fault of #34933 (no refused fusion, P valid throughout).
+
+Why the 2026-09-15 A/B did not see it: S2 stepped a bias in acro. The
+2026-09-22 log17 replay above says real acro mis-learns the bias rather than
+the bias really changing, so an inhibited acro exit is more likely to carry a
+velocity error than a bias error. The covariance cannot tell them apart at
+the release: the hold zeroed the bias cross-covariances, so the filter takes
+the velocity as known and credits any innovation to a bias acting since.
+
+SITL (tier 2), `AccelBiasAcroExitVelocityError`: LOITER hover at 40 m, ACRO,
+`EK3_SRC1_VELZ` 0, +1.5 m/s/s on both IMUs for 0.5 s 3 s into acro, 3 s more
+acro, ALT_HOLD:
+
+| build | velD error at the exit | `XKF2.AZ` moved in the next 10 s | runs |
+|---|---|---|---|
+| `399a5f4a27`, restore as pushed | 1.21-1.25 m/s | 0.56-0.62 | 4 |
+| with the fix | 1.21-1.26 m/s | 0.04 | 4 |
+
+In the probe runs the restore's ALT_HOLD lost 7.6 m in about 5 s while the
+EKF error swung from -3.4 to +1.7 m; without it the error decayed smoothly
+and the vehicle descended 5.2 m over 14 s following the corrected estimate.
+
+The fix, local and unpushed on `pr-acro-bias-inhibit`: `0d693fa234` with
+fixup `57efcebaec` (EKF), `f622c86503` with fixup `956fd95d21` (test). The
+restore now needs the hold to have been disarmed on some frame, including
+the frame it ends on (`vehicleInhibitAccelBiasArmedOnly`). The arm release
+of bit 2 and a disarm in acro restore as before; leaving acro, or landing in
+it, keeps the floored variance. On #32471 alone every hold is disarmed, so
+the change does nothing there; that is why it is this PR's commit.
+
+Cost: an acro exit now behaves as V2 in the 2026-09-15 S2 table. With a real
+0.15 m/s/s step in acro, mean height error 10-35 s after the exit 0.36 m
+against 0.08 m; at 0.50, 1.78 against 0.33 m. `AccelBiasLearningInhibitedInAcro`
+learns 0.42-0.43 of its 0.5 step after 20 s (passes at 0.25) where the restore
+overshot to 1.00.
+
+Codex cold read, one task per commit:
+
+| finding | disposition |
+|---|---|
+| an armed hold suppresses the restore for good, so landing in acro carries a collapsed gain into the next take-off | refuted on the premise: the 5e-8 floor is above the converged value before acro (1.7-2.5e-8 in SITL, 6.2e-9 on the flight). A hold ending at a disarm now restores as before (fixup); deferring to the next disarm declined |
+| the test's positive control checked height error, the mechanism needs velocity error | accepted: requires abs(`XKF1.VD` - `SIM2.VD`) at least 0.5 m/s at the exit |
+
+At the fix tip: `AccelBiasAcroExitVelocityError` (twice),
+`AccelBiasLearningInhibitedInAcro`, `AccelBiasMovingPlatform`,
+`VibrationRectificationBiasLearning`, `EK3_AccelBiasInhibitOnGroundMoving`
+and `Replay` pass; `EK3AccelBias` passed on the first version. With the EKF
+commit reverted the final test fails (0.56). Mechanical gate clean.
+
+Open: squash the fixups and correct the commit message numbers (needs a
+rebase/amend grant), the PR description, the SFD beta port, and a replay of
+SFD-O4 log17's acro exit (the fingerprinted copy is not on this machine).
+The SFD defaults keep bit 3 on (`ACC_ZBIAS_LEARN` 8) for every SFD board.
+
+Pushed 2026-10-29: `399a5f4a27` -> `b7c4f1601d` (fast-forward). The fixups
+were squashed and both messages carry the final numbers: `6118e47b19` (EKF),
+`b7c4f1601d` (test); the tree is identical to the tested fixup head
+`956fd95d21`. Quick review recorded at `b7c4f1601d`: mechanical gate clean,
+Codex cold read as above. PR description updated: the acro-exit change in the
+summary, the new test and the flight replay under testing, and the stale
+"no flight evidence" and "restore kept" open items replaced with the cost
+above. No reply posted; `AIReview` is on, so the bot reviews the new head.
+Still owed: the SFD beta port and the log17 replay.
+
+SFD beta, 2026-10-29: carried as refresh11 topup4, pushed to
+`SmallFastDrone-4.7.2-beta` at `6307d4d424` (`7ab6409ca3` EKF,
+`0b0aafdec7` test). On the beta the new test fails without the EKF commit
+(0.59 m/s/s) and passes with it (0.04, twice); the accel bias tests and
+`Replay` pass. The T25 flight replayed through the beta build matches it to
+109.2 s and the bias then holds at 0.13-0.17 m/s/s. SFD-O4 log56's acro exit
+(264.8-304.4 s, into LOITER), replayed through the beta before and after:
+the flow lane's bias went -0.10 to -0.50 m/s/s at 310 s and back by 316 s
+without the change, and moves at most 0.06 with it; the GPS lane is within
+0.05 either way. Still owed: the log17 replay.
