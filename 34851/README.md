@@ -102,6 +102,32 @@ On the SFD beta (refresh11 topup1, `f874a71d55`, pushed in
 with it, and 18 related beta tests pass (Replay on a rerun; the first hung
 in a SITL reboot).
 
+### Flights on the SFD beta, with Replay counterfactuals (tier 1 / 1b) - 2026-10-29
+
+SFD-O4 logs 55-59, outdoor, GPS lane primary at every landing, `DISARM_DELAY`
+0 (switch disarm). logs 55-57 flew refresh11 before the beta port
+(`6d754361`), logs 58-59 with it (`59386e92`). Each replayed through
+`6d7543612b` (without) and `109e527fd3` (with, the EKF of `59386e92`); the
+replay of the build that flew reproduces every flown transition of the flow
+lane's `XKF4.SS` bits 3 and 6. Flow lane (core 1) relative position at
+touchdown:
+
+| landing | without the change | with it | land complete | disarm |
+|---|---|---|---|---|
+| log58 | lost 244.966 (replay) | held (flown) | 245.748 | 246.367 |
+| log59 | lost 192.667 (replay) | held (flown) | 192.968 | 192.968 |
+| log57 flight 1 | lost 366.671 (flown) | lost 370.571 (replay) | 366.922 | 374.672 |
+
+log58 is log54's race on another flight: 0.78 s before land complete
+without the change, nothing with it. log57 flight 1 is the residual this
+record's Open list carries: the hold ends 5 s after the last range height
+fusion and the pilot took 7.75 s after land complete to disarm. The same gap
+also cost the flow lane its position in flight on `6d754361`, for 0.1-0.5 s
+at three take-offs and twice climbing through 0.9 m after a long hover on
+range height; all five are gone with the change. No landing was flown with
+the flow lane primary, so no failsafe was at stake. Analysis:
+`../analysis/logs/sfdo4_logs52-59_20261029.md`.
+
 ## Measured and rejected
 
 | change | argument for | why rejected |
