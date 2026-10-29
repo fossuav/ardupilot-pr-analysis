@@ -241,7 +241,15 @@ commits used to make.
   echo fix on RPI_UAVFC R4 with a SmartAudio VTX: the late-reader A/B (276
   bytes out and none back without it, one request and its reply with it),
   fifteen SmartAudio regression runs across the builds, and the review
-  findings accepted and rejected, the port-lock timeout among them.
+  findings accepted and rejected, the port-lock timeout among them. The
+  board turned out to be a modified R3, not R4 (2026-10-29).
+- [bench-2026-10-29.md](bench-2026-10-29.md) - the current input on
+  modified R3 boards: a TBS ESC's 5.03 mV/A arrives in full and drifts
+  1.35 mV/degC against the old boards' 28.4, while the quad's BLITZ E55
+  gives 2-3 mV/A on a zero that moves as much; the first flights of
+  `e45dae01b1` on the quad; a GPS failure chased as a firmware regression
+  that was the receiver recovering; and the passthrough and
+  `LOG_DISARMED` gotchas found on the way.
 
 ## Status (one line)
 
@@ -1060,6 +1068,32 @@ rest is not:
   (issuecomment-5671163072). Andy's hardware test of the change set is
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
+
+## 2026-10-29: the current input, first flights of `e45dae01b1`, a GPS false alarm
+
+PR head unchanged at `e45dae01b1`. The release branch at `1f8685e9`,
+carrying it, flew twice on Andy's quad (board `99F517D8`, a modified R3):
+rate loop 1600 Hz, worst gap 0.97 ms, no log drops. No port runs half
+duplex there, so commit 48's echo window is still unflown.
+
+- Raspberry Pi: the boards in hand are R3s with the current input's
+  pull-down changed to 10k and the leaky clamp still fitted; R4 is due.
+- A TBS 8S 4-in-1 on the bench gives 5.03 mV/A at the pin (static 5 A
+  load, Betaflight and ArduPilot agreeing), and the zero drifts 1.35
+  mV/degC against the old boards' 28.4. For that ESC: `BATT_AMP_PERVLT`
+  200, `BATT_AMP_OFFSET` about 0.0165.
+- The quad's BLITZ E55 gives about 2-3 mV/A on a 47-67 mV zero drifting
+  about 4 mV/degC, so its analog current is unusable. Hypothesis, not
+  measured: a high source impedance divided by the 10k pull-down, which
+  R4 keeps.
+- GPS never fixed in either flight; not the firmware. An indoor A/B of
+  the receiver's own RF report showed `9347a457` and `1f8685e9`
+  identical, and `1f8685e9` fixed at once later. Two conclusions made on
+  the way, board then firmware, are withdrawn in the note.
+- Upstream: GCS serial passthrough on USB leaves MAVLink unable to read
+  USB until a reboot (the port's owner becomes the timer thread).
+
+Details in [bench-2026-10-29.md](bench-2026-10-29.md).
 
 ## 2026-10-28: Pico2 hardware, the PIO UART fixes moved up
 
