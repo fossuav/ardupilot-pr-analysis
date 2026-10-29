@@ -165,6 +165,32 @@ shrink by half what they otherwise would. Second order, and identical to how
 the existing AID_NONE mask behaves - not the `e004e792ff` wind-truth failure
 mode, since no variance is forced to zero with live cross terms.
 
+### Superseded 2026-10-29: the half correction is not second order
+
+The "One subtlety ... Second order" sentence above was inspection. A T25
+(MicoAir743v2, no compass, MAVLink flow) hand launched in VALT on SFD
+`5b70a271` broke positive definiteness at its first flow fusion: 3 cm above
+the hand, the filter unaided, P[12][12] still at its initial 1.48e-7. That
+fusion took P[4][4] from 0.43 to 0.0075 while P[4][12] went only from
+4.1e-5 to 3.4e-5, so the north velocity to Z gyro bias correlation went
+from 0.16 to 1.03. Replayed through master's EKF at `6743a33579`, P stays
+indefinite from 11.114 s and `FinishFusion()` refuses 669 fusions before
+the vehicle came down, 2460 by the end of the log. On the beta that flew,
+222 of 225 baro height fusions were refused, the height variance went from
+0.36 to 780 m^2 and VALT climbed while the estimate read 1.5 m/s down. With
+the masked rows given KHP's column (the Joseph form for the gain applied,
+`60db78a7a0` on `pr-ekf3-flow-mask-covariance`, since amended to `47d399e569` with the same code) none are refused. In SITL,
+FlowGyroZBiasNoYawReference with an LDL^T pivot probe after every flow
+fusion: negative pivots 32/1839, 373/1818, 173/1860 on core 0 for the three
+cases at `6743a33579`, 0/1819, 8/1836, 2/1838 at `60db78a7a0`.
+
+The text above is left in place because the mechanism it describes is
+right; its size was wrong. The SITL measurement it rested on (relative
+violation ~1e-6, 20/20 stable) was taken where the ground STATIC yaw
+fusion had already shrunk P[12][12], and the first flow fusion followed an
+AID_RELATIVE velocity reset that removed the correlation. The flight had
+neither. Replay record: REPLAY_LOGS.md.
+
 ### Per-source behaviour (all verified)
 
 - NONE - always inhibits. The target case.
@@ -640,6 +666,18 @@ is caught twice; the review's mutation was not caught by the bias limit.)
   Agreed with AP-Review that it belongs to a separate discussion.
 - Wiki: a sentence for the optical flow page is drafted in the round-2
   reply.
+
+### Superseded 2026-10-29: the masked-gain point is a defect
+
+The second "Non-blocking" bullet above deferred the half-corrected
+cross-covariance as existing `kalman_mask` algebra. A hand-launch flight
+showed it disabling baro fusion; see "Superseded 2026-10-29: the half
+correction is not second order" above. Of the states the flow mask leaves
+out, only state 12 under this PR and bits 13-15 under `badIMUdata` keep live
+cross-covariances; the mag, wind, fully inhibited gyro bias and inhibited
+accel bias axes are decorrelated by `zeroStatesVarCov()` every step, which
+the bullet's "every kalman_mask use" overstated. The bullet stays as the
+record of what was agreed at the time.
 
 ### Round 2b, 2026-09-16: FlowGyroZBiasNoYawReference shortened
 
