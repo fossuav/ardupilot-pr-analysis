@@ -263,3 +263,288 @@ explainers, not flown or tested. Throw's source switches call
 EKF core. Recorded with the lane-selection change it belongs to:
 `../34456/README.md`, "Known and deliberately not fixed here".
 
+
+## 2026-10-30: AP-Review blockers fixed, spin tests made to recover (local)
+
+Local, not pushed: eleven commits on `r1030/32475-2` on top of the PR head
+`f7a5aeb84f`, from the AP-Review report of the same day (review 4).
+`r1030/32475` holds a first copy of `97a2b42e8c` whose message misstated
+the fall (4.7 m for about 3 m); the branch was rebuilt by cherry-pick
+rather than amended, and the old one can go.
+
+| commit | change |
+|---|---|
+| `97a2b42e8c` | Uprighting's descent gate ends with the 3 s uprighting timeout |
+| `b9639677a5` | autotest ThrowDropArrestedShort |
+| `e19dbe4b31` | a drop confirmation window that has run 500 ms unconfirmed restarts |
+| `d2b31e2b2e` | the velocity-change confirmation applies in constant position mode |
+| `9fa2492fb8` | autotest ThrowDropHeldSpinNoPosition |
+| `b98c23a758` | requires_position() is true while PosHold runs NE control |
+| `b4a0c300f8` | autotest ThrowDropEKFFailsafePosHold |
+| `70499530b0` | completion settles the source set once, then waits for position_ok() |
+| `c89b276f69` | autotest ThrowSrcSetHandoff |
+| `2e8b37c671` | ThrowSpinDrop and ThrowSpinTumbleDrop end the twist at release, check recovery |
+| `917e24aa96` | the early returns in throw_detected() close the confirmation window |
+
+All four blockers reproduced in SITL at `f7a5aeb84f` (the bot had the
+second and fourth by code and harness only), and every new test fails
+there and passes at the tip:
+
+- DCSND=5, a short toss released 2.8 m up that lands about 3 m below the
+  release point: stuck in Uprighting on the ground until the harness
+  gave up 12 s later; now leaves it 3.0 s after Uprighting starts.
+- GPS-free (XKF4.SS bit 7 set throughout), held at 1g spinning at
+  14 rad/s with a 3 cm IMU offset: detected as a drop 0.8 s into the
+  spin; now not detected over 3 s, and the release detected 0.2 s
+  after.  GPS-free drops in ThrowModeNoGPS and
+  ThrowSrcInitRestoredOnCompletion confirm 0.16-0.18 s after their
+  window opens, against 0.10-0.11 s on the timer alone (THRO is 10 Hz).
+- GPS lost while a drop holds position in throw: report-only "EKF
+  Failsafe"; now "changed to Land Mode".
+- THROW_SRC_INI on a no-aiding set, NEXTMODE LOITER: "requires position"
+  and no retry for THROW_SRC_SET 0 and 1, nothing restored with
+  NEXTMODE 18; now restored or switched at completion and LOITER
+  1.07-1.16 s later, when the EKF failsafe from the throw set clears.
+
+Found on the way, and the reason for `e19dbe4b31`: the confirmation
+window starts at the first low-g sample and never moved, and the
+velocity test is cumulative from it.  A spin above about 9 rad/s opens
+it while the vehicle is still held, so a release after a few seconds'
+hold has to make up the whole held time at half a g.  At the PR head this
+was already live on the aided path: GPS, held 2.6 s spinning, then let
+go - never detected, ground at 17 m/s.  Removing the constant position
+exemption alone would have carried it there too (measured: same result,
+GPS-free).  The restart length copies the upward path's 500 ms window.
+A restart every 100 ms was tried first and misfired on the held vehicle,
+but only after the AHRS had diverged, so SITL cannot choose between the
+two; a window judged every 100 ms gives a jostled, spinning vehicle five
+times the chances, which is a judgement, not a measurement.  The restart
+also cut ThrowSpinDrop's height loss from 24 m to 5 m, since that test's
+twist starts while the shove still holds the vehicle.
+
+The SITL AHRS does not survive a sustained spin with an IMU offset.
+With GPS it left the true attitude 1.6 s into a 24 rad/s hold, 5.1 s
+into 28 rad/s and 3.5 s into 14 rad/s; GPS-free it lasted 6.5 s at
+25 rad/s and stayed true through 5-6 s at 14 rad/s.  The EKF vertical
+velocity follows the attitude.  The held-spin test therefore runs
+GPS-free at 14 rad/s for 3 s and checks the attitude at the end; a
+detector built on the AHRS cannot be judged past that.
+
+The two spin tests ran their twist for 12 s, driving the spin past the
+35 rad/s gyro clip (AHRS 231 and 339 deg off truth) into ground strikes
+at 16 and 18 m/s that they passed through.  With a 1 s twist they lose
+5 m and 17-18 m from 52-56 m and hold height in LOITER.  Teeth kept: with
+no spin term in the body ceiling TumbleDrop fails ("freefall lost") and
+SpinDrop passes on the earth-frame fallback; with that fallback gone
+too, both fail.
+
+Fix 6 is not reproduced: an ATTITUDE_VALID or VERT_POS gap while a
+window is open needs a multi-second height-source loss or all three
+innovation tests failing at once.
+
+All 17 Throw autotests pass at `917e24aa96` (binary
+f782a074235cc04c8e54756d855eaae7); mechanical gate one note (diff size),
+branch conventions clean.  Not done, as asked: the THROW_ALT_DCSND
+meaning, the stale XY latch on rearm, the THPH OSD overwrite, and the
+SIM_IMU_POS reboot comments.  The PR description still does not say
+that THROW_ALT_DCSND is now measured from the release point.  Draft
+description in `description.md` alongside.
+
+## 2026-10-30: follow-up to a cold read of those commits (local)
+
+A cold read of the eleven commits found nothing blocking and six
+should-fix items.  All verified against the code before changing it;
+ten more commits on `r1030/32475-2`:
+
+| commit | change |
+|---|---|
+| `85c188352e` | per-throw state reset when throw is armed again |
+| `2217a01b9d` | autotest ThrowDropTwiceWithoutReentry |
+| `c7a4fab88c` | GPS-free windows with no spin in them keep to the timer |
+| `2b6da5c316` | held-spin test: spin checked at the end of the hold, 0.6 s bound |
+| `7b7f554b30` | PosHold drops to level before a GPS-free next mode; nextmode() helper |
+| `068e06e4fb` | autotest: failsafe into ALT_HOLD reports, staying in throw lands |
+| `dee6af0092` | the handoff's wait for a position is announced and capped at 5 s |
+| `3b5e6d3f4d` | autotest: wait and refusal; SRC_SET 3 instead of 1, anchored match |
+| `1db73d5496` | THROW_UPRIGHT_TIMEOUT_MS shared; THROW_ALT_DCSND documents the cap |
+| `1d74f34a28` | autotest: spin tests assert the spin rate at detection |
+
+- Stale latch: reproduced at `917e24aa96`.  A short toss ending on the
+  ground in throw, disarm, re-arm with no horizontal aiding and
+  NEXTMODE ALT_HOLD: "Internal Errors 0x100000" (flow_of_control,
+  AC_PosControl line 707), no handoff, "PreArm: Internal errors" after.
+  With the reset on Disarmed to Detecting: ALT_HOLD, arming fine.
+- Plain GPS-free windows: instrumented builds show both the timer path
+  and the velocity path confirm ThrowModeNoGPS and
+  ThrowSrcInitRestoredOnCompletion 100 ms after the window opens.  The
+  0.16-0.18 s against 0.10-0.11 s in `d2b31e2b2e`'s message was THRO's
+  10 Hz logging, not a slower confirmation; the change guards against
+  an unaided vertical velocity that SITL does not make drift.
+- Failsafe into a GPS-free mode: with FS_EKF_THRESH dropped during a
+  slow yaw alignment, `b98c23a758`'s design went to LAND; now a
+  report-only failsafe, demanded tilt from position control (up to
+  0.37 deg) to level within 0.6 s, then ALT_HOLD.  nextmode() asks the
+  mode itself whether it needs a position, so LAND no longer counts as
+  one - an upward throw into LAND arms without a position.
+- Handoff wait: completion on the no-aiding set with NEXTMODE LOITER
+  gave no message and no refusal 20 s on; now "Throw: Loiter waiting
+  for position" and "Mode change to Loiter failed: requires position"
+  5.00 s later, staying in throw, which is what a refused handoff has
+  always done.  With a position coming back, LOITER at 1.0-1.2 s.
+- The held-spin release took 0.2-0.4 s over four runs: the release
+  lands anywhere in a 500 ms window, worst case about 0.35 s, so the
+  suggested 0.5 s bound would be flaky and 0.6 s is used.
+- Not done: targeting MIN(release - DCSND, current) after the gate times
+  out is a no-op, since release - DCSND is already below a vehicle that
+  stopped short.  MAX would hold a landed or hand-caught vehicle at its
+  height under hover thrust instead of driving it to minimum throttle;
+  that is Andy's call.  `7b7f554b30`'s subject is 75 characters
+  (pr_review note); left for the squash rather than rebuild the branch.
+
+All 18 Throw autotests pass at `1d74f34a28` (binary
+6bd22c7895683d9ddaef8aae87b1bfe9).  Mechanical gate: the diff-size note
+and the subject-length note above; branch conventions, flake8 and
+astyle on the new lines clean.
+
+## 2026-10-30: round 3, a Codex cold read of round 2 (local)
+
+Two blockers and four should-fix items, all verified against the code
+first; eight more commits on `r1030/32475-2`:
+
+| commit | change |
+|---|---|
+| `d7940a3310` | next-mode position need by mode number; throw refuses after the wait |
+| `f19acb39fc` | autotest ThrowNextModeAutoStaleSubmode |
+| `3204452cdb` | 100 ms settle after completion changes the source set |
+| `5e72c35001` | per-throw setup (THROW_SRC_INI, direction capture) re-run on disarm |
+| `f990fd5d1a` | autotest: re-armed throw back on its THROW_SRC_INI set |
+| `b4e6b04158` | comments and THROW_ALT_DCSND doc match the code |
+| `34163b2205` | autotest: held-spin release timed from the log; failsafe in throw |
+| `f48024f489` | autotest: held-spin detection checked before the held-state checks |
+
+- Stale AUTO submode (blocker): `7b7f554b30` asked the next mode's
+  object, and AUTO last left in NAV_ATTITUDE_TIME says it needs no
+  position until init() resets it - after set_mode() has already asked.
+  An AUTO mission left by LAND in that submode, then a drop into AUTO
+  with no aiding until completion: AUTO took over in the restore's loop,
+  a second before the EKF had a position, at the PR head and at
+  `1d74f34a28`; now throw waits and AUTO takes over 1.1 s later.  The
+  wait's end no longer calls set_mode(), whose check reads the same
+  stale answer; throw says "no position for X, staying in throw".
+- Same-loop source set (blocker): measured, and the settle cannot change
+  the case the finding names.  Aided through the throw, THROW_SRC_SET to
+  an unaided set, NEXTMODE LOITER: LOITER at +0.00 s before, +0.10 s
+  with the settle, and in both the EKF reports a dead-reckoned position
+  until 6.8-7.0 s after the switch, then the EKF failsafe lands it.
+  Only checking the completion set's configured sources would stop that,
+  which means vehicle code reading EKF source configuration (ARCH-3).
+- Re-arm setup: the disarm now runs entry's setup, so the second throw
+  is back on THROW_SRC_INI (A/B: set 2 not reapplied before) and its
+  completion restores again, covering completion_started.  The entry
+  velocity, yaw and direction integrator are re-captured with it but no
+  test reaches them, and the drop_confirm_start_ms reset is not covered.
+- The held-spin test had measured the parameter round trips, not the
+  detector: from the test side the delay read 1.00 s once the time was
+  taken before the release, and the earlier 0.2-0.4 s readings were
+  taken after detection had already happened.  From the log, SIM_SHOVE_Z
+  to 0 against THRO leaving Detecting: 0.2-0.4 s over four runs.
+- At the PR head every new or changed test fails; the failsafe test's
+  ALT_HOLD case passes there, as the PR head only ever reported for
+  drops.
+
+All 19 Throw autotests pass at `34163b2205` (binary
+2aa5d219b82ff0120eb95e20187fb7f1); `f48024f489` only reorders one test,
+which passes.  Gate: diff size, and subjects over 72 characters on
+`7b7f554b30` (75) and `f19acb39fc` (73), left for the squash; branch
+conventions, flake8 and astyle on the new lines clean.  The reviewer's
+body-ceiling point on `1d74f34a28` is kept as a note, as asked.
+
+## 2026-10-30: round 4, last small round (local)
+
+The round-3 cold reads called the same-loop source set check blocking
+again; that is the aided-to-unaided case already measured, left as
+Andy's decision and not changed further.  Three should-fix items, three
+commits on `r1030/32475-2`:
+
+- `f9ab87b101`: throw_setup()'s early return while the THROW_SRC_INI set
+  is still in use also skipped the direction integrator and recovery
+  target reset, which do not depend on the set.  A throw detected with
+  THROW_YAW_TYPE 3 and disarmed in the air, then re-armed: the new
+  Detecting stage logged the aborted target (YSrc 4, TYaw 90) at
+  `f48024f489`, none with the fix.  Test leg in
+  ThrowDropTwiceWithoutReentry (`15001ff83f`).
+- `20f3216987`: ThrowNextModeAutoStaleSubmode collects only from the
+  drop's detection, checks throw still holds when the wait is announced,
+  and checks from the log that AUTO came only after the EKF failsafe
+  cleared (0.89 s after the wait began).  ThrowDropHeldSpinNoPosition
+  checks for a false detection again after its attitude checks.  Both
+  fail before their fixes at the intended check.
+
+All 19 Throw autotests pass at `20f3216987` (binary
+9e1f5623d089300901ea6463d1b53b04).  Gate unchanged: the diff-size note
+and the two long subjects; branch conventions, flake8 and astyle clean.
+
+Pushed to andyp1per f7a5aeb84f -> 60cee67154 (a fast-forward from
+r1030/32475-4, rebuilt by cherry-pick with three messages reworded, one
+test commit split and four commits added; r1030/32475-2 at 20f3216987 is
+kept). Open for Andy: the hand-off to a next
+mode that needs a position after THROW_SRC_SET switches to an unaided set.
+EKF3 keeps reporting a dead-reckoned position for about 7 s after the
+switch, so the 100 ms settle (3204452cdb) cannot hold the hand-off. LOITER
+takes over and the EKF failsafe then lands it. Closing it means throw
+reading the completion set's source configuration (ARCH-3).
+
+## 2026-10-30: round 5, final state on `r1030/32475-3` (local)
+
+None of `r1030/32475-2` was pushed, so the final state is a fresh branch,
+`r1030/32475-3`, cherry-picked from `f7a5aeb84f`; `-2` is kept as it was.
+The 31 commits up to the aborted-throw test carry over with identical
+trees; three messages changed: the two long subjects (now 66 and 70
+characters) and `f9ab87b101`'s, which now says only the integrator half
+of that reset can change a flight, that no SITL test reaches it (the
+first held-still sample re-anchors it), and that entry velocity and yaw
+survive an aborted throw by design.  `20f3216987` is split into its two
+test fixes, ending on the same tree.
+
+On top, from a Claude cold read (Codex out of quota):
+
+- `f65c724730`: the "freefall lost, resetting" path now resets the
+  direction integrator too.  Not reproducible: a vehicle caught during
+  spool-up is held still and re-anchors at once either way.
+- `041de0484b`: the stale-AUTO test's assert_mode('THROW') was
+  tautological and raced the 1 Hz heartbeat (AUTO 0.9-1.0 s after the
+  message); gone, and the log check requires MODE.Rsn THROW_COMPLETE.
+- `c2e8e0e66a`: the held-spin log loop fails on any THRO stage past
+  Detecting before SIM_SHOVE_Z reaches 0, covering the whole hold; with
+  the earlier checks taken out it alone catches the PR head's false
+  detection.  The redundant statustext recheck is gone.
+- `3904522d78`: the aborted-throw leg claims only what it can see (the
+  logged target), checks no source set message came between abort and
+  re-arm (so setup's early return ran), and waits for arming checks
+  after the impact.  Still fails before the reset, passes after.
+
+The same-loop source set point raised again by two reads is the
+aided-to-unaided case already measured; left as Andy's decision.
+
+All 19 Throw autotests pass at `3904522d78` (binary
+5decdef9ecf455e6bdc14813fe8f27d0).  Gate: the diff-size note only;
+branch conventions, flake8 and astyle clean.
+
+## 2026-10-30: round 6, two small fixes after the last cold read
+
+A cold read of the round-5 commits found f65c724730's spool-up reset left
+the logged yaw target (THRO TYaw/YSrc), which throw_setup() cleared, and
+the aborted-throw leg could pass if the aborted throw never set a target.
+`cda0e8e8a2` clears the target in throw_dir_reset() so both callers reset
+the same state (both run before the next detection recomputes it, so only
+the log changes), and `4386dcd0e7` makes the leg require the aborted throw
+to have logged YSrc 4 / TYaw 90 first. All 19 Throw tests pass at
+`4386dcd0e7`. The reviewer's process points (fold c6e6484b22+041de0484b,
+978b3999af+c2e8e0e66a, 1911cf40be+3904522d78 at the squash) stand.
+
+A last cold read found the new comment's reason wrong for three of the
+four yaw sources (only ImuDirection derives from the integrator; the
+target belongs to the abandoned detection) and that no test reaches the
+spool-up abort path, only the disarm path. Comment and message corrected
+in place on `r1030/32475-4` (`9de2b82fbe`, `60cee67154`); the abort path
+stays log-only and untested, as the commit now says.

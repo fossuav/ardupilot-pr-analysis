@@ -471,3 +471,142 @@ before the detector releases goes into the baro offset and the fallback to
 baro keeps it. Leg 3 measures the climb after the release and cannot see it.
 Every offset variant above leaves it (A -1.19 to -1.28, B/C -1.41 to -1.53).
 Added to the PR's known issues; not fixed.
+
+## 2026-10-30: two-sensor substitution fixed, XKF5 core filter, re-measured known issues
+
+The AP-Review round at `5e0c45cf62` raised one new should-fix, kept the
+XKF5 core filter open, and asked for the description to catch up. Three
+commits on top of `5e0c45cf62`, none folded into an existing one:
+
+    b14b1ab127  AP_NavEKF3: substitute the on-ground range only when no sensor is good
+    2d4dc2e3e5  autotest: cover a second range finder still out of range low
+    158e8386a3  autotest: read the terrain offset from whichever core is primary
+
+### Two downward range finders - verified, fixed
+
+The finding holds. Both sensors push into the one `storedRange`, and
+`ekf_ring_buffer::recall()` keeps the newest sample due, so with sensor 0
+Good and sensor 1 OutOfRangeLow the substitute pushed after the real
+reading won. XKF5.rng shows it directly at head: it alternates between
+the real range and 0.40 m (the substitute) through the first 2 m of a
+climb, while RFND[0] reads the real height. `rangeDataNew` also ends on
+the substitute, so the latch's range term cannot fire and only the 1.5 m
+height term releases it.
+
+This is the first half of "Open defects" item 1 above. The fix answers
+that half without per-instance clearance: `b14b1ab127` pre-scans the two
+downward backends and substitutes only when none is Good. It reads only
+RRNI status and orientation, which the DAL already logs. The other half
+stands: when both are short, `find_instance()` falls back to the first
+downward backend, so both buffers get sensor 0's GNDCLR.
+
+SITL, range finder height, RNGFND1_MIN 0, RNGFND2_MIN 5, GNDCLR 0.4 on
+both, ALT_HOLD at throttle 1800 (head binary md5 507ed953..., fix
+989e7f5d...):
+
+| | latch set at (true) | worst EKF-truth | at 3 m of climb (true/est) |
+|---|---|---|---|
+| head, 2 runs | 2.75 m, 2.75 m | -1.00, -1.07 m | 3.5/2.4, 3.7/2.5 m |
+| fix, 2 runs | 0.65 m, 0.52 m | -0.55, -0.55 m | 3.5/3.1, 3.3/2.9 m |
+
+The bot's 2.5 m lag was not reproduced: its exact harness is not known,
+and this one peaks at about 1.1 m. About 0.4 m of every error figure here
+is the test's GNDCLR (see the leg 2 note below). The new leg sits before
+the indoor leg, measures `assert_ekf_height_tracks_climb(3)` (bound 0.75
+m) and fails on head both times, passes on the fix both times. A 4 m climb
+was tried first and did not separate: head read 0.9 and 1.1 m of error
+against a 1.0 m bound. `EK3_SRC1_VELZ` 0 made no material difference
+(head worst -1.16 m), so the leg keeps the GPS vertical velocity.
+
+### XKF5 core filter - verified, fixed
+
+`Log_Write_XKF5()` returns for any core but the primary, and C is
+`DAL_CORE(core_index)`, so `if m.C != 0: continue` dropped every record
+after a lane switch. In a normal run every XKF5 record is C 0 (counts
+equal XKF4's C 0 count in all eight logs). With a throwaway
+`EK3_PRIMARY 1` in the terrain leg the old helper failed "No XKF5
+messages in the log"; without the filter it read the C 1 records and
+passed. The throwaway was not committed.
+
+### Replay
+
+The fix reads only DAL-logged state, so a fixed-firmware log replays
+exactly. Each leg of the test was recorded with LOG_REPLAY 1 (throwaway)
+on both builds and replayed with both Replay builds:
+
+- one downward sensor (legs 1-4 and indoor): 0 mismatched fields with
+  either Replay, both ways (about 13k EKF3 records per leg);
+- two-sensor leg recorded on head: head Replay exact, fix Replay differs
+  (XKF1.PD by up to 0.76 m);
+- two-sensor leg recorded on the fix: fix Replay exact, head Replay
+  differs (XKF1.PD by up to 0.91 m).
+
+So Replay output changes only for a pre-fix log with two downward range
+finders, one Good and one short, before the latch set.
+
+For rmackay9's question, measured locally rather than taken from the bot:
+the six `Copter.Replay` flights flown on a merge-base build (`e204ca77a8`
+EKF libraries, md5 9c5e4e73...) and replayed with the fix Replay. No
+difference in any XKF0-3, XKFA, XKFD, XKFS, XKQ, XKV1/2 or XKY0/1 field.
+XKF4.SS differs in all six (bit 10; 2 records only in the flow flight,
+which already set it from flow). The GPS flight (POSZ baro, analog range
+finder MIN 0.2 reading OutOfRangeLow on the ground) also differs in XKF5:
+TOfs and HAGL by up to 0.09 m, rng 0.17 m, RI 0.09 m, Herr 0.41 m, and SS
+bit 6. The bot reported 0.07 m for the same flight. The merge-base Replay
+reproduces all six exactly. `test.Copter.Replay` passes at `158e8386a3`.
+
+No real-log replay of this PR exists in this archive (REPLAY_LOGS.md
+lists it as autotest-found), so the description quotes only these SITL
+flights.
+
+### Known issues re-measured with #34432 merged
+
+`bb615f0f93` and `66c8985079` (#34432) are ancestors of the merge-base.
+
+- EK3_RNG_USE_HGT with an out-of-range-low sensor (RNGFND1_MIN 0.05,
+  SIM_BARO_GEFF_M 3, ALT_HOLD takeoff): -0.16 m worst to 5 m, +0.03 m
+  mean above, identical to `BaroGroundEffectRangefinderSwitch`. The 2.5 m
+  in the description was pre-#34432 and is now historical.
+- Pinned climb (POSZ range finder, MIN 50, throttle 1800 to 10 m, 10 s
+  hover): -1.71, -1.61, -1.55 m mean above 5 m at the fix; merge-base
+  +0.07 m. Larger than the 1.39-1.48 m (variant A predicted 1.19-1.28 m)
+  of 2026-09-18, but that harness was not kept, so this is not evidence
+  of a trend. GNDCLR is the default 0.1 against SITL's 0 m reading.
+- Baro drift on a stationary baro-height vehicle (POSZ baro, MIN 1.0,
+  0.3 m/s drift for 20 s armed): latch released 11.0, 10.4, 10.4 s after
+  arming with SIM.Alt unchanged; HAGL 0.4 -> 1.3 at release -> 4.6-4.7 m.
+  Merge-base: no latch, HAGL 0.4 -> 5.2 m. So the PR ends its hold early
+  there rather than doing worse than master. Matches the bot (10.29 s,
+  1.13 -> 6.09 m). Listed in the description; no test leg added.
+
+### Leg 2's half-metre is an offset, not a lag
+
+The 2026-09-11 soak called leg 2's -0.4 to -0.5 m a systematic lag. It is
+mostly the test's ground clearance: RNGFND1_GNDCLR is 0.4 m and SITL's
+range finder reads 0.00 m on the ground, so the on-ground reading is
+clamped to 0.4 m and the estimate sits about 0.4 m low once the sensor is
+in range. In a leg 2 log the error is -0.35 to -0.47 m through the climb,
+hover and descent and still -0.40 m sitting on the ground after landing.
+The description is corrected; the test is unchanged.
+
+### Bit 10 reaches MAVLink gimbals as GPS_GLITCH
+
+`send_autopilot_state_for_gimbal_device()` forwards the low 16 filter
+status bits raw into `estimator_status`, typed `ESTIMATOR_STATUS_FLAGS`,
+where 1024 is `ESTIMATOR_GPS_GLITCH` (and 2048, bit 11 takeoff expected,
+is `ESTIMATOR_ACCEL_ERROR`). With this PR every EKF3 vehicle sets bit 10
+from its first movement to disarm. No in-tree consumer reads it (the SITL
+gimbal checks ATTITUDE and the position flags only). The mapping is
+GCS_Common's, pre-existing for bit 11; recorded in the description, not
+changed here.
+
+### Gate
+
+`pr_review.py checks 32232`: one note, the 92-character subject of
+rishabsingh3003's `ca7a80adc7`, predating this round.
+`check_branch_conventions.py --base-branch e204ca77a8`: all passed.
+Built copter, plane, sub, `replay` (sitl --debug --disable-scripting) and
+`tool/AP_DAL_Standalone` (--no-gcs) at `158e8386a3`.
+
+Pushed to rishabsingh3003 5e0c45cf62 -> 158e8386a3 (fast-forward from
+r1030/32232).

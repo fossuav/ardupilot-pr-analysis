@@ -118,3 +118,64 @@ Pushed `3d3a382b3f` -> `023c651ac8` (fast-forward, unflown):
 Description rewritten to the flown display plus the gauge, with the
 per-core source set case. Scaling from `EK3_FLOW_QMIN` (QMIN at 50,
 flashing below) needs #33484 and belongs on #34630.
+
+## 2026-10-30: the lanes no longer blank on a DCM fallback
+
+The AP-Review bot (head `17f017fb8c`, COMMENT) still had one should-fix
+open: the DCM fallback found in the 2026-10-05 whole-diff read.
+`get_ekf_lane_status()` answered only while EKF3 was the active estimator.
+For FIXED_WING and GROUND vehicles, AHRS drops to DCM when the EKF stops
+fusing GPS while the GPS still has a 3D fix, and on Rover that only happens
+with `AHRS_OPTIONS` changed from 3. That is exactly when a GPS lane reads
+CST, and every lane item went blank instead. Copter cannot reach it
+(`always_use_EKF`). Confirmed on the PR head before the fix (below).
+
+Local, unpushed, on `r1030/34543` (worktree `r1030-34543`):
+
+- `a2f1de5edd` AP_AHRS: keep the EKF3 lane status while DCM is active.
+  The gate is now `configured_ekf_type() == EKFType::THREE &&
+  ekf3.started`, inside AHRS, so the OSD still goes through AHRS (ARCH-3).
+  The cores keep running under DCM (AP_AHRS::update() updates every
+  backend). DCM's estimates carry `primary_core_index = -1`, so no lane is
+  marked while it flies the vehicle. `draw_ekf_lane()` is the only reader.
+- `003ef442a9` autotest: `test.Rover.OSDEKFLanesDCMFallback`, plus the
+  MSP DisplayPort helpers moved from arducopter.py to
+  vehicle_test_suite.py. It arms a Rover with `AHRS_OPTIONS` 0, sets
+  `SIM_GPS1_GLTCH_X` 0.001 (about 111 m), waits for "AHRS: DCM active",
+  then needs lane 0 to read `C0 CST`, flashing and unmarked, before any
+  "AHRS: EKF3 active".
+
+A/B, sim time from the .BIN, with the glitch at 46.3 s. DCM goes active at
+50.26 s, which is the 4 s `using_gps` timeout. With the glitch left on,
+EKF3 takes over again at 56.48 s, once the lanes reset to the glitched fix
+(`posRetryTimeUseVel_ms`, 10 s), so the window is 6.2 s. On the PR head
+(ardurover md5 b4bf8835) the row is blank all through it and then reads
+`C0>ABS`: FAIL 2/2 ("OSD row 9 never showed C0 CST"), one run with an
+earlier two-lane draft of the test. With the fix (d9f959a1) the row reads
+`C0 CST`, flashing, at 52.66 s, 2.4 s into the window: PASS 3/3, and once
+more at the committed head. test.Copter.OSDEKFLanes passes with the fix
+and the moved helpers. SITL copter, plane and rover build.
+`pr_review.py checks` raises only the squashed-subject bodies, and the
+branch checker passes all 12 commits.
+
+The bot's commit-message point was not applied. Corrected messages for
+d9e4277412, 92767a6d63 and cbda421ea8 (the gate flags cbda421ea8 too), and
+for 09f2c62741's last sentence once the fix folds in, are drafted for the
+next squash. The compile-time option, the 766-character `EKFn_EN`
+descriptions and the QUAL/TILT/REJ/DRK test gaps are left open.
+
+Quick-review follow-up, `af50a66828` autotest: have the OSD lane flash
+check see the text come back. The cold read cleared `a2f1de5edd` but
+found the flash check weak: with `flashing=True`, `wait_osd_ekf_lane()`
+took any 2 s sample holding one screen with the text and one without, so
+the ABS screens before CST counted as the flash-off. It now counts only
+the screens from the first match on, carries them across samples, and
+needs the text to go and come back. On synthetic screens the old helper
+passes "ABS then steady CST" and "CST then gone for good"; the new one
+fails both and still passes a real flash. OSDEKFLanes passes with it;
+the Rover test passes 3/3 on the fix (CST seen flashing 3.3 s into the
+6.2 s DCM window) and fails on the PR head ("never showed C0 CST
+flashing").
+
+Pushed 2026-10-30 to andyp1per with a lease on the old head: `17f017fb8c`
+-> `af50a66828`.

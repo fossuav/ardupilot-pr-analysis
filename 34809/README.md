@@ -58,3 +58,17 @@ went unanswered even while the script flushed. A DJI O4 on SFD-O4 never
 saw arming with `sfd_pr_osd.lua` running. Fixed separately as #34882,
 which services the link from the OSD thread; see ../34882/README.md. The
 two PRs touch different parts of `AP_OSD.cpp` and apply in either order.
+
+## 2026-10-30: the heartbeat sentence reworded after #34882
+
+The bot's round at `d65d3b4baa` (COMMENT, nothing blocking) caught the
+AP_OSD commit body still saying a script that never flushes stops the
+MSP DisplayPort heartbeat "and services the port". Since #34882 merged
+(`623be5b208`), `osd_thread_update()` services the link on every OSD
+loop and `flush()` only grabs and draws, so MSP replies keep going. The
+body and the description's matching sentence now say only the
+heartbeat stops. Rebuilt by cherry-pick as `r1030/34809` (`78cbd2824a`,
+`2dd30935b9`, `ea1a881ad7`), tree identical to `d65d3b4baa`.
+
+Pushed 2026-10-30 to andyp1per with a lease on the old head: `d65d3b4baa`
+-> `ea1a881ad7`.

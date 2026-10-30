@@ -210,3 +210,87 @@ A limit seen on log61 (3408138/639): core 1 was 13 m/s and 300 m wrong
 while its status said healthy (`XKF4.SS` unchanged, SV and SP 0), so a lane
 item had nothing to flag. Lane status reports what is being fused, not
 whether the result is right.
+
+## 2026-10-30: the quality floor shown only with the AGL KF option
+
+AP-Review at `d402ac272a`, should-fix: `getLaneStatus` reported
+`EK3_FLOW_QMIN` whenever the lane was configured for flow, so with
+`EK3_OPTIONS` bit 3 clear the OSD rescaled the signal strength to read 50
+at a floor that did nothing. Verified: the only code that acts on the floor
+is the lockout block in `FuseOptFlow`, under `EK3_FEATURE_OPTFLOW_AGL_KF`
+and `option_is_enabled(AglKfForOptflow)`. It is the only writer of
+`flowVelResetUnhealthy`; the release run in `writeOptFlowMeas` and the two
+readers in Control.cpp act only on that latch. `OSDEKFLanes` set QMIN with
+`EK3_OPTIONS` 0 and passed.
+
+Seven commits on `d402ac272a`, unflown; the first three:
+
+- `17ead03a5e` AP_NavEKF3: the floor is copied into the lane status only
+  inside the AGL KF block and with the option set; otherwise 0, which the
+  OSD already treats as no floor (0-99 over 0-255, no flash), as for
+  QMIN 0.
+- `a7ac51780b` AP_OSD: the three `OSDn_EKFm_EN` descriptions say the
+  floor needs bit 3. Documentation only.
+- `057ca0f7d8` autotest: `OSDEKFLanes` first checks QMIN 51 with bit 3
+  clear reads 20 on every screen for 2 s, then sets `EK3_OPTIONS` 8 for
+  the existing 50 / 25-flashing / 20 checks.
+
+A/B: head binary `d326dc50` fails the new check, 21 of 25 screens reading
+`\x0150` after QMIN 51 (the first four still 20); fixed binary `767152bd`
+passes, the trace reading 20, then 50 with bit 3, 25 flashing at 102 and
+20 at 0. The CST and Betaflight subtests after it pass with bit 3 left
+set. Built: copter, replay and `tool/AP_DAL_Standalone` as CI configures
+them, and copter with `EK3_FEATURE_OPTFLOW_AGL_KF=0` and with
+`EK3_FEATURE_OPTFLOW_FUSION=0`. Output-only: nothing logged or replayed
+changes.
+
+Follow-up from the quick review's cold read of `17ead03a5e`, verified:
+`EK3_OPTIONS` can change in flight, and only the setting of
+`flowVelResetUnhealthy` tests the option. Its release (against
+`_flowQualMin`), its disarm clear and both places it blocks flow aiding do
+not, so with bit 3 cleared after a latch the floor stayed in force while
+the lane reported 0. `7e63c513bf` (AP_NavEKF3) also reports the floor
+while the latch is set; the latch itself is untouched. `191ad8c36b`
+(autotest) adds an `OSDEKFLanes` leg: take off in ALT_HOLD with QMIN 40,
+quality 10 and `SIM_FLOW_OFS_X` 1, wait for lane 1's "flow quality 10 too
+low", clear bit 3, raise the quality to 20 (below the floor and the 44
+release) and wait for `\x0125` flashing. The quality step is a marker:
+MSP is not read through the flight, so 23 s of earlier screens are queued
+ahead (a first version read only those, 232 screens of 12 flashing, and
+passed on both binaries). A/B: option-only binary `bc578353` fails, lane 1
+reading "C1 ---" with a steady 7 for 60 s; fixed `db4019ef` passes, "C1
+---" with 25 flashing, twice, and again at the committed head
+(`3de3eec4`). Copter, replay and `tool/AP_DAL_Standalone` build.
+
+Round 2 of the cold reads. `wait_osd_ekf_lane(flashing=True)` passed on
+one screen with the text and one without in a 2 s sample, so the queued
+pre-change screens would have let a steady 25 pass. `9a64b9bc5f` applies
+#34543's `af50a66828` logic to this PR's copy in arducopter.py (screens
+from the first match on, the text must go and come back); offline, the
+old predicate passes queued-then-steady and the new one does not.
+OSDEKFLanes passes at head (`93ef49e8`), all four flashing waits
+included, and the option-only binary `bc578353` still fails the latch
+leg, "never showed b'\x0125' flashing" with lane 1 a steady 7.
+`6b84dcfeb9` (AP_OSD) words the descriptions for the latched case.
+Not changed, noted: the latch releases at QMIN + 10%
+(Measurements.cpp:185), so with quality between QMIN and that the
+strength reads above 50, unflashing, while the lane stays latched. That
+was so with bit 3 on before this round, and the lane reads "C1 ---"
+while latched.
+
+No change on the flown vehicles: the T25 sets QMIN 60 and logged lockout
+resets, which run only with bit 3, so its display is as before. Derived
+from the source, not from its parameter dump.
+
+The minor on `ResetVelocityToFlow`'s covariance is left: the function is
+#33484's (`020cdcdced`), not this PR's. Doing it properly means a 2x24
+Jacobian of the solved N/E velocity in the quaternion and vel-D states,
+setting `P[4..5][k] = J P[:,k]` and `P[4..5][4..5] = J P J^T + R`, then a
+SITL A/B and a replay; at least the yaw term would add `vE^2`, `vN^2` and
+`-vN vE` times the yaw variance.
+
+The PR description is stale on the floor, the commit count and the
+`OSDEKFLanes` sentence; a draft update is in the scratch dir.
+
+Pushed 2026-10-30 to andyp1per with a lease on the old head: `d402ac272a`
+-> `9a64b9bc5f`.
