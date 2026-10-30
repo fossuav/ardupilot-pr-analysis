@@ -1214,3 +1214,30 @@ after the clear. The latch now zeroes the start before it sets the flag,
 and the disarm clear stays. That orders the stores; it does not make the
 fields thread-safe, as nothing else in writeOptFlowMeas is (takeOffDetected
 included), and the commit says so. Pushed as `edb0cc387e`.
+
+## 2026-10-30: the range step deferral flown, squashed
+
+TD25's operational flight on SFD `0e2c9772` (topup28, carrying the deferral
+and its speed form) printed "EKF3 IMU0 flow recovery deferred, range step"
+at 176.89 s, airborne: the line is only sent when the range is current and
+the speed-error test says it has not settled, so both commits ran. No reset
+followed (`XKF7.FVC` stayed 0). The T25 runaway on `308a7e73` printed it
+again at 123.03 s, in the crash, with resets at 122.4 and 124.0 s.
+
+The other-axis gate ran at three resets (SFD-O4 log57 core 1 941.4 s, the
+T25's two) and changed nothing: a beta Replay with `otherAxisPassed` forced
+true is identical on log57, the TD25 flight and the T25 runaway. It stays on
+top with the latch store ordering.
+
+Squashed `edb0cc387e` -> `e0e4a38f57` (13 -> 9 commits, empty diff against
+the old head): the deferral and speed form into the base recovery commit
+`020cdcdced`, their legs into the base test commit `235e2dd016`, messages
+merged. Built from the PR head's parent by cherry-pick, so no existing
+branch was rewritten; the stale local `pr-vel-flow-axis-gate` (3 local
+commits, 2010 behind) is kept as `pr-vel-flow-axis-gate-stale`. #34630
+rebuilt on it. Mechanical gate clean.
+
+Pushed 2026-10-30: `edb0cc387e` -> `e0e4a38f57` and #34630 `b081354744` ->
+`d402ac272a`, both force with a lease on the old head. PR description
+updated: the deferral has flown; the other-axis check still has SITL and
+Replay evidence only, three real resets since taken exactly as without it.

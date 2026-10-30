@@ -1113,3 +1113,20 @@ reverted, 0.07-0.08 m with it). Answered the three non-blocking points:
 Reply: https://github.com/ArduPilot/ardupilot/pull/33359#issuecomment-6206020683
 Description updated with the repeat and the Replay count. The beta does
 not carry the comment fix; the next refresh takes it.
+
+## 2026-10-30: the flow-axis gates in flight
+
+SFD-O4 logs 54-59 (`EK3_RNG_USE_HGT` 6, the flow lane on core 1) replayed
+through the beta at `6307d4d424` with a probe reporting, wherever the AGL KF
+override decides, whether each gate changed the decision against the stage
+before it: all-axes-pass (`3eeee55f04`) in log57 at 644.2-644.4 and
+941.2-941.6 s and log58 at 200.4-200.6 s; the hidden-speed test
+(`b19254da42`) in log56 at 149.41 s; the stamp ordering (`4c332e6a20`) in
+log56 and in log57 at 941.1 s; the first gate (`0c2e335f61`) never. With all
+four removed, log57's flow lane departs at 644.3 s and moves up to 0.10 m in
+height and terrain offset around the take-off and the 941 s lockout reset,
+with the GPS lane primary; the other four logs are identical.
+
+Not squashed: `0c2e335f61`, `3eeee55f04` and `4c332e6a20` also change the
+body odometry path, which no flight has run (no odometry on SFD-O4).
+Splitting the odometry lines out would let the flow parts go in.

@@ -178,3 +178,21 @@ to `20`, SITL quality 51); `EK3_FlowAxisLockoutRecovery` passes, all ten
 subtests including the quiet option and "Both axes wrong". Title now
 "AP_NavEKF3: show flow resets and the quality floor on the OSD, make
 reset messages optional"; description updated.
+
+## 2026-10-30: the quiet option and the reset flag flown; rebuilt on #33484's squash
+
+Three lockout resets counted in `XKF7.FVC` with `EK3_OPTIONS` bit 6 set and
+no "(axis lockout)" message: SFD-O4 log57 core 1 at 941.4 s (`6d754361`) and
+the T25 runaway at 122.4 and 124.0 s (`308a7e73`). Both vehicles fly an MSP
+DisplayPort OSD (`OSD_TYPE` 5) with the lane items on (`OSD1_EKF0_EN`, and
+`OSD1_EKF1_EN` on SFD-O4), and the T25 sets `EK3_FLOW_QMIN` 60, so the lane
+reset flag, the flash and the quality floor all ran; what the OSD drew is
+not in the log, so the display is still unconfirmed. Nothing to squash: none
+of this PR's own commits had flown, so none is a fix on a flown commit.
+
+Rebuilt on #33484's squash: `b081354744` -> `d402ac272a`, the 21 commits
+after `edb0cc387e` cherry-picked onto `e0e4a38f57`, empty diff against the
+old head. #34543 has since been rebased onto newer master (`17f017fb8c`);
+the copies here are left as they were. The mechanical gate reports three
+older commits whose bodies carry squashed subjects (`e5ac04130f`,
+`a488b89db8`, `60b8bd1d79`), unchanged by this rebuild.
