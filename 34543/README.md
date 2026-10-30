@@ -210,3 +210,28 @@ The tile is downloaded by earlier terrain tests and kept in the
 worktree's `terrain/`, so a full suite run (CI's included) can meet it.
 Not fixed yet: the leg should not depend on the tile cache (for example
 terrain off in its context), A/B'd with the tile copied in.
+
+### Fixed 2026-10-30 by SIM_TERRAIN 0 in the test
+
+`SIM_TERRAIN 0` in OSDEKFLanes's parameters puts SITL's range finder and
+the vehicle on the same flat ground, so the leg no longer depends on the
+tile cache. On SFD refresh12 (`6e5082b5a8`, comment from `b8a7a6be2e`),
+with the tile cached: 12 of 12 pass, range 0.10 m at rest. Ported to this
+PR as `351aea9eaa` on branch `r1030/34543-t` (parent `af50a66828`, not yet
+pushed). On the PR branch, with the tile loaded (TERR Status 2), REL
+dropped 1.05 s after the flow stopped and the leg still passed 10 of 10;
+with the fix REL held throughout and 10 of 10 passed. So master shows the
+same short window but catches the flash more reliably; the 12-of-34
+failure rate is the 4.7-based branch's. Master's flow tests already set
+`SIM_TERRAIN 0` (OpticalFlowLimits and its neighbours). Quick review: the
+mechanical gate is unchanged (the three squashed-subject lines the bot
+lists), and a cold Codex read raised one should-fix, taken: the comment
+first implied any cached tile reads 0.55 m; it now says the range finder
+measures to cached terrain, 0.55 m below home at CMAC.
+
+A first "before" run on the PR worktree passed 10 of 10 with no tile at
+all: its `terrain/S36E149.DAT` was a 0-byte placeholder, so nothing
+loaded (TERR Status 1). Check a tile's size, not just that it exists.
+
+Pushed 2026-10-30 to andyp1per with a lease on the old head:
+`af50a66828` -> `351aea9eaa`.
