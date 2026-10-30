@@ -627,3 +627,14 @@ Not changed: THRO's "log at 10 Hz or if the stage changes" loses stage
 changes to LOG_FILE_RATEMAX on any vehicle that sets it, so a flight log
 can skip a stage that lasted under 100 ms. That is upstream throw
 logging, not this PR's.
+
+## 2026-10-30: #33366 takes the same var_info2 indices
+
+#33366 (robertlong13, open, added to SFD's prs.txt today) gives
+TKOFF_CPU_AVG and TKOFF_CPU_PEAK `ParametersG2::var_info2` indices 60 and
+61, which this PR uses for THROW_SRC_SET and THROW_DROP_CNF (at
+`3d634e4a5f`; THROW_SRC_INI is 63). A build with both compiles clean and
+panics at every boot ("Bad parameter table"), so whichever merges second
+has to renumber. 30 and 31 are free on master. SFD keeps this PR's, which
+shipped on the betas, and moves #33366's to 30/31 (refresh12 `40c9fdd94b`;
+`Tools/SFD/check_param_tables.py` flags both pairs without it).

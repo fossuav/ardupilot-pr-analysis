@@ -238,3 +238,14 @@ description carries that table, the three-build autotest result and the
 coast-while-tilted point; a before/after plot of flow lane speed against
 GPS on both flights, as flown and with the change, is to be attached by
 hand (gh cannot upload images).
+
+## 2026-10-30 (later): on SFD refresh12
+
+On SFD refresh12 (topup1: `649e160e9c`, test `42bd2a3b79`) the EKF
+commit met #33484's and #34543's flow state in four additive conflicts;
+the resolved diff against the stack is the PR's exactly.
+OpticalFlowTiltNoTimeout passes there (timed out 5.2 s after the flow
+stopped, roll held at 54.7 deg or more) and fails with the EKF commit
+reverted ("flow lane timed out while banked"). Flight evidence is owed:
+an acro hold past 45 deg on the flow lane inside the range finder's reach
+(refresh12's `Tools/SFD/FIELD_PLAN.md`, "Additions for refresh12").
