@@ -1264,7 +1264,7 @@ seconds later).
 
 What the resets repaired: each pre-reset error followed a re-entry into
 relative aiding after a 5 s tilt-gate timeout, which zeroes the velocity
-(`../pending-flow-aiding-reentry/`): drop 51.4 s then reset 63.6 s,
+(`../34941/`): drop 51.4 s then reset 63.6 s,
 re-entry 82.6 s then 83.2 s, drop 128.2 s then 132.5 s. Drops no reset
 followed left core 1 wrong for 8 s or more. On log61 (3408138/639), above
 the 15 m range finder, the recovery could not run (no current range, AGL KF

@@ -72,4 +72,4 @@ SFD-O4 log61 (3408138/639), beta `52b1d36f`, `EK3_FLOW_GAIN_H 12`: LOITER
 on the flow lane at about 25 m would have scaled the velocity gains by
 12/25, about 0.48 (derived from the parameter and the logged HAGL; the
 scaler itself is not logged). It had no bearing on that Loiter, whose
-velocity estimate was near zero (`../pending-flow-aiding-reentry/`).
+velocity estimate was near zero (`../34941/`).
