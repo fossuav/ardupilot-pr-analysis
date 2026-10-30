@@ -1451,3 +1451,13 @@ passages that argue against this change: the stored total, the rejected
 delta row, and the "Review fixes" bullet), a line on the parameter's new
 meaning and its migration, and a reply to Paul Riseborough's comment that
 the stored value "includes all bias sources", which this change answers.
+
+Pushed 2026-10-30 by Andy as a fast-forward: the PR head is now
+`04e501e13d` (`d9e7d85f5c` plus the three v3 commits). The PR description
+was rewritten the same day to describe v3: the outline is cut to about 370
+words, the "Measured and rejected" row on storing the motors-on part is
+replaced by a section on what changed (the log63 replay table), and
+"Depends on #32396" is dropped, as it merged in April. Paul Riseborough's
+7 April review comment got a reply (discussion_r4427750014) saying the
+saved value no longer includes the sensor offset with bit 2 clear, with
+the log63 replay numbers. AP-Review will review the new head.
