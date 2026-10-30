@@ -1114,6 +1114,15 @@ half duplex, so commit 48's echo window is still unflown.
 
 Details in [bench-2026-10-30.md](bench-2026-10-30.md).
 
+### Superseded 2026-10-30 by the bench note's own caveat
+
+"The battery voltage input does not drift, which points at the leaky
+clamp R4 replaces" says more than the measurements do. On the quad the
+battery pin moved under 0.3 mV/degC (log 5, disarmed), but on 2026-10-29's
+bench it drifted 1.70 mV/degC, so the current input's drift is not yet
+shown to be the clamp's; R4 needs measuring before it is called fixed. The
+line is left in place because the quad's own figure is as it says.
+
 ## 2026-10-29: the current input, first flights of `e45dae01b1`, a GPS false alarm
 
 PR head unchanged at `e45dae01b1`. The release branch at `1f8685e9`,
