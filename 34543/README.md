@@ -179,3 +179,34 @@ flashing").
 
 Pushed 2026-10-30 to andyp1per with a lease on the old head: `17f017fb8c`
 -> `af50a66828`.
+
+## 2026-10-30: OSDEKFLanes's no-flow-data leg needs SITL without terrain
+
+On SFD refresh12 the leg "A lane with no flow data flashes its position
+type" failed 5 runs in 14 ("OSD row 10 never showed b'C1 REL' flashing").
+It depends on SITL having no terrain tile for CMAC, not on the code under
+test. In scratch worktrees with no `terrain/` tiles it passed 40 of 40
+across four builds; with refresh12's tiles copied in it failed 3 of 10 and
+4 of 10, on builds with and without that day's top-up.
+
+Why, from the logs (core 1, the flow lane, disarmed on the ground):
+
+| | No tile | CMAC tile (S36E149) |
+|---|---|---|
+| TERR | Status 1, nothing loaded | Status 2, TerrH 583.54 m against home 584.09 m |
+| XKF5.rng, XKF5.HAGL | 0.10 m, 0.10 m | 0.54 m, 0.54 m |
+| XKF4.SS horiz_pos_rel after SIM_FLOW_ENABLE 0 | held past the 5 s timeout | cleared at +1.1 s |
+
+SITL's range finder measures to the SRTM ground, 0.55 m below the height
+the vehicle rests at. EKF3 holds `flowDataValid` true until the vehicle
+moves only while its terrain estimate is within 0.5 m below it
+(`SelectFlowFusion()`, upstream since EKF3 began), so with the tile the
+lane reports REL for about 1 s after the last flow sample rather than past
+the timeout. The OSD flashes REL from 0.5 s (no flow data), which leaves
+about 0.6 s of sim time, and `af50a66828`'s stricter check (the text has
+to go and come back) misses it about a third of the time.
+
+The tile is downloaded by earlier terrain tests and kept in the
+worktree's `terrain/`, so a full suite run (CI's included) can meet it.
+Not fixed yet: the leg should not depend on the tile cache (for example
+terrain off in its context), A/B'd with the tile copied in.
