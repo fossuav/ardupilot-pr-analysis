@@ -198,6 +198,23 @@ log63 put the stored delta best of four on both cores, ahead of the total
 with bit 2. The row's rejection is a compatibility argument and stands
 until decided; see "2026-10-30: the first packs flown with apply" below.
 
+#### Superseded 2026-10-30 (later) by Replay of 16 flights and SITL
+
+The delta row is cleared and the PR now stores the delta (local
+`pr-vrf-core-delta-v3`, not pushed). Replayed against 16 earlier flights
+it beat the total on the airframe where they differ (SFD-O4 flow core
+hover rms 0.30 against 0.47 m, total worse than none on 3 of 8, delta on
+0); the autotest fails without it (0.430 saved against the motors-on
+0.15). The compatibility argument was settled by decision, not
+measurement: a stored total is applied as the delta for one flight until
+the first learning flight overwrites it, and the commit messages carry
+the migration note. "Belongs to bit 2" was half right: bit 2 does remove
+the double count, but only for vehicles that set it, and the delta has
+its own bit-2 case (it saved -0.005 on alternate flights until the at-arm
+bias was taken as zero there). The row stays because its argument, that
+the stored value is a total fleet-wide, is what a reviewer will raise.
+See the last two sections.
+
 `logjk4`'s proposal to gate the frozen correction on ground effect is also
 measured worse - 0.644/0.656 m becomes 0.760 m - and targets the
 never-leaves-ground-effect regime, a different case. Lowering
@@ -975,6 +992,8 @@ because learning did run that flight.
   into `inactiveBias`, and the saved total already includes it. This is
   the arm-time double count the "Measured and rejected" row on storing the
   delta assigns to bit 2 (`XKF2.AZ` at arm +0.130 clear vs 0.000 set).
+  Answered 2026-10-30 by storing the delta (`pr-vrf-core-delta-v3`, not
+  pushed): the bias at arming is no longer saved.
 - Bit 2's inhibit is only asserted from the 1 Hz task, leaving up to 1 s
   after disarm, and after startup, in which the EKF can learn the
   motors-off bias. Derived from the source, not measured.
@@ -1268,6 +1287,15 @@ anything over 0.15. Without the learner change the test fails,
 `INS_ACC2_VRFB_Z` 0.430; with it, 0.141 and 0.146, and the whole test
 passes (SITL, 2026-10-30).
 
+#### Superseded 2026-10-30 (later) by review and SITL
+
+"With bit 2 set ... nothing changes there" is wrong. With bit 2 the EKF
+learns no Z bias on the ground, so through a disarm it keeps the previous
+flight's hover bias, and that is what the prototype recorded at arming.
+Learning the hover total less it saved almost nothing on every other
+flight: 0.441, -0.005, 0.444 m/s/s over three flights in one boot. v2, in
+the last section, takes the at-arm bias as zero when bit 2 is set.
+
 ### The sweep
 
 The learner is vehicle code, which Replay does not run; what Replay can
@@ -1325,3 +1353,101 @@ mostly one flight (log26), and nothing on TD25.
 Decided 2026-10-30: the one-flight carry-over is acceptable, so the
 prototype keeps the parameter names and indexes. A stored total is applied
 as the motors-on part until the first learning flight overwrites it.
+
+## 2026-10-30 (later): reviewed, rewritten as v2
+
+A /pr-review round on the prototype (Claude per-commit and whole-diff
+readers, Codex verify and cold passes) asked for changes:
+
+- The bit-2 alternation above, measured in SITL.
+- The PR body contradicts the change: it lists the delta under
+  alternatives measured and rejected, and says the parameter stores the
+  total. It has to be rewritten before this is pushed.
+- The four parameter descriptions and the `.h` comment still described a
+  total in places.
+- The autotest's tolerance was loose, it covered only the second accel,
+  and nothing exercised bit 2.
+- Users with `ACC_ZBIAS_LEARN` 2 (apply, never learn) keep a stored total
+  applied unchanged as the motors-on part; they need telling to clear it
+  or learn once.
+- A vehicle armed while moving or in the air records whatever bias the
+  EKF holds then as its baseline (derived from the source, not measured).
+
+Local branch `pr-vrf-core-delta-v2` on the PR head `d9e7d85f5c`, not
+pushed, each commit building and the gate clean:
+
+- `9479937c24` Copter: record each IMU's EKF Z bias at arming in
+  `seed_hover_bias_learning()`, zero when bit 2 is set, and learn the
+  hover total less it. The message names the readers of the saved value
+  that were checked (the EKF applies it while armed, AHRS removes the
+  applied part with the EKF's own bias, an accel calibration clears it,
+  the boot report prints it) and states the in-air arming case.
+- `26036007e9` AP_InertialSensor: the four descriptions and the `.h`
+  comment; the message carries the migration note for value 2.
+- `0124a93a3d` autotest: with `SIM_ACCn_BIAS_Z 0.3` and `SIM_ACC_VRF_Z
+  0.15`, the second accel (first unused) and the first (both in use) must
+  save 0.15 within 0.06, with the height within 0.35 m of the simulator's;
+  with bit 2, three flights in one boot must each save 0.45 within 0.06.
+
+SITL, 2026-10-30: 0.141, 0.142 and 0.146 saved, and 0.441, 0.435 and
+0.442 over the bit-2 flights. Without the learner change the second-accel
+check fails (0.430 saved); without the bit-2 handling the bit-2 check fails
+(0.441, -0.005, 0.444).
+
+## 2026-10-30 (later): second review round, v3
+
+A Codex audit closed all seven round-1 findings and a Codex cold read of
+v2 approved, without building or replaying it. A Claude cold read found
+nothing must-fix in the code but raised the text and tests:
+
+- With bit 2 clear, a vehicle armed on a moving platform records the
+  platform's acceleration as its baseline. On `SIM_PLAT_ACC_Z -1` the
+  record above measured `XKF2.AZ` -0.99 at arm with bit 2 clear, so the
+  learner would save 0.15 + 0.99, clamped to 0.6, and the next flight from
+  still ground would apply about 0.45 m/s/s too much until it relearns.
+  The total design was immune. Derived from the source and that recorded
+  measurement, not run. Bit 2 is already the documented setting for such
+  vehicles; v3 adds the consequence to `ACC_ZBIAS_LEARN` and the INS
+  descriptions rather than code, since nothing short of bit 2 tells the
+  learner the vehicle is on a platform.
+- The saved value means the whole bias with bit 2 set and the motors-on
+  part with it clear, so a value learned under one and used under the
+  other counts the static part twice until relearned: v3's text says to
+  relearn after changing bit 2.
+- The INS text read as if the early-arming caveat belonged to bit 2; it
+  is now its own sentence, and "learns nothing on the ground" is "learns
+  no accelerometer bias".
+- Commit messages: the bit-2 failure is now quoted as the committed test
+  sees it (second flight, -0.005 saved; the three-flight figures came from
+  a throwaway run that did not stop at the first failure), the Replay
+  sentence says the values were predicted from the previous flight's
+  logged bias and run through a 4.7 beta's EKF, and that most of the gain
+  over no correction is one flight (log26); the INS message carries the
+  bit-2 exception. Two `Copter.h` comments now mention bit 2.
+- Tests: the three static-bias flights now check first that the primary
+  core held the static 0.3 at arming (`XKF2.AZ`, within 0.06), so slow
+  ground convergence reads as that rather than as a learner failure; the
+  first-accel subtest also checks the second accel saved 0.15, the only
+  place two IMUs with different baselines learn in one flight.
+
+Not changed: a quick re-arm with bit 2 clear, before the EKF has relearnt
+the ground bias after a flight whose correction was off, saves a value
+short by what it has not relearnt; it converges over flights and its size
+is not measured. The height check after applying the saved value is not
+shown to discriminate (no run with the old total), so it is not cited as
+coverage of the double count; the learned-value check is.
+
+SITL, 2026-10-30, v3: bias at arming 0.28 on all three static flights;
+saved 0.139 (second accel, first unused), 0.147 (second accel, first back
+in use), 0.141 and 0.141 (first and second, both in use); bit 2 0.441,
+0.435, 0.442. The test passes and the gate is clean.
+
+Local branch `pr-vrf-core-delta-v3` on the PR head `d9e7d85f5c`, not
+pushed: `85dbca9896` Copter, `117508173e` AP_InertialSensor, `04e501e13d`
+autotest. The code is v2's; only text, comments and the test changed. v2
+(`9479937c24`..`0124a93a3d`) is kept. The one-flight carry-over stays as
+decided above. Owed before pushing: the PR body (the review found three
+passages that argue against this change: the stored total, the rejected
+delta row, and the "Review fixes" bullet), a line on the parameter's new
+meaning and its migration, and a reply to Paul Riseborough's comment that
+the stored value "includes all bias sources", which this change answers.

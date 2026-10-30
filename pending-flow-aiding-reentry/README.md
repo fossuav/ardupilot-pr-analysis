@@ -7,9 +7,11 @@ more times on log65 (3408138/646), both on the SmallFastDrone 4.7.2 beta
 ## Status (one line)
 
 Upstream behaviour, characterised on two real flights; both replay exactly
-on the beta. No fix written. It is the root of the SFD-O4 Loiter that did
-not stop (log61), with the terrain lookup in `../33585/` deciding which way
-the velocity was wrong when the pilot switched.
+on the beta. Fix and autotest on local branch `pr-ekf3-flow-reentry-v3`,
+replayed on both flights, not pushed (see the last section). It is the
+root of the SFD-O4 Loiter that did not stop (log61), with the terrain
+lookup in `../33585/` deciding which way the velocity was wrong when the
+pilot switched.
 
 ## What happens
 
@@ -122,3 +124,100 @@ change would have moved, so log61's terrain path is not fully tested. On
 log65 the three lockout resets are no longer needed: they were repairing
 the zeroed velocities. log63 (643), hovers and full-stick Loiter, replays
 identically (0 of 5568 XKF1 records differ).
+
+## 2026-10-30 (later): reviewed, rewritten as v2
+
+A /pr-review round on `d2bebe7f32` (Claude per-commit and whole-diff
+readers, Codex verify and cold passes) asked for changes. The withheld
+stamp was set on every update that had flow data and a bad tilt, whether
+or not the lane fused flow at all, so a lane not using flow could hold off
+its own timeout. Restarting the 5 s window from each withheld sample meant
+flow that was rejected while level and withheld while banked, alternating,
+never timed out (root playbook ARCH-5: a gate is judged by what it does
+when it is wrong). The comparison was not wrap-safe, the comment
+overstated what the stamp meant, the commit message claimed more than the
+replay showed, and there was no autotest.
+
+Two rewrites, both on master `278a68a57a`, were replayed through the beta
+port on logs 61 and 65:
+
+- R: keep the restart, gate the stamp on the lane fusing flow, and make
+  both elapsed-time tests wrap-safe.
+- P: count the withheld time instead (`flowWithheld_ms`), only while the
+  lane fuses flow (`fuse_optflow`), adding at most 1 s per gap between
+  samples (`flowSampleTime_ms`) so missing flow still counts as missing,
+  and subtract it from the time since the last fusion. Zeroed wherever
+  `prevFlowFuseTime_ms` is set.
+
+R and P replay identically on both logs (0 differing records) and log63
+is unchanged under either: log61 flow lane speed error rms 9.53 -> 3.97
+m/s and log65 9.23 -> 2.56, aiding timeouts 4 -> 0 and 6 -> 0. They differ
+only on mixed tilts, which these flights did not exercise; P is kept
+because rejected flow still times out there (derived from the source,
+not measured).
+
+Local branch `pr-ekf3-flow-reentry-v2`, not pushed:
+
+- `e04ef8c2ab` "AP_NavEKF3: do not time out flow aiding while the tilt
+  check withholds it" (variant P, 16 lines in four files).
+- `e0cf64b080` "autotest: check a banked flow lane does not time out":
+  `OpticalFlowTiltNoTimeout` in tests1e. A control first sets
+  `SIM_FLOW_ENABLE 0` and must see "IMU1 stopped aiding"; then a flow-only
+  core is banked 55 deg in ACRO at 55-65 m (checked above 47 deg) for 7 s
+  and must not time out. Fails on master 5 s into the bank, passes with
+  the fix; flake8 clean.
+
+`pr-ekf3-flow-reentry` (`d2bebe7f32`) is kept for comparison.
+
+## 2026-10-30 (later): second review round, v3
+
+A second round on v2 (Codex audit of the six round-1 findings, Codex and
+Claude cold reads) closed all six and found nothing must-fix. Changed in
+v3:
+
+- The 1 s cap still credited the first second of a longer gap as
+  withheld, against what the comment and message said. A gap of 1 s or
+  more (EKF3's flow valid time, `flowDataValid`) now credits nothing.
+  Replayed on the beta port: logs 61, 63 and 65 are identical to variant P
+  (0 EKF records differ; only Replay's own startup EV timestamps and NaN
+  fields compare unequal), so the numbers above stand for v3.
+- The test reached the bank with flow back on only because `context_pop()`
+  restored `SIM_FLOW_ENABLE`. It now turns flow back on and waits for "IMU1
+  fusing optical flow".
+- The level flow-loss control could not tell this design from one that
+  never times flow out while tilted. A third subtest stops the flow at the
+  end of the 7 s bank, still banked, and expects "IMU1 stopped aiding"
+  4-10 s later. SITL, 2026-10-30, same test on three builds: master fails
+  (times out 5 s into the bank), a variant that suppresses the timeout
+  while tilted fails (no timeout when the flow stops banked), the fix
+  passes (timed out 5.4 s after the flow stopped, roll at least 54.7 deg).
+  Timed from before the parameter set; from after it, the first run read
+  4.6 s, too close to the 4 s floor.
+- The commit message now says the timeout fires once 5 s of rejected or
+  missing flow has built up since the last fusion, however interleaved
+  with tilts, and that while the tilt lasts the lane dead-reckons with its
+  velocity variance growing. The header comment on `flowSampleTime_ms`
+  no longer says only used samples set it.
+
+Declined, with the reason:
+
+- Reset `flowSampleTime_ms` on re-entry to relative aiding, so the first
+  withheld sample cannot credit time from before entry. Re-entry needs
+  flow within 200 ms (`readyToUseOptFlow()`), so the over-credit is one
+  sample interval at most, and the timeout's `MIN()` stops it underflowing.
+- Move `fuse_optflow` back inside a flow-data branch to save its
+  evaluation on updates with no flow. A few comparisons; it would re-indent
+  the existing block for nothing measurable.
+
+For the PR text, not the code (derived from the source, not measured):
+while a tilt lasts nothing bounds the coast. Before, the lane's velocity
+was zeroed every 5 s with a variance set to the GPS velocity noise, which
+is confident and wrong; now the variance grows, so when the vehicle levels
+the innovation gate is wide and flow is accepted rather than rejected. A
+vehicle that holds a flow lane past 45 deg for long periods (a tailsitter
+in forward flight) would now coast for as long as it does; whether any
+setup runs a flow lane there is not established.
+
+Local branch `pr-ekf3-flow-reentry-v3` on master `278a68a57a`, not pushed:
+`8412571a33` (EKF3) and `247d0fb74e` (autotest). Gate clean except the
+73-character subject note. v2 (`e04ef8c2ab`, `e0cf64b080`) is kept.
