@@ -1241,3 +1241,36 @@ Pushed 2026-10-30: `edb0cc387e` -> `e0e4a38f57` and #34630 `b081354744` ->
 `d402ac272a`, both force with a lease on the old head. PR description
 updated: the deferral has flown; the other-axis check still has SITL and
 Replay evidence only, three real resets since taken exactly as without it.
+
+## 2026-10-30: SFD-O4 log65, the first lockout resets provoked in flight
+
+log65 (3408138/646) on the beta `52b1d36f` (the deferral and the
+other-axis gate carried), flight card item 3: flips in ACRO to 56 m, range
+finder good for 25% of 40-157 s, 48% of it over 45 deg of tilt. GPS lane
+primary, flow on core 1 throughout (`EK3_SRC_OPTIONS 8`), `EK3_OPTIONS 94`
+(bit 6, so no reset statustexts), `EK3_FLOW_QMIN 0`.
+
+Three resets, `XKF7.FVC` 0 -> 3, FVU never set:
+
+| Reset | Range (stat 4) | Tilt | OF.Qual | Core 1 before | GPS | Core 1 after | 1 s later (core 1 / GPS) |
+|---|---|---|---|---|---|---|---|
+| 63.6 s | 9.8 m | 33 deg | 149 | 4.7 m/s | 18.1 | 18.9 | 15.0 / 14.0 |
+| 83.2 s | 9.0 m | 39 deg | 159 | 0.1 m/s | 18.5 | 20.7 | 15.2 / 16.0 |
+| 132.5 s | 14.2 m | 44 deg | 126 | 1.7 m/s | 18.9 | 16.1 | 19.4 / 18.6 |
+
+The deferral at 91.9 s ("range stale") held off with core 1 at 12.3 against
+GPS 9.8 m/s, and core 1 converged without a reset (14.7 against 13.5 two
+seconds later).
+
+What the resets repaired: each pre-reset error followed a re-entry into
+relative aiding after a 5 s tilt-gate timeout, which zeroes the velocity
+(`../pending-flow-aiding-reentry/`): drop 51.4 s then reset 63.6 s,
+re-entry 82.6 s then 83.2 s, drop 128.2 s then 132.5 s. Drops no reset
+followed left core 1 wrong for 8 s or more. On log61 (3408138/639), above
+the 15 m range finder, the recovery could not run (no current range, AGL KF
+invalid) and core 1 stayed wrong into a Loiter that did not stop. This
+recovery is the only thing in the stack that re-anchors a zeroed flow
+velocity, and only within range-finder reach.
+
+Flown, not replayed; a Replay without the recovery would show what each
+reset saved.

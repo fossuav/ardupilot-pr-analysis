@@ -1401,3 +1401,48 @@ the source and not measured against #34851:
 Whichever of the two merges second re-checks these. The SFD beta carries
 both since refresh11 topup1 (2026-10-22), with #34851's term also added
 to the flat-ground restore's recompute in `Control.cpp`.
+
+## 2026-10-30: SFD-O4 log61, the open SRTM collapse in flight
+
+log61 (3408138/639) on the beta `52b1d36f`, which carries this PR's anchor
+(`8332e10826`); `EK3_OPTIONS 94` (bit 2 set), `EK3_SRC_OPTIONS 8`,
+`TERRAIN_ENABLE 1`. Core 1 (flow) was primary through an acro sortie to
+40 m over a 15 m range finder. LOITER at 255.8 s, at 26 m and 13 m/s, held
+a 32 deg lean and sped up: core 1 read 0.3-0.9 m/s.
+
+This is the collapse round seven recorded as "pre-existing and not closed",
+reached by a route that record does not cover. With bit 2 set the anchor is
+bypassed and `FuseOptFlow` scales flow by `(-pd) - terrain_srtm_alt`.
+`AP_Terrain::update()` looks the SRTM height up at `ahrs.get_location()`,
+the primary's position, and `NavEKF3::writeTerrainData()` gives that value
+to every core (derived from the source, not measured). Core 1 had drifted
+200-340 m from GPS after velocity resets (`../pending-flow-aiding-reentry/`)
+onto ground the database puts 25-35 m higher, so the scale height went
+below zero and clamped to `rngOnGnd`. The main filter's own HAGL
+(`terrainState - pd`, frozen above range) stayed close to GPS height.
+
+| Time | Lookup position from GPS | RTER (m above origin) | `-PD - RTER` | GPS height above origin |
+|---|---|---|---|---|
+| 218.8 s | 3 m | 4.1 | 23.8 | 27.7 |
+| 226.9 s | 114 m | 5.9 | 11.2 | 11.5 |
+| 230.9 s | 169 m | 24.6 | -3.1 | 22.2 |
+| 235.0 s | 286 m | 35.3 | -8.2 | 30.3 |
+| 255.2 s | 277 m | 27.6 | -0.6 | 24.6 |
+
+Replay on the beta (built at smallfastdrone `0cb49e7dfb`, `52b1d36f` plus
+an autotest commit) reproduces core 1 to 0.1 m/s through 256 s. Core 1
+speed at 254-260 s, against GPS 13.1-14.5 m/s:
+
+| Run | Core 1 |
+|---|---|
+| as flown, bit 2 set | 0.3-3.9 m/s |
+| bit 2 off (`EK3_OPTIONS 90`, this PR's anchor) | 4.5-6.8 m/s |
+| bit 2 off, RTER records stripped from the log (flat ground only) | 20-30 m/s |
+
+All three are identical from 222 to 234 s. The anchor follows the
+database's shape at the same drifted position, so it is misled by the same
+lookup; flat ground over-reads. None gives a usable speed, because core 1
+was already wrong. What this adds: the database height can be wrong without
+the database being wrong, when it is looked up at the position of a lane
+that has no absolute fix, which is not a location (root playbook ARCH-16).
+No fix written.

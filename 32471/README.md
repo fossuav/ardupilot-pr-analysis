@@ -193,6 +193,11 @@ reintroduce any of them without redoing the A/B in `data/ab-2026-09-04/`.
 | Inhibit Z accel-bias learning in ground effect | the AccZ offset there is not the hover value, and a downwash-corrupted baro drives the bias wrong | at `=2`, present vs removed: **0.203 / 0.201 m** with no simulated ground effect, **0.169 / 0.168 m** with `SIM_BARO_GEFF_M=1.0`. Removed 2026-09-05 |
 | Store the motors-on delta in `INS_ACC_VRFB_Z` instead of the total | the static bias is otherwise applied twice at arm | the stored value is a total across the whole fleet; changing it silently reinterprets every one. The arm-time double count is real and belongs to bit 2: `XKF2.AZ` at arm +0.130 clear vs 0.000 set |
 
+The last row now has a real-flight measurement against it: Replay of SFD-O4
+log63 put the stored delta best of four on both cores, ahead of the total
+with bit 2. The row's rejection is a compatibility argument and stands
+until decided; see "2026-10-30: the first packs flown with apply" below.
+
 `logjk4`'s proposal to gate the frozen correction on ground effect is also
 measured worse - 0.644/0.656 m becomes 0.760 m - and targets the
 never-leaves-ground-effect regime, a different case. Lowering
@@ -1087,3 +1092,62 @@ that commit.
 Pushed 2026-10-03: e7a56f1389 -> 1f357b2429 (fast-forward; one new commit re-indenting the test registrations).
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-5973680930
 Open, not selected: per-IMU learned flag on the disarm save (bot 2026-10 round); reply says not changed.
+
+## 2026-10-30: the first packs flown with apply
+
+SFD-O4 on the 4.7.2 beta `52b1d36f`, which carries this PR, #32473 and the
+beta's `7ab6409ca3` (variance kept when an armed hold ends). GPS lane (core
+0, `EK3_SRC1_VELZ` GPS) primary; flow on core 1, whose only vertical
+reference is the baro. LOITER hover at 2-3 m. Flight card item 2
+(smallfastdrone `Tools/SFD/FIELD_PLAN.md`).
+
+- log62 (3408138/641), `ACC_ZBIAS_LEARN 9` (learn, acro bit): 58 s hover.
+  `XKF2.AZ` -0.050 on both cores disarmed and at arm, -0.020/-0.026 at the
+  end of the hover; disarm saved -0.0291/-0.0354 (PARM records), the total,
+  as the code intends.
+- log63 (3408138/643) flight 1, `ACC_ZBIAS_LEARN 11` (learn, use, acro bit;
+  bit 2 clear): 65 s hover applying -0.0291/-0.0351 (RISK). AZ -0.020/-0.030
+  at arm, up to +0.04 within 20 s, +0.01 at the end; saved -0.0183/-0.0254.
+  Flight 2 on the same boot (flow lane, full stick) saved -0.0437/-0.0486:
+  0.025 between consecutive flights.
+- EKF height against the range finder over the first 20 s after liftoff,
+  rms, core 0/core 1: 0.04/0.64 m on log62 against 0.14/1.10 m on log63.
+  The baro stayed within 0.2 m of the range finder on both, so core 1 was
+  following its own vertical estimate, not the baro.
+
+### Replay of log63 flight 1
+
+Built at smallfastdrone `0cb49e7dfb` (`52b1d36f` plus an autotest commit).
+The correction is read from RISK at the point of use, so a copy of the log
+with `RISK.VRFBZ` rewritten changes the correction and nothing else. Bit 2
+reaches the EKF as REV3 events 16/17, so a copy with 16 inserted on the
+first frame after 2.5 s (EKF running) and 17 at arming replays the flight
+as if 15 had been flown. The as-flown replay reproduces C=0/1 exactly.
+
+| Run | Core 0 height err, 2-20 s rms | Core 1 | Core 1, whole hover | Core 1 AZ swing |
+|---|---|---|---|---|
+| 11 as flown: total, bit 2 clear | 0.14 m | 1.10 m | 0.89 m | 0.07 |
+| no correction (RISK 0) | 0.12 m | 0.65 m | 0.56 m | 0.04 |
+| 15: total with bit 2 (REV3 inserted) | 0.33 m | 0.75 m | 0.59 m | 0.10 |
+| motors-on delta, bit 2 clear (RISK +0.021/+0.015) | 0.11 m | 0.54 m | 0.47 m | 0.03 |
+
+The delta is log62's hover AZ minus its ground AZ, a value predicted from
+the previous flight, not fitted to this one.
+
+- 11 double-counts the ground bias, as the "Store the motors-on delta" row
+  says it will with bit 2 clear: the residual has to climb by about the
+  previous flight's ground bias (log62's -0.05; it climbed 0.06/0.07). The
+  card prescribed 11; it should have been 15.
+- 15 removes the double count at arm (AZ 0.00/0.00), but the release at arm
+  restores the bias variance and the bias swings to +0.06/+0.09 within 5 s of
+  liftoff. Core 0 is worse than with no correction (0.33 against 0.12 m),
+  core 1 better than 11 but worse than none. This looks like the release
+  overshoot #32473's acro A/B found (8.0 m against 1.5 m, one SITL run),
+  here at takeoff; mechanism not separately measured.
+- The delta is best of the four on both cores.
+
+What this does not settle: one flight, on an airframe whose vibration
+offset is small (+0.02 to +0.03 m/s/s, log62's hover minus ground), with
+bit 2 emulated by inserted events rather than flown. The next flight is a
+pack at 15. Until then, 9 (learn, do not apply) is what the evidence
+supports on SFD-O4.

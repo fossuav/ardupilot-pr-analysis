@@ -453,3 +453,12 @@ plus fixups:
 
 Pushed 2026-10-03: a04fb2dbbd -> c7d1d732fe (fast-forward, 6 new commits, each built on its own).
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/34456#issuecomment-5973749744
+
+## 2026-10-30: flown selections on the beta
+
+SFD-O4 on `52b1d36f` (`EK3_SRC_OPTIONS 8`, `EK3_OPTIONS 94`, bit 1 set).
+log61 (3408138/639): set 2 disarmed at 136.7 s, "EKF3 lane switch 1" 6 ms
+later; set 1 armed in ACRO at 268.5 s, lane 0 in 6 ms. log63 (3408138/643):
+set 2 armed in LOITER at 235.3 s, lane 1. log64 (3408138/645): set 2 at
+5.6 s and set 1 at 54.4 s, both disarmed. Every selection reached its lane.
+The log14 Replay owed above is still owed.
