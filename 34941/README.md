@@ -1,14 +1,16 @@
 # Flow lane: re-entering relative aiding zeroes a velocity that was right (EKF3, upstream)
 
-Not a PR yet. Found 2026-10-30 on SFD-O4 log61 (3408138/639) and seen six
-more times on log65 (3408138/646), both on the SmallFastDrone 4.7.2 beta
-`52b1d36f`. Real-flight numbers inline; no logs committed.
+PR #34941, opened 2026-10-30 (this directory was
+`pending-flow-aiding-reentry/` until then). Found 2026-10-30 on SFD-O4
+log61 (3408138/639) and seen six more times on log65 (3408138/646), both
+on the SmallFastDrone 4.7.2 beta `52b1d36f`. Real-flight numbers inline;
+no logs committed.
 
 ## Status (one line)
 
 Upstream behaviour, characterised on two real flights; both replay exactly
-on the beta. Fix and autotest on local branch `pr-ekf3-flow-reentry-v3`,
-replayed on both flights, not pushed (see the last section). It is the
+on the beta. Fix and autotest open as #34941 (head `247d0fb74e`),
+replayed on both flights (see the last two sections). It is the
 root of the SFD-O4 Loiter that did not stop (log61), with the terrain
 lookup in `../33585/` deciding which way the velocity was wrong when the
 pilot switched.
@@ -221,3 +223,18 @@ setup runs a flow lane there is not established.
 Local branch `pr-ekf3-flow-reentry-v3` on master `278a68a57a`, not pushed:
 `8412571a33` (EKF3) and `247d0fb74e` (autotest). Gate clean except the
 73-character subject note. v2 (`e04ef8c2ab`, `e0cf64b080`) is kept.
+
+## 2026-10-30 (later): opened as #34941
+
+Pushed by Andy as `pr-ekf3-flow-tilt-timeout` (the v3 commits
+`8412571a33` and `247d0fb74e` on master `278a68a57a`) and opened as
+#34941 the same day. Before writing the description the replay A/B was
+re-run on v3's own outputs, since the p95, time-off and worst-position
+columns above had been measured on the first prototype: v3 reproduces
+every figure (log61 rms 9.53 -> 3.97, p95 21.80 -> 8.83, over 3 m/s off
+47.4% -> 33.3%, worst position against the GPS lane 466 -> 313 m; log65
+9.23 -> 2.56, 18.99 -> 5.16, 45.0% -> 18.2%, 333 -> 95 m). The
+description carries that table, the three-build autotest result and the
+coast-while-tilted point; a before/after plot of flow lane speed against
+GPS on both flights, as flown and with the change, is to be attached by
+hand (gh cannot upload images).

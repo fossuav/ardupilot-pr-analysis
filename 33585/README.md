@@ -1416,7 +1416,7 @@ bypassed and `FuseOptFlow` scales flow by `(-pd) - terrain_srtm_alt`.
 `AP_Terrain::update()` looks the SRTM height up at `ahrs.get_location()`,
 the primary's position, and `NavEKF3::writeTerrainData()` gives that value
 to every core (derived from the source, not measured). Core 1 had drifted
-200-340 m from GPS after velocity resets (`../pending-flow-aiding-reentry/`)
+200-340 m from GPS after velocity resets (`../34941/`)
 onto ground the database puts 25-35 m higher, so the scale height went
 below zero and clamped to `rngOnGnd`. The main filter's own HAGL
 (`terrainState - pd`, frozen above range) stayed close to GPS height.

@@ -722,7 +722,7 @@ beta `52b1d36f` show the same reset doing the same damage on the other
 edge: after a 5 s tilt-gate flow timeout a flow lane goes AID_NONE and
 straight back to AID_RELATIVE, and the re-entry zeroes a velocity the IMU
 had kept within about 0.5 m/s (18.1 to 0.8 m/s at 18.6 true on log61).
-Recorded in `../pending-flow-aiding-reentry/`; not this PR's code.
+Recorded in `../34941/`; not this PR's code.
 
 The flight card's flow speed cap item, filed under this PR, was flown on
 log63 (3408138/643) flight 2 and did not test it: five full-stick pushes on
