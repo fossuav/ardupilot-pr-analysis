@@ -1,0 +1,30 @@
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_Logging.cpp b/libraries/AP_NavEKF3/AP_NavEKF3_Logging.cpp
+index dfecff9008..e86b4ab232 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_Logging.cpp
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_Logging.cpp
+@@ -436,6 +436,25 @@ void NavEKF3_core::Log_Write(uint64_t time_us)
+     Log_Write_XKF7(time_us);
+ #endif
+ 
++    {
++        // ABTEST: the on-ground height verdict, written in the XKFM layout with core + 50
++        const bool velDMeasured = (imuSampleTime_ms - lastVelDFuseTime_ms) < 1000;
++        const uint8_t flags = uint8_t(healthy()) | (uint8_t(onGroundHgtError()) << 1) | (uint8_t(velDMeasured) << 2) |
++                              (uint8_t(onGround) << 3) | (uint8_t(PV_AidingMode) << 4) |
++                              (uint8_t((imuSampleTime_ms - ekfStartTime_ms) < 1000) << 6);
++        const struct log_XKFM pkth{
++            LOG_PACKET_HEADER_INIT(LOG_XKFM_MSG),
++            time_us : time_us,
++            core    : uint8_t(DAL_CORE(core_index) + 50),
++            ongroundnotmoving : flags,
++            gyro_length_ratio : (float)hgtInnovFiltState,
++            accel_length_ratio : 0.0f,
++            gyro_diff_ratio : (float)innovVelPos[5],
++            accel_diff_ratio : (float)stateStruct.velocity.z,
++        };
++        AP::logger().WriteBlock(&pkth, sizeof(pkth));
++    }
++
+     Log_Write_XKFS(time_us);
+     Log_Write_Quaternion(time_us);
+ 

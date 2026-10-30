@@ -1,0 +1,17 @@
+# The 14 logs replayed for #34942: index id, INS_ACC_ID, STAT_BOOTCNT.
+# The ids resolve to files through the private analysis repo and
+# find_log.py; file names are not public.
+q25-0cb4-run   2818322  52
+q25-0cb4       2818322  49
+q25-308a-run   2818322  45
+q25-308a       2818322  43
+q25-5b70       2818322  36
+q25v1-op-0e2c   2818322  165
+log54 (SFD-O4) 3408138  624
+log56 (SFD-O4) 3408138  628
+log57 (SFD-O4) 3408138  629
+log58 (SFD-O4) 3408138  632
+log59 (SFD-O4) 3408138  633
+log61 (SFD-O4) 3408138  639
+log63 (SFD-O4) 3408138  643
+log65 (SFD-O4) 3408138  646

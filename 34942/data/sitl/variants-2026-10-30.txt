@@ -1,0 +1,7 @@
+full: rc=0 AT-0005.0: PASSED: "EK3HardLandingRearm (refuse to arm until the EKF height recovers from a hard landing)" | 
+master: rc=1 AutoTestTimeoutException('Failed to get EKF.flags=0')  | 
+no_filter_fix: rc=1 NotAchievedException("command-ack says we didn't fail to arm")  | 
+no_prearm_reason: rc=1 NotAchievedException('Unexpected prearm failure (PreArm: AHRS: Waiting for 3D fix)')  | 
+no_aided_mode: rc=1 AutoTestTimeoutException('Failed to get EKF.flags=0')  | 
+no_exemption: rc=1 AutoTestTimeoutException('Failed to get EKF.flags=1')  | 
+no_rejected: rc=1 AutoTestTimeoutException('Failed to get EKF.flags=0')  | 

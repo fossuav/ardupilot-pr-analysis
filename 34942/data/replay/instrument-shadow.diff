@@ -1,0 +1,83 @@
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_Logging.cpp b/libraries/AP_NavEKF3/AP_NavEKF3_Logging.cpp
+index dfecff9008..7fc6e3a2f0 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_Logging.cpp
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_Logging.cpp
+@@ -435,6 +435,27 @@ void NavEKF3_core::Log_Write(uint64_t time_us)
+ #if EK3_FEATURE_OPTFLOW_AGL_KF
+     Log_Write_XKF7(time_us);
+ #endif
++    {
++        // ABTEST: height innovation filters and the on-ground health verdict under each rule
++        const float horizErrSq = sq(innovVelPos[3]) + sq(innovVelPos[4]);
++        const bool hOld = !(onGround && (PV_AidingMode == AID_NONE) && ((horizErrSq > 1.0f) || (fabsF(hgtInnovFiltState) > 1.0f)));
++        const bool hNew = !(onGround && (((PV_AidingMode == AID_NONE) && (horizErrSq > 1.0f)) || (fabsF(hgtInnovFiltShadow) > 1.0f)));
++        // written in the XKFM layout, which every input log defines, with core + 50
++        const uint8_t flags = uint8_t(healthy()) | (uint8_t(hOld) << 1) | (uint8_t(hNew) << 2) |
++                              (uint8_t(onGround) << 3) | (uint8_t(PV_AidingMode) << 4) |
++                              (uint8_t((imuSampleTime_ms - ekfStartTime_ms) < 1000) << 6);
++        const struct log_XKFM pkth{
++            LOG_PACKET_HEADER_INIT(LOG_XKFM_MSG),
++            time_us : time_us,
++            core    : uint8_t(DAL_CORE(core_index) + 50),
++            ongroundnotmoving : flags,
++            gyro_length_ratio : (float)hgtInnovFiltState,
++            accel_length_ratio : (float)hgtInnovFiltShadow,
++            gyro_diff_ratio : (float)innovVelPos[5],
++            accel_diff_ratio : (float)stateStruct.velocity.z,
++        };
++        AP::logger().WriteBlock(&pkth, sizeof(pkth));
++    }
+ 
+     Log_Write_XKFS(time_us);
+     Log_Write_Quaternion(time_us);
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_PosVelFusion.cpp b/libraries/AP_NavEKF3/AP_NavEKF3_PosVelFusion.cpp
+index 29ddbd0bd5..51c5b8a7b9 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_PosVelFusion.cpp
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_PosVelFusion.cpp
+@@ -1231,6 +1231,8 @@ void NavEKF3_core::FuseVelPosNED()
+ 
+         // Test height measurements
+         if (fuseHgtData) {
++            // ABTEST: the pass time before this sample overwrites it
++            const uint32_t prevHgtPassTime_ms = lastHgtPassTime_ms;
+             // Calculate height innovations
+             innovVelPos[5] = stateStruct.position.z - velPosObs[5];
+             varInnovVelPos[5] = P[9][9] + R_OBS_DATA_CHECKS[5];
+@@ -1270,8 +1272,13 @@ void NavEKF3_core::FuseVelPosNED()
+                     const ftype hgtInnovFiltTC = 2.0;
+                     ftype alpha = constrain_ftype(dtBaro/(dtBaro+hgtInnovFiltTC), 0.0, 1.0);
+                     hgtInnovFiltState += (innovVelPos[5] - hgtInnovFiltState)*alpha;
++                    // ABTEST: shadow filter on the previous pass time
++                    const ftype dtShadow = (imuSampleTime_ms - prevHgtPassTime_ms) * 1.0e-3;
++                    const ftype alphaShadow = constrain_ftype(dtShadow/(dtShadow+hgtInnovFiltTC), 0.0, 1.0);
++                    hgtInnovFiltShadow += (innovVelPos[5] - hgtInnovFiltShadow)*alphaShadow;
+                 } else {
+                     hgtInnovFiltState = 0.0f;
++                    hgtInnovFiltShadow = 0.0f;
+                 }
+ 
+                 if (hgtTimeout) {
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_core.cpp b/libraries/AP_NavEKF3/AP_NavEKF3_core.cpp
+index 9db675a114..07eee62cd4 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_core.cpp
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_core.cpp
+@@ -391,6 +391,7 @@ void NavEKF3_core::InitialiseVariables()
+     velResetNE.zero();
+     posResetD = 0.0f;
+     hgtInnovFiltState = 0.0f;
++    hgtInnovFiltShadow = 0.0f;
+     imuDataDownSampledNew.delAng.zero();
+     imuDataDownSampledNew.delVel.zero();
+     imuDataDownSampledNew.delAngDT = 0.0f;
+diff --git a/libraries/AP_NavEKF3/AP_NavEKF3_core.h b/libraries/AP_NavEKF3/AP_NavEKF3_core.h
+index 71952e509a..37d87d82ab 100644
+--- a/libraries/AP_NavEKF3/AP_NavEKF3_core.h
++++ b/libraries/AP_NavEKF3/AP_NavEKF3_core.h
+@@ -1311,6 +1311,7 @@ private:
+     ftype yawTestRatio;             // square of magnetometer yaw angle innovation divided by fail threshold
+     QuaternionF prevQuatMagReset;    // Quaternion from the last time the magnetic field state reset condition test was performed
+     ftype hgtInnovFiltState;        // state used for fitering of the height innovations used for pre-flight checks
++    ftype hgtInnovFiltShadow;       // ABTEST: hgtInnovFiltState on the previous pass time
+     uint8_t magSelectIndex;         // Index of the magnetometer that is being used by the EKF
+     bool runUpdates;                // boolean true when the EKF updates can be run
+     uint32_t framesSincePredict;    // number of frames lapsed since EKF instance did a state prediction
