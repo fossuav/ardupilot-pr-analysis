@@ -141,3 +141,17 @@ observations above, and that 87.4%/97.1% on a boot that flew cannot
 separate the restart transient from the steady-state peak) is drafted but
 not posted; Andy posts it. Open question for that PR: whether the 99.5%
 peak default leaves margin at an 87% average with the fast rate thread.
+
+## 2026-10-30 (later): #33366 on SFD refresh12
+
+#33366 (robertlong13, 2026-07-27) starts the measurement after the
+parameters load, clears the peak on each threads.txt read instead of
+stopping it, and gives the takeoff check its own 2 s window, with
+TKOFF_CPU_AVG and TKOFF_CPU_PEAK and a message naming the value that
+blocked. It is in SFD's prs.txt and on refresh12 (topup1), where its two
+parameters move from var_info2 60/61, #32475's on the shipped betas and on
+master, to 30/31. Still open: whether the 99.5% peak default leaves margin
+at an 87% average with the 2 kHz rate thread, which log64 cannot separate
+from the restart transient. SITL still cannot show any of it; the flight
+check is in refresh12's `Tools/SFD/FIELD_PLAN.md` (`BRD_IDLE_STATS 3`, two
+takeoffs in one boot, PM2 for the margin).
