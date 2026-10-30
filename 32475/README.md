@@ -548,3 +548,82 @@ target belongs to the abandoned detection) and that no test reaches the
 spool-up abort path, only the disarm path. Comment and message corrected
 in place on `r1030/32475-4` (`9de2b82fbe`, `60cee67154`); the abort path
 stays log-only and untested, as the commit now says.
+
+## 2026-10-30: the refresh12 failures were four test problems, not a code clash
+
+refresh12 (#32475 at `60cee67154` on the 4.7.2 stack with #32514) failed
+ThrowDropTwiceWithoutReentry and ThrowNextModeAutoStaleSubmode every time
+and ThrowSrcSetHandoff sometimes. The refresh record put all three down to
+#32514 no longer raising the EKF failsafe on a source set with no
+horizontal source. That was one of four causes, and the other three were
+in the tests; the throw code behaves correctly on both stacks.
+
+1. The first leg of ThrowDropTwiceWithoutReentry ("the aborted throw never
+   set a yaw target") is flaky on #32475 alone too (1 of 2 on master).
+   Autotest sets LOG_FILE_RATEMAX 10 and THRO is a streaming message, so
+   the logger drops the stage-change record at detection: the previous
+   10 Hz record is 40-45 ms older. Throw resets its own log timer anyway,
+   so the target is first logged about 100 ms after detection, and the leg
+   force-disarmed 60-125 ms after it. Passing run: detection 46.867 s,
+   Stage 2 / YSrc 4 / TYaw 90 at 46.970, disarm 46.992. Failing run:
+   detection 45.922, disarm 45.982, no Stage 2 record. The next stage
+   message comes only after the toss lands (Hit ground 59.68 s,
+   "Stabilizing throw height" 61.41 s in the completed toss), so the leg
+   now waits 0.3 s of sim time before disarming. This was introduced by
+   `60cee67154`, the last commit of round 6.
+2. Its last leg waited for the failsafe's "position lost" to know the EKF
+   had no position. #32514 does not count a missing position where the
+   mode and the set need none, so it never comes. Now it waits for
+   EKF_STATUS_REPORT to clear EKF_POS_HORIZ_ABS and EKF_PRED_POS_HORIZ_ABS,
+   which is what Copter's ekf_has_absolute_position() reads while
+   disarmed.
+3. ThrowNextModeAutoStaleSubmode required "EKF Failsafe Cleared" before
+   AUTO. Measured after the completion restore (XKF4.SS of the primary
+   core, horiz_pos_abs set and const_pos_mode clear): on #32475 alone the
+   EKF reports a position at +0.072 s, the wait message is at +0.100,
+   "EKF Failsafe Cleared" at +0.972 and AUTO at +0.975. With #32514 AUTO
+   took over at +0.100 with no wait, so position_ok() was already true
+   (the first logged XKF4 with a position is at +0.115). The wait was
+   guaranteed only by master's failsafe hold. The test
+   now uses THROW_SRC_SET 2, so no position comes: throw must say "Auto
+   waiting for position", then "no position for Auto, staying in throw".
+4. ThrowSrcSetHandoff required "Loiter waiting for position" in its two
+   LOITER drops, which is the same race. With #32514, LOITER waited in 7
+   of 10 such drops and took over at +0.100 in the other 3. On #32475
+   alone it always waited and took over at +0.93 to +1.12 s. The message
+   is now required only in the drop where no position comes; LOITER
+   cannot take over without one either way.
+
+A/B with the new tests on the commit before each fix they guard (built in
+scratch worktrees at `5e6c1af447` and `e46becb2f1`, the test file
+replaced):
+- ThrowDropTwiceWithoutReentry before `1154bffa6c`: "re-armed throw kept
+  the aborted throw's yaw target", 2 of 2.
+- ThrowNextModeAutoStaleSubmode before `34ae6a25ad`: no wait message, 2 of
+  2; the log has AUTO entered at +0.000 with reason THROW_COMPLETE and no
+  position at any point.
+
+After the fix, the three tests pass 5 of 5 each on refresh12 and on
+#32475 alone (master), and every Throw test passes: refresh12's 19
+twice, and the PR's 19 once on #32475 alone.
+
+Commits, on top of `60cee67154` as `r1030/32475-5` (pushed to andyp1per
+`60cee67154` -> `3d634e4a5f`, a fast-forward) and on refresh12 as `28223b9b5b`..`c0c0f45759`:
+
+    d0b22fb813  autotest: let the aborted throw's yaw target reach the log
+    c57f083d21  autotest: wait for the EKF itself to lose the re-armed throw's position
+    c38b657b8c  autotest: check the stale-AUTO handoff where no position comes
+    3d634e4a5f  autotest: let the throw LOITER handoffs take over without a wait
+
+All test-only, so they can fold into their test commits at the squash
+(`60cee67154`/`1911cf40be`, `182df1f14f`, `a58de9ac3f`/`041de0484b`,
+`6c59cce12c`). This settles the "#32475 against #32514" decision: neither
+PR's code changes, and #32475's tests now hold with and without #32514.
+The THROW_SRC_SET aided-to-unaided hand-off (about 7 s of dead
+reckoning, then the EKF failsafe lands) is still open for Andy; it is
+unrelated.
+
+Not changed: THRO's "log at 10 Hz or if the stage changes" loses stage
+changes to LOG_FILE_RATEMAX on any vehicle that sets it, so a flight log
+can skip a stage that lasted under 100 ms. That is upstream throw
+logging, not this PR's.
