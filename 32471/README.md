@@ -1461,3 +1461,27 @@ replaced by a section on what changed (the log63 replay table), and
 7 April review comment got a reply (discussion_r4427750014) saying the
 saved value no longer includes the sensor offset with bit 2 clear, with
 the log63 replay numbers. AP-Review will review the new head.
+
+## 2026-10-30 (later): v3 on SFD refresh12
+
+Taken by SFD refresh12 as topup2: `a825555a04` Copter, `dca757eee8`
+AP_InertialSensor, `8455b99ddb` autotest. One conflict: the
+`ACC_ZBIAS_LEARN` description against #32473's bit 3, which the stack
+carries and this PR does not. Merged as v3's sentences on what is learned,
+relearning after changing bit 2 and the moving-platform consequence, plus
+#32473's acro clause, its take-effect sentence and its bit 3 text. The
+learner runs only from `update_throttle_hover()`, which manual-throttle
+modes skip, so v3's baseline never meets #32473's acro hold.
+
+VibrationRectificationBiasLearning on the stack: 0.141 learned against a
+0.15 VRF; 0.140 and 0.141 with a static 0.3 on the first accel (bias at
+arming 0.28); with bit 2, 0.441, 0.437 and 0.442. The same figures as
+master's v3 run above. With `a825555a04` reverted it fails:
+"INS_ACC2_VRFB_Z=0.430590 is not the motors-on offset 0.150000", the old
+total. SFD set 115 of 115.
+
+SFD's default `ACC_ZBIAS_LEARN 8` learns nothing, so no board changes out
+of the box. A vehicle already learning with bit 2 clear (SFD-O4 flew 11)
+holds a saved total that v3 would apply as the change since arming, once,
+until it relearns: the SFD flight card for refresh12 zeroes
+`INS_ACC_VRFB_Z` and `INS_ACC2_VRFB_Z` before the first v3 flight.
