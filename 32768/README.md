@@ -1305,3 +1305,10 @@ core calls `update_calibration()`.
 
 Deferred because a maintainer is reviewing the PR and the author wants it left
 untouched meanwhile.
+
+## 2026-10-30: arm datum steps on the SFD-O4 beta flights
+
+`EKF_ALT_RESET` at each arm on the beta `52b1d36f`, both cores alike: log61
+(3408138/639) -2.88 m (`XKF1.PD` 0.01 -> 2.89, armed 113 s after the origin
+was set); log62 (3408138/641) +0.57 m; log63 (3408138/643) flight 1
+-0.15 m. Recorded, not acted on.

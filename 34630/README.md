@@ -196,3 +196,17 @@ old head. #34543 has since been rebased onto newer master (`17f017fb8c`);
 the copies here are left as they were. The mechanical gate reports three
 older commits whose bodies carry squashed subjects (`e5ac04130f`,
 `a488b89db8`, `60b8bd1d79`), unchanged by this rebuild.
+
+## 2026-10-30: lockouts counted in flight, SFD-O4 log65
+
+log65 (3408138/646), beta `52b1d36f`, `EK3_OPTIONS 94` (bit 6 set): three
+lockout resets on core 1 (`XKF7.FVC` 0 -> 3 at 63.6, 83.2 and 132.5 s,
+FVU never set) and no reset statustext, as bit 6 intends. Each reset is in
+`../33484/` (2026-10-30). The OSD (`OSD_TYPE 5`, `OSD1_EKF0/1_EN`) drew
+every frame; what it showed is not in the log and no pilot report was
+taken.
+
+A limit seen on log61 (3408138/639): core 1 was 13 m/s and 300 m wrong
+while its status said healthy (`XKF4.SS` unchanged, SV and SP 0), so a lane
+item had nothing to flag. Lane status reports what is being fused, not
+whether the result is right.

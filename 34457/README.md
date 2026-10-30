@@ -699,3 +699,20 @@ PR description updated and reply to the third AP-Review round posted 2026-10-14 
 COMMENT, nothing blocks; the review predates the 2026-10-13 description
 update, which already covers what it asks (the floor hold and its tests,
 "Tested on hardware" unticked).
+
+## 2026-10-30: the landed hold after hard acro, SFD-O4 log65
+
+Flight card item 1, on the beta `52b1d36f`. log65 (3408138/646): an acro
+sortie to 56 m, then a LOITER landing (land complete 179.2 s) and 23 s armed
+on the ground before disarm at 202.3 s, range finder out of range low
+(0.01-0.02 m, stat 2). The AGL KF held its 0.05 m floor on both cores for
+the whole time on the ground (core 0 read 0.53 at the touchdown sample, then
+0.05 within 5 s). The main filters read `XKF1.VD` -0.20 to +0.68 m/s on the
+ground, the positive end the touchdown itself; the climb they settled to
+(-0.17/-0.19 at 189 s) is under the 0.25 m/s that defeated the coast stop on
+log39. Passed.
+
+Shorter dwells the same day: log61 (3408138/639) 1.4 s, 0.07-0.08 m on both
+cores; log63 (3408138/643) flight 2 6 s, core 1 0.12 m. The main filters'
+terrain height read 0.4-1.8 m below the ground on log65 while landed; that
+is `terrainState`, not the AGL KF.

@@ -244,3 +244,20 @@ One coverage gap, verified: the autotest never sets EK3_OPTIONS bit 3, so the
 runs, and a regression there would pass. The Loiter maths, units, NE frame,
 bit-clear behaviour (identical to master) and the bit 1 docs were clean. To be
 picked up when the PR is unparked after the O4 flies #33639.
+
+## 2026-10-30: SFD-O4 Loiter with the bit clear, not the test asked for
+
+SFD-O4 flies `LOIT_OPTIONS 1`, so bit 1 is clear and this PR's change did
+not run on any of the beta `52b1d36f` flights of 2026-10-30; #33639 is in
+the build. The question above (does the O4 step back with the bit clear,
+once #33639 removes the cap's drag inflation?) is only partly answered.
+
+log63 (3408138/643) flight 2, flow lane at 3-6 m, `LOIT_SPEED_MS 15`: after
+each of five full-stick pushes released at 2.8-9.6 m/s, velocity along the
+push direction never went negative, but the pilot gave stick again 1.1-3.0 s
+after each release with the vehicle still moving at 0.85 m/s or more, so no
+stop completed hands-off. And at 3-6 m the EKF cap was 20-36 m/s, above
+`LOIT_SPEED_MS`, so the drag inflation the hypothesis is about could not
+occur. The flight that settles it holds still after a release below 2.3 m,
+where the cap binds. log61 (3408138/639): Loiter on the GPS lane entered at
+10.5 m/s with a 30 deg lean and stopped in 1.8 s.

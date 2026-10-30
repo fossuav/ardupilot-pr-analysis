@@ -713,3 +713,20 @@ the 2026-10-03 round was not re-checked here.
 Pushed 2026-10-11: `pr-flow-aiding` `32ebf12db0` -> `125490400d` (force, autosquashed), 3 commits, messages only (every tree unchanged). Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
 
 Reply to the AP-Review round posted 2026-10-11 (issue comment 6110171441), the text drafted above.
+
+## 2026-10-30: the velocity keep covers one edge of two
+
+This PR skips the velocity and position resets on AID_ABSOLUTE ->
+AID_RELATIVE. SFD-O4 log61 (3408138/639) and log65 (3408138/646) on the
+beta `52b1d36f` show the same reset doing the same damage on the other
+edge: after a 5 s tilt-gate flow timeout a flow lane goes AID_NONE and
+straight back to AID_RELATIVE, and the re-entry zeroes a velocity the IMU
+had kept within about 0.5 m/s (18.1 to 0.8 m/s at 18.6 true on log61).
+Recorded in `../pending-flow-aiding-reentry/`; not this PR's code.
+
+The flight card's flow speed cap item, filed under this PR, was flown on
+log63 (3408138/643) flight 2 and did not test it: five full-stick pushes on
+the flow lane at 3-6 m with `LOIT_SPEED_MS 15` reached 9.9 m/s, and the cap
+there, (`EK3_FLOW_MAX` - 1) x the AGL KF height (local commit
+`cd693d0596`), was 20-36 m/s. It binds only below `LOIT_SPEED_MS` / 6.4,
+2.3 m. Core 1 tracked GPS within 0.5-1 m/s throughout.
