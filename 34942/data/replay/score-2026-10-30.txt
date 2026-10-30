@@ -1,0 +1,81 @@
+== t25-0cb4 (cores [0])
+  arm   15.68 REFUSE  c0 ABS filt  1.83 VD replay  3.99 flight  0.39 HGT-ERROR unhealthy
+  arm  175.88 REFUSE  c0 ABS filt -2.33 VD replay -0.74 flight -0.37 HGT-ERROR unhealthy
+  arm  363.98 ok      c0 ABS filt -0.49 VD replay -0.20 flight -0.22
+  arm  482.48 REFUSE  c0 ABS filt -1.46 VD replay -0.23 flight -0.21 HGT-ERROR unhealthy
+  arm  494.88 REFUSE  c0 ABS filt -1.06 VD replay -0.07 flight -0.19 HGT-ERROR unhealthy
+  arm  513.08 ok      c0 ABS filt -0.60 VD replay  0.10 flight  0.71
+  arm  530.68 ok      c0 ABS filt -0.32 VD replay  0.09 flight  0.17
+  arm  549.08 ok      c0 ABS filt -0.22 VD replay  0.10 flight  0.14
+  core 0: 6.8 s in height error on the ground, 4 episodes starting 13.9, 174.3, 480.0, 494.4; forced resets 0
+== log54 (SFD-O4) (cores [0, 1])
+  arm   59.57 ok      c0 NONE vDmeas filt -0.01 VD replay -0.00 flight -0.00 || c1 ABS filt -0.01 VD replay -0.01 flight -0.01
+  core 0: 0.0 s in height error on the ground, 0 episodes starting ; forced resets 0
+== log56 (SFD-O4) (cores [0, 1])
+  arm   81.87 ok      c0 NONE vDmeas filt  0.00 VD replay  0.00 flight  0.00 || c1 ABS filt  0.00 VD replay -0.00 flight -0.00
+  core 0: 0.0 s in height error on the ground, 0 episodes starting ; forced resets 0
+== log57 (SFD-O4) (cores [0, 1])
+  arm  208.17 ok      c0 NONE vDmeas filt  0.04 VD replay  0.01 flight  0.01 || c1 ABS filt  0.01 VD replay  0.01 flight  0.01
+  arm  221.47 ok      c0 NONE vDmeas filt  0.01 VD replay  0.01 flight  0.01 || c1 ABS filt  0.01 VD replay  0.02 flight  0.02
+  arm  341.77 ok      c0 NONE vDmeas filt  0.00 VD replay -0.02 flight -0.02 || c1 ABS filt -0.00 VD replay -0.01 flight -0.01
+  arm  443.77 ok      c0 NONE vDmeas filt  0.07 VD replay  0.06 flight  0.06 || c1 ABS filt  0.06 VD replay  0.06 flight  0.06
+  arm  560.67 ok      c0 NONE vDmeas filt -0.01 VD replay  0.02 flight  0.02 || c1 ABS filt -0.00 VD replay  0.01 flight  0.01
+  arm  623.37 ok      c0 NONE vDmeas filt  0.07 VD replay  0.03 flight  0.03 || c1 ABS filt  0.06 VD replay  0.04 flight  0.04
+  arm  641.67 ok      c0 NONE vDmeas filt  0.02 VD replay -0.08 flight -0.08 || c1 ABS filt -0.01 VD replay -0.09 flight -0.09
+  arm  811.07 ok      c0 NONE vDmeas filt  0.00 VD replay  0.02 flight  0.02 || c1 ABS filt  0.01 VD replay  0.02 flight  0.02
+  arm  904.27 ok      c0 NONE vDmeas filt -0.02 VD replay -0.01 flight -0.01 || c1 ABS filt -0.01 VD replay  0.00 flight  0.00
+  arm 1046.17 ok      c0 NONE vDmeas filt  0.02 VD replay -0.03 flight -0.03 || c1 ABS filt  0.02 VD replay  0.00 flight  0.00
+  core 0: 0.0 s in height error on the ground, 0 episodes starting ; forced resets 0
+== log58 (SFD-O4) (cores [0, 1])
+  arm   83.07 ok      c0 NONE vDmeas filt  0.01 VD replay -0.00 flight -0.00 || c1 REL filt  0.01 VD replay  0.00 flight  0.00
+  arm   97.77 ok      c0 NONE vDmeas filt -0.05 VD replay -0.06 flight -0.06 || c1 ABS filt -0.04 VD replay -0.05 flight -0.05
+  arm  111.97 ok      c0 NONE vDmeas filt  0.02 VD replay  0.03 flight  0.03 || c1 ABS filt  0.02 VD replay  0.03 flight  0.03
+  core 0: 0.0 s in height error on the ground, 0 episodes starting ; forced resets 0
+== log59 (SFD-O4) (cores [0, 1])
+  arm   78.37 ok      c0 NONE vDmeas filt  0.01 VD replay  0.00 flight  0.00 || c1 ABS filt  0.00 VD replay  0.00 flight  0.00
+  core 0: 0.0 s in height error on the ground, 0 episodes starting ; forced resets 0
+== log61 (SFD-O4) (cores [0, 1])
+  arm  159.10 ok      c0 NONE vDmeas filt  0.00 VD replay  0.01 flight  0.01 || c1 ABS filt  0.01 VD replay  0.01 flight  0.01
+  core 0: 0.0 s in height error on the ground, 0 episodes starting ; forced resets 0
+== log63 (SFD-O4) (cores [0, 1])
+  arm  149.00 ok      c0 NONE vDmeas filt  0.01 VD replay  0.00 flight  0.00 || c1 ABS filt  0.00 VD replay  0.00 flight  0.00
+  arm  233.10 ok      c0 NONE vDmeas filt -0.19 VD replay -0.09 flight -0.09 || c1 ABS filt -0.15 VD replay -0.08 flight -0.08
+  core 0: 0.0 s in height error on the ground, 0 episodes starting ; forced resets 0
+== log65 (SFD-O4) (cores [0, 1])
+  arm   41.40 ok      c0 NONE vDmeas filt -0.01 VD replay -0.00 flight -0.00 || c1 ABS filt -0.01 VD replay -0.00 flight -0.00
+  core 0: 0.0 s in height error on the ground, 0 episodes starting ; forced resets 0
+== t25-0cb4-run (cores [0])
+  arm   17.98 ok      c0 ABS filt  0.01 VD replay  0.26 flight  1.53 unhealthy
+  arm   31.08 ok      c0 REL filt -0.93 VD replay -0.51 flight  0.09
+  arm   47.18 ok      c0 ABS filt -0.55 VD replay  0.01 flight  0.56
+  arm  100.58 REFUSE  c0 ABS filt  8.73 VD replay  4.42 flight  4.28 HGT-ERROR unhealthy
+  arm  120.18 ok      c0 ABS filt -0.71 VD replay  0.07 flight  0.24
+  arm  194.38 REFUSE  c0 ABS filt -1.41 VD replay -0.28 flight -0.24 HGT-ERROR unhealthy
+  arm  218.18 REFUSE  c0 ABS filt -1.20 VD replay -0.25 flight -0.25 HGT-ERROR unhealthy
+  arm  231.28 ok      c0 ABS filt  0.33 VD replay  0.15 flight  0.08
+  arm  261.08 REFUSE  c0 ABS filt -1.03 VD replay -0.11 flight -0.10 HGT-ERROR unhealthy
+  arm  288.08 REFUSE  c0 ABS filt  1.00 VD replay  1.40 flight  1.43 HGT-ERROR unhealthy
+  arm  317.08 ok      c0 ABS filt  0.04 VD replay  0.04 flight -0.28
+  arm  441.88 REFUSE  c0 ABS filt -1.07 VD replay -0.13 flight  0.18 HGT-ERROR unhealthy
+  arm  456.18 ok      c0 ABS filt -0.77 VD replay  0.09 flight  0.10
+  core 0: 23.2 s in height error on the ground, 10 episodes starting 12.2, 40.6, 96.4, 193.2, 217.7, 260.9, 288.0, 308.5, 441.5, 485.6; forced resets 2
+== t25-308a-run (cores [0])
+  arm   10.20 ok      c0 REL filt  0.00 VD replay  0.12 flight  0.12
+  arm   52.10 ok      c0 ABS filt -0.00 VD replay -0.04 flight  1.12 unhealthy
+  arm   62.90 REFUSE  c0 ABS filt  2.69 VD replay  0.64 flight -2.87 HGT-ERROR unhealthy
+  arm   92.60 REFUSE  c0 ABS filt -3.53 VD replay -2.11 flight -0.62 HGT-ERROR unhealthy
+  core 0: 15.5 s in height error on the ground, 4 episodes starting 46.9, 58.3, 91.8, 125.0; forced resets 2
+== td25-op-0e2c (cores [0])
+  arm  165.90 ok      c0 ABS filt -0.27 VD replay -0.12 flight  0.01
+  arm  279.10 ok      c0 ABS filt  0.91 VD replay -0.05 flight  0.21
+  arm  284.80 ok      c0 ABS filt  0.04 VD replay  0.05 flight  0.08
+  core 0: 16.5 s in height error on the ground, 4 episodes starting 25.8, 74.5, 274.7, 348.5; forced resets 2
+== t25-308a (cores [0])
+  arm   29.91 ok      c0 ABS filt -0.17 VD replay  0.02 flight  0.02
+  arm  117.81 ok      c0 ABS filt -0.96 VD replay  0.10 flight  0.10
+  arm  175.61 ok      c0 ABS filt -0.66 VD replay  0.34 flight  0.34
+  core 0: 0.0 s in height error on the ground, 0 episodes starting ; forced resets 0
+== t25-5b70 (cores [0])
+  arm   10.93 ok      c0 REL filt  0.03 VD replay  0.06 flight  0.06
+  core 0: 6.7 s in height error on the ground, 2 episodes starting 37.3, 42.9; forced resets 1
+{'arms': 52, 'refused': 12, 'refused_vd_ge1': 4, 'refused_vd_lt05': 6, 'he_time': 68.70113500000002, 'he_episodes': 24, 'forced': 7}

@@ -1,0 +1,24 @@
+    def ABBaroStepGPS(self):
+        '''A/B harness: baro steps on a disarmed GPS copter'''
+        self.wait_ready_to_arm()
+        self.context_collect('STATUSTEXT')
+        for step in [2, 5, 10]:
+            self.context_clear_collection('STATUSTEXT')
+            self.set_parameters({"SIM_BARO_GLITCH": step, "SIM_BAR2_GLITCH": step})
+            tstart = self.get_sim_time_cached()
+            unhealthy = 0
+            maxerr = 0.0
+            while self.get_sim_time_cached() - tstart < 20:
+                self.send_mavlink_run_prearms_command()
+                m = self.assert_receive_message('EKF_STATUS_REPORT', timeout=5)
+                if not (m.flags & mavutil.mavlink.ESTIMATOR_ATTITUDE):
+                    unhealthy += 1
+                self.delay_sim_time(1, "poll")
+            for x in self.context_collection('STATUSTEXT'):
+                if "height error" in x.text:
+                    maxerr = max(maxerr, float(x.text.split()[-1].rstrip('m')))
+            herr = len([x for x in self.context_collection('STATUSTEXT') if "height error" in x.text])
+            self.progress("ABSTEP step %u m: polls unhealthy %u/20, height-error texts %u, max %.1f m" % (step, unhealthy, herr, maxerr))
+            self.set_parameters({"SIM_BARO_GLITCH": 0, "SIM_BAR2_GLITCH": 0})
+            self.delay_sim_time(20, "recover")
+

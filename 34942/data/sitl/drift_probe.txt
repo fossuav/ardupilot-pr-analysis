@@ -1,0 +1,42 @@
+    def ABDriftProbe(self):
+        '''A/B harness: disarmed baro drift in each aiding mode, count height-error refusals and forced resets'''
+        cases = [
+            ("AID_NONE", {"SIM_GPS1_ENABLE": 0}, False),
+            ("AID_RELATIVE", {"SIM_GPS1_ENABLE": 0, "SIM_FLOW_ENABLE": 1, "FLOW_TYPE": 10, "SIM_TERRAIN": 0}, True),
+            ("AID_ABSOLUTE", {}, False),
+        ]
+        rates = [0.01, 0.03, 0.1, 0.3]
+        results = []
+        for (name, params, flow) in cases:
+            for rate in rates:
+                self.context_push()
+                self.set_parameters(params)
+                if flow:
+                    self.configure_EKFs_to_use_optical_flow_instead_of_GPS()
+                    self.set_analog_rangefinder_parameters()
+                self.reboot_sitl()
+                self.delay_sim_time(40, "EKF settles disarmed")
+                self.context_collect('STATUSTEXT')
+                self.set_parameters({"SIM_BARO_DRIFT": rate, "SIM_BAR2_DRIFT": rate})
+                tstart = self.get_sim_time_cached()
+                maxerr = 0.0
+                first = None
+                while self.get_sim_time_cached() - tstart < 90:
+                    self.send_mavlink_run_prearms_command()
+                    m = self.mav.recv_match(type='STATUSTEXT', blocking=True, timeout=1)
+                    if m is not None and "height error" in m.text:
+                        v = float(m.text.split()[-1])
+                        maxerr = max(maxerr, v)
+                        if first is None:
+                            first = self.get_sim_time_cached() - tstart
+                    self.delay_sim_time(1, "poll")
+                resets = len([x for x in self.context_collection('STATUSTEXT') if "forced reset" in x.text])
+                herr = len([x for x in self.context_collection('STATUSTEXT') if "height error" in x.text])
+                line = "ABDRIFT %s rate %.2f m/s: height-error texts %u, first at %s s, max %.1f m, forced resets %u" % (
+                    name, rate, herr, ("%.0f" % first) if first is not None else "-", maxerr, resets)
+                self.progress(line)
+                results.append(line)
+                self.set_parameters({"SIM_BARO_DRIFT": 0, "SIM_BAR2_DRIFT": 0})
+                self.context_pop()
+        for line in results:
+            self.progress(line)
