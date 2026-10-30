@@ -1151,3 +1151,94 @@ offset is small (+0.02 to +0.03 m/s/s, log62's hover minus ground), with
 bit 2 emulated by inserted events rather than flown. The next flight is a
 pack at 15. Until then, 9 (learn, do not apply) is what the evidence
 supports on SFD-O4.
+
+## 2026-10-30: ACC_ZBIAS_LEARN made AP_UInt8, restarted-log gap fixed on #32473
+
+AP-Review at `b399a6ab1b` (COMMENT). Two should-fix items: the parameter
+type, and the Replay gap for a log restarted while disarmed, which was
+still listed as follow-up. The bot also took back its late-start item:
+the set event does arrive one frame late in a late-started log, but
+Replay's EKF is still bootstrapping then, so no filter update runs
+uninhibited.
+
+### AP_UInt8
+
+Master's `bdfab84fa0` moved the Copter bitmasks to the unsigned types,
+which left `ACC_ZBIAS_LEARN` the only one still `AP_Int8`. Storage does
+not change. `AP_UInt8` is `AP_ParamT<uint8_t, AP_PARAM_INT8>`
+(`7e2ea001d7`), and `AP_GROUPINFO` records the class's `vtype`, so the
+stored header type is `AP_PARAM_INT8` for both and saved values load as
+before. The parameter's values are 0-15, so the sign never matters.
+
+The change was folded into the commit that adds the parameter, since it
+changes no behaviour. The branch was rebuilt with cherry-picks from
+`5b36047100`: `35aedf7506` became `35005cf440`, and the new head is
+`1c14ca0a3e`. The old head is kept as `r1030/32471-orig`. Running
+`git diff b399a6ab1b 1c14ca0a3e` shows only the one declaration. In the
+range-diff 41 commits are `=` and one is `!`, differing only in that
+line (`range-diff.txt` in scratch). Copter builds at `35005cf440`;
+copter and replay build at `1c14ca0a3e`. No SITL run on this branch on
+its own, but #32473's restack carries the same line, and
+VibrationRectificationBiasLearning, AccelBiasMovingPlatform and Replay
+pass there. Not pushed.
+
+### The restarted-log fix, moved here
+
+The latch is this PR's code: `_inhibitAccelBiasLearningLogged`, from
+`b3d36ad887` "log the accel bias inhibit until the DAL takes it". The
+fix was first made on #32473 (see its notes), but nothing in it needs
+#32473, since the test uses bit 2 alone. Andy chose to carry it here,
+and the three commits were cherry-picked from #32473's
+`b2dd7dd478`/`a047afa128`/`9b0b2e5138`. Their messages are unchanged,
+and none of them mentions bit 3 or acro:
+
+- `feddc0eea2` AP_DAL: say whether DAL data is being logged
+- `3973add04c` AP_NavEKF3: log the accel bias inhibit again in a
+  restarted log
+- `d9e7d85f5c` autotest: check a restarted log carries the accel bias
+  inhibit
+
+The test commit conflicted in its registration and method context with
+#32473's acro tests. It now adds the same 64 lines as `9b0b2e5138`. New
+head: `d9e7d85f5c`.
+
+What the fix does: while the DAL is not logging, the EKF forgets the
+level it logged. A held inhibit is then sent again when the DAL itself
+sees logging start, which is when it writes its own records again. It
+lands one frame after the new log's first DAL frame, as in a log
+started late. Shared limitation: `AP_Logger::logging_started()` is true
+while any backend runs, so a file log that restarts while the MAVLink
+backend stays active is missed. The DAL's own records miss it too.
+
+SITL on this PR alone, AccelBiasInhibitLoggedAfterLogRestart, run on
+`1c14ca0a3e` with the commits applied uncommitted (earlier test text):
+
+| build | boot log | restarted log | result |
+|---|---|---|---|
+| DAL accessor and test only (`56df3c93`) | set | no REV3 in 9906 frames | FAIL |
+| plus the EKF commit (`24c3e490`) | set | set after the first frame | PASS |
+
+Replay probe on the same two builds: erase the logs while disarmed,
+then 60 s on a platform accelerating at 1 m/s/s, then replay the
+restarted log. The flight's `XKF2.AZ` stays 0.000 in both. Replay's
+cores learned -0.990 and -0.980 m/s/s without the fix and stay at 0.000
+with it. This closes the "Replay gap for a log restarted while
+disarmed" follow-up.
+
+At `d9e7d85f5c` (SITL): AccelBiasInhibitLoggedAfterLogRestart, Replay
+(all bits) and VibrationRectificationBiasLearning pass. The CI replay
+job also passes, with no warnings: replay with `--debug
+--disable-scripting`, then tool/AP_DAL_Standalone with `--no-gcs`
+added. The test polls tolerate a log that is deleted or still being
+written. The one case they cannot catch is pymavlink 2.4.49's fast
+indexer exiting the process on a log cut inside an FMT record; see
+#32473's notes.
+
+Gate at `d9e7d85f5c`: three subject-length notes on older commits, and
+branch conventions pass. Not pushed.
+
+Andy's decision: the restarted-log fix lives on #32471, where the code it
+fixes is; #32473 is restacked on it.
+
+Pushed 2026-10-30 to andyp1per with a lease on the old head: `b399a6ab1b`
+-> `d9e7d85f5c`.

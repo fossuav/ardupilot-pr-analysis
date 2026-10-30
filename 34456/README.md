@@ -462,3 +462,79 @@ later; set 1 armed in ACRO at 268.5 s, lane 0 in 6 ms. log63 (3408138/643):
 set 2 armed in LOITER at 235.3 s, lane 1. log64 (3408138/645): set 2 at
 5.6 s and set 1 at 54.4 s, both disarmed. Every selection reached its lane.
 The log14 Replay owed above is still owed.
+
+## 2026-10-30: description, the retry question, a late REV3 in Replay
+
+AP-Review at `62e7e604d0` (rebase plus the `ff1223799d` AP_DAL_Standalone
+stub): nothing blocking. Two should-fix items, both non-code, and one minor.
+No commits this round; the head stays `62e7e604d0`.
+
+**Description.** The Testing and Description sections still described the
+`0b1f1fb7ff` design (`EK3_PRIMARY` written with `set_and_notify()`, Lua
+excluded, the lane reaching Replay through the PARM record). Redrafted to
+the code as it is: the latched lane in `UpdateFilter()`, one setter for
+every caller, the boot selection and its REV3 retry, the Lua binding's
+return value. The log14 plot is kept, captioned as an earlier revision; the
+"after" evidence is now the 2026-10-04/05 flights from the thread. Not
+posted.
+
+**peterbarker's retry question** (`AP_NavEKF3.cpp:940`, 2026-10-14,
+unanswered). The bot's answer, persistent state, is true but not what makes
+this event different: `resetHeightDatum` lost is persistent too. What is
+different is that every other EKF3 event acts only on running cores
+(`if (core)`, or a loop over `num_cores`, which is 0 before
+`InitialiseFilter()`), so one made before the cores exist does nothing in
+the flight either. A source set selection is stored in AP_NavEKF_Source
+(and under bit 3 latched as the lane) and applied when the cores start,
+and the RC switch's first read at boot typically precedes both the cores
+and DAL logging (log: 4.4 s against 5.06 s). `set_terrain_hgt_stable()`,
+the one other state-setting event, is resent by Copter every loop. Reply
+drafted, not posted.
+
+**Late REV3 in Replay (minor).** The bot's source ordering is right: a
+retried REV3 replays through the same setter, so Replay applies the armed
+gate with its own armed state. But the suggested fix, skipping the gate in
+Replay, does not close it, and the route the bot named fails earlier.
+
+Measured with a throwaway SITL test (not committed): two cores, bit 3,
+SRC2 a copy of SRC1, `EK3_OPTIONS` 0, `LOG_REPLAY` 1, `LOG_DISARMED` 0.
+Set 2 selected disarmed ("EKF3 primary changed:1"), armed 10.9 s on the
+ground, disarmed, 20 s of persistence logged.
+
+- The REV3 lands at byte 1603, before the first RFRN and 53 kB ahead of
+  the `EK3_SRC_OPTIONS` PARM record (byte 54514). Replay applies PARMs as it
+  meets them, so it takes the selection with bit 3 still clear and never
+  latches the lane. The armed gate never runs; Replay's cores do not exist
+  yet.
+- Flight `XKF4.PI` 1 for 10.9 s armed and 14.9 s disarmed. Head Replay
+  (`e6a810ee`): PI 0 for all of it. Replay with the gate skipped under
+  `APM_BUILD_TYPE(APM_BUILD_Replay)` (`1dbbe3b1`): identical, PI 0
+  throughout.
+- With `--parm EK3_SRC_OPTIONS=8`, both Replays latch the lane and go to
+  PI 1 50 ms after disarm, but fly the whole armed 10.9 s on lane 0: armed
+  without bit 1 nothing moves the lane until disarm, in Replay as in the
+  flight, and the flight's lane at log start is not in the log.
+
+So the only route on which the gate itself bites is a logger refusing the
+REV3 from a disarmed selection until after arming, with logging running.
+In SITL a refused replay block while logging disarmed panics
+(`AP_Logger.cpp:802`); on hardware it means dropped DAL blocks, which
+Replay cannot reproduce anyway. Left as it is; recorded as a known
+limitation in the description draft.
+
+Side observation, not acted on: `WriteReplayBlock()` returns false if any
+backend refuses, and the MAVLink backend refuses everything until a client
+streams (`WritesOK()`). With `LOG_BACKEND_TYPE` including MAVLink and no
+client, `log_event3()` never returns true, so the retry writes a REV3 to
+the file log every `UpdateFilter()` for the rest of the flight. Every other
+DAL message is already force-rewritten each frame in that configuration
+(`_end = 1`), and SITL panics on it, so it is the existing degenerate case,
+not a new one.
+
+Tests at `62e7e604d0` (copter `96fc6eb3`): `EK3_SourceSetSelectsLane`,
+`EKF3SRCPerCore`, `ScriptingAHRSSource`, `MAV_CMD_SET_EKF_SOURCE_SET` all
+pass. CI's replay job builds (`--debug --disable-scripting` replay, then
+`--no-gcs` `tool/AP_DAL_Standalone`).
+
+No code change this round, so nothing was pushed; the description and the
+reply to peterbarker are drafts held for Andy to read before posting.

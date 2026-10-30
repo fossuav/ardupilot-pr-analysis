@@ -662,3 +662,166 @@ SFD beta, 2026-10-29: carried as refresh11 topup4, pushed to
 the flow lane's bias went -0.10 to -0.50 m/s/s at 310 s and back by 316 s
 without the change, and moves at most 0.06 with it; the GPS lane is within
 0.05 either way. Still owed: the log17 replay.
+
+## 2026-10-30: restacked on the AP_UInt8 fold, inhibit logged again on a log restart
+
+AP-Review at `9396a8ee52` (COMMENT). One should-fix item: the logged
+inhibit level is not reset when the DAL starts a new log. Not changed,
+as the bot says no action is needed: the one-frame snapshot mismatch
+with a Lua `arm()`.
+
+### Restack
+
+The four commits were cherry-picked onto #32471's folded head
+`1c14ca0a3e`, where `ACC_ZBIAS_LEARN` is now `AP_UInt8`, and all four
+are `=` in the range-diff (`range-diff.txt`; `range-diff-full.txt` has
+all 46):
+
+| was | now |
+|---|---|
+| `140916717d` Copter: bit 3 | `595fc7b301` |
+| `c645bb59eb` autotest: bit 3 | `58a03779f5` |
+| `f13f0d3dd4` AP_NavEKF3: armed hold keeps the variance | `5704841ad5` |
+| `9396a8ee52` autotest: acro exit | `3665408206` |
+
+Running `git diff 9396a8ee52 3665408206` shows only the type line. The
+old head is kept as `r1030/32473-orig`.
+
+### The log-restart gap, verified
+
+The latch is #32471's (`b3d36ad887`). `_inhibitAccelBiasLearningLogged`
+holds the level the DAL last accepted for the whole boot. When the
+logger closes and reopens, the DAL sees the edge and force-writes its
+own records, but the EKF still believes the level is in the log. So a
+log that starts while bit 2 or bit 3 holds the inhibit gets no set
+event. Reproduced in SITL with a LOG_ERASE while disarmed under bit 2:
+the boot log has the set, and the restarted log has no REV3 at all.
+
+### The fix
+
+- `b6c2292cdd` AP_DAL: `is_logging()`, a read-only view of the
+  `logging_started` state the DAL already keeps for its own force-write.
+- `f5408912a2` AP_NavEKF3: while the DAL is not logging, set the latch
+  to false. Replay starts every log with the inhibit clear, so a held
+  level is sent again in the new log, and a clear level adds nothing to
+  logs that never hold the inhibit, on any vehicle.
+- `e7a1af6303` autotest: AccelBiasInhibitLoggedAfterLogRestart. Erase
+  the logs while bit 2 holds the inhibit, wait for logging to restart,
+  then wait for REV3 set in the new log. The erase takes about 58 s of
+  sim time, because LOG_MAX_FILES defaults to 500 and one file goes per
+  io tick. Lowering LOG_MAX_FILES was rejected: in a long CI run it
+  would leave higher-numbered logs behind.
+
+The set lands right after the restarted log's first DAL frame. That is
+the same one-frame lateness as a late-started log, which the bot's
+validation found harmless, since Replay's EKF is still bootstrapping.
+
+In SITL, AccelBiasInhibitLoggedAfterLogRestart fails on the pre-fix head
+binary (`3665408206`, md5 `b4b26a93`) with "accel bias inhibit never
+reached logs/00000001.BIN", and passes with the fix. It is the same on
+#32471 alone (see its notes).
+
+Replay probe: erase the logs while disarmed under bit 2, then 60 s on a
+platform accelerating at 1 m/s/s, then replay the restarted log:
+
+| firmware | REV3 in restarted log | flight `XKF2.AZ` | Replay C100/C101 `AZ` |
+|---|---|---|---|
+| without the fix | 0 | 0.000 | -0.990 / -0.980 |
+| with the fix | 1 (set) | 0.000 | 0.000 / 0.000 |
+
+Not covered, derived from the source and not measured: LOG_REPLAY
+turned on at runtime. With LOG_REPLAY 0, `WriteReplayBlock` reports
+success without writing, so the latch takes the level. When LOG_REPLAY
+is then set, `allow_start_ekf()` is already true for the running log,
+so the DAL sees no new log. Its own records are not force-written
+either, and that log cannot be replayed whatever this latch does.
+
+Also visible to a reviewer: in Replay, AP_DAL_Standalone and
+logging-disabled builds `is_logging()` is always false. So while the
+inhibit is held, `log_event3()`, a no-op returning true in those builds,
+is called on every frame. Replay output is unchanged: Replay passes.
+
+### Runs
+
+Tests at `82e59588c9`, whose tree is identical to `e7a1af6303` (only
+the EKF commit message was reworded since), all passed:
+AccelBiasInhibitLoggedAfterLogRestart, Replay (all bits, AccelBiasInhibit
+included), AccelBiasMovingPlatform, VibrationRectificationBiasLearning,
+AccelBiasLearningInhibitedInAcro, AccelBiasAcroExitVelocityError and
+EK3_AccelBiasInhibitOnGroundMoving.
+
+Builds pass, with no warnings:
+
+- the CI replay job: replay with `--debug --disable-scripting`, then
+  tool/AP_DAL_Standalone with `--no-gcs` added;
+- the DAL-only commit, copter and replay.
+
+Gate: three subject-length notes on older #32471 commits, and branch
+conventions pass. Not pushed.
+
+### Follow-up after the quick review
+
+The top three commits were rebuilt by cherry-pick: `b6c2292cdd` ->
+`b2dd7dd478`, `f5408912a2` -> `a047afa128`, `e7a1af6303` ->
+`9b0b2e5138`. The tree differs from `e7a1af6303` only in the
+`is_logging()` comment and the test.
+
+- The messages now say the set is re-sent when the DAL itself sees
+  logging start, which is when it writes its own records again. They
+  also say it lands one frame after the restarted log's first DAL frame,
+  harmless as for a late-started log. `AP_Logger::logging_started()` is
+  true while any backend runs, so a file log that restarts while the
+  MAVLink backend stays active is missed. The DAL's own records miss it
+  too; one sentence says so.
+- The test's two polls retry on `OSError` (log deleted after listing),
+  `ValueError` (empty file) and `struct.error` (log ends inside a
+  record) until their timeouts, and the REV3 poll reads one fixed path.
+  SITL: it passes on the fixed binaries (`24e8e63d`, and `4380c96a` at
+  `9b0b2e5138`), and still fails on the pre-fix `b4b26a93`, "accel bias
+  inhibit never reached logs/00000001.BIN".
+- Not catchable: pymavlink 2.4.49's fast indexer (`dfindexer_cy`) calls
+  C `exit(1)`, printing "Invalid length in FMT message at N", when a
+  log ends a few bytes into an FMT record. Over truncations of the first
+  40 KB of a real log, the fast indexer raised `struct.error` on 128 of
+  233 and exited on 1 (8192 bytes); the legacy indexer
+  (`PYMAVLINK_FAST_INDEX=0`) neither raised nor exited on any. A poll
+  that opens the restarted log while its FMT block is being flushed can
+  therefore end the autotest process. This is rare, and any test that
+  reads a log being written shares the risk, but it is most likely in
+  the first second of a log, which is where this test reads. Fixing it
+  belongs in pymavlink.
+
+### The fix moved to #32471, and this branch restacked on it
+
+Andy chose to carry the restarted-log fix on #32471, where the code it
+fixes lives. There it is `feddc0eea2`, `3973add04c` and `d9e7d85f5c`.
+This branch is now #32473's own four commits, cherry-picked onto that
+head. The fix-on-top version is kept as `r1030/32473-fixontop`
+(`9b0b2e5138`).
+
+| was | now |
+|---|---|
+| `595fc7b301` Copter: bit 3 | `d3b5890246` |
+| `58a03779f5` autotest: bit 3 | `115050a65d` |
+| `5704841ad5` AP_NavEKF3: armed hold keeps the variance | `968ea7d7e5` |
+| `3665408206` autotest: acro exit | `3ca94847db` |
+
+The bit-3 test commit conflicted with the restart test in both the
+method placement and the registration list. It was resolved in the
+order `9b0b2e5138` had, so `git diff 9b0b2e5138 3ca94847db` is empty.
+Range-diff against the original `9396a8ee52`
+(`range-diff-restack2.txt`):
+
+- 43 commits are `=`, and one is `!`: the AP_UInt8 fold.
+- The three fix commits are new.
+- The Copter and EKF commits are `=`.
+- The two autotest commits are `!` in context only: the restart test
+  now sits above them.
+
+At `3ca94847db` (SITL): AccelBiasLearningInhibitedInAcro,
+AccelBiasAcroExitVelocityError and AccelBiasInhibitLoggedAfterLogRestart
+pass. Gate: the same three older subject-length notes, and branch
+conventions pass. Not pushed.
+
+Pushed 2026-10-30 to andyp1per with a lease on the old head: `9396a8ee52`
+-> `3ca94847db`.

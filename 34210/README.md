@@ -150,3 +150,149 @@ thing being broken; a 1 Hz poll of that is what exposed the 0.9x-hover failure.
   an armed-only detector, heli excluded from the cap, `POSCONTROL_THROTTLE_CUTOFF_FREQ_HZ`
   on the clamp, the precision-landing-retry incompatibility documented in the
   parameter description, and the event-driven test.
+
+## 2026-10-30: AP-Review fixes at 93dcf216c0
+
+AP-Review's 2026-10-30 pass (REQUEST CHANGES) carried forward one
+blocker and two should-fixes from the 2026-09-12 and 2026-10-03
+reviews. It also carried rmackay9's 2026-08-30 vibration failsafe
+question, which is still unanswered. The work is on local branch
+r1030/34210, three commits on top of 93dcf216c0, not pushed. The two
+minors (baro-only wind-down, fast-rate double write) were left as they
+are.
+
+Ground wind-down band (blocking, verified). On the ground the ceiling's
+baro climb rate error equals LAND_SPD_MS, and the integrator only ran
+inside a fixed 1 m/s band. From 1.0 m/s up, which is inside the
+parameter's documented range, the integrator froze at touchdown and the
+motors kept spinning. cee9b6b53f widens the band by the landing speed.
+b7a76cda5a adds a LAND_SPD_MS 2.0 subtest (option set) to
+LandFailsafeRunaway. That subtest fails at the PR head on the existing
+servo wind-down wait and passes with the fix. The same three-subtest
+test was run on the PR head (c7c2de3d) and on the fix (9373c49d), with
+metrics from SIM/SIM2/CTUN/RCOU:
+
+| LAND_SPD_MS | | PR head | fix |
+|---|---|---|---|
+| 2.0 | ceiling on the ground (ThO/ThH) | 0.66 until forced disarm 63 s later | 0 at 3.6 s |
+| 2.0 | servo1 at or below 1250 after touchdown | never (test fails) | 3.2 s |
+| 2.0 | worst descent after the peak | 2.14 m/s | 2.13 m/s |
+| 0.5 | motors at minimum after touchdown | 15.8 s | 14.6 s |
+| 0.5 | worst descent after the peak | 0.59 m/s | 0.59 m/s |
+| 0.5 | peak climb (the test's own figure) | 12.8 m | 12.5 m |
+
+The dive headroom the band protects is unchanged at both speeds. That
+was the part the bot left UNCONFIRMED.
+
+Parameter description (should-fix, verified). The gate tests only the
+radio, GCS and EKF failsafe flags while in LAND. failsafe.ekf is set
+before the report-only return in failsafe_ekf_event(), and a radio
+failsafe with continue-if-landing keeps a hand-selected LAND.
+f79d3568cb drops "so the failsafe action must be Land" and says that.
+It is documentation only.
+
+Saturation feedback (should-fix): mechanism confirmed, not changed.
+AC_PosControl learns of throttle limits only through
+motors->limit.throttle_upper/lower. The mixer owns them: output_logic()
+clears them every loop and the mixer sets them when it clips.
+Scripting's external_limits only exists with AP_SCRIPTING_ENABLED and
+belongs to the script. Setting the flag from ModeLand before the U
+controller runs would also feed thrust_loss_check(). In the runaway
+that check sees the throttle saturated, above 0.25, and the EKF
+reporting a descent, so it would fire "Potential Thrust Loss" and
+engage thrust boost.
+
+The harm the bot names is the carry-over into the next mode. The
+existing tool for that is the bumpless handover
+set_accel_throttle_I_from_pilot_throttle(), called from
+ModeLand::exit() when capped. A probe tested it: after the latch it
+waits 15 s, restores RC and switches to ALT_HOLD, with and without the
+handover. The windup is real: ThI right after the switch is 15.19
+without it and 14.63 with it, so about 0.56 of integrator had built up.
+But the corrupt estimate's P term asks for about 14x full throttle
+either way. ThO hits 1.0 within one sample in both runs, the climb is
+29.2 vs 28.5 m in 3 s, and the peak is 12.7 m/s in both. Windup needs
+the baro and the estimate to disagree for a long time, and then the
+next mode is flying on that estimate anyway. So the handover was not
+committed (ARCH-7). The diff is kept as handover_unused.diff.
+
+rmackay9's question. The stock check cannot see this case. Its
+"variance" is sqrt(velTestRatio), which is 0 with no velocity fusion
+(XKF4.SV 0 for the whole flight), and badIMUdata needs GPS vertical
+velocity. A new measurement settles the response side: with the
+compensation forced on and the cap compiled out
+(LAND_FS_RUNAWAY_CLIMB_M at 1e6), the vehicle still climbs 87 m in
+10 s and 725 m in 60 s at full throttle. Better detection alone would
+therefore not help; the ceiling is the response that does.
+reply-options.md sets out the fold options: the triggers move into
+check_vibration(), and the ceiling stays in LAND as an escalation. It
+also has three draft replies.
+
+Checks. ModeLandAdvancedFailsafe and LandFailsafeRunaway pass at
+f79d3568cb (5092b98f). The pr_review mechanical gate is clean,
+check_branch_conventions passes, flake8 is clean, and astyle flags
+only a pre-existing line (mode_land.cpp:266). A draft PR body
+correcting the trigger and band sentences is in description.md.
+
+### Follow-up: is the widened band safe in flight?
+
+A cold read of cee9b6b53f called it blocking. Its argument:
+|v+s| < 1+s is the same as -1-2s < v < 1, so the integrator now runs
+during any climb slower than 1 m/s. At s 2 it winds at up to 0.3/s
+there, where the old band admitted no climb at all. That could lower
+the ceiling while upward momentum remains and cause a dive.
+
+The rates follow from the constants (I gain 0.1 and P gain 0.1 per
+m/s; ceiling 1 - 0.1(v+s) - I):
+
+| s | band (baro v) | max wind | max unwind | on the ground |
+|---|---|---|---|---|
+| 0.5 old | -1.5 to 0.5 | 0.10/s | 0.10/s | 0.05/s |
+| 0.5 new | -2.0 to 1.0 | 0.15/s | 0.15/s | 0.05/s |
+| 2.0 old | -3 to -1 | 0.10/s | 0.10/s | frozen |
+| 2.0 new | -5 to 1 | 0.30/s | 0.30/s | 0.20/s |
+
+In a climb below 1 m/s at s 2 the ceiling is 0.7 to 0.8 - I. Taking it
+to zero would need 2.3 to 2.7 s of continuous slow climb at the full
+rate. Under that ceiling a vehicle only keeps climbing if its true
+hover is at or below 0.8 of the learned one, or if something lifts it.
+
+Measured with instrumented binaries (cap, I and error logged at the
+loop rate), head against fix. Two airframes: the default quad, and a
+heavy, slow one (SIM_FRM_MASS 6, HOVR_THR 0.6, SLEW_MAX 1.0). On the
+slow one the climb sheds 0.36 m/s in the first 0.2 s after the latch,
+against 0.99 m/s on the default:
+
+| frame, s | peak climb | worst descent after peak | min ceiling airborne | I max | ground ceiling, motors min |
+|---|---|---|---|---|---|
+| default 0.5 | 12.5 / 12.4 m | 0.57 / 0.57 m/s | 0.51 / 0.51 | 0.08 / 0.09 | 14.6 / 14.3 s |
+| default 2.0 | 12.2 / 12.3 m | 2.11 / 2.17 m/s | 0.36 / 0.36 | 0.13 / 0.14 | 0.67 frozen / floor at 4.1 s |
+| heavy 0.5 | 13.3 / 13.0 m | 0.63 / 0.59 m/s | 0.51 / 0.51 | 0.10 / 0.09 | 15.2 / 15.8 s |
+| heavy 2.0 | 12.7 / 12.8 m | 2.14 / 2.27 m/s | 0.36 / 0.36 | 0.13 / 0.15 | 0.67 frozen / floor at 4.1 s |
+
+(head / fix in each cell)
+
+There is no dive on either airframe. The lowest airborne ceiling is the
+P term at the latch, while still climbing at 4.4 m/s with I at 0. While
+the vehicle is truly climbing, I stays at 0.000 at s 2 in all four
+flights. The baro climb rate lags the truth by about 0.5 s: when the
+true climb crosses zero the error still reads 3.3 to 3.7, so the
+integrator starts only once the vehicle is descending. It then winds
+to the hover trim, about 0.12 at touchdown. On the heavy frame at s 2
+the fix adds 0.13 m/s of overshoot.
+
+The remaining theoretical path is sustained lift, or a hover learned
+more than 25% high, holding a slow climb while I winds. The old band
+had the same path at s below 1. Each 0.1 of I beyond the trim costs
+about 1 m/s of overshoot, which unwinds at 0.1 x the overshoot per
+second.
+
+No alternative was implemented, since no dive appeared. If one is
+wanted, the smallest is one line: clamp the error fed to the
+integrator to +/-LAND_FS_CAP_I_BAND_MS. That keeps the old 0.1/s
+maximum wind rate at every land speed, at the cost of a slower ground
+wind-down at s 2 (about 8.5 s instead of 4 s). A proposed commit
+message for cee9b6b53f with these numbers is in msg-cee9b6b53f.txt.
+
+Pushed 2026-10-30 to andyp1per with a lease on the old head: `93dcf216c0`
+-> `aa2cf2ddcf`.
