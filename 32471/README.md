@@ -1242,3 +1242,86 @@ fixes is; #32473 is restacked on it.
 
 Pushed 2026-10-30 to andyp1per with a lease on the old head: `b399a6ab1b`
 -> `d9e7d85f5c`.
+
+## 2026-10-30 (later): the delta prototyped, and replayed against 16 flights
+
+Andy's decision the same day: store the motors-on delta if it is better,
+accepting that saved totals are reinterpreted, but only after replaying a
+range of earlier flights.
+
+### The prototype
+
+Local branch `pr-vrf-core-delta` on this PR's head `d9e7d85f5c`, not
+pushed, three commits: `4464fa06e7` Copter (record each IMU's EKF Z bias at
+arming, in `seed_hover_bias_learning()`, and learn the hover total minus
+it), `d4b361f013` AP_InertialSensor (parameter text: the change between
+arming and hover), `b4a8e0f7b0` autotest. With bit 2 set the EKF holds no
+ground bias, so the delta equals the total and nothing changes there.
+Names and indexes are kept: only 62 and 63 are free in the INS group, not
+three, so a stored total is applied as the delta for one flight until the
+first learning flight overwrites it. That is a choice, not a constraint;
+a rename plus re-index is the alternative if a hard reset is wanted.
+
+The autotest's two second-accel subtests (static `SIM_ACC2_BIAS_Z 0.3` with
+`SIM_ACC_VRF_Z 0.15`) now require the motors-on 0.15 within 0.06 instead of
+anything over 0.15. Without the learner change the test fails,
+`INS_ACC2_VRFB_Z` 0.430; with it, 0.141 and 0.146, and the whole test
+passes (SITL, 2026-10-30).
+
+### The sweep
+
+The learner is vehicle code, which Replay does not run; what Replay can
+test is the value each design would have stored, applied by the unchanged
+EKF. So each flight was replayed with `RISK.VRFBZ` rewritten to the value
+predicted from the *previous* flight of the same vehicle (the total, or the
+total minus that flight's AZ at arm) and `RFRN.Flags` bit 1 set so it is
+applied, against the same log with no correction. All arms through one
+binary, the beta `52b1d36f`'s EKF (Replay at smallfastdrone `0cb49e7dfb`),
+so "no correction" on older logs is today's EKF, not the flight as flown.
+Metric: EKF height change against the range finder's, rms over the first
+20 s after liftoff and over a steady hover window. Flights and predictions
+from a survey of 1126 logs on this machine.
+
+SFD-O4 (3408138), where total and delta differ (the predecessor's ground
+bias at arm was -0.02 to -0.14 on 2 October, +0.02 to +0.07 on 21-22
+October). Core 1 has no GPS VZ; P6 had no GPS fix on either core:
+
+| Flight | Core 1 hover rms: none / total / delta | Core 1 first 20 s | Core 0 hover |
+|---|---|---|---|
+| log26 (562) | 0.85 / 0.43 / 0.40 | 0.91 / 0.71 / 0.66 | 0.37 / 0.35 / 0.32 |
+| log28 (566) | 0.18 / 0.70 / 0.09 | 0.21 / 0.84 / 0.10 | 0.24 / 0.28 / 0.23 |
+| log29 (567) | 0.21 / 0.23 / 0.19 | 0.35 / 0.36 / 0.37 | 0.16 / 0.15 / 0.19 |
+| log30 f0 (571) | 0.12 / 0.46 / 0.10 | 0.13 / 0.52 / 0.10 | 0.18 / 0.20 / 0.18 |
+| log30 f1 (571) | 0.44 / 0.44 / 0.45 | 0.45 / 0.44 / 0.45 | 0.55 / 0.48 / 0.58 |
+| log50 (617), no GPS fix | 0.13 / 0.13 / 0.13 | 0.10 / 0.10 / 0.10 | 0.10 / 0.10 / 0.10 |
+| log54 (624) | 0.62 / 0.46 / 0.60 | 0.86 / 0.79 / 1.08 | 0.54 / 0.23 / 0.24 |
+| log63 f1 (643) | 0.56 / 0.89 / 0.47 | 0.65 / 1.10 / 0.54 | 0.17 / 0.22 / 0.13 |
+| **mean** | **0.39 / 0.47 / 0.30** | **0.46 / 0.61 / 0.43** | **0.29 / 0.25 / 0.25** |
+
+The total is worse than no correction by more than 0.1 m on core 1 in
+three of eight hovers (log28 +0.52, log30 f0 +0.34, log63 +0.33); the
+delta in none, and in one first 20 s (log54 +0.22 m, whose delta was
+predicted from log50, a flight with no GPS fix). Both help on log26 and on
+log54's core 0.
+
+TD25 (2818322, one core, baro only) cannot separate the two: it arms
+10-23 s after boot, before the EKF has learnt any ground bias, so total and
+delta are the same +0.02. Against no correction, hover rms over eight
+flights (T1F2 115, T1F3 116, T2F2 119, T2F3 120, T3F2 124, T4 127 twice,
+grass 132): 0.64 m applied, 0.61 m none. The correction does not help
+there.
+
+Limits: log30's two flights and T4's two share a log, and RISK is patched
+for the whole log, so the second flight of each inherits the first's arm.
+AZ is logged to 0.01 m/s/s and the predictions use it, where the learner
+filters at 2 s.
+
+Reading: the delta is the better thing to store. It removes the cases
+where applying made the flow lane's height worse, and on average it beats
+both alternatives on the airframe where they differ. Whether applying at
+all is worth it is a separate and weaker result: 0.39 -> 0.30 m on SFD-O4,
+mostly one flight (log26), and nothing on TD25.
+
+Decided 2026-10-30: the one-flight carry-over is acceptable, so the
+prototype keeps the parameter names and indexes. A stored total is applied
+as the motors-on part until the first learning flight overwrites it.

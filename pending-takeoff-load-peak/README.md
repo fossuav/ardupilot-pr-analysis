@@ -55,3 +55,34 @@ Not an EKF change, so Replay does not apply. SITL cannot show it either as
 things stand: `AP_HAL_SITL` does not implement `get_system_load()`, whose
 default returns false, so the load check never blocks there. It needs
 hardware, or a SITL load source added first.
+
+## 2026-10-30 (later): prototyped
+
+Local branch `pr-takeoff-load-recent` on master `278a68a57a`, commit
+`9541f64de8`, not pushed; SITL and MatekH743 copter build,
+`check_branch_conventions.py` clean. Copter only: while the spool-up block
+is held, keep the highest `avg_load` of the current and the previous 2 s
+warning window and test that instead of the HAL's since-boot peak; the
+message now says "avg" or "peak" and prints the value that blocked.
+
+What building it found (derived from the source, not measured):
+`takeoff_check()` runs at 50 Hz and reaches the load test only while the
+block is held, from spin-up until every check passes. A window that starts
+there holds one sample on its first evaluation, so the recent peak equals
+the current average, which `avg > 95` already covers. The peak test then
+adds only a 2-4 s hold-off after near-saturation while something else
+holds the block. Dropping the peak test and blocking on the average alone
+would be smaller and lose almost nothing (root playbook ARCH-7); left as
+the decision for the PR. `get_system_load()` has no other caller, and
+`@SYS/threads.txt` reads sysperf directly, so a HAL-side fix would not have
+touched that diagnostic either.
+
+## 2026-10-30 (later): the peak test dropped
+
+Andy's decision: drop the peak test. Local branch `pr-takeoff-load-avg`,
+commit `6ab81d05b2` on master `278a68a57a`, not pushed: the load check
+blocks on `avg_load > 95` alone, which the warning already prints, and the
+comment says why the HAL peak is not used. No new state. SITL and
+MatekH743 copter build, astyle unchanged, `check_branch_conventions.py`
+clean. `pr-takeoff-load-recent` (`9541f64de8`, the windowed peak) is
+superseded and can be deleted.

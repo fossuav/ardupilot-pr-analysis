@@ -85,3 +85,40 @@ against GPS after each of the six drops). Recorded in `../REPLAY_LOGS.md`.
 Candidate, not queued: a reset replaces a state only with an estimate
 better than the one it discards. Time since the last measurement alone is
 not evidence the state is bad. Offered 2026-10-30, not yet confirmed.
+
+## 2026-10-30 (later): prototyped and replayed
+
+The timeout's own comment says it is for flow "rejected for too long". A
+sample the tilt check withheld was not rejected, so the prototype counts
+the timeout from the later of the last fused and the last withheld sample
+(`flowTiltWithheldTime_ms`, set where `SelectFlowFusion()` skips
+`FuseOptFlow()` on `tiltOK`). Rejected flow still times out after 5 s and
+resets as before. Skipping the reset on the NONE -> RELATIVE re-entry
+alone would not work: the velocity is zeroed on the way *out*, at the
+RELATIVE -> NONE change, which also resets the height to baro.
+
+Local branch `pr-ekf3-flow-reentry` on master `278a68a57a`, commit
+`d2bebe7f32`, not pushed. SITL copter builds; `OpticalFlow`,
+`OpticalFlowLocation` and `OpticalFlowLimits` pass. No autotest for the
+change itself yet: it needs a flow-only vehicle held past 45 deg for over
+5 s.
+
+Replay through a port to the beta (`52b1d36f` plus the same four hunks, a
+detached scratch worktree), flow core against GPS over the whole flight:
+
+| Log | Speed error rms / p95 | Time over 3 m/s off | Worst position error | Aiding timeouts | Lockout resets |
+|---|---|---|---|---|---|
+| log61 (639), flown code | 9.5 / 21.8 m/s | 47% | 466 m | 4 | - |
+| log61, prototype | 4.0 / 8.8 m/s | 33% | 313 m | 0 | - |
+| log65 (646), flown code | 9.2 / 19.0 m/s | 45% | 333 m | 6 | 3 |
+| log65, prototype | 2.6 / 5.2 m/s | 18% | 95 m | 0 | 0 |
+
+At log61's Loiter switch (255.8 s, GPS 13.2 m/s) core 1 reads 10.6 m/s
+instead of 1.2, and 9.3 with `EK3_OPTIONS` bit 2 off, so the terrain
+lookup no longer decides it; why it still reads about 3 m/s low at 25 m,
+above the range finder, is not established. Replay feeds the terrain
+heights the flight looked up at core 1's flown position, which this
+change would have moved, so log61's terrain path is not fully tested. On
+log65 the three lockout resets are no longer needed: they were repairing
+the zeroed velocities. log63 (643), hovers and full-stick Loiter, replays
+identically (0 of 5568 XKF1 records differ).
