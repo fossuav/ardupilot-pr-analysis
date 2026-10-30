@@ -250,7 +250,7 @@ commits used to make.
   `e45dae01b1` on the quad; a GPS failure chased as a firmware regression
   that was the receiver recovering; and the passthrough and
   `LOG_DISARMED` gotchas found on the way.
-- [bench-2026-10-30.md](bench-2026-10-30.md) - five release-testing logs
+- [bench-2026-10-30.md](bench-2026-10-30.md) - four release-testing logs
   on `1f8685e9`: flight 2's three Acro EKF failsafes and lean traced to
   the compass under motor current (compensation about 1/24 of what the
   refit applies) and a GSF yaw reset taken mid-flip; the port clean
@@ -260,7 +260,7 @@ commits used to make.
 
 ## Status (one line)
 
-2026-10-30: head unchanged at `e45dae01b1`. Five release-testing logs on
+2026-10-30: head unchanged at `e45dae01b1`. Four release-testing logs on
 `1f8685e9`: the port clean on every flight (1600 Hz, worst armed gap 1.07
 ms, nothing dropped); flight 2's failsafes were the airframe's compass,
 and Acro flew clean after the rescale and refit. Commit 48 still unflown.
@@ -1085,7 +1085,7 @@ rest is not:
 
 ## 2026-10-30: release-testing flights, the compass under motor current
 
-PR head unchanged at `e45dae01b1`. Five logs from the quad (board
+PR head unchanged at `e45dae01b1`. Four logs from the quad (board
 `99F517D8`) on `1f8685e9`, the release branch carrying it. No port runs
 half duplex, so commit 48's echo window is still unflown.
 
