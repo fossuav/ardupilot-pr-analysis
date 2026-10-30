@@ -250,8 +250,22 @@ commits used to make.
   `e45dae01b1` on the quad; a GPS failure chased as a firmware regression
   that was the receiver recovering; and the passthrough and
   `LOG_DISARMED` gotchas found on the way.
+- [bench-2026-10-30.md](bench-2026-10-30.md) - five release-testing logs
+  on `1f8685e9`: flight 2's three Acro EKF failsafes and lean traced to
+  the compass under motor current (compensation about 1/24 of what the
+  refit applies) and a GSF yaw reset taken mid-flip; the port clean
+  throughout; the current input on this quad tracking load at 3.4 mV/A on
+  a zero drifting 2-3 mV/degC; and the clean Acro flight after the rescale
+  and compass refit.
 
 ## Status (one line)
+
+2026-10-30: head unchanged at `e45dae01b1`. Five release-testing logs on
+`1f8685e9`: the port clean on every flight (1600 Hz, worst armed gap 1.07
+ms, nothing dropped); flight 2's failsafes were the airframe's compass,
+and Acro flew clean after the rescale and refit. Commit 48 still unflown.
+
+Earlier:
 
 2026-10-28: head `e45dae01b1`, 55 commits. Commits 1-51 leave STM32
 output unchanged (MatekH743 at 51 equals master) and 52-55 change it.
@@ -1068,6 +1082,37 @@ rest is not:
   (issuecomment-5671163072). Andy's hardware test of the change set is
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
+
+## 2026-10-30: release-testing flights, the compass under motor current
+
+PR head unchanged at `e45dae01b1`. Five logs from the quad (board
+`99F517D8`) on `1f8685e9`, the release branch carrying it. No port runs
+half duplex, so commit 48's echo window is still unflown.
+
+- The port was clean on every flight: rate loop 1600 Hz with a worst
+  armed gap of 0.94-1.07 ms, main loop 200 Hz with no long loops, IMU to
+  the EKF at 5.00 ms, no log or UART drops, all four ESCs reporting RPM.
+  Disarmed, the rate thread stalls 1.2-9.8 ms at each parameter save, as
+  the flash storage design expects.
+- Flight 2's three Acro EKF failsafes came from the compass. Motor current
+  left 120-480 mG of interference against a 150 mG horizontal field: the
+  current input read 5.8 times low and the old `COMPASS_MOT` was 4.2 times
+  smaller than the refit's, so the compensation was about 1/24 of what the
+  refit applies per amp, and pointed 53 deg away from it. Copter's
+  pre-failsafe yaw reset then took the GSF's yaw mid-flip, just as the GSF
+  lost track, and the compass was locked out for the rest of the flight.
+  That last part is upstream EKF3 and Copter behaviour, not the port.
+- The current input on this quad tracks load at r 0.98-0.99 against the
+  eRPM model and the pack's sag, at 3.2-3.7 mV/A in every flight, on a
+  zero that drifts 1.9-2.9 mV/degC. The battery voltage input does not
+  drift, which points at the leaky clamp R4 replaces.
+- With `BATT_AMP_PERVLT` 295, `BATT_AMP_OFFSET` 0.035 and the compass
+  refitted, log 5's Acro had no failsafe or yaw reset, and the compass
+  stayed within 7-9 deg of the EKF's heading at every throttle (48-68
+  before). It holds near the 11-19 degC board temperature it was
+  calibrated at; each degC away is 15-20 mG of compass error.
+
+Details in [bench-2026-10-30.md](bench-2026-10-30.md).
 
 ## 2026-10-29: the current input, first flights of `e45dae01b1`, a GPS false alarm
 
