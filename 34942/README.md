@@ -687,6 +687,18 @@ Open:
 - The PR body passages on the reset are not yet updated; a draft is with Andy.
 - On the SFD beta from refresh12 topup3, promoted 2026-10-31; unflown.
 
+## Flown on SFD-O4 (2026-10-31)
+
+SFD refresh12 topup3, firmware `ea8cef60` (the flight card commit, same code as `f93bd10a`), which carries `2a52c965e2`'s EKF3, logs 66-71. 8 arms, with no
+"height error" refusal and no reset at rest after any of six landings; VD
+at arm read 0.00-0.01 m/s. Replay matches every log on both cores to 1e-7,
+except log67 after an arm-pending bootstrap reset at 29.87 s. That reset is
+not a DAL event, and unrelated to this PR.
+
+Every flight ended in a power cycle, so the re-arm after a landing was not
+flown: that is the case Replay refused in 0 of 20 arms on logs 54-65. The
+Q25 was not flown either.
+
 ## File map
 
 At the rework:

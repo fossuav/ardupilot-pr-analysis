@@ -1557,3 +1557,44 @@ now tests it too; before, that flight armed holding 0.
   reboot); on this PR one commit, `5afa8d69fb`, a fast-forward of
   `54d41e98c1`, pushed 2026-10-31. Quick review: gate clean (the same three older
   subject notes), Codex cold read NO FINDINGS, APPROVE.
+
+## 2026-10-31: v3 flown, SFD-O4 logs 66-71
+
+SFD refresh12 topup3, firmware `ea8cef60` (the flight card commit, same code as `f93bd10a`), the saved values zeroed first.
+
+Pack 1 (log66, `ACC_ZBIAS_LEARN 9`, 68 s hover) saved -0.0053/-0.0076.
+XKF2.AZ read -0.030 at arming and -0.039/-0.034 over the last 3 s of
+hover, so v3 saves end minus arming, as designed (AZ logs at 0.01). The
+next flights saved +0.020 to +0.030 (log67 0.025/0.022, log68
+0.029/0.020, log69 0.030/0.024). log70, nearly all acro, learned nothing
+and kept its value. Pack 1 armed with the least negative ground AZ of the
+six (-0.03, against -0.04 to -0.07), and the delta takes up the ground
+bias's spread from boot to boot. That is a hypothesis from one airframe.
+
+Pack 2 (log67, 11) applied pack 1's near-zero value, so the apply was
+measured by Replay with RISK.VRFBZ patched. The beta's Replay reproduces
+both cores as flown to 1e-7, except log67 after its 29.87 s arm-pending
+bootstrap reset, which came before liftoff. Height error is the EKF height
+minus the tilt-corrected range, both taken from liftoff, rms over 2-20 s.
+This measure reads log63 flight 1 as 0.15/0.83 m; the 0.14/1.10 recorded
+above took core 1 differently.
+
+| Flight, correction | Core 0 | Core 1 | AZ swing |
+|---|---|---|---|
+| log68, as flown (0.025/0.022) | 0.17 m | 0.42 m | 0.03/0.03 |
+| log68, none | 0.18 m | 0.59 m | 0.05/0.05 |
+| log67, as flown (-0.005/-0.008) | 0.11 m | 0.43 m | 0.04/0.05 |
+| log67, log68's value (0.025/0.022) | 0.08 m | 0.30 m | 0.01/0.03 |
+| log71 (bit 2), as flown (0.030/0.024) | 0.18 m | 0.44 m | 0.08/0.12 |
+| log71 (bit 2), none | 0.19 m | 0.47 m | 0.06/0.10 |
+
+v3's learned value takes 0.13-0.17 m off core 1 and halves the AZ swing on
+both flights. Core 0 barely moves. This is the flight evidence the 2026-10-30
+log63 replay predicted from log62's delta.
+
+log71 flew 15, not the card's 12. REV3 16 came at boot and 17 at arming,
+AZ read 0.00 at arming and Replay matches. AZ swung 0.08/0.12 within 2 s of
+the release, and the correction made little difference there. It saved
+-0.042/-0.039, the whole hover bias, as the bit 2 documentation says, so a
+return to 11 needs log69's 0.030/0.024 restored. The restarted-log case
+(a log erased from the GCS) was not flown.

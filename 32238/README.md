@@ -64,3 +64,9 @@ early is accepted.
 
 Pushed to rishabsingh3003 f4361d8b65 -> 47714568af (fast-forward from
 r1030/32238).
+
+## 2026-10-31: flown, SFD-O4 logs 66-71
+
+SFD refresh12 topup3, firmware `ea8cef60` (the flight card commit, same code as `f93bd10a`), `ESC_CALIBRATION 9`. Every log's first record comes 3.07 s after boot,
+against 5.10 s in logs 63 and 65 (`ESC_CALIBRATION 0`): 2.0 s sooner.
+Passed.

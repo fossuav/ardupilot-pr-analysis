@@ -61,3 +61,8 @@ commit subject is 74 characters; the pr_review gate notes it (~72).
 
 Pushed 2026-10-30 to andyp1per with a lease on the old head: `4cc85b68cf`
 -> `fbf9c380f9`.
+
+## 2026-10-31: flown, SFD-O4 logs 66-71
+
+SFD refresh12 topup3, firmware `ea8cef60` (the flight card commit, same code as `f93bd10a`). "Rate CPU normal, rate set to 2007Hz" appears once at boot in every
+log, and the armed rate (RTDT) is 1973 Hz, as in logs 63-65. Passed.

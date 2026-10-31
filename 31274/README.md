@@ -189,3 +189,15 @@ bidirectional DShot statistics fixes need a hardware check.
 
 Pushed 2026-10-30 to andyp1per with a lease on the old head: `4ef30eefe0`
 -> `db7371c4d8`.
+
+## 2026-10-31: SFD-O4 logs 66-71
+
+SFD refresh12 topup3, firmware `ea8cef60` (the flight card commit, same code as `f93bd10a`). No motor test was logged: with `LOG_DISARMED 2`, bench boots on USB
+leave no log. Armed, ESC.Err stayed at or below 0.9% on every motor except
+in log70's hard acro, where motors 1, 3 and 4 reached 1.85, 1.54 and 1.82%
+at 340-370 s.
+
+At boot every motor reads 75-99% from 4.9 to 5.6 s, the same on all four
+and in every log. On `52b1d36f` (log65) the same window read 97-99% for 3 s,
+to 10.1 s. The takeoff gate reads ESC.Err only while armed, so this never
+bound, and no motor stands out.

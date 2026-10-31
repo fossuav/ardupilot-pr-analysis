@@ -249,3 +249,17 @@ stopped, roll held at 54.7 deg or more) and fails with the EKF commit
 reverted ("flow lane timed out while banked"). Flight evidence is owed:
 an acro hold past 45 deg on the flow lane inside the range finder's reach
 (refresh12's `Tools/SFD/FIELD_PLAN.md`, "Additions for refresh12").
+
+## 2026-10-31: flown, SFD-O4 logs 69 and 70
+
+SFD refresh12 topup3, firmware `ea8cef60` (the flight card commit, same code as `f93bd10a`), flight card item 4. Flow ran on core 1 in both logs: log69 was
+GPS-primary for most of its acro and log70 flow-primary throughout. They
+held 18 stretches over 45 deg lasting more than 5 s: up to 31 s, 45-75 deg,
+10-25 m/s, through flips.
+
+Neither log has a "stopped aiding" / "started relative aiding" pair in
+flight (log65 had six pairs, each zeroing core 1), and core 1's speed was
+never zeroed. The range was good only in parts (log70 162-167 s and
+217-222 s, 9.5-14 m), and there core 1 stayed within 1-3 m/s of GPS. Above
+the range finder it read up to 14 m/s high (log69 129-136 s), which is flow
+scale error. Replay matches both logs on both cores to 1e-7. Passed.

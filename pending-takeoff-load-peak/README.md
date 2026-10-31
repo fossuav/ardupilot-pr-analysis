@@ -155,3 +155,23 @@ at an 87% average with the 2 kHz rate thread, which log64 cannot separate
 from the restart transient. SITL still cannot show any of it; the flight
 check is in refresh12's `Tools/SFD/FIELD_PLAN.md` (`BRD_IDLE_STATS 3`, two
 takeoffs in one boot, PM2 for the margin).
+
+## 2026-10-31: #33366 flown, SFD-O4 log66
+
+SFD refresh12 topup3, firmware `ea8cef60` (the flight card commit, same code as `f93bd10a`), `BRD_IDLE_STATS 1`.
+
+The first two armings were held, "Takeoff blocked: CPU overload" every 2
+s, because `TKOFF_CPU_AVG` booted at 3 against a default of 95. SFD's
+`40c9fdd94b` had put it on var_info2 index 30, which `VALT_POS_EXPO` (also
+a float) held on the fork's June builds, and this board still carried that
+value. This is SFD-only: #33366's own indices, 60/61, do not collide on
+master. Raised to 95 by hand, the third arming took off.
+
+Armed, the average read 92.3-93.9% with the fast-rate thread
+(`FSTRATE_ENABLE 2`, 1973 Hz), and 85-89% disarmed: 1-3% under the 95%
+default. That margin is the card's open question. PM2 was not logged and
+only one takeoff per boot was flown. The message's "peak" is the highest
+of sysperf's smoothed load, and it read 0.1% under the window average
+(92.6/92.5%), so the 99.5% peak test only catches an overload lasting about
+a second. After a held arming the warning keeps repeating while disarmed,
+as upstream's does.

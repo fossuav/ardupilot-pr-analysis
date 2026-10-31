@@ -294,3 +294,12 @@ The PR description is stale on the floor, the commit count and the
 
 Pushed 2026-10-30 to andyp1per with a lease on the old head: `d402ac272a`
 -> `9a64b9bc5f`.
+
+## 2026-10-31: the stale-range deferral flown, SFD-O4 log70
+
+SFD refresh12 topup3, firmware `ea8cef60` (the flight card commit, same code as `f93bd10a`). "EKF3 IMU1 flow recovery deferred, range stale" came at 228.24 s, in
+acro on the flow lane, with core 1 6-7 m/s above GPS and the range finder
+returning no data. No reset followed, and once the range came back at 230 s
+core 1 converged to GPS within 2 s. Replay matches the log. No lockout
+reset fired in logs 66-71 (no "flow vel reset" message). Bench check 0d,
+the OSD floor, left no log, and `EK3_FLOW_QMIN` was still 60 afterwards.
