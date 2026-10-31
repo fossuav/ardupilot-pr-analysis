@@ -469,6 +469,77 @@ At `a1fbfbcdc7`:
 - Flash cost not measured.
 - EKF2 is unchanged; whether its AID_NONE-only rule should follow is open.
 
+## On the SFD stack: refresh12 topup3 (2026-10-31)
+
+`3da7a8cf2e` cherry-picked onto refresh12 at topup2's tip (`35e04e1064`)
+as `e78e5ccda2`..`992bb00935` and test `1806c9af22`, locked as
+`2e70bccdc5`. Not promoted: on this stack it breaks four tests, one of
+them the test failing in the PR's own CI.
+
+- The seven EKF3 commits apply clean, and the result is byte-identical to
+  `data/replay/stages-v2.py` 1 2 3 4 5 G 6 applied to the same tip, so the
+  rework's Replay covers this code (it ran before topup1 added #34941).
+  The test needed its registration by hand and 4.7's `takeoff(alt_min=)`.
+- SFD's AGL KF velD (#33478, `EK3_OPTIONS` bit 4, on in SFD's default 92)
+  never counts as agreement: `lastVelDFuseTime_ms` is stamped in the
+  `fuseVelData` branch of `FuseVelPosNED()`, and the AGL KF fuses through
+  its own `fusingAglKfVel` branch. Replay of t25-0cb4-run, t25-0cb4-ft3 and
+  t25-308a-run (all `EK3_OPTIONS 92`) on topup3 never set the stamp, and
+  reproduced the rework's figures: the 93.98 s drop reset at rest after
+  2.7 s with VD 4.67 and the 100.58 s arm refused on the height error;
+  t25-308a-run 54.70 reset after 5.4 s with VD -2.19 and 62.90 went up
+  with -1.34 (`data/sfd-topup3/stale_probe.out`).
+- `EK3HardLandingRearm` passes. With the seven EKF3 commits reverted, and
+  its mechanism checks turned into reports (`probe_test.py`), the flow
+  quick re-arm arms at 5.19 m/s with no reset and climbs 0.76 m with the
+  throttle at minimum (0.07 m on topup3). The GPS quick re-arm arms at
+  1.32 m/s but rises only 0.11 m, where master's EKF climbed 0.88 m in the
+  rework's table.
+
+Broken on the stack, each run alone, failing on topup3 and passing with
+the seven EKF3 commits reverted:
+
+| test | on topup3 | why |
+|---|---|---|
+| MAV_CMD_SET_EKF_SOURCE_SET (master's) | "Failed to get EKF.flags=831": after set 2 and back to set 1 the EKF never regains a position ("Need Position Estimate", "Check mag field" xy diff 121 rising to 241) | the PR's CI fails the same way (sitltest-copter-tests1e on `3da7a8cf2e`). Bisect on the stack: commits 1-4 pass, 1-5 fail, so commit 5 (`bf1ea90b4e`, the stillness check cap). Mechanism not established |
+| AccelBiasMovingPlatform | EKF unhealthy on the ground, "EKF3[1] height error" 1.5-2.0 m, never ready to arm | `SIM_PLAT_ACC_Z -1` for 60 s disarmed: the EKF reads VD -2.4 to -6 m/s on the ground with GPS velD rejected in both builds; without the PR it arms anyway |
+| Copter.Replay | as above | its accel bias inhibit leg is the same platform, 30 s; VD -5.97 m/s disarmed without the PR, and it arms |
+| VibrationRectificationBiasLearning | "EKF3[1] height error" 1.4-3.8 m after the bit-2 leg's landing | core 0 reads VD up to 1.7 m/s on the ground for two minutes in both builds (300 of 431 disarmed samples over 0.5 m/s without the PR), and the next flight arms anyway without it |
+
+The last three are the PR doing its job: the EKF really is wrong on the
+ground, and the tests (SFD's, carried with #32471 and #32473) assume
+arming regardless. The VRF case is also a #32471 question: with
+`ACC_ZBIAS_LEARN` bit 2 the EKF sits at up to 1.7 m/s after landing.
+MAV_CMD_SET_EKF_SOURCE_SET is not of that kind and blocks the PR's CI.
+
+Also seen:
+
+- EK3_ZeroVelFusionNotUsedWithGPS failed once in the full set and passes
+  alone. The copter rides a ship at 15 m/s with GPS, and the test injects
+  `SIM_ACC2_BIAS_Z 0.7`. While core 1 learned it, a SITL deck bump ("SIM
+  Hit ground at 1.06 m/s") started a new rest, and the rest reset fired
+  with GPS velD being fused but disagreeing by over 0.5 m/s. AZ then sat at
+  0.65 against 0.7. That is the case the design note in commit 7 warns
+  about (resets stopping bias learning), reached with a measured velD
+  present.
+- Copter.Parachute fails with and without the PR on 4.7: 4.7 prints
+  "BANG!  Parachute deployed" with two spaces, and master's test waits for
+  one. Unrelated.
+- SmallFastDronev1 copter: 45,012 bytes free, 824 fewer than topup2.
+
+Open:
+
+- MAV_CMD_SET_EKF_SOURCE_SET and commit 5, on master: the CI failure, the
+  bisect points at the cap. Not reproduced on master here.
+- Whether the moving-platform and VRF tests should expect the refusal, or
+  the refusal is too eager for a GPS copter whose velD is rejected.
+
+Files: `data/sfd-topup3/` holds the scripts (`instrument_stale.py`, the
+Replay and SITL logging; `stale_probe.py`, per-disarm rest checks;
+`why_disagree.py`, `vd_disarmed.py`, `probe_test.py`, `bisect_srcset.sh`,
+`cmp_34942_stages.sh`) and `stale_probe.out`. They name scratch paths from
+the session that ran them.
+
 ## File map
 
 At the rework:

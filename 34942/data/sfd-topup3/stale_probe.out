@@ -1,0 +1,105 @@
+===== t25-0cb4-run
+disarm 24.68, next arm 31.08 (+6.40 s)
+  core 0: at disarm velD fused 24.68 s ago, innov -0.11, inFlight 1, agrees 0; agreement held to +0.10 s
+    rest check at +1.70 s: agrees 0 (nav 0, body 0), VD -2.39, velD fused 26.38 s ago, RESET
+    rest check at +5.20 s: agrees 0 (nav 0, body 0), VD 0.06, velD fused 29.88 s ago, no reset
+    at the arm: VD 0.00, still 1, hgt error 0
+disarm 39.28, next arm 47.18 (+7.90 s)
+  core 0: at disarm velD fused 39.28 s ago, innov 0.02, inFlight 1, agrees 0; agreement held to +0.10 s
+    at the arm: VD 0.00, still 0, hgt error 0
+disarm 93.98, next arm 100.58 (+6.60 s)
+  core 0: at disarm velD fused 93.98 s ago, innov -0.04, inFlight 1, agrees 0; agreement held to +0.10 s
+    rest check at +2.70 s: agrees 0 (nav 0, body 0), VD 4.67, velD fused 96.68 s ago, RESET
+    at the arm: VD 0.77, still 0, hgt error 1
+disarm 116.28, next arm 120.18 (+3.90 s)
+  core 0: at disarm velD fused 116.28 s ago, innov 0.03, inFlight 1, agrees 0; agreement held to +0.10 s
+    at the arm: VD 0.00, still 0, hgt error 1
+disarm 191.78, next arm 194.38 (+2.60 s)
+  core 0: at disarm velD fused 191.78 s ago, innov -0.03, inFlight 1, agrees 0; agreement held to +0.10 s
+    at the arm: VD 0.00, still 0, hgt error 1
+disarm 216.38, next arm 218.18 (+1.80 s)
+  core 0: at disarm velD fused 216.38 s ago, innov -0.05, inFlight 1, agrees 0; agreement held to +0.10 s
+    at the arm: VD 0.00, still 0, hgt error 0
+disarm 228.58, next arm 231.28 (+2.70 s)
+  core 0: at disarm velD fused 228.58 s ago, innov -0.01, inFlight 1, agrees 0; agreement held to +0.10 s
+    at the arm: VD 0.00, still 0, hgt error 0
+disarm 258.38, next arm 261.08 (+2.70 s)
+  core 0: at disarm velD fused 258.38 s ago, innov -0.01, inFlight 1, agrees 0; agreement held to +0.10 s
+    at the arm: VD 0.00, still 0, hgt error 0
+disarm 286.38, next arm 288.08 (+1.70 s)
+  core 0: at disarm velD fused 286.38 s ago, innov 2.25, inFlight 1, agrees 0; agreement held to +0.10 s
+    rest check at +1.10 s: agrees 0 (nav 0, body 0), VD 1.47, velD fused 287.48 s ago, RESET
+    at the arm: VD 0.01, still 1, hgt error 0
+disarm 302.68, next arm 317.08 (+14.40 s)
+  core 0: at disarm velD fused 302.68 s ago, innov 1.14, inFlight 1, agrees 0; agreement held to +0.10 s
+    rest check at +1.40 s: agrees 0 (nav 0, body 0), VD 0.45, velD fused 304.08 s ago, no reset
+    at the arm: VD 0.00, still 1, hgt error 0
+disarm 439.38, next arm 441.88 (+2.50 s)
+  core 0: at disarm velD fused 439.38 s ago, innov 0.07, inFlight 1, agrees 0; agreement held to +0.10 s
+    rest check at +0.10 s: agrees 0 (nav 0, body 0), VD 0.15, velD fused 439.48 s ago, no reset
+    at the arm: VD 0.00, still 0, hgt error 0
+disarm 454.48, next arm 456.18 (+1.70 s)
+  core 0: at disarm velD fused 454.48 s ago, innov 0.04, inFlight 1, agrees 0; agreement held to +0.10 s
+    at the arm: VD 0.00, still 0, hgt error 0
+disarm 483.68, next arm none
+  core 0: at disarm velD fused 483.68 s ago, innov 0.02, inFlight 1, agrees 0; agreement held to +0.10 s
+===== t25-0cb4-ft3
+disarm 124.02, next arm 126.12 (+2.10 s)
+  core 0: at disarm velD fused 124.02 s ago, innov -0.02, inFlight 1, agrees 0; agreement held to +0.10 s
+    rest check at +1.10 s: agrees 0 (nav 0, body 0), VD -0.06, velD fused 125.12 s ago, no reset
+    at the arm: VD 0.00, still 1, hgt error 1
+disarm 137.22, next arm 143.92 (+6.70 s)
+  core 0: at disarm velD fused 137.22 s ago, innov 0.01, inFlight 1, agrees 0; agreement held to +0.10 s
+    rest check at +0.10 s: agrees 0 (nav 0, body 0), VD -0.04, velD fused 137.32 s ago, no reset
+    at the arm: VD 0.00, still 1, hgt error 0
+disarm 294.62, next arm 296.62 (+2.00 s)
+  core 0: at disarm velD fused 294.62 s ago, innov 0.20, inFlight 1, agrees 0; agreement held to +0.10 s
+    at the arm: VD 0.00, still 0, hgt error 1
+disarm 314.72, next arm 317.22 (+2.50 s)
+  core 0: at disarm velD fused 314.72 s ago, innov 0.03, inFlight 1, agrees 0; agreement held to +0.10 s
+    at the arm: VD 0.00, still 0, hgt error 0
+disarm 333.32, next arm 336.52 (+3.20 s)
+  core 0: at disarm velD fused 333.32 s ago, innov -0.01, inFlight 1, agrees 0; agreement held to +0.10 s
+    rest check at +1.80 s: agrees 0 (nav 0, body 0), VD 0.21, velD fused 335.12 s ago, no reset
+    at the arm: VD 0.00, still 1, hgt error 0
+disarm 343.12, next arm 344.82 (+1.70 s)
+  core 0: at disarm velD fused 343.12 s ago, innov -0.05, inFlight 1, agrees 0; agreement held to +0.10 s
+    at the arm: VD -0.06, still 0, hgt error 0
+disarm 354.12, next arm 355.92 (+1.80 s)
+  core 0: at disarm velD fused 354.12 s ago, innov -0.00, inFlight 1, agrees 0; agreement held to +0.10 s
+    at the arm: VD 0.22, still 0, hgt error 1
+disarm 399.22, next arm 404.72 (+5.50 s)
+  core 0: at disarm velD fused 399.22 s ago, innov 1.52, inFlight 1, agrees 0; agreement held to +0.10 s
+    rest check at +1.20 s: agrees 0 (nav 0, body 0), VD 0.73, velD fused 400.42 s ago, RESET
+    at the arm: VD 0.00, still 1, hgt error 0
+disarm 419.22, next arm 420.02 (+0.80 s)
+  core 0: at disarm velD fused 419.22 s ago, innov 0.54, inFlight 1, agrees 0; agreement held to +0.10 s
+    rest check at +0.10 s: agrees 0 (nav 0, body 0), VD 0.21, velD fused 419.32 s ago, no reset
+    at the arm: VD 0.22, still 1, hgt error 0
+disarm 445.52, next arm 447.22 (+1.70 s)
+  core 0: at disarm velD fused 445.52 s ago, innov -0.01, inFlight 1, agrees 0; agreement held to +0.10 s
+    rest check at +0.10 s: agrees 0 (nav 0, body 0), VD 0.08, velD fused 445.62 s ago, no reset
+    at the arm: VD -0.13, still 0, hgt error 0
+disarm 459.62, next arm 462.12 (+2.50 s)
+  core 0: at disarm velD fused 459.62 s ago, innov 0.02, inFlight 1, agrees 0; agreement held to +0.10 s
+    at the arm: VD 0.00, still 0, hgt error 0
+disarm 498.62, next arm 499.82 (+1.20 s)
+  core 0: at disarm velD fused 498.62 s ago, innov 0.03, inFlight 1, agrees 0; agreement held to +0.10 s
+    at the arm: VD 0.09, still 0, hgt error 0
+disarm 517.62, next arm none
+  core 0: at disarm velD fused 517.62 s ago, innov -0.99, inFlight 1, agrees 0; agreement held to +0.10 s
+===== t25-308a-run
+disarm 44.80, next arm 52.10 (+7.30 s)
+  core 0: at disarm velD fused 44.80 s ago, innov 0.01, inFlight 1, agrees 0; agreement held to +0.10 s
+    at the arm: VD 1.18, still 0, hgt error 1
+disarm 54.70, next arm 62.90 (+8.20 s)
+  core 0: at disarm velD fused 54.70 s ago, innov -0.00, inFlight 1, agrees 0; agreement held to +0.10 s
+    rest check at +5.40 s: agrees 0 (nav 0, body 0), VD -2.19, velD fused 60.10 s ago, RESET
+    at the arm: VD -1.34, still 0, hgt error 0
+disarm 91.50, next arm 92.60 (+1.10 s)
+  core 0: at disarm velD fused 91.50 s ago, innov -1.29, inFlight 1, agrees 0; agreement held to +0.10 s
+    rest check at +1.10 s: agrees 0 (nav 0, body 0), VD -1.41, velD fused 92.60 s ago, RESET
+    at the arm: VD -0.00, still 1, hgt error 0
+disarm 124.50, next arm none
+  core 0: at disarm velD fused 124.50 s ago, innov -0.88, inFlight 1, agrees 0; agreement held to +0.10 s
+    rest check at +0.70 s: agrees 0 (nav 0, body 0), VD 0.25, velD fused 125.20 s ago, no reset
