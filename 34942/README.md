@@ -547,7 +547,9 @@ MAV_CMD_SET_EKF_SOURCE_SET, failing in sitltest-copter-tests1e at
 `3da7a8cf2e`, reproduces on the PR head in a scratch build of master's base.
 Fixed by `dc76e048a6` "AP_NavEKF3: take the static yaw reference before it is
 first fused", on branch `fix/34942-static-yaw` (worktree
-`../tfix-ab-34942p`), a fast-forward of the PR; not pushed yet.
+`../tfix-ab-34942p`), pushed 2026-10-31 as a fast-forward of the PR
+(`3da7a8cf2e` -> `dc76e048a6`); on SFD refresh12 as `3429fc6dfd`, locked in
+`1ff61d2db5`.
 
 The mechanism:
 

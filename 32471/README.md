@@ -1485,3 +1485,47 @@ of the box. A vehicle already learning with bit 2 clear (SFD-O4 flew 11)
 holds a saved total that v3 would apply as the change since arming, once,
 until it relearns: the SFD flight card for refresh12 zeroes
 `INS_ACC_VRFB_Z` and `INS_ACC2_VRFB_Z` before the first v3 flight.
+
+## 2026-10-31: the bit 2 tests against #34942's ground height check
+
+On SFD refresh12 topup3, with #34942 at `3da7a8cf2e`, three of this PR's
+tests fail, and all three pass with #34942's EKF3 reverted. In each, the
+arm #34942 refuses is one where the EKF's vertical velocity really is wrong
+on the ground: `ACC_ZBIAS_LEARN` bit 2 stops the EKF learning what it would
+have absorbed there. #34942 changes nothing these tests check: it does not
+touch bias learning or the inhibit.
+
+- AccelBiasMovingPlatform's bit 2 leg and Copter.Replay's AccelBiasInhibit
+  leg (`SIM_PLAT_ACC_Z -1` for 60 s and 30 s, disarmed): with nothing
+  absorbing the platform's acceleration, VD runs -2.4 to -6 m/s on it, with
+  a forced reset after each 5 s unhealthy. The positive control leg left the
+  platform on, so the bit 2 leg rebooted onto it.
+  - Fixed in the tests as refresh12 `405dc4d041`, ported here as
+    `54d41e98c1`, a fast-forward of `04e501e13d` (not pushed). The platform
+    starts once the EKF is ready, and each call starts with it off. The
+    vehicle steps off before arming, and the bias is read as it steps off.
+  - Passes with and without #34942: the positive control learns -0.99, the
+    bit 2 leg holds 0.000, and arming is allowed 2 s after stepping off.
+  - With the bit 2 hold removed, it fails, learning -0.99. With the inhibit
+    event left out of the log, Replay fails `check_replay` on the
+    AccelBiasInhibit leg (log 28).
+  - Quick review: gate clean, Codex cold read NO FINDINGS, APPROVE.
+- VibrationRectificationBiasLearning's bit 2 leg (`ACC_ZBIAS_LEARN 7`) is
+  not fixed: it is a bit 2 design question. With #34942 reverted, core 0's
+  VD at each arm is:
+  - 1.25 m/s at the leg's first arm. Bit 2 stops the EKF learning IMU0's
+    static 0.3 m/s/s on the ground.
+  - -0.65 m/s after flight 0. It holds the in-flight 0.43, motors-on part
+    included.
+  - 1.27 m/s after flight 1. With bit 1 it holds 0, and the static 0.3
+    returns when the motors-on correction stops.
+
+  With #34942 the first arm is refused on "height error" (1.4 to 3.8 m,
+  for two minutes).
+
+Open: with bit 2, every disarm leaves the EKF's vertical velocity wrong on
+the ground by roughly 4 s times the bias step it may not learn. Before #34942
+the next arm went up with it, the same class of error as the Q25 climbs;
+with #34942 that arm is refused. Andy to decide how bit 2 should treat Z on
+the ground. SFD does not set bit 2 (8 by default; the refresh12 card uses 9
+and 11).
