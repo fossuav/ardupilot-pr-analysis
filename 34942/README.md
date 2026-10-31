@@ -637,6 +637,56 @@ Files: `data/static-yaw/` holds the probe and Replay scripts
 `run_set2_probe.sh`), the fix as `static-yaw-fix.diff`, and
 `arm_verdicts_fix.out`.
 
+## The reset at rest waits while a measurement is fused (2026-10-31)
+
+Pushed as `2a52c965e2`, a fast-forward of `dc76e048a6`; on SFD refresh12 as
+`467782a96c` and `f93bd10a6f`.
+
+The failure: EK3_ZeroVelFusionNotUsedWithGPS (SFD's) failed identically in
+two full SFD runs and passed alone, so it was not chance.
+- On the ship, SITL logged "SIM Hit ground at 1.06 m/s", which started a new
+  rest. GPS velD was fused but 0.5 m/s off while the EKF learned the injected
+  0.7 m/s/s bias.
+- The reset fired on core 1, and AZ settled at 0.65.
+- Run alone, no reset fired, and the test passed.
+
+The change: the check waits while a measured vertical velocity is being fused,
+`measuredVertVelFused()`. That is navigation velD fused in the last 2 s with
+`velTestRatio < 1`, or body velocity fused in the last 2 s with all three
+`bodyVelTestRatio` under 1. Once nothing is being fused it decides once, as
+before.
+
+Review history:
+- First version, `c4ed65e00f`: the reset skipped when one was fused in the
+  last 0.5 s, latched once per rest. Codex raised three findings:
+  - the latch made one recent fusion suppress the reset for the whole rest;
+  - 0.5 s missed a passing sample from 2 Hz sources;
+  - `prevBodyVelFuseTime_ms` is set when any one axis passes.
+- Second version, `329335f9f2`: waits instead of latching, with the
+  latest-test-ratio term and a 1 s window. The audit closed 1 and 3 and left
+  2 partial for 1 Hz sources.
+- Final: a 2 s window. A rejected sample ends the wait at once through its
+  test ratio, so the window only matters for a source that stops arriving.
+  The audit closed both remaining findings. Quick review APPROVE.
+
+Measured:
+- EK3HardLandingRearm on the PR's own base passes three times on the final
+  version; the GPS leg resets on both cores and rises 0.05 to 0.08 m.
+  - A fourth run, under a six-target build's load, failed the
+    falling-re-arm leg ("armed only once on the ground"). The arm went
+    through, but the harness read the range finder too late. That leg is
+    flow-only, where no measured vertical velocity is ever fused.
+- Replay cannot change: SFD-O4 logs 54-65 had 40 rest checks and no resets,
+  and the Q25 fuses no measured vertical velocity (GPS1_TYPE 0, no body
+  odometry).
+- The full SFD set on the final code: 124 of 124. The ship test passes at the
+  place in the set where it had failed twice; the deck bump still happens, and
+  no reset follows.
+
+Open:
+- The PR body passages on the reset are not yet updated; a draft is with Andy.
+- On the SFD beta from refresh12 topup3, promoted 2026-10-31; unflown.
+
 ## File map
 
 At the rework:
