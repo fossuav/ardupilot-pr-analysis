@@ -686,3 +686,7 @@ Reply posted: https://github.com/ArduPilot/ardupilot/pull/32475#issuecomment-654
 ## 2026-10-31: squashed after the flight audit
 
 Pushed `16042bc083` -> `8e931047e5` (force, 54 commits to 28, same tree; backup `pre-squash/32475-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_C.md`.
+
+## 2026-10-31: THROW_ALT_DCSND's new meaning kept
+
+Andy's decision on the bot's should-fix: keep THROW_ALT_DCSND measured from the release point (master measures it from where the arrest starts), and say so. The description gained a "Changed meaning" paragraph under the parameters: a drop now climbs back to THROW_ALT_DCSND below the release point after uprighting falls past it, so existing setups end higher than before. Reply posted: https://github.com/ArduPilot/ardupilot/pull/32475#issuecomment-6549128108. The rejected options were a new parameter with the old one kept, and an option bit.

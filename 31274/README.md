@@ -283,3 +283,7 @@ Reply posted: https://github.com/ArduPilot/ardupilot/pull/31274#issuecomment-654
 ## 2026-10-31: squashed after the flight audit
 
 Pushed `d228911760` -> `820f2550b0` (force, 30 commits to 13, same tree; backup `pre-squash/31274-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_C.md`.
+
+## 2026-10-31: the 5 s window kept
+
+Andy's decision: keep the gate on the 5 s stats window. A failure that starts late in a window is diluted by its earlier good replies (after 2000, a 50% ESC takes about 21 misses to read over 1%); the description lists it under "Not covered". Telemetry flows while disarmed, so an ESC already failing shows before spool-up, and only a failure starting in the spool-up seconds is slow. Revisit with flight data; the options were a short recent window alongside it or a 1 s stats window.
