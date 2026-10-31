@@ -1501,7 +1501,7 @@ touch bias learning or the inhibit.
   a forced reset after each 5 s unhealthy. The positive control leg left the
   platform on, so the bit 2 leg rebooted onto it.
   - Fixed in the tests as refresh12 `405dc4d041`, ported here as
-    `54d41e98c1`, a fast-forward of `04e501e13d` (not pushed). The platform
+    `54d41e98c1`, a fast-forward of `04e501e13d`, pushed 2026-10-31. The platform
     starts once the EKF is ready, and each call starts with it off. The
     vehicle steps off before arming, and the bias is read as it steps off.
   - Passes with and without #34942: the positive control learns -0.99, the
@@ -1523,9 +1523,37 @@ touch bias learning or the inhibit.
   With #34942 the first arm is refused on "height error" (1.4 to 3.8 m,
   for two minutes).
 
-Open: with bit 2, every disarm leaves the EKF's vertical velocity wrong on
-the ground by roughly 4 s times the bias step it may not learn. Before #34942
-the next arm went up with it, the same class of error as the Q25 climbs;
-with #34942 that arm is refused. Andy to decide how bit 2 should treat Z on
-the ground. SFD does not set bit 2 (8 by default; the refresh12 card uses 9
-and 11).
+Open, then settled the same day: with bit 2, every disarm leaves the EKF's
+vertical velocity wrong on the ground by roughly 4 s times the bias step it
+may not learn. Before #34942 the next arm went up with it, the same class of
+error as the Q25 climbs; with #34942 that arm is refused. SFD does not set
+bit 2 (8 by default; the refresh12 card uses 9 and 11). Andy: bit 2 is meant
+to stop all learning so that slow movement cannot inject a wrong bias, so it
+stays as it is and the test changes (below).
+
+## 2026-10-31 (later): the bit 2 leg fixed in the test
+
+The bit 2 leg of VibrationRectificationBiasLearning now boots each flight
+with bit 2 clear, so the EKF learns the static 0.3 on the ground. It sets
+bit 2 just before arming, where `seed_hover_bias_learning()` reads it, and
+asserts that the EKF held the 0.3 at each arm. The whole bias differs from
+the change since arming only when the EKF holds one, so the first flight
+now tests it too; before, that flight armed holding 0.
+
+- Clearing bit 2 on the ground between flights works on SFD but not here.
+  This PR's `update_accel_bias_inhibit()` only sets the inhibit, and only
+  `arm()` clears it, so the inhibit holds until arming. That is consistent
+  with this PR's `@RebootRequired: True`. #32473's rewrite re-reads bit 2
+  every second.
+- Measured: on this PR alone the toggle armed flight 1 with the EKF still
+  at 0.43 (V15 held at its 5e-8 floor), while on the SFD stack V15 was
+  restored to 5.8e-6 and the bias relearned 0.44 to 0.28. A reboot per
+  flight works on both.
+- Results: every flight saves 0.437 on this PR alone and on SFD refresh12
+  with #34942, against 0.3 + 0.15.
+- With bit 2's zeroed baseline removed (`_hover_bias_at_arm[imu] = 0`
+  commented out), the first flight saves 0.148 and the test fails, on both.
+- Commits: refresh12 `0d1d920c32` (the toggle) and `b0718dc190` (the
+  reboot); on this PR one commit, `5afa8d69fb`, a fast-forward of
+  `54d41e98c1`, pushed 2026-10-31. Quick review: gate clean (the same three older
+  subject notes), Codex cold read NO FINDINGS, APPROVE.

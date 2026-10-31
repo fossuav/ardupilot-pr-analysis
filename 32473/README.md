@@ -833,7 +833,7 @@ PR carries with #32471's tests, fail on SFD refresh12 topup3 with #34942.
 `ACC_ZBIAS_LEARN` bit 2 leaves the simulated platform's acceleration
 unabsorbed, so VD runs -2.4 to -6 m/s on the ground and #34942 refuses to
 arm there. Fixed in the tests as refresh12 `405dc4d041`, ported here as
-`f945737262`, a fast-forward of `3ca94847db` (not pushed), with the same
+`f945737262`, a fast-forward of `3ca94847db` pushed 2026-10-31, with the same
 lines as #32471's port `54d41e98c1`. Details, the A/B and the break tests
 are in ../32471/README.md, same date. On this branch both tests pass, with
 the same figures (-0.99 control, 0.000 leaving the platform). Quick review:
