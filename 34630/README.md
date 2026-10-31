@@ -311,3 +311,7 @@ sets bit 6, which quiets the reset messages, and `XKF7.FVC` counts three
 resets on core 1: log68 at 77.57 s, log69 at 181.27 s and log70 at 287.57 s.
 The no-reset account of the 228.24 s deferral still holds
 (`squash-audit-2026-10-31/B.md`).
+
+## 2026-10-31: description and replies posted
+
+Description replaced with the 10-30 draft plus the flight line (bit 6: six in-flight resets counted in XKF7.FVC with no statustext). The original body is kept in that session's scratchpad only; the PR history shows it.

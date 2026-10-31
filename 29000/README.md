@@ -66,3 +66,8 @@ Pushed 2026-10-30 to andyp1per with a lease on the old head: `4cc85b68cf`
 
 SFD refresh12 topup3, firmware `ea8cef60` (the flight card commit, same code as `f93bd10a`). "Rate CPU normal, rate set to 2007Hz" appears once at boot in every
 log, and the armed rate (RTDT) is 1973 Hz, as in logs 63-65. Passed.
+
+## 2026-10-31: description and replies posted
+
+Description replaced with the 10-30 draft plus the flight line (the start-up rate announced once a boot over eleven boots, twice on builds without the second commit). The original body is kept in that session's scratchpad only; the PR history shows it.
+Reply posted: https://github.com/ArduPilot/ardupilot/pull/29000#issuecomment-6548809493 (the why/testing questions: a precaution; SITL fits identical; RateThreadTempCal).

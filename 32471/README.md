@@ -1598,3 +1598,7 @@ the release, and the correction made little difference there. It saved
 -0.042/-0.039, the whole hover bias, as the bit 2 documentation says, so a
 return to 11 needs log69's 0.030/0.024 restored. The restarted-log case
 (a log erased from the GCS) was not flown.
+
+## 2026-10-31: description and replies posted
+
+Reply posted: https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-6548809767 (quick re-arm left as is, each normally armed flight learns afresh; the flight: +0.020 to +0.030 saved, 0.59 to 0.42 m with the correction applied).

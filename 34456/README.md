@@ -538,3 +538,8 @@ pass. CI's replay job builds (`--debug --disable-scripting` replay, then
 
 No code change this round, so nothing was pushed; the description and the
 reply to peterbarker are drafts held for Andy to read before posting.
+
+## 2026-10-31: description and replies posted
+
+Description replaced with the 10-30 draft (the selected set picks the lane; EK3_PRIMARY never written). The original body is kept in that session's scratchpad only; the PR history shows it.
+Reply posted: https://github.com/ArduPilot/ardupilot/pull/34456#issuecomment-6548810405 (peterbarker: why the source set event gets a retry).
