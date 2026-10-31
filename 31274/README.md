@@ -211,3 +211,65 @@ show the same 0.7 s window, 4.96-5.64 s. log65's 3 s comes from its ESC
 telemetry starting 2 s later (6.99 s against 4.96 s); why it started later
 was not checked. The boot window is left above as measured. No log shows the
 four DShot commits changing ESC.Err (`squash-audit-2026-10-31/C.md`).
+
+## 2026-10-31: AP-Review's blocker at db7371c4d8 fixed
+
+The bot's round at `db7371c4d8` (REQUEST CHANGES) had one blocker: right
+after the 5 s stats restart a fresh percentage could read 0% and clear the
+takeoff block for good. It is real. Each pulse republishes every ESC's
+cached eRPM with the current rate (`RCOutput.cpp`, the loop after
+`bdshot_prepare_for_next_pulse()`), and a missed reply never replaces the
+cache (only a corrupt one does), so a reset left the next republish at
+`0/(1+0+0)`. Its should-fix, 1 bad + 1 clean reading 33%, is the same
+mechanism.
+
+Fixed on refresh12 and ported as `r1031/31274g`, two commits, not pushed:
+`f0d19ac649` (AP_HAL_ChibiOS) and `d228911760` (AP_ESC_Telem comment).
+- Keep the rate of the last window that counted 250 frames; while the new
+  window has fewer, report the larger of that and its own rate, or 100%
+  before any full window. A window is closed before the reply that ends it
+  is counted, and one with fewer than 250 frames gives no rate.
+- Divide by the frames counted (3 errors in 299 read 1.00%, under the
+  limit, with one added).
+- The rate is computed in the RCOutput thread at each counted reply and
+  published as one `volatile float`, starting at 100% in `init()`, so the
+  IOMCU firmware's `telem_update()` cannot read counts torn by a restart.
+
+It took five review rounds. Codex's cold reads found three real faults in
+earlier versions: a window closing with a handful of frames (telemetry
+starting after 5 s uptime, as log65's did at 6.5-7 s) cached its one-frame
+rate; reporting the last window alone hid a failure starting just after a
+restart for up to 249 frames (worse than the PR: 119 frames passing against
+8); and the reply that ended a window was counted into it, so after a pause
+249 good frames and one late reply replaced a 5% floor with 0%. Each was
+reproduced in the extracted-code probe before it was fixed.
+
+Extracted-code probe (SITL cannot run `RCOutput_bdshot`), good frames in
+55 s reading 1% or under, PR against the fix:
+
+| ESC | Case | PR | Fix |
+|---|---|---|---|
+| failing 50% | telemetry from 4.5 s | 11 | 0 |
+| failing 50% | telemetry from 6.5 s | 13 | 0 |
+| failing 50% | a 10 s pause | 10 | 0 |
+| failing 5% | 500 / 100 replies a second | 277 / 240 | 0 / 0 |
+| failing 50% | from 20 ms after a restart | 8 | 0 |
+| failing 20% | from 50 ms after a restart | 20 | 3 |
+| healthy | | all | all but the first 250 after start |
+
+Deterministic boundary cases: a missed reply ending a clean window reads
+100%; 249 good replies, a 6 s pause and one more keep a 5% floor. The
+minimum of 250 was chosen over 100 because at 100 a 5% ESC still read under
+1% on 22 frames at 500 replies a second.
+
+Not changed: a failure that begins late in a full window is diluted by the
+window's earlier clean frames (after 2000 clean frames a 50% failure needs
+about 21 misses to pass 1%). That is the gate's 1%-over-a-5-s-window
+design, not the restart artefact; a shorter or sliding window would change
+it, and is a decision for the PR, not this fix. Codex also read the
+republish comment as wrong; it is right (the cached slot is decoded every
+pulse; the INVALID check is the corrupt-reply case).
+
+Builds, no warnings: CubeOrange-bdshot and CubeOrange copter and the
+iomcu-dshot firmware on the PR alone; SmallFastDronev1 on refresh12 costs
+256 bytes of flash and 128 of RAM. Not flown.

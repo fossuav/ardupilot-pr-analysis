@@ -638,3 +638,41 @@ panics at every boot ("Bad parameter table"), so whichever merges second
 has to renumber. 30 and 31 are free on master. SFD keeps this PR's, which
 shipped on the betas, and moves #33366's to 30/31 (refresh12 `40c9fdd94b`;
 `Tools/SFD/check_param_tables.py` flags both pairs without it).
+
+## 2026-10-31: AP-Review's blocker at 3d634e4a5f fixed
+
+The bot's round at `3d634e4a5f` (REQUEST CHANGES) had one blocker: staying
+in THROW never starts horizontal control once a position comes back. The
+XY latch was set only on the way into PosHold, so with `THROW_SRC_INI` on a
+set with no horizontal source and `THROW_NEXTMODE` THROW, the restored
+source set's position was never used, and the same after a refused handoff.
+Confirmed by reading the code; `nextmode_requires_position()` is true for
+THROW itself, so the bot's suggested gate holds.
+
+Fixed on refresh12 (`b12501f5af`, test `b1bfb811be`, `a05ce46d5b` for the
+message macro) and ported as `r1031/32475c`: `ae9b93be1f` (Copter, the
+two folded) and `16042bc083` (ThrowStayHoldsRestoredPosition), not pushed.
+In PosHold, once `position_ok()` and the next mode wants a position, start
+NE control, set the latch and say "Throw position regained".
+
+- A/B, SITL, 5 m/s wind: the new test drifts 120.5 m in 20 s with the code
+  fix removed and 0.0 m with it (0.1 m on the PR alone). The bot measured
+  82.6 m.
+- All 20 Throw tests pass on refresh12 and on the PR alone (the PR has
+  ThrowModeRPMMin where refresh12 has ThrowDropNextModeVALT).
+- Quick review: Codex audit CLOSED. Its cold read raised a should-fix: a
+  refused handoff to a mode that needs no position (STABILIZE, ACRO,
+  ALT_HOLD, LAND) also leaves throw holding level. Not changed: the only
+  refusal reachable for those from throw is RC failsafe (ACRO and STABILIZE
+  refuse entry in it), and `failsafe.radio` is set only with
+  `FS_THR_ENABLE`, whose action has already taken the vehicle out of throw;
+  the other refusals (throttle too high when landed, no altitude estimate
+  from a manual-throttle mode, fence recovery) cannot apply. Its minor, use
+  `GCS_SEND_TEXT()`, is taken.
+- Still open from the bot's round: `THROW_ALT_DCSND`'s changed meaning
+  (Andy's call), the THPH OSD string overwritten after a handoff, the
+  SIM_IMU_POS reboot comments, and the description.
+
+The note above that SFD moves #33366's pair to 30/31 is out of date: since
+2026-10-31 they are on 41/42, and VALT_POS_EXPO is back on 30 (refresh12
+`8e2a1e6ce6`, `95ad9b9c37`).
