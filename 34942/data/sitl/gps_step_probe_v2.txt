@@ -1,0 +1,54 @@
+    def ABGPSStepProbe(self):
+        '''A/B harness: baro steps on a disarmed, still GPS copter'''
+        self.set_parameters({"SIM_TERRAIN": 0})
+        self.set_analog_rangefinder_parameters()
+        self.reboot_sitl()
+        self.wait_ready_to_arm()
+        self.context_collect('STATUSTEXT')
+        for step in [3, 5, 7, 10, -5]:
+            self.context_clear_collection('STATUSTEXT')
+            self.set_parameters({"SIM_BARO_GLITCH": step, "SIM_BAR2_GLITCH": step})
+            tstart = self.get_sim_time_cached()
+            polls = 0
+            unhealthy = 0
+            first_unhealthy = None
+            maxvz = 0.0
+            zjump = 0.0
+            lastz = None
+            while self.get_sim_time_cached() - tstart < 12:
+                m = self.assert_receive_message('EKF_STATUS_REPORT', timeout=5)
+                polls += 1
+                if not (m.flags & mavutil.mavlink.ESTIMATOR_ATTITUDE):
+                    unhealthy += 1
+                    if first_unhealthy is None:
+                        first_unhealthy = self.get_sim_time_cached() - tstart
+                lp = self.assert_receive_message('LOCAL_POSITION_NED', timeout=5)
+                maxvz = max(maxvz, abs(lp.vz))
+                if lastz is not None:
+                    zjump = max(zjump, abs(lp.z - lastz))
+                lastz = lp.z
+                self.send_mavlink_run_prearms_command()
+                self.delay_sim_time(0.25, "poll")
+            texts = sorted(set(x.text for x in self.context_collection('STATUSTEXT')
+                               if "height error" in x.text or "settling" in x.text or "reset" in x.text.lower()))
+            self.progress("ABGS step %d m: unhealthy %u/%u from %s s, max |vz| %.2f, max z step %.2f, final z %.2f, texts %s" % (
+                step, unhealthy, polls, ('%.1f' % first_unhealthy) if first_unhealthy is not None else 'never',
+                maxvz, zjump, lastz, texts[:5]))
+            self.set_parameters({"SIM_BARO_GLITCH": 0, "SIM_BAR2_GLITCH": 0})
+            self.delay_sim_time(20, "recover")
+            self.wait_ready_to_arm(timeout=60)
+
+
+# results 2026-10-30, full = the series with the agreement exclusion (reset at every still sample), no_exemption = the same without it
+== full rc=0
+ABGS step 3 m: unhealthy 0/20 from never s, max |vz| 0.28, max z step 0.54, final z -3.09, texts []
+ABGS step 5 m: unhealthy 0/20 from never s, max |vz| 0.49, max z step 0.84, final z -5.16, texts []
+ABGS step 7 m: unhealthy 0/20 from never s, max |vz| 0.39, max z step 4.70, final z -7.13, texts []
+ABGS step 10 m: unhealthy 0/20 from never s, max |vz| 0.36, max z step 8.17, final z -10.17, texts []
+ABGS step -5 m: unhealthy 0/20 from never s, max |vz| 0.48, max z step 0.84, final z 5.14, texts []
+== no_exemption rc=0
+ABGS step 3 m: unhealthy 1/15 from 1.4 s, max |vz| 0.27, max z step 1.93, final z -3.09, texts ['PreArm: AHRS: EKF3[1] height error 1.2m']
+ABGS step 5 m: unhealthy 1/11 from 0.8 s, max |vz| 0.40, max z step 4.74, final z -5.18, texts ['PreArm: AHRS: EKF3[1] height error 2.2m']
+ABGS step 7 m: unhealthy 1/18 from 0.8 s, max |vz| 0.08, max z step 6.97, final z -7.13, texts ['PreArm: AHRS: EKF3[1] height error 1.0m', 'PreArm: AHRS: EKF3[1] height error 2.8m']
+ABGS step 10 m: unhealthy 1/19 from 0.8 s, max |vz| 0.10, max z step 9.87, final z -10.16, texts ['PreArm: AHRS: EKF3[1] height error 1.4m', 'PreArm: AHRS: EKF3[1] height error 3.1m']
+ABGS step -5 m: unhealthy 1/11 from 0.8 s, max |vz| 0.38, max z step 4.67, final z 5.15, texts ['PreArm: AHRS: EKF3[1] height error 2.1m']

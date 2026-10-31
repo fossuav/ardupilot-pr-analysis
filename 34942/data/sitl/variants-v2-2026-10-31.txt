@@ -1,0 +1,11 @@
+full: rc=0 PASSED | #### EK3HardLandingRearm (re-arm safely when a drop or a hard landing leaves the EKF vertical state wrong)  ##
+no_exemption: rc=1 : NotAchievedException('EKF unhealthy after a baro step')  | #### EK3HardLandingRearm (re-arm safely when a drop or a hard landing leaves the EKF vertical state wrong)  ##
+master: rc=1 : NotAchievedException('climbed 0.88 m with the throttle at minimum')  | #### EK3HardLandingRearm (re-arm safely when a drop or a hard landing leaves the EKF vertical state wrong)  ##
+no_filter_fix: rc=1 : AutoTestTimeoutException('Failed to get EKF.flags=0')  | #### EK3HardLandingRearm (re-arm safely when a drop or a hard landing leaves the EKF vertical state wrong)  ##
+no_prearm_reason: rc=1 : NotAchievedException('Unexpected prearm failure (PreArm: AHRS: Waiting for 3D fix)')  | #### EK3HardLandingRearm (re-arm safely when a drop or a hard landing leaves the EKF vertical state wrong)  ##
+no_aided_mode: rc=1 : AutoTestTimeoutException('Failed to get EKF.flags=0')  | #### EK3HardLandingRearm (re-arm safely when a drop or a hard landing leaves the EKF vertical state wrong)  ##
+exempt_if_fused: rc=1 : NotAchievedException('climbed 0.89 m with the throttle at minimum')  | #### EK3HardLandingRearm (re-arm safely when a drop or a hard landing leaves the EKF vertical state wrong)  ##
+no_test_ratio: rc=0 PASSED | #### EK3HardLandingRearm (re-arm safely when a drop or a hard landing leaves the EKF vertical state wrong)  ##
+no_rejected: rc=1 : AutoTestTimeoutException('Failed to get EKF.flags=0')  | #### EK3HardLandingRearm (re-arm safely when a drop or a hard landing leaves the EKF vertical state wrong)  ##
+no_still_reset: rc=1 : NotAchievedException('climbed 0.89 m with the throttle at minimum')  | #### EK3HardLandingRearm (re-arm safely when a drop or a hard landing leaves the EKF vertical state wrong)  ##
+no_fall_skip: rc=1 : ValueError('Expected MAV_RESULT_ACCEPTED got MAV_RESULT_FAILED')  | #### EK3HardLandingRearm (re-arm safely when a drop or a hard landing leaves the EKF vertical state wrong)  ##
