@@ -73,6 +73,23 @@ Pending arm today treats every pre-arm failure as transient.
 
 No logs committed.
 
+## 2026-10-31: the bootstrap reset made GPS 24 s late, SFD-O4 log67
+
+This PR's `4bc594f1c6` calls `reset_configured_backend()` once the pending
+arm has waited `ARMING_PEND_TIM` (5 s). On log67 the switch came at 24.77 s
+with "PreArm: Need Position Estimate"; the reset fired at 29.87 s ("Arm
+pending: EKF bootstrap reset") while the GPS checks were already passing
+(XKF4.GPS 0). The EKF first uses GPS about 30 s after it initialises
+(34.4-35.9 s on the other five boots), and the reset restarted that wait:
+"EKF3 IMU0 is using GPS" at 59.56 s, 24 s late. A reset cannot make a GPS
+arrive, so firing it on a position wait costs time and gains nothing.
+
+`InitialiseFilterBootstrap()` (upstream `41744c884d`, compiled out there by
+default) writes no DAL event, so Replay cannot follow it: the beta's Replay
+matches log67 to 1e-7 until 29.87 s and differs from then on (yaw 1.7 deg,
+VD 0.08 m/s). It also flew on the Q25 (q25-0cb4, 14.68 s, `ARMING_PEND_TIM
+2`).
+
 ## Reproduce
 
 ```

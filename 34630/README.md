@@ -303,3 +303,11 @@ returning no data. No reset followed, and once the range came back at 230 s
 core 1 converged to GPS within 2 s. Replay matches the log. No lockout
 reset fired in logs 66-71 (no "flow vel reset" message). Bench check 0d,
 the OSD floor, left no log, and `EK3_FLOW_QMIN` was still 60 afterwards.
+
+### Superseded 2026-10-31 by the squash audit
+
+"No lockout reset fired in logs 66-71" above is wrong. `EK3_OPTIONS 94`
+sets bit 6, which quiets the reset messages, and `XKF7.FVC` counts three
+resets on core 1: log68 at 77.57 s, log69 at 181.27 s and log70 at 287.57 s.
+The no-reset account of the 228.24 s deferral still holds
+(`squash-audit-2026-10-31/B.md`).

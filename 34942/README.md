@@ -699,6 +699,18 @@ Every flight ended in a power cycle, so the re-arm after a landing was not
 flown: that is the case Replay refused in 0 of 20 arms on logs 54-65. The
 Q25 was not flown either.
 
+## Squash audit (2026-10-31)
+
+On logs 66-71: commit 5 (`bf1ea90b4e`) has flown. Reverting it changes the
+EKF on all six logs: core 1's yaw moves 0.14-0.29 deg from EKF start at every
+boot, log66 core 0's yaw 0.57 deg at 61.4 s, and core 1's yaw 3.1 deg around
+264-313 s. Its message gives the SFD-O4 effect as three landings only; it
+needs the boot yaw added. The static yaw fix `dc76e048a6` stays on top: six
+logs replay identically without it, as SFD-O4 has a compass. The rest-fused
+fix `2a52c965e2` may fold into G (`21a8e3a683`): neither ran (identical
+without it, and G never reset), giving 9 commits with the same tree
+(`squash-audit-2026-10-31/A.md`).
+
 ## File map
 
 At the rework:

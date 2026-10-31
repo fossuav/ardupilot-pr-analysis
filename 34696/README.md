@@ -223,6 +223,17 @@ Copter otherwise restores only after ADSB avoidance (`AVD_F_RCVRY`); an
 `FS_OPTIONS` bit rather than an `FS_EKF_ACTION` value; the saved mode
 rather than the mode switch position; why 3 s.
 
+## 2026-10-31: the restore cannot fire on the Q25 as set up
+
+On the Q25 (`0cb49e7d`, `FS_OPTIONS 64`, `FS_EKF_ACTION 4`) the failsafe
+changed PosHold to VALT at 227.08 s and cleared at 249.68 s. The restore
+was pending until the pilot's switch at 282.72 s, but `hands_off` was false
+throughout: pitch rests at 1525 against `RC2_TRIM 1500` with `RC2_DZ 20`.
+That is a calibration point on that airframe, but a hands-off test against
+`RCn_TRIM` is fragile wherever trim and centre drift apart. `571df9bdff`
+(wait for a position) therefore decided nothing in flight and stays on top
+(`squash-audit-2026-10-31/C.md`).
+
 ## Cross-references
 
 - **#32514 on the SFD branch.** SFD's `ekf_check()` has an extra early

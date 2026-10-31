@@ -201,3 +201,13 @@ At boot every motor reads 75-99% from 4.9 to 5.6 s, the same on all four
 and in every log. On `52b1d36f` (log65) the same window read 97-99% for 3 s,
 to 10.1 s. The takeoff gate reads ESC.Err only while armed, so this never
 bound, and no motor stands out.
+
+### Superseded 2026-10-31 by the squash audit
+
+The boot comparison above says nothing about #31274. log65's build
+(`52b1d36f`) carries the same #31274 commits as `ea8cef60`, and builds
+without the 10-30 DShot fixes (log57 on `6d754361`, log59 on `59386e92`)
+show the same 0.7 s window, 4.96-5.64 s. log65's 3 s comes from its ESC
+telemetry starting 2 s later (6.99 s against 4.96 s); why it started later
+was not checked. The boot window is left above as measured. No log shows the
+four DShot commits changing ESC.Err (`squash-audit-2026-10-31/C.md`).

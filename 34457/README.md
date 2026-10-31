@@ -712,6 +712,12 @@ ground, the positive end the touchdown itself; the climb they settled to
 (-0.17/-0.19 at 189 s) is under the 0.25 m/s that defeated the coast stop on
 log39. Passed.
 
+Clarified 2026-10-31 by the squash audit: the range-reads-too-low hold
+never engaged here or in any of 12 logs replayed with it removed, so the
+floor above was held by the PR's other commits (the floor clear
+`42de1d07f1` or the coast stop `d3df572550`), not that hold
+(`squash-audit-2026-10-31/B.md`).
+
 Shorter dwells the same day: log61 (3408138/639) 1.4 s, 0.07-0.08 m on both
 cores; log63 (3408138/643) flight 2 6 s, core 1 0.12 m. The main filters'
 terrain height read 0.4-1.8 m below the ground on log65 while landed; that

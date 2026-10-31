@@ -839,3 +839,14 @@ are in ../32471/README.md, same date. On this branch both tests pass, with
 the same figures (-0.99 control, 0.000 leaving the platform). Quick review:
 gate clean (the same three older subject-length notes), Codex cold read NO
 FINDINGS, APPROVE.
+
+## 2026-10-31: still stacked on #32471 from before v3
+
+The squash audit found #32473's head stacked on #32471's `d9e7d85f5c`, so on
+its own it carries neither v3 (`85dbca9896`, `117508173e`, `04e501e13d`) nor
+`5afa8d69fb`, and its `f945737262` is #32471's `54d41e98c1`. Restacking onto
+#32471's current head hits one conflict, the ACC_ZBIAS_LEARN description in
+Parameters.cpp, which refresh12's rerere holds; `f945737262` then drops out,
+leaving 4 commits. Bit 3 (`d3b5890246`) and `968ea7d7e5` flew today: at every
+armed acro exit in logs 69 and 70 the accel bias variance stayed at its
+5e-8 floor (`squash-audit-2026-10-31/A.md`).
