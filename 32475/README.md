@@ -651,7 +651,8 @@ THROW itself, so the bot's suggested gate holds.
 
 Fixed on refresh12 (`b12501f5af`, test `b1bfb811be`, `a05ce46d5b` for the
 message macro) and ported as `r1031/32475c`: `ae9b93be1f` (Copter, the
-two folded) and `16042bc083` (ThrowStayHoldsRestoredPosition), not pushed.
+two folded) and `16042bc083` (ThrowStayHoldsRestoredPosition). Pushed
+2026-10-31: `3d634e4a5f` -> `16042bc083` (fast-forward).
 In PosHold, once `position_ok()` and the next mode wants a position, start
 NE control, set the latch and say "Throw position regained".
 
