@@ -501,7 +501,7 @@ the seven EKF3 commits reverted:
 
 | test | on topup3 | why |
 |---|---|---|
-| MAV_CMD_SET_EKF_SOURCE_SET (master's) | "Failed to get EKF.flags=831": after set 2 and back to set 1 the EKF never regains a position ("Need Position Estimate", "Check mag field" xy diff 121 rising to 241) | the PR's CI fails the same way (sitltest-copter-tests1e on `3da7a8cf2e`). Bisect on the stack: commits 1-4 pass, 1-5 fail, so commit 5 (`bf1ea90b4e`, the stillness check cap). Mechanism not established |
+| MAV_CMD_SET_EKF_SOURCE_SET (master's) | "Failed to get EKF.flags=831": after set 2 and back to set 1 the EKF never regains a position ("Need Position Estimate", "Check mag field" xy diff 121 rising to 241) | the PR's CI fails the same way (sitltest-copter-tests1e on `3da7a8cf2e`). Bisect on the stack: commits 1-4 pass, 1-5 fail, so commit 5 (`bf1ea90b4e`, the stillness check cap). Mechanism and fix: "The static yaw reference" below |
 | AccelBiasMovingPlatform | EKF unhealthy on the ground, "EKF3[1] height error" 1.5-2.0 m, never ready to arm | `SIM_PLAT_ACC_Z -1` for 60 s disarmed: the EKF reads VD -2.4 to -6 m/s on the ground with GPS velD rejected in both builds; without the PR it arms anyway |
 | Copter.Replay | as above | its accel bias inhibit leg is the same platform, 30 s; VD -5.97 m/s disarmed without the PR, and it arms |
 | VibrationRectificationBiasLearning | "EKF3[1] height error" 1.4-3.8 m after the bit-2 leg's landing | core 0 reads VD up to 1.7 m/s on the ground for two minutes in both builds (300 of 431 disarmed samples over 0.5 m/s without the PR), and the next flight arms anyway without it |
@@ -529,16 +529,111 @@ Also seen:
 
 Open:
 
-- MAV_CMD_SET_EKF_SOURCE_SET and commit 5, on master: the CI failure, the
-  bisect points at the cap. Not reproduced on master here.
+- MAV_CMD_SET_EKF_SOURCE_SET and commit 5: reproduced on the PR head and
+  fixed by `dc76e048a6`, see "The static yaw reference" below.
 - Whether the moving-platform and VRF tests should expect the refusal, or
-  the refusal is too eager for a GPS copter whose velD is rejected.
+  the refusal is too eager for a GPS copter whose velD is rejected. Below:
+  no change in #34942; the tests are #32471's and #32473's to adapt.
 
 Files: `data/sfd-topup3/` holds the scripts (`instrument_stale.py`, the
 Replay and SITL logging; `stale_probe.py`, per-disarm rest checks;
 `why_disagree.py`, `vd_disarmed.py`, `probe_test.py`, `bisect_srcset.sh`,
 `cmp_34942_stages.sh`) and `stale_probe.out`. They name scratch paths from
 the session that ran them.
+
+## The static yaw reference (2026-10-31), the CI failure fixed
+
+MAV_CMD_SET_EKF_SOURCE_SET, failing in sitltest-copter-tests1e at
+`3da7a8cf2e`, reproduces on the PR head in a scratch build of master's base.
+Fixed by `dc76e048a6` "AP_NavEKF3: take the static yaw reference before it is
+first fused", on branch `fix/34942-static-yaw` (worktree
+`../tfix-ab-34942p`), a fast-forward of the PR; not pushed yet.
+
+The mechanism:
+
+- With no yaw source and the vehicle still, `SelectMagFusion()` fuses
+  `yawAngDataStatic` (`fuseEulerYaw(STATIC)`, R = `sq(yawAngErr)`). The
+  reference is stored only while the vehicle is not still, and nothing
+  initialises it.
+- On master the first `updateMovementCheck()` sample is differenced against
+  a zero `accel_prev`: `prevOnGround` starts true, so the reseed branch does
+  not run. That holds the check off for about 0.24 s at boot (4.45-4.69 s
+  in SITL), which takes the reference: yaw 0, before the initial alignment
+  at 5.89 s, with R = 0.5^2.
+- Commit 5's cap limits that sample to 4x the limit, so a vehicle that boots
+  still reads still from its first sample and never takes it. R is then 0
+  and the yaw 0.
+- In the test, 0.2 s on set 2 (no yaw source) while still fuses yaw 0
+  against 272 deg with zero noise. On the ground a failed yaw innovation
+  test still fuses (`MagFusion.cpp:1224-1230`). XKF1.GZ goes from -0.18 to
+  -28.6 deg/s on both cores within 0.3 s, the yaw spins about 22 deg/s, and
+  "Check mag field" and "Need Position Estimate" never clear.
+
+The fix stores the reference also while it has never been stored
+(`yawAngDataStatic.time_ms == 0`), which restores master's boot state.
+
+- SITL: MAV_CMD_SET_EKF_SOURCE_SET fails without the fix and passes with it;
+  GZ stays at -0.18 deg/s and the yaw at 270 deg through 50 s. Also pass:
+  EK3HardLandingRearm, AHRSSwitchBackendYawReset, EK3_EXT_NAV_vel_without_vert,
+  EKF3SRCPerCore, EKFSource, FlowAidingRestartsWithoutYawFusion,
+  FlowGyroZBiasNoYawReference, the four GPSForYaw tests, GPSViconSwitching,
+  GSF, GSF_reset, LoiterNoCompassYaw and LoiterNoCompassYawGPS, and the
+  whole tests1e shard except MountSiyiZT30. That one fails on a local
+  pymavlink without `camera_device_id`, which is environmental.
+- The Q25 is affected: no compass (`COMPASS_ENABLE 0`) and `EK3_SRCn_YAW 0`
+  on every set, so it runs the static path on every still boot.
+- Replay, topup3 against topup3 with the fix, 15 logs and 65 arms:
+  - 13 logs are bit-identical in replayed core 0: all eight SFD-O4,
+    q25-0cb4-run, q25-308a-run, q25-5b70, q25v1-op-0e2c and q25-0cb4.
+  - q25-308a differs from 7.21 s, at boot, and the fix tracks the flight:
+    rms yaw against flown 0.73 deg, against 19.84 without it.
+  - q25-0cb4-ft3 differs from 8.72 s. With the fix it matches the
+    pre-#34942 replay and the flight sample for sample from 8 to 24 s.
+    Without it, XKF1.GZ froze at 0.02 deg/s with the yaw pinned at 0, where
+    the flight learned 0.55.
+- Verdicts: one arm changes, ft3 126.12 s (2.1 s after a disarm, VD -0.04),
+  from refused to allowed. On the rework's own base (refresh12 `2e2936166d`
+  plus `stages-v2.py`, scored with `arm_table.py`), ft3 goes from the
+  rework's four refusals to three; 355.92 stays refused. The PR's Q25 row
+  becomes 9 refused, 7 of them re-arms.
+- ft3 at 26 s: both #34942 builds snap the yaw to about 3 deg. That is the
+  "EKF3 IMUn forced reset" (master's `099d6aa72e`, filter status 0 for 5 s
+  while disarmed), after the height error made the handled vehicle
+  unhealthy at about 21 s. With no yaw source a new core starts at yaw 0: an
+  arbitrary heading re-zeroed, not a navigation error.
+
+Quick review of `dc76e048a6`: COMMENT. Mechanical gate clean apart from
+`dal.snprintf` read as `printf` at `Outputs.cpp:98` (a false positive, the
+same pattern as line 91). Codex's cold read raised one must-fix: the
+reference taken at the start is the pre-alignment yaw, and a yaw reset does
+not refresh it while the vehicle stays still. True, and master does the
+same. A 60 s probe still on set 2 (`run_set2_probe.sh`) gives identical
+results on master and on the fix: yaw pulled from 272 to 9.6 deg, and Z gyro
+bias from -0.10 to -1.15 deg/s, still -1.13 back on set 1. That is a latent
+master bug, not this PR's. A fix would refresh the reference on a yaw reset;
+it is a separate upstream PR. It does not reach the Q25, which never aligns
+a yaw.
+
+The other stack failures, re-examined:
+
+- AccelBiasMovingPlatform, Copter.Replay's accel bias inhibit leg (both
+  `SIM_PLAT_ACC_Z -1`) and VibrationRectificationBiasLearning's bit-2 leg:
+  nothing to change in #34942. The EKF is really wrong on the ground in each
+  (VD -2.4 to -6 m/s; 1.7 m/s) without the PR too, and the tests assume
+  arming. They are #32471's and #32473's to adapt, and the bit-2 VD is a
+  #32471 question.
+- EK3_ZeroVelFusionNotUsedWithGPS: intermittent, passes alone.
+
+PR body edits drafted (`pr-body-dc76.md` in scratch): the Q25 row as above,
+and the boot effect, the fix and the master residual in the stillness
+paragraph.
+
+Files: `data/static-yaw/` holds the probe and Replay scripts
+(`srcset_timeline.py`, `still_onset.py`, `gz_peak.py`, `gz_at.py`,
+`cmp_replays.py`, `yaw_timeline.py`, `arm_verdicts.py`, `replay_pair.sh`,
+`cmp_pair.sh`, `rework_base_ft3.sh`, `insert_set2_probe.py`,
+`run_set2_probe.sh`), the fix as `static-yaw-fix.diff`, and
+`arm_verdicts_fix.out`.
 
 ## File map
 
