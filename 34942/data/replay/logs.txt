@@ -1,8 +1,9 @@
-# The 14 logs replayed for #34942: index id, INS_ACC_ID, STAT_BOOTCNT.
+# The logs replayed for #34942: index id, INS_ACC_ID, STAT_BOOTCNT (14 at a1fbfbcdc7, 15 at 3da7a8cf2e).
 # The ids resolve to files through ../analysis/logs/REPLAY_INDEX.md and
 # find_log.py; file names are not public.
 t25-0cb4-run   2818322  52
 t25-0cb4       2818322  49
+t25-0cb4-ft3   2818322  55
 t25-308a-run   2818322  45
 t25-308a       2818322  43
 t25-5b70       2818322  36

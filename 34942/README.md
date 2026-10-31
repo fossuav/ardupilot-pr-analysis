@@ -2,20 +2,24 @@
 
 Analysis archive for [ArduPilot/ardupilot#34942](https://github.com/ArduPilot/ardupilot/pull/34942).
 Branch `pr-ekf3-gnd-hgt-check` (andyp1per fork), base `master` at
-`278a68a57a`, PR head `a1fbfbcdc7` (opened 2026-10-30, five commits). The
-flight evidence is from the T25 airframe on the SFD 4.7.2 beta; numbers are
-cited inline and no flight logs are committed.
+`278a68a57a`. PR head `3da7a8cf2e` (eight commits), force-pushed
+2026-10-31 over the opened head `a1fbfbcdc7` (five commits, 2026-10-30,
+kept locally on `pre-rework/pr-ekf3-gnd-hgt-check-20261031`). The flight evidence is from the T25 airframe on the
+SFD 4.7.2 beta; numbers are cited inline and no flight logs are committed.
 
-> **Read this before changing the code.** "Measured and rejected" below
-> lists the versions of this change that look right and measured worse,
-> each with the number that settled it. Several of them were the first
-> design.
+> **Read this before changing the code.** The two "Measured and rejected"
+> tables below (at the rework, and at `a1fbfbcdc7`) list the versions of
+> this change that look right and measured worse, each with the number that
+> settled it. Several of them were the first design, and a pre-arm hold was
+> built three ways before it was dropped.
 
 ## Status (one line)
 
-Opened 2026-10-30 after four /pr-review rounds (verdict COMMENT). Replay and
-SITL validated; unflown; only Copter exercised; on by default, which the PR
-argues as a bug fix and a maintainer may want discussed first.
+Opened 2026-10-30 after four /pr-review rounds (verdict COMMENT). Reworked
+2026-10-31 after Flight test 3 and three more review rounds (`3da7a8cf2e`,
+pushed with the PR body updated): Replay and SITL validated, Copter, Plane and Sub autotests
+pass; unflown; on by default, which the PR argues as a bug fix and a
+maintainer may want discussed first.
 
 ## The flight
 
@@ -76,6 +80,228 @@ Its cause in flight is #32473's; the arms are what matter here.
 4. `82abc5737b` every on-ground height sample feeds the filter, a rejected
    one clipped at the gate.
 5. `a1fbfbcdc7` autotest `EK3HardLandingRearm`.
+
+### Superseded 2026-10-31 by the rework at `3da7a8cf2e`
+
+Flight test 3 (below) was an arm the head could not refuse (its filter
+read -0.21 m there), and the premise of commit 3 above, that a fused GPS
+vertical velocity corrects the error itself, measured wrong: after a SITL
+impact the GPS vertical velocity was fused until the error reached 2.8 m/s
+and rejected from then on. The list above is left in place as what was
+reviewed and opened on 2026-10-30.
+
+## The rework at `3da7a8cf2e` (2026-10-31, force-pushed over `a1fbfbcdc7`)
+
+Base unchanged, `278a68a57a`. Eight commits:
+
+1. `d6825422d5` filter time step (as `8828291f3f`).
+2. `f2b487cb55` `onGroundHgtError()` and the "height error" pre-arm reason
+   (as `f40ed7c0fc`, message adds the DCM-fallback note).
+3. `4d0a453b5d` the test in aided modes unless a measured velocity
+   **agrees** with the state in the vertical: `measuredVertVelAgrees()` is
+   GPS or ExtNav vertical velocity fused in an aided mode in the last 2 s
+   (`lastVelDFuseTime_ms`) with `|innovVelPos[2]| < 0.5` and
+   `velTestRatio < 1`, or body velocity fused in the last 2 s with the
+   norm of all three `innovBodyVel` axes under 0.5.
+4. `c7fc88ce75` rejected samples clipped at the gate (as `82abc5737b`).
+5. `bf1ea90b4e` `updateMovementCheck()` caps each sample's input to the
+   gyro and accel rate-of-change filters at `2 * EK3_OGNM_TEST_SF * limit`.
+6. `7cf54da6dd` the height test is skipped while `velDotNEDfilt.z` is over
+   0.5 g down (falling).
+7. `21a8e3a683` at the first height sample after the vehicle reads still
+   (`onGroundNotMoving`), once per rest (`velDCheckedAtRest`): if no
+   measured vertical velocity agrees and `|velD| > 0.5`, `ResetHeight()`,
+   clear the filter, and send "EKF3 IMUn vertical velocity reset at rest".
+8. `3da7a8cf2e` `EK3HardLandingRearm` rewritten.
+
+Guidance carried in the PR and in commit 7: after a drop or a hard landing,
+leave the vehicle on the ground and still for at least a second before
+re-arming. Andy chose this over a pre-arm hold (see "Measured and rejected,
+at the rework").
+
+### The flight: Flight test 3 (t25-0cb4-ft3, 2818322/55)
+
+Same T25 board and firmware (`0cb49e7dfb`; MAVLink optical flow, no GPS:
+`GPS1_TYPE` 0, `EK3_SRC1_VELXY` 5, `EK3_SRC1_VELZ` 0), 2026-10-30. Log time.
+
+- 354.12 s: switch disarm at about 1.5 m; the vehicle tumbles for about
+  1.2 s and is still for about 0.3 s.
+- 355.92 s: re-armed 1.8 s after the drop with the flown EKF at `XKF1.VD`
+  1.04 m/s (the error was there in flight: 1.02 against a range-finder rate
+  of 0.26 to 0.3 m/s), the flown stillness flag not set at the arm, no new
+  clipping. VALT then climbed from 2.3 to 4.4 m with the stick at minimum.
+- The head at `a1fbfbcdc7` would not have refused it: its filter read
+  -0.21 m at that arm (Replay, 2026-10-30).
+- Flown height innovation (`XKF3.IPD`) times the sign of VD: -2.82 m 0.3 s
+  into the fall, recovering through 0 at about 355.5 s, about 0.4 m at the
+  arm. That is why a height-innovation test would have missed it.
+- Other findings on this log: the acro-exit fix held; #31274's boot ESC.Err
+  still 79%; the pilot used the EKF reset (aux 187) at 138.63 and 334.32 s;
+  flow QMIN latch failsafes (median quality 59 against QMIN 60).
+
+Replay follows the flight exactly to 138.62 s (baseline Replay against the
+flown `XKF1`), where the pilot's reset, which is not in the DAL, is not
+reproduced. Arms after that are what the changed firmware would have
+estimated without the pilot's resets.
+
+### Replay (tier 1b), 2026-10-31, at the rework
+
+Build: refresh12 `2e2936166d` plus `data/replay/stages-v2.py` 1 2 3 4 5 G 6
+and `data/replay/instrument-v2.diff`. 15 logs, 65 arms. Outputs, log names
+replaced by index ids: `data/replay/score-v2-2026-10-31.txt` (scorer
+`score-v2.py`, which also fixes the aiding-mode labels of `score.py`:
+EKF3's 0/1/2 are ABSOLUTE/NONE/RELATIVE) and `arms-v2-2026-10-31.txt`
+(`arm_table.py`).
+
+| | arms | at `3da7a8cf2e` |
+|---|---|---|
+| went up with a flown VD of 1.0 to 4.3 m/s | 6 | 4 refused (t25-0cb4-run 17.98, 100.58; t25-308a-run 52.10; t25-0cb4-ft3 355.92 on the diverged replay); t25-0cb4-run 288.08 arms after the rest reset with 0.00 m/s; t25-308a-run 62.90 goes up with -1.25 m/s (flown -2.87) |
+| other MicoAir arms | 39 | 10 refused, 8 re-arms 1.1 to 3.9 s after a disarm and 2 first arms |
+| SFD-O4 | 20 | none refused |
+
+All 14 refusals are on the height error, filter 1.1 to 4.4 m, replayed VD
+under 0.5 m/s at 7. Apart from 62.90, every allowed arm goes up under
+0.6 m/s (max 0.56). 62.90 is an EKF whose accel bias the #32473 fault
+corrupted in flight: the rest reset zeroes the velocity and clears the
+filter, the bias builds the velocity again, and the filter has not
+re-accumulated 1 m by the arm.
+
+The free-fall skip (commit 6) applies, over all 15 logs, only during the
+falls after the disarms in the air on t25-0cb4-run (94.48-95.08 s) and
+t25-308a-run (45.30-45.80 s) and for 0.3 s of handling at boot on
+t25-0cb4-run (12.98-13.28 s). Those windows move when the EKF resets
+itself (the five-second unhealthy reset), so the replayed state at later
+arms differs on those two logs; without commit 6 (`arms-nohold-noskip`)
+62.90 went up with 0.09 m/s after a forced reset and the 6 big-error arms
+were 1 refused and 5 armed at 0.26 m/s or less.
+
+The cap (commit 5) alone, replay against replay over every disarm-to-arm
+pair (`cap-compare-2026-10-31.txt`): on seven MicoAir logs the check now
+asserts before the next arm after four disarms where it never did (0.9 to
+5.3 s after them, 2.5 s on the runaway) and 0.1 to 1.5 s sooner after seven
+others. On SFD-O4 every difference from baseline is the cap's: five logs
+bit-identical, three (log56, log57, log59) changed once on the ground, by at
+most 0.05 m/s and 0.3 m. The MicoAir never reads still before the next arm
+in 18 of its 38 disarm-to-arm intervals, even with the cap; SFD-O4 always
+does.
+
+The `velTestRatio` term in commit 3 changed no replayed sample on any of the
+15 logs (XKF1 core 0 compared sample by sample).
+
+### SITL (tier 2), at the rework
+
+`EK3HardLandingRearm` at `3da7a8cf2e` with each change taken out
+(`data/sitl/variants-v2.sh`, `data/sitl/variants-v2-2026-10-31.txt`; run on
+the same EKF at scratch `fin8`):
+
+| build | result | leg |
+|---|---|---|
+| the series | passes (also twice at `3da7a8cf2e` itself) | |
+| master's EKF | climbed 0.88 m after the throttle cut | GPS quick re-arm |
+| commit 1 out | EKF never reports the error | no aiding, baro step |
+| commit 2's reason out | "Waiting for 3D fix" | no aiding, baro step |
+| commit 3 AID_NONE only | EKF never reports the error | flow, rejected baro |
+| commit 3 exclusion on fusion alone | climbed 0.89 m | GPS quick re-arm |
+| commit 3 exclusion out | "EKF unhealthy after a baro step" | GPS baro step |
+| commit 3 `velTestRatio` out | passes: SITL cannot reach it | |
+| commit 4 out | EKF never reports the error | flow, rejected baro |
+| commit 6 out | re-arm refused mid-fall ("height error 4.2m") | flow, re-arm while falling |
+| commit 7 out | climbed 0.89 m | GPS quick re-arm |
+| commit 5 out | not run: SITL cannot produce the shock | |
+
+A clean vehicle rises 0.06 to 0.11 m after the throttle cut; the limit is
+0.6 m.
+
+GPS baro steps applied and removed on a still, disarmed GPS copter
+(`data/sitl/gps_step_updown.txt`, run on the series with the agreement
+exclusion): 2 and 3 m on and off never refuse, peak |VD| 0.33 m/s; 5 m on
+never refuses (0.49 m/s), 5 m off refuses for about a second ("height error
+2.2m", 0.51 m/s), identically on two repeats. Without the exclusion
+(`data/sitl/gps_step_probe_v2.txt`) 3 to 10 m steps refused within 0.8 to
+1.4 s, then reset.
+
+Sharp impact for the `velTestRatio` term (`data/sitl/sharp_impact_probe.txt`):
+50 m/s/s for 0.1 s after the drop, re-armed 1 s later, eight runs with and
+without the term: the EKF read about 0 m/s at the arm in every run and both
+builds behaved alike (peak 3.5 to 3.8 m, landed in 2.6 to 2.8 s; one
+"Accels inconsistent"). The 5 m/s jump stayed inside the GPS gate, so the
+stale-innovation case was not reached.
+
+The in-air re-arm in SITL also shows master's height datum reset at arming
+when home is not set: VD went from 5.05 to 0.41 m/s and PD to 0 at the arm
+while the vehicle was still falling. #32768 deals with that reset.
+
+Regression at the rework: 27 Copter autotests (the 21 above plus Parachute,
+ThrowMode, ShipTakeoff, ArmFeatures, RudderDisarmMidair and the new test),
+3 Plane (Parachute, ParachuteSinkRate, DeadreckoningNoAirSpeed) and 26 Sub
+autotests pass on the EKF of `3da7a8cf2e`. Flash on MatekF405 Copter, which
+compiles out body odometry: +784 bytes, no warnings.
+
+## Measured and rejected, at the rework
+
+| change | argument for | result | code state |
+|---|---|---|---|
+| Exempt aided modes on fusion of a vertical velocity alone | a fused GPS vertical velocity corrects the error | after a SITL impact the GPS vertical velocity was fused until the error reached 2.8 m/s and rejected from then on; the GPS quick re-arm climbed to 3.85 m against 1.50 m with agreement (prototype harness), and fails the test | `a1fbfbcdc7` commit 3 |
+| Agreement on the last fused innovation alone | it is what the EKF used | it only changes when a sample is fused, so one rejected outright leaves the last good one in place for up to 2 s (inspection; SITL did not reach it) | scratch |
+| Body-velocity agreement on the Z axis alone | the vertical axis | on a tilted vehicle the vertical projects onto body X/Y (inspection, review round 1) | scratch |
+| Reset at every height sample while still | also clamps any velocity a still vehicle reports | a 0.7 m/s/s bias on one IMU was reset every 0.8 s (39 times) and never learned (XKF2.AZ 0.000); EK3AccelBias, EK3_AccelBiasZeroVelOptFlow, EK3_AccelBiasInhibitOnGroundMoving and EK3_ZeroVelFusionNotUsedWithGPS failed | scratch `fin2` |
+| Defer the rest check while a measurement agrees | a stale pre-impact agreement could use up the check | on a GPS vehicle on a moving ship whose bias pulled the state off the GPS, the check fired when agreement lapsed: EK3_ZeroVelFusionNotUsedWithGPS failed | scratch `fin4` |
+| Pre-arm hold while the vehicle is not still with an unconfirmed VD | covers a re-arm before the reset (Flight test 3) | a disarmed falling vehicle reads as moving, so on Copter and Blimp, which run the EKF pre-arm check on every arm forced included, a flow-only vehicle disarmed in the air could not be re-armed | `96cdc69f54` |
+| Hold whenever disarmed with an unconfirmed VD, exempting falls by acceleration (> 0.5 g down) | also covers a velocity that builds after the rest check | drag slows a long fall below 0.5 g after about 1 to 1.5 s, and the hold came back mid-fall; three reviewers rated it must-fix | `794589001b` |
+| Hold only while the height innovation agrees in sign with VD by > 0.5 m | the height sensor tracks a real fall, a lift, a deck | Flight test 3's arm read about 0.4 m, still recovering from the fall's -2.8 m | analysis only |
+| Pre-arm hold at all | Flight test 3 | dropped (Andy, 2026-10-31): guidance "still for at least a second" instead; a range-finder ground check was offered and not taken | - |
+| Gate the height test on `onGroundNotMoving` | the reset's own evidence; reads moving in any fall | the MicoAir never read still before the next arm in 18 of 38 intervals; Replay refusals fell from 12 to 2 and four arms with a real error went up with 0.9 to 1.5 m/s (`arms-gate-onground-2026-10-31.txt`) | scratch `fin7` |
+| Test: train of +-80 m/s/s bias steps as the shock for the cap | rings the rate terms like an impact | each step lasts a parameter round trip: 16 m/s of VD, "EKF attitude is bad", "Accels inconsistent"; every variant failed for unrelated reasons | scratch |
+| Test: SITL accel noise as the shock | an impact is noise-like | `SIM_ACC*_RND` applies only with the motors running | inspection |
+| Test: GPS baro-step leg passing on 10 s healthy out of 12 | tolerant of jitter | without the exclusion the refusal lasts under a second, so the leg passed | first rewrite |
+| Test: 5 m GPS baro step | larger margin | its removal pulls VD 0.51 m/s off the GPS and refuses for about a second with the exclusion in place | scratch |
+| Test: impact held 0.5 s by a fixed delay | simple | its size depended on parameter-set latency; at 2 m/s the faulty climbs (0.65 to 0.74 m) sat on the 0.6 m limit; held until VD > 4 m/s they rise 0.83 to 0.89 m against 0.06 to 0.11 m clean | scratch |
+| Test: in-air re-arm from 3.5 to 7 m | short leg | the harness took 0.8 to 2.3 s to re-arm, so the arm reached the vehicle after touchdown; 25 m, with the baro glitch set before the disarm | scratch |
+
+## Review history, at the rework
+
+All 2026-10-30/31, before the push of `3da7a8cf2e`.
+
+- Round 1 at `96cdc69f54` (five Claude reviewers, six Codex cold reads):
+  the pre-arm hold refused a re-arm while falling (must-fix); the window
+  between stillness and the reset; a velocity that builds after the latched
+  check; body-frame Z only; stale agreement; naming and comments; test
+  timing and coverage-as-trace. Fixed in a round that then broke
+  EK3_ZeroVelFusionNotUsedWithGPS (deferred check, reverted).
+- Round 2 at `794589001b` (one Claude, four Codex cold reads, one audit: 15
+  of 19 closed): the acceleration exemption fails under drag (three readers,
+  must-fix). The hold was dropped.
+- Round 3 at `cd2f766381` (one Claude, three Codex cold reads, one audit):
+  the revived height test itself can refuse a re-arm during a fall
+  (must-fix). Stillness gate measured and rejected; free-fall skip taken.
+- Final cold reads of the skip and the whole diff at `3da7a8cf2e`: nothing
+  requiring a code change.
+
+Findings rejected or left, with the reason:
+
+- "Steady vertical motion reads still and the rest reset zeroes a real
+  velocity" (raised every round): the stated limit, once per rest, with an
+  agreeing GPS vertical velocity preventing it; a positive test on the height
+  innovation would have missed Flight test 3.
+- "The once-per-rest check is consumed on a stale agreement": deferring it
+  broke bias learning (measured above).
+- "A velocity that builds after the check is not reset": deliberate; left to
+  the height test, whose filter the reset clears. Keeping the filter through
+  the reset would cover it and refuse a clean quick re-arm for 2 to 3 s;
+  offered, not measured.
+- "ResetHeight() adopts the sample before its gate": shared with the existing
+  height-timeout reset; recoverable through the height test.
+- "Zero timestamps read as agreement for 2 s after boot": VD is 0 then.
+- "Clipping at the gate bounds the filter under 1 m when the gate is small":
+  true; on Sub (`EK3_ALT_M_NSE` 0.01) the test cannot fire, before or after
+  the series. Documented in the PR.
+- "Per-core reasons ahead of healthy() can mask a worse fault message":
+  settled at `a1fbfbcdc7`; the arming decision is unchanged.
+- "The velocity innovation is written before the gate" (Codex audit, round
+  3): refuted, `innovVelPos[0..2]` is written only in the fusion loop.
+- "Acceleration does not prove a fall" (final cold read): over 15 logs the
+  skip applied only in two real falls and 0.3 s of boot handling, and the
+  test resumes at once.
 
 ## Evidence
 
@@ -224,6 +450,16 @@ Review findings rejected, with the reason:
 
 ## Open
 
+At the rework (2026-10-31):
+
+- Pushed 2026-10-31 and the PR body patched; no review or CI result on the new head yet.
+- Unflown. The reset at rest leaves "EKF3 IMUn vertical velocity reset at rest" in the log, which is the trace a flight has to show.
+- A re-arm in the window before the vehicle reads still goes up with the error (Flight test 3's case); the PR tells users to wait a second.
+- A long fall slowed by drag below 0.5 g brings the height test back; steady vertical motion read as still gets one wrong reset.
+- Keeping the height filter through the rest reset (covers a bias-built velocity like t25-308a-run 62.90) is unmeasured.
+
+At `a1fbfbcdc7`:
+
 - The MicoAir false refusals: 9 of 27 ordinary arms, all quick re-arms
   after the EKF settles 1 to 3.5 m off the baro on landing. The 1 m
   threshold is the existing one; a 2 m threshold would, from the table,
@@ -234,6 +470,20 @@ Review findings rejected, with the reason:
 - EKF2 is unchanged; whether its AID_NONE-only rule should follow is open.
 
 ## File map
+
+At the rework:
+
+- `data/replay/stages-v2.py` - the rework's EKF changes as text edits (stages 1 2 3 4 5 G 6; 7 is the dropped hold)
+- `data/replay/instrument-v2.diff` - verdict logging with bit 2 as `measuredVertVelAgrees()`
+- `data/replay/score-v2.py`, `data/replay/arm_table.py` - scorers (score-v2 fixes the aiding labels)
+- `data/replay/score-v2-2026-10-31.txt`, `arms-v2-2026-10-31.txt` - the rework's Replay
+- `data/replay/arms-gate-onground-2026-10-31.txt` - the rejected stillness gate
+- `data/replay/arms-nohold-noskip-2026-10-31.txt` - the series without commit 6
+- `data/replay/cap-compare-2026-10-31.txt` - stillness timing with and without the cap
+- `data/sitl/variants-v2.sh`, `variants-v2-2026-10-31.txt` - the test with each change removed
+- `data/sitl/gps_step_updown.txt`, `gps_step_probe_v2.txt`, `sharp_impact_probe.txt` - probes with results
+
+At `a1fbfbcdc7`:
 
 - `data/replay/stages.py` - the head's EKF changes as text edits, stages 1-4
 - `data/replay/instrument.diff` - the verdict logging (XKFM layout, core +

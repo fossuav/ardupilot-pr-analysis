@@ -1,0 +1,70 @@
+    def ABSharpImpactGPS(self):
+        '''A/B harness: a vertical velocity error that appears between GPS samples, then a quick re-arm'''
+        self.set_parameters({"SIM_TERRAIN": 0})
+        self.set_analog_rangefinder_parameters()
+        self.reboot_sitl()
+        self.context_collect('STATUSTEXT')
+        for (bias, hz) in [(50, 5)] * 8:
+            self.set_parameter("SIM_GPS1_HZ", hz)
+            self.wait_ready_to_arm(timeout=120)
+            self.takeoff(altitude_min=2.1, mode='ALT_HOLD', require_absolute=False)
+            self.wait_rangefinder_distance(1.0, 3.0, timeout=40, minimum_duration=10)
+            self.disarm_vehicle(force=True)
+            self.wait_rangefinder_distance(0, 0.3, minimum_duration=0.5)
+            self.zero_throttle()
+            self.context_clear_collection('STATUSTEXT')
+            self.set_parameters({"SIM_ACC1_BIAS_Z": bias, "SIM_ACC2_BIAS_Z": bias})
+            self.delay_sim_time(0.1, "sharp impact")
+            self.set_parameters({"SIM_ACC1_BIAS_Z": 0, "SIM_ACC2_BIAS_Z": 0})
+            vz_after = self.assert_receive_message('LOCAL_POSITION_NED', timeout=5).vz
+            self.delay_sim_time(1, "re-arm a second after the impact")
+            vz_arm = self.assert_receive_message('LOCAL_POSITION_NED', timeout=5).vz
+            res = None
+            try:
+                self.arm_vehicle()
+            except Exception as e:
+                texts = [x.text for x in self.context_collection('STATUSTEXT') if 'Arm' in x.text]
+                res = "refused (%s)" % (texts[-1] if texts else str(e))
+            if res is None:
+                self.set_rc(3, 1700)
+                self.wait_rangefinder_distance(1.2, 8.0, timeout=20)
+                self.set_rc(3, 1000)
+                tstart = self.get_sim_time_cached()
+                maxr = 0.0
+                landed = None
+                while self.get_sim_time_cached() - tstart < 10:
+                    r = self.get_rangefinder_distance()
+                    maxr = max(maxr, r)
+                    if r < 0.3:
+                        landed = self.get_sim_time_cached() - tstart
+                        break
+                    if r > 6:
+                        break
+                self.disarm_vehicle(force=True)
+                res = "armed, max range after stick down %.2f m, %s" % (
+                    maxr, ('landed after %.1f s' % landed) if landed is not None else 'did not land')
+            self.progress("ABSI bias %.0f GPS %u Hz: EKF vz after impact %.2f, at arm %.2f: %s" % (bias, hz, vz_after, vz_arm, res))
+            self.wait_rangefinder_distance(0, 0.3, minimum_duration=1, timeout=60)
+            self.zero_throttle()
+            self.delay_sim_time(10, "settle")
+
+
+# results 2026-10-31
+== full rc=0
+ABSI bias 50 GPS 5 Hz: EKF vz after impact -0.02, at arm -0.02: armed, max range after stick down 3.62 m, landed after 2.6 s
+ABSI bias 50 GPS 5 Hz: EKF vz after impact -0.01, at arm -0.02: armed, max range after stick down 3.70 m, landed after 2.6 s
+ABSI bias 50 GPS 5 Hz: EKF vz after impact -0.01, at arm -0.02: armed, max range after stick down 3.61 m, landed after 2.8 s
+ABSI bias 50 GPS 5 Hz: EKF vz after impact -0.01, at arm -0.02: armed, max range after stick down 3.53 m, landed after 2.6 s
+ABSI bias 50 GPS 5 Hz: EKF vz after impact 0.01, at arm 0.02: armed, max range after stick down 3.76 m, landed after 2.6 s
+ABSI bias 50 GPS 5 Hz: EKF vz after impact -0.00, at arm -0.00: armed, max range after stick down 3.63 m, landed after 2.6 s
+ABSI bias 50 GPS 5 Hz: EKF vz after impact -0.02, at arm -0.02: refused (Arm: Accels inconsistent)
+ABSI bias 50 GPS 5 Hz: EKF vz after impact -0.01, at arm -0.02: armed, max range after stick down 3.69 m, landed after 2.8 s
+== vtr rc=0
+ABSI bias 50 GPS 5 Hz: EKF vz after impact -0.01, at arm -0.02: armed, max range after stick down 3.53 m, landed after 2.6 s
+ABSI bias 50 GPS 5 Hz: EKF vz after impact -0.01, at arm -0.02: armed, max range after stick down 3.49 m, landed after 2.6 s
+ABSI bias 50 GPS 5 Hz: EKF vz after impact -0.01, at arm -0.02: armed, max range after stick down 3.59 m, landed after 2.6 s
+ABSI bias 50 GPS 5 Hz: EKF vz after impact -0.01, at arm -0.02: armed, max range after stick down 3.56 m, landed after 2.6 s
+ABSI bias 50 GPS 5 Hz: EKF vz after impact -0.02, at arm -0.02: armed, max range after stick down 3.58 m, landed after 2.6 s
+ABSI bias 50 GPS 5 Hz: EKF vz after impact -0.00, at arm -0.02: armed, max range after stick down 3.59 m, landed after 2.8 s
+ABSI bias 50 GPS 5 Hz: EKF vz after impact -0.01, at arm -0.01: armed, max range after stick down 3.67 m, landed after 2.8 s
+ABSI bias 50 GPS 5 Hz: EKF vz after impact 0.07, at arm -0.02: armed, max range after stick down 3.68 m, landed after 2.8 s

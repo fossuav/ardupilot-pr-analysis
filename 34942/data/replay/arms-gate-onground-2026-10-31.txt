@@ -1,0 +1,12 @@
+arms 65, stopped 2 (height error 2, settling 0, both 0)
+arms that went up with flown |VD| >= 1:
+  t25-0cb4-run               17.98 (first arm) flown VD  1.53 -> replay VD  1.53 
+  t25-0cb4-run              100.58 (6.6 s after disarm) flown VD  4.28 -> replay VD  0.88 
+  t25-0cb4-run              288.08 (1.7 s after disarm) flown VD  1.43 -> replay VD  0.00 
+  t25-308a-run               52.10 (7.3 s after disarm) flown VD  1.12 -> replay VD  1.12 
+  t25-308a-run               62.90 (8.2 s after disarm) flown VD -2.87 -> replay VD -1.25 
+  t25-0cb4-ft3              355.92 (1.8 s after disarm) flown VD  1.04 -> replay VD  0.24 
+stopped arms with flown |VD| < 1:
+  t25-308a-run               92.60 (1.1 s after disarm) flown VD -0.62 replay VD -1.41 HGT-ERROR 
+  t25-0cb4-ft3              126.12 (2.1 s after disarm) flown VD -0.03 replay VD -0.05 HGT-ERROR 
+max |replay VD| at arms that are not stopped: 3.99

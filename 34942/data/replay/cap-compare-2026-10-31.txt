@@ -1,0 +1,81 @@
+##### t25-0cb4
+  disarm  173.48 -> arm  175.88 (2.4 s): still at +1.2 (E) / +1.2 (F); VD at arm E -0.74  F -0.74
+  disarm  362.88 -> arm  363.98 (1.1 s): still at +0.0 (E) / +0.0 (F); VD at arm E -0.20  F -0.20
+  disarm  478.58 -> arm  482.48 (3.9 s): still at +0.0 (E) / +0.0 (F); VD at arm E -0.23  F -0.23
+  disarm  492.08 -> arm  494.88 (2.8 s): still at never (E) / never (F); VD at arm E -0.07  F -0.07
+  disarm  509.58 -> arm  513.08 (3.5 s): still at never (E) / never (F); VD at arm E  0.10  F  0.10
+  disarm  528.28 -> arm  530.68 (2.4 s): still at never (E) / never (F); VD at arm E  0.09  F  0.09
+  disarm  545.48 -> arm  549.08 (3.6 s): still at never (E) / never (F); VD at arm E  0.10  F  0.10
+##### log54-o4
+##### log56-o4
+  275.17: VD -0.59 -> -0.02, 275.2 s after the disarm at 0.00
+  294.97: VD 1.96 -> 0.05, 295.0 s after the disarm at 0.00
+##### log57-o4
+  365.77: VD 0.54 -> 0.01, 136.3 s after the disarm at 229.47
+  659.57: VD 0.65 -> -0.03, 22.7 s after the disarm at 636.87
+  1296.37: VD 0.64 -> -0.04, 354.3 s after the disarm at 942.07
+  disarm  219.77 -> arm  221.47 (1.7 s): still at +0.0 (E) / +0.0 (F); VD at arm E  0.01  F  0.01
+  disarm  229.47 -> arm  341.77 (112.3 s): still at +0.0 (E) / +0.0 (F); VD at arm E -0.02  F -0.02
+  disarm  374.67 -> arm  443.77 (69.1 s): still at +0.0 (E) / +0.0 (F); VD at arm E  0.06  F  0.06
+  disarm  455.17 -> arm  560.67 (105.5 s): still at +0.0 (E) / +0.0 (F); VD at arm E  0.02  F  0.02
+  disarm  569.77 -> arm  623.37 (53.6 s): still at +0.0 (E) / +0.0 (F); VD at arm E  0.03  F  0.03
+  disarm  636.87 -> arm  641.67 (4.8 s): still at +0.0 (E) / +0.0 (F); VD at arm E -0.08  F -0.08
+  disarm  660.17 -> arm  811.07 (150.9 s): still at +0.0 (E) / +0.0 (F); VD at arm E  0.02  F  0.02
+  disarm  830.67 -> arm  904.27 (73.6 s): still at +0.0 (E) / +0.0 (F); VD at arm E -0.01  F -0.01
+  disarm  942.07 -> arm 1046.17 (104.1 s): still at +0.0 (E) / +0.0 (F); VD at arm E -0.03  F -0.03
+##### log58-o4
+  disarm   90.87 -> arm   97.77 (6.9 s): still at +0.0 (E) / +0.0 (F); VD at arm E -0.06  F -0.06
+  disarm  105.47 -> arm  111.97 (6.5 s): still at +0.0 (E) / +0.0 (F); VD at arm E  0.03  F  0.03
+##### log59-o4
+  191.87: VD 0.65 -> 0.01, 191.9 s after the disarm at 0.00
+##### log61-o4
+  242.70: VD 0.61 -> 0.02, 242.7 s after the disarm at 0.00
+  275.40: VD 0.86 -> -0.04, 275.4 s after the disarm at 0.00
+##### log63-o4
+  214.90: VD 0.59 -> -0.02, 214.9 s after the disarm at 0.00
+  274.20: VD 0.54 -> 0.05, 56.6 s after the disarm at 217.60
+  disarm  217.60 -> arm  233.10 (15.5 s): still at +0.0 (E) / +0.0 (F); VD at arm E -0.09  F -0.09
+##### log65-o4
+  69.60: VD -0.58 -> 0.02, 69.6 s after the disarm at 0.00
+  73.60: VD -0.62 -> 0.04, 73.6 s after the disarm at 0.00
+  103.80: VD -0.63 -> -0.04, 103.8 s after the disarm at 0.00
+##### t25-0cb4-run
+  26.28: VD -0.80 -> -0.05, 1.6 s after the disarm at 24.68
+  disarm   24.68 -> arm   31.08 (6.4 s): still at +2.7 (E) / +1.5 (F); VD at arm E -0.46  F -0.42
+  disarm   39.28 -> arm   47.18 (7.9 s): still at never (E) / never (F); VD at arm E  0.32  F  0.32
+  disarm   93.98 -> arm  100.58 (6.6 s): still at never (E) / +2.5 (F); VD at arm E  4.48  F  0.11
+  disarm  116.28 -> arm  120.18 (3.9 s): still at never (E) / never (F); VD at arm E  0.52  F -0.10
+  disarm  191.78 -> arm  194.38 (2.6 s): still at never (E) / never (F); VD at arm E  0.34  F  0.33
+  disarm  216.38 -> arm  218.18 (1.8 s): still at never (E) / never (F); VD at arm E -0.02  F -0.05
+  disarm  228.58 -> arm  231.28 (2.7 s): still at never (E) / never (F); VD at arm E  0.02  F  0.69
+  disarm  258.38 -> arm  261.08 (2.7 s): still at never (E) / never (F); VD at arm E -0.14  F -0.09
+  disarm  286.38 -> arm  288.08 (1.7 s): still at never (E) / +0.9 (F); VD at arm E  1.35  F  0.07
+  disarm  302.68 -> arm  317.08 (14.4 s): still at +2.8 (E) / +1.3 (F); VD at arm E -0.13  F -0.12
+  disarm  439.38 -> arm  441.88 (2.5 s): still at +0.0 (E) / +0.0 (F); VD at arm E -0.19  F  0.32
+  disarm  454.48 -> arm  456.18 (1.7 s): still at never (E) / never (F); VD at arm E  0.06  F  0.04
+##### t25-308a-run
+  disarm   44.80 -> arm   52.10 (7.3 s): still at never (E) / never (F); VD at arm E -0.04  F -0.04
+  disarm   54.70 -> arm   62.90 (8.2 s): still at never (E) / +5.3 (F); VD at arm E  0.64  F  0.09
+  disarm   91.50 -> arm   92.60 (1.1 s): still at never (E) / +0.9 (F); VD at arm E -2.11  F  0.07
+##### td25-op-0e2c
+  disarm  272.00 -> arm  279.10 (7.1 s): still at +1.1 (E) / +0.8 (F); VD at arm E  0.21  F  0.30
+  disarm  279.60 -> arm  284.80 (5.2 s): still at +0.0 (E) / +0.0 (F); VD at arm E  0.04  F  0.10
+##### t25-308a
+  disarm  114.56 -> arm  117.81 (3.3 s): still at +0.7 (E) / +0.6 (F); VD at arm E  0.10  F  0.10
+  disarm  171.51 -> arm  175.61 (4.1 s): still at +0.0 (E) / +0.0 (F); VD at arm E  0.34  F  0.34
+##### t25-5b70
+##### t25-0cb4-ft3
+  136.62: VD 0.57 -> 0.05, 12.6 s after the disarm at 124.02
+  400.42: VD 0.73 -> 0.00, 1.2 s after the disarm at 399.22
+  disarm  124.02 -> arm  126.12 (2.1 s): still at +1.4 (E) / +1.0 (F); VD at arm E -0.04  F -0.04
+  disarm  137.22 -> arm  143.92 (6.7 s): still at +0.0 (E) / +0.0 (F); VD at arm E  0.13  F -0.18
+  disarm  294.62 -> arm  296.62 (2.0 s): still at never (E) / never (F); VD at arm E  0.16  F  0.12
+  disarm  314.72 -> arm  317.22 (2.5 s): still at never (E) / never (F); VD at arm E  0.14  F  0.12
+  disarm  333.32 -> arm  336.52 (3.2 s): still at +3.1 (E) / +1.7 (F); VD at arm E  0.17  F  0.17
+  disarm  343.12 -> arm  344.82 (1.7 s): still at never (E) / never (F); VD at arm E -0.01  F -0.03
+  disarm  354.12 -> arm  355.92 (1.8 s): still at never (E) / never (F); VD at arm E  0.25  F  0.24
+  disarm  399.22 -> arm  404.72 (5.5 s): still at +1.9 (E) / +1.0 (F); VD at arm E  0.13  F  0.11
+  disarm  419.22 -> arm  420.02 (0.8 s): still at +0.0 (E) / +0.0 (F); VD at arm E  0.13  F  0.21
+  disarm  445.52 -> arm  447.22 (1.7 s): still at +0.0 (E) / +0.0 (F); VD at arm E -0.14  F -0.12
+  disarm  459.62 -> arm  462.12 (2.5 s): still at never (E) / never (F); VD at arm E  0.29  F  0.24
+  disarm  498.62 -> arm  499.82 (1.2 s): still at never (E) / never (F); VD at arm E -0.00  F  0.09
