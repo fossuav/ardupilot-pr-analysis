@@ -2,6 +2,14 @@
 between the commanded acceleration (PSCN/PSCE TAN/TAE) and the acceleration
 GPS measured, scanned over response lag.
 
+At speed in a turn it can read drag rather than yaw: the command includes
+the forward acceleration that holds speed against drag, which GPS
+acceleration does not show, and in a turn that turns the command away
+from the measured centripetal acceleration. Log 7 of 2026-10-31 (9-10 m/s,
+turning at about 10 deg/s) read -27 deg here at corr 0.71 while
+ft_imuyaw.py put the EKF yaw within 1-7 deg of true at corr 0.89-0.97.
+Check a non-zero result with ft_imuyaw.py.
+
 usage: python3 ft_loiter_yaw.py LOG.pkl FROM TO
 """
 import pickle

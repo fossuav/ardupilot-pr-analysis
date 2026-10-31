@@ -257,8 +257,22 @@ commits used to make.
   throughout; the current input on this quad tracking load at 3.4 mV/A on
   a zero drifting 2-3 mV/degC; and the clean Acro flight after the rescale
   and compass refit.
+- [bench-2026-10-31.md](bench-2026-10-31.md) - two more release-testing
+  logs on `1f8685e9`: the port clean, the EKF yaw right throughout, but
+  the compass's coupling to battery current down by a third overnight so
+  the refit over-compensates (40 deg and more at high throttle); the
+  current zero's temperature drift seen on the compass in flight; the GSF
+  16-35 deg wrong in Loiter at 0.4 deg of spread; and a Loiter yaw tool
+  that reads drag in a turn.
 
 ## Status (one line)
+
+2026-10-31: head unchanged at `e45dae01b1`. Two more logs on `1f8685e9`:
+the port clean, no failsafe, EKF yaw within 6 deg; the airframe's compass
+coupling fell by a third, so `COMPASS_MOT` needs refitting once Andy says
+what changed. Commit 48 still unflown.
+
+Earlier:
 
 2026-10-30: head unchanged at `e45dae01b1`. Four release-testing logs on
 `1f8685e9`: the port clean on every flight (1600 Hz, worst armed gap 1.07
@@ -1083,6 +1097,35 @@ rest is not:
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
 
+## 2026-10-31: two more release-testing logs, the compass coupling moved
+
+PR head unchanged at `e45dae01b1`. Logs 6 and 7 from the quad on
+`1f8685e9`, with nothing changed since log 5 of 2026-10-30. No port runs
+half duplex, so commit 48's echo window is still unflown.
+
+- The port was clean: rate loop 1600 Hz with a worst in-flight gap of
+  0.95-1.05 ms, main loop 200 Hz, nothing dropped. The 4.3-6.5 ms stall
+  at the instant of arming is in 2026-10-30's logs too and was left out of
+  that day's armed figure; superseded there.
+- No EKF failsafe or emergency yaw reset, and the EKF yaw within 6 deg of
+  true in every window, from the accelerometer against GPS acceleration.
+- The compass is no longer compensated. In steady fast Acro it reads 25-43
+  deg off the EKF's heading at 55k summed RPM and above, against 7 deg in
+  log 5. Fitting each flight, the compass's coupling to battery current
+  was 20-23 mG/A on 2026-10-30 (logs 3, 4, 5) and 13.8-15.4 on 2026-10-31,
+  turned about 20 deg; the current reading's gain against the eRPM model
+  moved 2-14%.
+  Something between the battery current and the compass changed between
+  the two days. Not known yet.
+- The compass sees the current zero's temperature drift in flight, at
+  60-75% of the pin's disarmed rate: 50-75 mG over today's 14-23 degC.
+- In log 7's Loiter the GSF was 16-35 deg wrong while reporting 0.4-1.4
+  deg of spread, the overconfidence behind flight 2's bad reset; upstream.
+  `ft_loiter_yaw.py` read the same flight as a 30 deg EKF yaw error, most
+  likely the drag term in a turn; the tool now carries the caveat.
+
+Details in [bench-2026-10-31.md](bench-2026-10-31.md).
+
 ## 2026-10-30: release-testing flights, the compass under motor current
 
 PR head unchanged at `e45dae01b1`. Four logs from the quad (board
@@ -1122,6 +1165,20 @@ battery pin moved under 0.3 mV/degC (log 5, disarmed), but on 2026-10-29's
 bench it drifted 1.70 mV/degC, so the current input's drift is not yet
 shown to be the clamp's; R4 needs measuring before it is called fixed. The
 line is left in place because the quad's own figure is as it says.
+
+### Superseded 2026-10-31 by logs 6 and 7
+
+"A worst armed gap of 0.94-1.07 ms" counts the flights. The window holding
+the arming instant reads 4.29 ms in log 3 and 6.51 ms in log 5, on the
+ground at spin-arm: the parameter-save stall, at arming.
+
+"It holds near the 11-19 degC board temperature it was calibrated at; each
+degC away is 15-20 mG of compass error": the 15-20 mG was derived, and
+measured on the compass in flight it is 13.1 mG/degC in log 5 and 6.6-8.8
+in logs 6 and 7. The refit stopped holding the next day mainly because the
+compass's coupling to battery current fell from 22.7 to 13.8-15.4 mG per
+reported amp, not because of temperature. The bullet is left in place
+because log 5 held as it says.
 
 ## 2026-10-29: the current input, first flights of `e45dae01b1`, a GPS false alarm
 
