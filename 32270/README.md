@@ -648,3 +648,19 @@ decision: lthall does not like the PR, and it stays open so the SFD
 branches can track it. The mode-number MAVLink PR and the replies are
 dropped from the open items. Its "note AI assistance" item is not acted on
 in any case (playbook: no claim either way).
+
+## 2026-10-31: on SFD, VALT_POS_EXPO back on var_info2 30
+
+SFD only; the PR itself takes 25 against master. The fork's June 4.7.0
+builds had VALT_POS_EXPO at var_info2 30, and the 4.7.1 rebase moved it to
+29 with no marker. That slot was THROW_YAW_DEG's on those builds (also a
+float), and 30 was later given to #33366's TKOFF_CPU_AVG, which booted
+SFD-O4 at 3 against a default of 95. The user chose to put VALT_POS_EXPO
+back on 30 (refresh12 `95ad9b9c37`, after `8e2a1e6ce6` moved the CPU pair
+to 41/42), so a June board finds its own value again. A value set from
+4.7.1 on returns to 0, which the user accepted: no one but SFD-O4 has flown
+the betas that put TKOFF_CPU_AVG on 30. 29 is marked retired. Checked by
+carrying one SITL parameter store across the builds; the fork's REFRESH_NOTES
+"Parameter indices" table carries the pin. This led to ARCH-22 (aap, confirmed
+2026-10-31): an index a released build used is never given to another
+parameter.

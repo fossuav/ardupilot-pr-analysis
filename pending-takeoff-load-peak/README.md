@@ -175,3 +175,9 @@ of sysperf's smoothed load, and it read 0.1% under the window average
 (92.6/92.5%), so the 99.5% peak test only catches an overload lasting about
 a second. After a held arming the warning keeps repeating while disarmed,
 as upstream's does.
+
+Fixed on SFD the same day. Refresh12 `8e2a1e6ce6` moves the pair to
+var_info2 41/42, which no branch has used, and `95ad9b9c37` puts
+VALT_POS_EXPO back on 30. A store carried across SITL builds (with
+AP_CPU_IDLE_STATS_ENABLED=1) reads AVG 3 / PEAK 50 on the beta and
+95 / 99.5 after the move.
