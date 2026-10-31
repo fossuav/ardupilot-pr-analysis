@@ -1,0 +1,36 @@
+# q25-0cb4-ft3 arms on the SFD beta c46a09ec56 (#34942 EKF3 as 3c73e8b64b), instrument_latest.py records, arm_score.py. 2026-10-31.
+# filt is hgtInnovFiltState (refuses past +-1 m); rep/fl VD are replayed/flown XKF1 VD at the arm; still/chkd: onGroundNotMoving, velDCheckedAtRest; resets: rest resets so far.
+
+== pilot resets injected (exact against the flight over 0-169 s and 334.7 s-end)
+   arm s  disarm verdict   filt m  rep VD   fl VD still  chkd resets replay
+   33.02     -   REFUSED    -1.75    0.00    0.00     0     0      0 exact
+  126.12    2.10 allowed    -0.94    0.00    0.00     1     1      0 exact
+  143.92    6.70 allowed     0.06    0.00    0.00     1     1      0 exact
+  296.62    2.00 REFUSED    -1.81    0.00    0.00     0     0      0 diverged
+  317.22    2.50 allowed    -0.79    0.00    0.00     0     0      0 diverged
+  336.52    3.20 allowed     0.04    0.00    0.00     1     1      0 exact
+  344.82    1.70 allowed    -0.55    0.05    0.00     0     0      0 exact
+  355.92    1.80 allowed    -0.93    0.35    1.05     0     0      0 exact
+  404.72    5.50 allowed     0.48    0.00    0.00     1     1      0 exact
+  420.02    0.80 allowed    -0.19   -0.02    0.04     1     1      0 exact
+  447.22    1.70 allowed    -0.88   -0.18   -0.17     0     0      0 exact
+  462.12    2.50 allowed    -0.85    0.00    0.00     0     0      0 exact
+  499.82    1.20 REFUSED    -1.03    0.07    0.07     0     0      0 exact
+13 arms, 3 refused on the height error
+
+== no injection (the replay leaves the flight at 138.62 s)
+   arm s  disarm verdict   filt m  rep VD   fl VD still  chkd resets replay
+   33.02     -   REFUSED    -1.75    0.00    0.00     0     0      0 
+  126.12    2.10 allowed    -0.94    0.00    0.00     1     1      0 
+  143.92    6.70 allowed    -0.14    0.00    0.00     1     1      0 
+  296.62    2.00 REFUSED    -1.64    0.00    0.00     0     0      0 
+  317.22    2.50 allowed    -0.94    0.00    0.00     0     0      0 
+  336.52    3.20 allowed    -0.36    0.00    0.00     1     1      0 
+  344.82    1.70 allowed    -0.17   -0.04    0.00     0     0      0 
+  355.92    1.80 REFUSED    -1.25    0.24    1.05     0     0      0 
+  404.72    5.50 allowed     0.07    0.00    0.00     1     1      1 
+  420.02    0.80 allowed    -0.21    0.21    0.04     1     1      1 
+  447.22    1.70 allowed    -0.83   -0.14   -0.17     0     0      1 
+  462.12    2.50 allowed    -0.79    0.00    0.00     0     0      1 
+  499.82    1.20 allowed    -0.25    0.10    0.07     0     0      1 
+13 arms, 3 refused on the height error

@@ -2,7 +2,8 @@
 
 Analysis archive for [ArduPilot/ardupilot#34942](https://github.com/ArduPilot/ardupilot/pull/34942).
 Branch `pr-ekf3-gnd-hgt-check` (andyp1per fork), base `master` at
-`278a68a57a`. PR head `3da7a8cf2e` (eight commits), force-pushed
+`278a68a57a`. PR head `3c73e8b64b` (nine commits, squashed 2026-10-31,
+see the note at the end); reworked at `3da7a8cf2e` (eight commits), force-pushed
 2026-10-31 over the opened head `a1fbfbcdc7` (five commits, 2026-10-30,
 kept locally on `pre-rework/pr-ekf3-gnd-hgt-check-20261031`). The flight evidence is from the Q25 airframe on the
 SFD 4.7.2 beta; numbers are cited inline and no flight logs are committed.
@@ -19,7 +20,9 @@ Opened 2026-10-30 after four /pr-review rounds (verdict COMMENT). Reworked
 2026-10-31 after Flight test 3 and three more review rounds (`3da7a8cf2e`,
 pushed with the PR body updated): Replay and SITL validated, Copter, Plane and Sub autotests
 pass; unflown; on by default, which the PR argues as a bug fix and a
-maintainer may want discussed first.
+maintainer may want discussed first. Late 2026-10-31: with the pilot's resets
+repeated in Replay, Flight test 3's re-arm is not refused (VD 0.35 m/s, flown
+1.05); the PR body is corrected, see "Flight test 3 with the pilot's resets repeated".
 
 ## The flight
 
@@ -144,6 +147,14 @@ flown `XKF1`), where the pilot's reset, which is not in the DAL, is not
 reproduced. Arms after that are what the changed firmware would have
 estimated without the pilot's resets.
 
+#### Superseded 2026-10-31 by repeating the pilot's resets in Replay
+
+With both resets repeated at their logged times, the flown code's replay
+matches the flight to 1e-5 over 139-169 s and from 334.7 s to the end,
+which holds the drop and the 355.92 s arm; see "Flight test 3 with the pilot's resets repeated".
+The paragraph above is left in place because every earlier verdict on
+this log's later arms rests on it.
+
 ### Replay (tier 1b), 2026-10-31, at the rework
 
 Build: refresh12 `2e2936166d` plus `data/replay/stages-v2.py` 1 2 3 4 5 G 6
@@ -165,6 +176,15 @@ under 0.5 m/s at 7. Apart from 62.90, every allowed arm goes up under
 corrupted in flight: the rest reset zeroes the velocity and clears the
 filter, the bias builds the velocity again, and the filter has not
 re-accumulated 1 m by the arm.
+
+#### Superseded 2026-10-31 for q25-0cb4-ft3 355.92
+
+Replayed with the pilot's resets repeated, on the beta at `c46a09ec56`
+(this series as `3c73e8b64b`), 355.92 is allowed: filter 0.95 m, VD
+0.35 m/s against the flown 1.05. 499.82 (1.2 s after a disarm, VD 0.07)
+is refused instead. The table above is left as measured; its ft3 verdicts
+after 138.62 s were taken on a state the flight never had. See
+"Flight test 3 with the pilot's resets repeated".
 
 The free-fall skip (commit 6) applies, over all 15 logs, only during the
 falls after the disarms in the air on q25-0cb4-run (94.48-95.08 s) and
@@ -604,6 +624,14 @@ The fix stores the reference also while it has never been stored
   unhealthy at about 21 s. With no yaw source a new core starts at yaw 0: an
   arbitrary heading re-zeroed, not a navigation error.
 
+#### Superseded 2026-10-31: 355.92 is not refused
+
+"355.92 stays refused" above is on the replay that leaves the flight at
+138.62 s. With the pilot's resets repeated it is allowed and 499.82
+refused, so the PR's rows become 3 of the 6 big-error arms refused, and
+10 other Q25 arms refused, 8 of them re-arms. See
+"Flight test 3 with the pilot's resets repeated".
+
 Quick review of `dc76e048a6`: COMMENT. Mechanical gate clean apart from
 `dal.snprintf` read as `printf` at `Outputs.cpp:98` (a false positive, the
 same pattern as line 91). Codex's cold read raised one must-fix: the
@@ -711,7 +739,109 @@ fix `2a52c965e2` may fold into G (`21a8e3a683`): neither ran (identical
 without it, and G never reset), giving 9 commits with the same tree
 (`squash-audit-2026-10-31/A.md`).
 
+## Flight test 3 with the pilot's resets repeated (2026-10-31)
+
+Replay records nothing for an EKF bootstrap reset
+(`AP_AHRS::reset_configured_backend()`, from aux 187 or arm-pending), so
+every earlier replay of q25-0cb4-ft3 left the flight at the pilot's first
+reset, 138.62 s, and scored the later arms on a state the flight never
+had. `data/ft3-resets/inject_reset.py` (scratch only) makes Replay call
+`NavEKF3::InitialiseFilterBootstrap()` before the first EKF3 update frame
+that starts after each logged "EKF bootstrap reset performed" (TimeUS
+138625046 and 334324738). The RC loop runs after the fast loop's AHRS
+update, so that is the first frame the flown EKF ran after its reset.
+
+Checked on the flown code, refresh12 `2e2936166d` (EKF, DAL and Replay as
+`0cb49e7dfb`), core 0 against the flown XKF1 sample by sample
+(`cmp-flown-2026-10-31.txt`, `diff-bins-2026-10-31.txt`):
+
+- Without the injection it differs from 138.62 s to the end (VD up to
+  1.67 m/s, yaw 180 deg).
+- With it, VD and PD match to 1e-5 over 139-169 s and from 334.7 s to the
+  end (517.6 s): the drop at 354.12 s and 8 of the 13 arms.
+- 171-334 s still differs (VD up to 0.25 m/s, yaw up to 12 deg). The
+  pilot's rng_hgt_hold.lua switched range finder height on and off from
+  170.93 to 279.05 s ("RngHgt: on", "RngHgt: off") with no PARM record,
+  and the flown EKF reset its terrain offset from the range at 170.96 s
+  where the replay did not. The second reset brings them back together.
+- The first sample after each reset differs only because the flown EKF
+  logs after the RC loop.
+
+Then the SFD beta at refresh12 topup4 `c46a09ec56`, whose EKF3 is
+topup3's `f93bd10a6f` and whose #34942 changes are line for line those of
+the PR head `3c73e8b64b`, with the injection and `instrument_latest.py`,
+scored with `arm_score.py` (`arms-2026-10-31.txt`; filter as a magnitude):
+
+| arm (s) | after a disarm | no injection | injected | VD replay / flown (m/s) | filter (m) |
+|---|---|---|---|---|---|
+| 33.02 | first arm | refused | refused | 0.00 / 0.00 | 1.75 |
+| 296.62 | 2.0 s | refused | refused, in 171-334 s | 0.00 / 0.00 | 1.81 |
+| 355.92 | 1.8 s, a drop | refused | allowed | 0.35 / 1.05 | 0.95 |
+| 499.82 | 1.2 s, a drop | allowed | refused | 0.07 / 0.07 | 1.08 |
+
+The no-injection verdicts are the static yaw section's three. The other
+nine arms are allowed both ways, with the injection at 0.05 m/s or less
+except 447.22 (-0.18, flown -0.17). With the injection no reset at rest
+fires; without it one does, in the diverged part. The forced reset at
+about 25.5 s is in both.
+
+355.92, from the drop to the arm (`timeline-2026-10-31.txt`):
+
+- The vehicle never reads still (`onGroundNotMoving` 0 throughout), so no
+  rest check runs. At 0.35 m/s it would be under the reset's 0.5 m/s
+  anyway.
+- `velDotNEDfilt.z` peaks at 3.6 m/s/s in the fall, under the 0.5 g skip,
+  which never applies.
+- The filter grows from 0 at the disarm to 0.95 m at the arm, about 0.02 m
+  per 0.1 s at the end; on that trend it would have crossed 1 m about
+  0.3 s later (extrapolated, not measured).
+- The 0.35 m/s against the flown 1.05 is not the series acting at the arm.
+  The beta with #34942's EKF3 reversed (`git diff e78e5ccda2^ c46a09ec56
+  -- libraries/AP_NavEKF3`) matches the flight to 5e-5 from 334.5 s to the
+  end. With it, the replay departs from about 335.5 s (4e-3 m/s), widely
+  from 338.5 s, and reaches the drop with VD 0.50 against the flown 1.02
+  at 353.92 s. Which commit moves it was not measured. (Both betas also
+  differ from the flight from 23.4 s, from other changes on the beta,
+  until the second reset re-syncs them.)
+- No threshold on the filter separates it: allowed re-arms with no
+  velocity error read 0.94 m (126.12) and 0.85 m (462.12).
+
+499.82: disarmed at about 1 m (range 1.01 to 0.14 m in 0.2 s). After the
+touchdown the baro reads up to 3 m below its value before the disarm,
+while VD stays under 0.1 m/s. A refusal of a clean arm; on optical flow
+the five-second unhealthy reset should clear it (mechanism only; the
+vehicle took off).
+
+33.02: handled at boot (IMU accel norm 4 to 14 m/s/s). The flown and
+replayed EKF both read VD -1 to -3.5 m/s from 26 to 31 s, and the replay
+sits 1.3 to 2.6 m off the baro; the refusal is right.
+
+The pilot re-arms within 2 s of a disarm five times in this log (344.82,
+355.92, 420.02, 447.22, 499.82 s), three of them after a drop from 1.0 to
+1.6 m (354.12, 445.52, 498.62 s).
+
+Conclusion: the series does not refuse Flight test 3's re-arm. It is the
+limit the PR states, a re-arm before the vehicle reads still, and the
+guidance (on the ground and still for at least a second) is what covers
+it. The PR body was corrected 2026-10-31 at 23:12 UTC: of the 6 big-error
+arms 3 refused and this one up at 0.35 m/s; 10 other Q25 arms refused, 8
+of them re-arms; the limit and Replay passages rewritten.
+
+Owed: q25-0cb4's arm-pending bootstrap reset at 14.68 s (TimeUS
+14683608) has not been repeated; its arms are still scored on the
+diverged state.
+
 ## File map
+
+With the pilot's resets repeated (2026-10-31), in `data/ft3-resets/`:
+
+- `inject_reset.py` - Replay repeats logged EKF3 bootstrap resets (`REPLAY_EKF3_RESET_US`)
+- `instrument_latest.py` - height check and rest reset logging (XKFM layout, C 150) on the beta
+- `run_one.sh`, `arm_score.py`, `timeline.py` - running one log, per-arm verdicts, a window's state
+- `cmp_flown.py`, `diff_bins.py` - replayed core against flown, overall and per bin
+- `events.py`, `parm_changes.py` - a log's MSG/ARM events and runtime parameter changes, raw TimeUS
+- `cmp-flown-2026-10-31.txt`, `diff-bins-2026-10-31.txt`, `arms-2026-10-31.txt`,
+  `timeline-2026-10-31.txt` - the outputs
 
 At the rework:
 
@@ -762,6 +892,25 @@ python3 <archive>/34942/data/replay/score.py loglist.txt out
 
 The scorer names logs by file name; the archived output renames them to
 their index ids.
+
+Flight test 3 with the pilot's resets repeated, from a beta checkout:
+
+```sh
+git worktree add --detach ../wt-ft3 c46a09ec56 && cd ../wt-ft3
+git submodule update --init --recursive
+python3 <archive>/34942/data/ft3-resets/inject_reset.py .
+python3 <archive>/34942/data/ft3-resets/instrument_latest.py .
+./waf configure --board sitl && ./waf replay
+# resolve q25-0cb4-ft3 to a path with find_log.py and the private analysis repo
+R=<archive>/34942/data/ft3-resets
+$R/run_one.sh build/sitl/tool/Replay <log> out 138625046,334324738
+python3 $R/arm_score.py out/logs/00000001.BIN "0-169,334.7-520"
+python3 $R/timeline.py out/logs/00000001.BIN 353.9 357.0
+```
+
+The flown-code check is the same at `2e2936166d` with `inject_reset.py`
+only, then `python3 $R/cmp_flown.py out/logs/00000001.BIN 0 138.6 169
+334.3 354.0 358.0`.
 
 SITL, from an ArduPilot checkout at `a1fbfbcdc7`:
 

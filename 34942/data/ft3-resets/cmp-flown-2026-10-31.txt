@@ -1,0 +1,66 @@
+# q25-0cb4-ft3, replayed core 0 (C 100) against the flown core 0, XKF1 sample by sample (cmp_flown.py <BIN> 0 138.6 169 334.3 354.0 358.0).
+# Injection: REPLAY_EKF3_RESET_US=138625046,334324738 (inject_reset.py). 2026-10-31.
+
+== flown code (refresh12 2e2936166d, EKF/DAL/Replay as 0cb49e7dfb), no injection
+flown 5117, replayed 5117, matched 5117 samples
+  VD    first differs at 138.624 s (flown 0.0000, replay -0.0258)
+  PD    first differs at 138.624 s (flown 0.0323, replay -5.8796)
+  VN    first differs at 138.624 s (flown 0.0000, replay -0.0341)
+  VE    first differs at 144.924 s (flown 0.0060, replay -0.0073)
+  Roll  first differs at 138.624 s (flown 0.3800, replay 3.3400)
+  Pitch first differs at 138.624 s (flown -0.1800, replay 1.4000)
+  Yaw   first differs at 138.624 s (flown 0.0000, replay 180.1100)
+  window 0.00-138.60 s: VD 0, PD 0, VN 0, VE 0, Roll 0, Pitch 0, Yaw 0
+  window 138.60-169.00 s: VD 0.813, PD 5.91, VN 0.715, VE 1.23, Roll 3.23, Pitch 3.23, Yaw 180
+  window 169.00-334.30 s: VD 0.446, PD 7.72, VN 9.75, VE 12.9, Roll 3.67, Pitch 5.93, Yaw 180
+  window 334.30-354.00 s: VD 0.676, PD 9.78, VN 0.352, VE 0.246, Roll 0.93, Pitch 1.79, Yaw 28.8
+  window 354.00-358.00 s: VD 1.17, PD 12.4, VN 0.356, VE 0.198, Roll 0.8, Pitch 0.49, Yaw 9.17
+  window 358.00-inf s: VD 1.67, PD 14.3, VN 1.61, VE 2.89, Roll 1.39, Pitch 3.76, Yaw 152
+
+== flown code, pilot resets injected
+flown 5117, replayed 5117, matched 5117 samples
+  VD    first differs at 138.624 s (flown 0.0000, replay -0.0258)
+  PD    first differs at 138.624 s (flown 0.0323, replay -5.8796)
+  VN    first differs at 138.624 s (flown 0.0000, replay -0.0341)
+  VE    first differs at 173.324 s (flown 0.0695, replay 0.0892)
+  Roll  first differs at 138.624 s (flown 0.3800, replay 3.3400)
+  Pitch first differs at 138.624 s (flown -0.1800, replay 1.4000)
+  Yaw   first differs at 138.624 s (flown 0.0000, replay 180.1100)
+  window 0.00-138.60 s: VD 0, PD 0, VN 0, VE 0, Roll 0, Pitch 0, Yaw 0
+  window 138.60-169.00 s: VD 0.0258, PD 5.91, VN 0.0341, VE 0.0092, Roll 2.96, Pitch 1.58, Yaw 180
+  window 169.00-334.30 s: VD 0.254, PD 0.571, VN 0.757, VE 0.81, Roll 1.49, Pitch 1.24, Yaw 12.2
+  window 334.30-354.00 s: VD 0.491, PD 3.64, VN 0.0664, VE 0.0811, Roll 0.09, Pitch 0.8, Yaw 45.5
+  window 354.00-358.00 s: VD 3.58e-06, PD 1.67e-05, VN 3.04e-06, VE 3.7e-06, Roll 0, Pitch 0, Yaw 0.01
+  window 358.00-inf s: VD 4.05e-06, PD 1.08e-05, VN 1.23e-05, VE 1.28e-05, Roll 0.01, Pitch 0, Yaw 0.01
+
+== beta c46a09ec56 with #34942's EKF3 reversed (git diff e78e5ccda2^ HEAD -- libraries/AP_NavEKF3), injected
+flown 5117, replayed 5117, matched 5117 samples
+  VD    first differs at 23.624 s (flown -0.5718, replay -0.5493)
+  PD    first differs at 23.424 s (flown -1.8135, replay -2.5361)
+  VN    first differs at 23.424 s (flown -0.1477, replay -1.7041)
+  VE    first differs at 23.424 s (flown 0.2296, replay 1.3077)
+  Roll  first differs at 23.724 s (flown 86.5800, replay 86.3600)
+  Pitch first differs at 23.624 s (flown -80.6100, replay -80.6700)
+  Yaw   first differs at 23.524 s (flown 291.0400, replay 290.8400)
+  window 0.00-138.60 s: VD 0.331, PD 2.51, VN 3.04, VE 8.61, Roll 5.5, Pitch 8.14, Yaw 31.2
+  window 138.60-169.00 s: VD 0.136, PD 4.41, VN 1.15, VE 1.13, Roll 1.59, Pitch 3.03, Yaw 180
+  window 169.00-334.30 s: VD 0.549, PD 2.57, VN 2.41, VE 7.05, Roll 7.82, Pitch 7.64, Yaw 180
+  window 334.30-354.00 s: VD 0.378, PD 4.28, VN 0.0487, VE 0.0184, Roll 0.32, Pitch 0.7, Yaw 61.9
+  window 354.00-358.00 s: VD 4.08e-06, PD 2.34e-05, VN 2.21e-06, VE 2.55e-06, Roll 0, Pitch 0, Yaw 0.01
+  window 358.00-inf s: VD 4.89e-06, PD 1.28e-05, VN 1.23e-05, VE 1.36e-05, Roll 0.01, Pitch 0, Yaw 0.01
+
+== beta c46a09ec56 (#34942 EKF3 as 3c73e8b64b), injected, instrumented
+flown 5117, replayed 5117, matched 5117 samples
+  VD    first differs at 23.624 s (flown -0.5718, replay -0.5493)
+  PD    first differs at 23.424 s (flown -1.8135, replay -2.5361)
+  VN    first differs at 23.424 s (flown -0.1477, replay -1.7042)
+  VE    first differs at 23.424 s (flown 0.2296, replay 1.3078)
+  Roll  first differs at 23.724 s (flown 86.5800, replay 86.3600)
+  Pitch first differs at 23.624 s (flown -80.6100, replay -80.6700)
+  Yaw   first differs at 23.524 s (flown 291.0400, replay 290.8400)
+  window 0.00-138.60 s: VD 2.57, PD 4.82, VN 11.6, VE 14.3, Roll 19.6, Pitch 25.5, Yaw 180
+  window 138.60-169.00 s: VD 0.237, PD 2.04, VN 1.81, VE 1.27, Roll 1.08, Pitch 1.83, Yaw 180
+  window 169.00-334.30 s: VD 0.498, PD 2.48, VN 4.38, VE 3.56, Roll 4.79, Pitch 7.52, Yaw 180
+  window 334.30-354.00 s: VD 0.544, PD 4.63, VN 0.303, VE 0.383, Roll 1.41, Pitch 1.2, Yaw 22.7
+  window 354.00-358.00 s: VD 1.07, PD 2.64, VN 0.387, VE 0.394, Roll 0.56, Pitch 1.05, Yaw 22.7
+  window 358.00-inf s: VD 1.6, PD 2.5, VN 1.14, VE 1.24, Roll 0.74, Pitch 1.16, Yaw 45.3
