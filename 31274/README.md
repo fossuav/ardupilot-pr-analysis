@@ -223,8 +223,9 @@ cache (only a corrupt one does), so a reset left the next republish at
 `0/(1+0+0)`. Its should-fix, 1 bad + 1 clean reading 33%, is the same
 mechanism.
 
-Fixed on refresh12 and ported as `r1031/31274g`, two commits, not pushed:
+Fixed on refresh12 and ported as `r1031/31274g`, two commits:
 `f0d19ac649` (AP_HAL_ChibiOS) and `d228911760` (AP_ESC_Telem comment).
+Pushed 2026-10-31: `db7371c4d8` -> `d228911760` (fast-forward).
 - Keep the rate of the last window that counted 250 frames; while the new
   window has fewer, report the larger of that and its own rate, or 100%
   before any full window. A window is closed before the reply that ends it
