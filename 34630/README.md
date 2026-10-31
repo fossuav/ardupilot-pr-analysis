@@ -315,3 +315,7 @@ The no-reset account of the 228.24 s deferral still holds
 ## 2026-10-31: description and replies posted
 
 Description replaced with the 10-30 draft plus the flight line (bit 6: six in-flight resets counted in XKF7.FVC with no statustext). The original body is kept in that session's scratchpad only; the PR history shows it.
+
+## 2026-10-31: squashed after the flight audit
+
+Pushed `9a64b9bc5f` -> `c63cdfafdd` (force, 37 commits to 33, same tree; backup `pre-squash/34630-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_B.md`.

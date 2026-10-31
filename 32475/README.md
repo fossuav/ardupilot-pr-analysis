@@ -682,3 +682,7 @@ The note above that SFD moves #33366's pair to 30/31 is out of date: since
 
 Description replaced with the 10-30 draft, updated for the blocker fix (the position that comes back is held; ThrowStayHoldsRestoredPosition row; 20 Throw tests). The original body is kept in that session's scratchpad only; the PR history shows it.
 Reply posted: https://github.com/ArduPilot/ardupilot/pull/32475#issuecomment-6548809950 (the blocker fixed in ae9b93be1f).
+
+## 2026-10-31: squashed after the flight audit
+
+Pushed `16042bc083` -> `8e931047e5` (force, 54 commits to 28, same tree; backup `pre-squash/32475-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_C.md`.

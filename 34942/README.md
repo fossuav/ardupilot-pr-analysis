@@ -774,3 +774,7 @@ python3 <archive>/34942/data/sitl/insert_harness.py . <archive>/34942/data/sitl/
 Tools/autotest/autotest.py test.Copter.ABDriftProbe
 git checkout -- Tools/autotest/arducopter.py
 ```
+
+## 2026-10-31: squashed after the flight audit
+
+Pushed `2a52c965e2` -> `3c73e8b64b` (force, 10 commits to 9, same tree; backup `pre-squash/34942-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_A.md`.

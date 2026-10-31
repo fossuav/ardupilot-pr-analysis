@@ -71,3 +71,7 @@ log, and the armed rate (RTDT) is 1973 Hz, as in logs 63-65. Passed.
 
 Description replaced with the 10-30 draft plus the flight line (the start-up rate announced once a boot over eleven boots, twice on builds without the second commit). The original body is kept in that session's scratchpad only; the PR history shows it.
 Reply posted: https://github.com/ArduPilot/ardupilot/pull/29000#issuecomment-6548809493 (the why/testing questions: a precaution; SITL fits identical; RateThreadTempCal).
+
+## 2026-10-31: squashed after the flight audit
+
+Pushed `fbf9c380f9` -> `4293e19e9f` (force, 3 commits to 2, same tree; backup `pre-squash/29000-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_C.md`.

@@ -235,3 +235,7 @@ loaded (TERR Status 1). Check a tile's size, not just that it exists.
 
 Pushed 2026-10-30 to andyp1per with a lease on the old head:
 `af50a66828` -> `351aea9eaa`.
+
+## 2026-10-31: squashed after the flight audit
+
+Pushed `351aea9eaa` -> `31a28194aa` (force, 14 commits to 12, same tree; backup `pre-squash/34543-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_B.md`.

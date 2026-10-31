@@ -279,3 +279,7 @@ iomcu-dshot firmware on the PR alone; SmallFastDronev1 on refresh12 costs
 
 Description replaced with the 10-30 draft, updated: the restart handling in the summary and detail, the flight (ESC.Err armed at or below 0.9%, 1.5-1.9% in hard acro), the extracted-code table, the corrected republish account, and the in-window dilution as a known limit. The original body is kept in that session's scratchpad only; the PR history shows it.
 Reply posted: https://github.com/ArduPilot/ardupilot/pull/31274#issuecomment-6548809608 (the blocker fixed in f0d19ac649; IOMCU and FETtec left unchecked on purpose).
+
+## 2026-10-31: squashed after the flight audit
+
+Pushed `d228911760` -> `820f2550b0` (force, 30 commits to 13, same tree; backup `pre-squash/31274-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_C.md`.

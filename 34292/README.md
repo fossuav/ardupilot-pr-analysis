@@ -2530,3 +2530,7 @@ https://github.com/ArduPilot/ardupilot/pull/34292#issuecomment-6257283968;
 description gained the Rover/Replay paragraph. Master's Rover-only
 `FLOW_HGT_OVR` override has the same Replay gap and could take the same
 gate (ROFH carries heightOverride) - a separate PR.
+
+## 2026-10-31: squashed after the flight audit
+
+Pushed `3917ef38f2` -> `3dcdfb487b` (force, 27 commits to 25, same tree; backup `pre-squash/34292-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_B.md`.

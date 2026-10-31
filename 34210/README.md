@@ -302,3 +302,7 @@ Pushed 2026-10-30 to andyp1per with a lease on the old head: `93dcf216c0`
 Description replaced with the 10-30 draft (no longer says the failsafe action must be Land). The original body is kept in that session's scratchpad only; the PR history shows it.
 Reply posted: https://github.com/ArduPilot/ardupilot/pull/34210#issuecomment-6548810134 (rmackay9: option B from reply-options, the 725 m with compensation forced, offer to move the trigger into check_vibration()).
 Reply posted: https://github.com/ArduPilot/ardupilot/pull/34210#issuecomment-6548810268 (saturation feedback not added: motors->limit and thrust_loss_check(); handover probe 29.2 against 28.5 m).
+
+## 2026-10-31: squashed after the flight audit
+
+Pushed `aa2cf2ddcf` -> `4836c83d44` (force, 6 commits to 3, same tree; backup `pre-squash/34210-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_C.md`.

@@ -1602,3 +1602,7 @@ return to 11 needs log69's 0.030/0.024 restored. The restarted-log case
 ## 2026-10-31: description and replies posted
 
 Reply posted: https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-6548809767 (quick re-arm left as is, each normally armed flight learns afresh; the flight: +0.020 to +0.030 saved, 0.59 to 0.42 m with the correction applied).
+
+## 2026-10-31: squashed after the flight audit
+
+Pushed `5afa8d69fb` -> `0ffebdf4c3` (force, 50 commits to 44, same tree; backup `pre-squash/32471-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_A.md`.
