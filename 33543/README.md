@@ -11,3 +11,13 @@ Recreated as `9fb1afdec1` on `sq/33543-1102` (same tree as `c7152347c6`), the bo
 ## 2026-11-02: pushed
 
 Pushed to `9fb1afdec1` (refresh12 `b1093230e6` locks it).
+
+## 2026-11-02 (later): description to match, rebased onto master
+
+AP-Review round 4 (COMMENT at `9fb1afdec1`): the code is ready; only the PR
+description still told the old stale-slot story. A replacement (the commit
+message's account, plus a line saying the earlier description was wrong) is
+drafted. Rebased onto master `5fdd5da0d0` as `9f1b08db4e` on
+`sq/33543-1102b` so the bot re-reads the PR; QuadPlane
+HighServoFunctionDefault, which loads a defaults file and checks the purge,
+passes there. Not pushed.

@@ -927,3 +927,72 @@ git checkout -- Tools/autotest/arducopter.py
 ## 2026-10-31: squashed after the flight audit
 
 Pushed `2a52c965e2` -> `3c73e8b64b` (force, 10 commits to 9, same tree; backup `pre-squash/34942-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_A.md`.
+
+## 2026-11-02 (later): the reset at rest waits for the fusion horizon; the clip floor
+
+AP-Review round 1 (COMMENT at `3c73e8b64b`): one should-fix, one minor.
+Fixed on refresh12 (`r1102b/34942-r12c`: `07a7f7805e`, `a270c53823`,
+`16f39fb057`) and ported to `sq/34942-1102c` (`7d966e6838`, `d964c88b6a`,
+`b39c0e9485`, head `b39c0e9485`), not pushed. A cold read of the first
+version (fresh Claude reviewer, Codex out) found nothing blocking and five
+wording/test points, all taken in this version (the `-r12b`/`-1102b` and
+earlier branches are superseded).
+
+Should-fix: stillness comes from the latest IMU sample (`updateMovementCheck()`
+reads `ins.get_gyro()`/`get_accel()`), while the reset acts at the fusion
+horizon, so buffered samples rebuild the velocity and the latch blocks a
+second reset. Reproduced in SITL (EK3HardLandingRearm on the PR head), at the
+landing that ends the flow quick re-arm leg rather than the 25 m drop: in
+three of four baseline runs the first reset came 25-45 ms after the disarm
+(stillness is declared 2 ms after a disarm, as the movement check's
+rate-of-change terms restart at their limits, under the 0.7 x SF hysteresis),
+VD rebuilt to 0.70-0.79 m/s, and a second reset 0.3 s later came only because
+stillness dropped out; the fourth run needed none. The 25 m drop reset once in
+every run, leaving 0.10-0.16 m/s (the bot saw 1.4-1.8 there). Fix:
+`restStartTime_ms` records the IMU time stillness began, and the one-shot
+check waits until `imuDataDelayed.time_ms` reaches it, a cost of one horizon:
+60 ms with baro height (EK3_HGT_DELAY; flow is 10 ms), up to 250 ms with GPS.
+After: no reset needed at that landing in every run, |VD| under 0.03 m/s.
+
+Why only the reset waits (checked in the source): zero-velocity fusion
+(PosVelFusion `onGroundNotFlying`, both paths) and the accel bias
+observability test (core.cpp `is_bias_observable`) act every cycle; the
+static yaw reference (MagFusion `yawAngDataStatic`) is captured on the last
+cycle before the flag rises, one horizon before the rest, but the flag needs
+the gyro under about 4.2 deg/s (3 deg/s x OGNM_TEST_SF 2 x 0.7) and, except
+right after a disarm, the rate-of-change metric settled (about 0.26 s at
+400 Hz), so it is off by about a degree at most, inside its 0.05 rad noise.
+
+Minor: the clip on rejected ground height samples. On master Sub's
+`EK3_ALT_M_NSE` defaults to 0.01 (not on 4.7, where Sub uses 2.0); ExtNav
+height noise is floored at 0.1 m: both give a gate under 1 m by default.
+Probe (Copter, disarmed, no GPS, sustained baro step, prearm text): with
+ALT_M_NSE 0.01 or 0.1 a 3 m or 10 m step was reported only after 3.8-4.0 s
+(the gate widens while samples are rejected; the 5 s height timeout then
+resets), so "never" did not hold; a 1.5 m step is fused, reported by neither;
+with the floor, 2.8 s. The EKF-unhealthy flag (what the new test leg times):
+3.6-3.8 s without the floor, 1.6 s with it. The clip is now
+`MAX(gate, 2 * GND_HGT_ERR_LIMIT)`, the 1 m threshold one constant shared with
+`onGroundHgtError()`. Over the threshold `healthy()` is false: ESTIMATOR_ATTITUDE
+drops and the 10 s the primary must stay healthy before lane selection
+(AP_NavEKF3.cpp `lastUnhealthyTime_us`) restarts.
+
+Tests: the `fly_and_land()` check (two landings; the GPS leg's reset count is
+always 0, so only its velocity check applies) and a new no-aiding leg
+(EK3_ALT_M_NSE 0.01, 3 m step, unhealthy within 2.5 s: fails without the
+floor, 1.6 s with it). On the PR: EK3HardLandingRearm (passes twice; fails
+without the clip commit), EK3_ZeroVelFusionNotUsedWithGPS, Sub DiveManual,
+AltitudeHold, ModeChanges, DiveMission. MatekF405 (float EKF) builds without
+EKF warnings. `pr_review.py checks` flags `dal.snprintf` at
+AP_NavEKF3_Outputs.cpp:115 as printf, a false positive in an earlier commit.
+
+Replay: refresh12 Replay with and without both changes (first version; the
+constant refactor is numerically the same) on SFD-O4 logs 66-71: XKF1/XKF2
+on both replayed cores identical (binaries differ). A LOG_REPLAY 1 SITL log
+from the fixed PR build replays exactly at matched timestamps across the
+25 m drop's reset (VD -10.96 -> 0.03); `check_replay.py` reports FAILED on it
+only from a ~100 ms startup offset, as it pairs records in sequence.
+
+Seen, not in scope: at the 25 m drop's reset PD jumps from about -6 m to
+36-38 m in every run, before and after the fix (ResetHeight to hgtMea after
+the test's 20 m baro glitch leg).

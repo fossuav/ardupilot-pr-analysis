@@ -715,3 +715,36 @@ Codex was out of quota (until 2026-11-04), so the two cold reads were by Claude.
 ## 2026-11-02: pushed
 
 Pushed to `df174b0731` (refresh12 `b1093230e6` locks it). Reply posted: https://github.com/ArduPilot/ardupilot/pull/32475#issuecomment-6576455860.
+
+## 2026-11-02 (later): exit() keeps a source set picked during the throw
+
+Round 9's minor: `restore_source_set()` put back the pre-throw set even when
+the pilot or a GCS had picked another one in throw mode, though its comment
+said "if it is still in use". It now restores only while the set
+THROW_SRC_INI applied (kept in a new `throw_source_set`) is still the active
+one; a picked set is kept with "Throw: keeping EKF Source Set N", and when
+the pre-throw set is already active (THROW_SRC_INI naming the set in use, or
+a refused switch) it does nothing and says nothing. It returns whether it
+changed the set, so the completion handoff with THROW_SRC_SET 0 waits out
+THROW_SRC_SETTLE_MS only after a real change. THROW_SRC_SET 1-3 at
+completion still overrides a pick: it is the user's standing instruction for
+the next mode, while the restore only undoes THROW_SRC_INI's temporary
+switch; THROW_SRC_SET's description and the commit message say so.
+THROW_SRC_INI's description says a set selected while in throw mode is kept.
+The stale comments that said exit() always restores are corrected.
+
+Tests: ThrowAbortRestoresSourceSet's second leg picks set 3 disarmed in
+throw mode, then leaves throw; ThrowSrcInitRestoredOnCompletion's second leg
+picks set 3 after arming in throw mode (before release, so the pick cannot
+race completion), drops, and completes with THROW_SRC_SET 0. Both assert the
+"keeping" message, no "restored" message, and XKFS.SS 2 for core 0. On
+refresh12 both fail without the fix (the log shows "Throw: restored EKF
+Source Set 1" over the pick) and pass 2 of 2 with it; the plain restores
+still pass.
+
+Commits: refresh12 `r1102b/32475-r12c` (on `b1093230e6`): `4259cf259d`
+Copter, `6f156daabf` autotest. Port `sq/32475-1102f` (on `df174b0731`):
+`a096419ed8` Copter, `9149e72d4f` autotest. Superseded local branches:
+`r1102b/32475-r12`, `r1102b/32475-r12b`, `sq/32475-1102d`, `sq/32475-1102e`.
+Cold reads: one by the worker, one by a fresh reviewer (Codex out until
+11-04); the reviewer's six points are all taken. Not pushed.

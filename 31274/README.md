@@ -319,3 +319,34 @@ Quick review: Codex unavailable for the cold read (usage limit until 2026-11-04 
 ## 2026-11-02: pushed
 
 Pushed to `eea919627c` (refresh12 `b1093230e6` locks it). Reply posted: https://github.com/ArduPilot/ardupilot/pull/31274#issuecomment-6576454593. Description updated with the onset row (0 to 3), the restart paragraph and a Not covered line.
+
+## 2026-11-02 (later): the stored percentage latched stale
+
+AP-Review round 7 (COMMENT at `eea919627c`, nothing blocks) raised two
+minors. The first is real and checked in the code: `get_error_rate_pct()`
+judged freshness only by `timeout_expired()` on the 32-bit
+`error_rate_pct_us`, so with every DShot reply failing to decode while
+BLHeli serial telemetry keeps the rpm fresh, the old percentage reads
+recent again for 210 ms when micros() wraps 71.6 min later. Zeroing the
+timestamp would not do, as `error_rate_pct_us != 0` is how
+`are_motors_running()` tells a percentage-reporting ESC from a DroneCAN
+one; a separate `error_rate_pct_valid`, set by `update_rpm()` and cleared
+by `update()` once 210 ms old, follows `data_valid`.
+
+Host probe (`stale_probe.cpp`, the freshness code copied, micros()
+simulated; replies stop at 10 s, serial telemetry continues, 400 Hz
+checks for 75 min): before, 84 of 1795879 checks pass, all within 210 ms
+at 71.77 min; after, 0. Every check while the replies were good passes
+both ways (4000/4000).
+
+refresh12 `78cf55708f`, port `b723c6a05f` on `sq/31274-1102c` (same
+change; the files differ only by base). CubeOrange-bdshot copter and
+SITL copter/plane build with no warnings; Copter.TakeoffCheck,
+Copter.MotorTestErrorRate and QuadPlane.TakeoffCheck pass. Self-reviewed
+only (no Codex; no independent cold read in this pass). The race with
+update() is the one `data_valid` has: it fails closed and the next pulse
+repairs it.
+
+The second minor is a note on the last reply: "ESCs failing 2% ... still
+never pass" holds only for evenly spaced misses; with random 2% loss a
+full window can read 1% or under. The draft reply corrects it.

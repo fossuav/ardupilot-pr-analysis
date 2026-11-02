@@ -335,3 +335,16 @@ Codex unavailable (usage limit to 2026-11-04), cold read by Claude: nothing bloc
 ## 2026-11-02: pushed
 
 Pushed to `af51f5ef62` (refresh12 `b1093230e6` locks it). Reply posted: https://github.com/ArduPilot/ardupilot/pull/34630#issuecomment-6576456205.
+
+## 2026-11-02 (later): compile-time option and shorter descriptions
+
+Andy's decision on round 6's minors: the EKF lane items get their own compile-time option, off by default upstream and on in SFD, and the EKFn_EN descriptions go to one line. `AP_OSD_EKF_LANES_ENABLED`, defaulted in AP_OSD_config.h to `(CONFIG_HAL_BOARD == HAL_BOARD_SITL)` (as AP_DDS_CLOCK_SUB_ENABLED does) so the OSD lane tests still run in SITL; it guards the three AP_OSD_Setting members, their var_info2 entries (indices 11-13 unchanged), draw_ekf_lane() and its calls. build_options.py lists it as OSD_EKF_LANES (a `Tools:` commit: upstream's checker refuses `scripts:`), and extract_features.py finds it by AP_OSD_Screen::draw_ekf_lane (checked on MatekF405 binaries both ways). The EKF/AHRS lane status (nav_lane_status, getLaneStatus, get_ekf_lane_status) is not guarded: it has no other caller, and with the option off the linker drops it (no such symbol in the MatekF405 off build), so guarding it would put an OSD define into the EKF for no flash (ARCH-3/ARCH-14 weighed). Refresh12 (`r1102b/osd-r12c`: 068b8f1c2d, bf28d1bd82, cbd4b99869, df3a807763) also turns it on for the ten SFD boards next to AP_AHRS_EKF_RESET_ENABLED.
+
+MatekF405 copter (text+data): master base 873700, PR with the option off 873844 (+144), on 874584, so 740 bytes. This PR's OSD additions (quality floor, reset arrows) are all inside draw_ekf_lane, so the same guard covers them. Branch `sq/34630-1102d`: 74ccfe52a6, 98a87fd491, 0294761bb0. Not pushed. Reply drafted on the ResetVelocityToFlow covariance: #33484's code (020cdcdced), whose ACCEPT review at that code raises nothing on it.
+
+### Correction, same day: a cold read of the six commits
+
+The flash figures above understate the cost. MatekF405 includes `minimize_fpv_osd.inc`, which sets AP_OPTICALFLOW_ENABLED 0, so they leave out the flow half of draw_ekf_lane and getLaneStatus's flow branch; "the linker drops it" was also too strong, as the state the lane status reads stays. Remeasured on JHEM_JHEF405 copter (1 MB, analog OSD, optical flow in, `minimize_common.inc` only), with flow symbols confirmed in every build:
+- master 915868, option off 918164 (+2296), on 919296: the items cost 1132 bytes. With them off this PR is +2296 over master (+144 on MatekF405, where flow is out), most of it the EKF flow work it carries (#33484's recovery, the quality floor, the quiet reset option).
+
+The earlier note that the quality floor is covered was about the guard only; the shortened descriptions had dropped that the signal strength is scaled so EK3_FLOW_QMIN reads 50 and flashes below it, which is how a user reads the number. Put back in the one line. Also: AP_OpticalFlow include inside the guard, build_options.py depends on `OSD,EKF3`, the description commit counts 955 characters (not 766). Unchanged and now said in the description draft: get_ekf_lane_status() here still gates on active_EKF_type(), as this PR carries the older #34543 copy without c9e766c8cc's DCM fix. Branch `sq/34630-1102e` (supersedes `-1102d`): 3cf3dc8903, 71321f6eb1, 0b2644e19d.

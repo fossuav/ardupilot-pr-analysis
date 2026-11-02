@@ -106,3 +106,35 @@ mechanism should publish these once it lands. Do not re-raise without that.
   `record-at-reset.BIN` logged the same copy under its earlier name.
 - `data/sysid-lag-ab/{record-at-reset,final}.BIN`, `apply_probe.py` (TSID probe
   plus `TmpSysIdLag` test), `sysid_lag.py`.
+
+## 2026-11-02 (later): ATSC's angle P scale from the recorded copy
+
+AP-Review round 1 (COMMENT at `36cd051312`) should-fix: with the rate thread
+`ATSC.AngPSc` was copied from the live `_angle_P_scale`, which the main loop
+resets to 1 in `rate_controller_target_reset()` and rebuilds in the flight
+mode, so landed logs showed AngPScX 1.0 next to PDScX 0.5. Fixed by recording
+`_angle_P_scale` in `record_rate_modifiers()` and copying `_angle_P_scale_used`
+from it. Copter records after `flightmode->run()`, so it is the value the
+angle controller used; without the rate thread (and QuadPlane, which reads it
+through `get_last_angle_P_scale()`) the record is taken immediately before the
+copy, so nothing changes there. Sub is not a Multi; TS and 6DoF go through
+Multi's `rate_controller_run()`.
+
+refresh12 `29cba0a0c7` (`r1102b/34584-r12b`), PR `474a5f073b`
+(`sq/34584-1102b`, on top of `36cd051312`). Not pushed.
+
+A/B (the `TmpScaleRace` probe test from `data/landed-scale-ab`, no C++
+probe: ATSC rows in the armed, landed log after the 2 s ramp-in; STABILIZE,
+`ATC_LAND_R_MULT 0.5`, `FSTRATE_ENABLE 3`, 400 Hz loop):
+
+| Build | ATSC rows | AngPScX 1.0 next to PDScX 0.5 |
+|---|---|---|
+| refresh12 `b1093230e6` | 75 | 4 |
+| refresh12 + fix, 3 runs | 80, 77, 69 | 0 |
+| PR + fix | 77 | 0 |
+
+ThrottleGainBoostRateThread passes on both (max PD 1.40, angle P 1.96); its
+angle P assertion now reads the recorded value. Logs in the session scratch
+(`r1102/34584/r12_{base,fix}.BIN`). The release note for the angle P boost
+(shared with #34583) is in the reply. The torn-copy minor stays accepted
+(one more Vector3f in the same unsynchronised record).

@@ -38,3 +38,20 @@ same state.
   converges. Fails on master (times out waiting for the 2 kHz report).
 - `GPSBlendingAffinity`, `DynamicRpmNotchesRateThread`,
   `RateThreadPostFilterGyroLog` pass.
+
+## 2026-11-02 (later): Sim on Hardware keeps its base gyro rate
+
+AP-Review round 1 (COMMENT at `c66dba662b`) minor: Sim on Hardware boards are
+H7s, where `INS_GYRO_RATE` defaults to 1 (`MPU_FIFO_FASTSAMPLE_DEFAULT`), and
+CubeOrange enables fast sampling on all IMUs, so following `INS_GYRO_RATE`
+doubled their simulated gyros to 2000/1520 Hz with catch-up bursts. The PR is
+for desktop SITL (default 0), so the multiplier is now 1 outside
+`HAL_BOARD_SITL`. With mult 1 the start path stores the same raw rate
+(`_set_gyro_raw_sample_rate()` is a plain store), `gyro_nsamples` is 8 and
+there is no catch-up, so the timer loop reduces to the pre-PR logic: Sim on
+Hardware samples as before.
+
+refresh12 `7d40b4a49e` (`r1102b/34642-r12`), PR `02d4f5cab2`
+(`sq/34642-1102`, on top of `c66dba662b`). Not pushed. SITLGyroRate passes
+on both; CubeOrange-SimOnHardWare copter builds with no warnings (the `#else`
+path).
