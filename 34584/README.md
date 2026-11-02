@@ -143,4 +143,4 @@ Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `36cd051312` -> `474a5f
 
 ## 2026-11-02 (night)
 
-AP-Review round 2 (COMMENT at `474a5f073b`): only the description, which said two new commits (three) and four Vector3f (five). Corrected text drafted; the bot rereads it at the next push.
+AP-Review round 2 (COMMENT at `474a5f073b`): only the description, which said two new commits (three) and four Vector3f (five). Corrected description posted 2026-11-02 (head unchanged at `474a5f073b`); the bot rereads it at the next push.
