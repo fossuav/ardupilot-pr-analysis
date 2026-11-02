@@ -1248,3 +1248,27 @@ arm, and replay with it reverted differs by up to 101 deg. Folded into
 `sq/34942-1102l` (head `d986e313d8`, 16 commits, tree identical to the
 worker's `sq/34942-1102k`; backup `pre-squash/34942-1102` at
 `b39c0e9485`). The four static-yaw commits stay on top, unflown. Not pushed.
+
+## 2026-11-02 (late): two more Q25 logs on c46a09ec, after tester A's VRFB learning
+
+`Inside house brown floor.bin` and `Inside to outside bad althold.bin`. Both
+fly ACC_ZBIAS_LEARN 10 with INS_ACC_VRFB_Z 0.0131 (from tester A's learning flight,
+which is not among these logs; was 0.0417), "Hover Z-bias IMU0: 0.013" at
+boot. Both arm in VALT (mode 29) and fly Loiter; each ends with a switch to
+LAND by a script (ModeReason 32 SCRIPTING; the vehicle runs patrios.lua,
+flow_quality_osd and added_flight_mod).
+
+- Brown floor: the disarmed forced reset fired again, 6.3 s after the
+  disarm (97.36 -> 103.67 s), the path the static-yaw fix covers; no re-arm
+  followed, so no flight carried a false bias.
+- Bad althold: Loiter holds the EKF height to within about 0.1 m of target
+  throughout; the EKF height is the baro (EK3_SRC1_POSZ 1, EK3_RNG_USE_HGT
+  -1) and surface tracking is off (SURFTRAK_MODE 0), so it holds a baro
+  height, not height above ground. With BARO1_THST_SCALE -150 the baro still
+  reads 1.62 m high in the inside hover against the range finder (IQR
+  1.53-1.75 m, ThO 0.38), and moves with the indoor/outdoor pressure; over
+  the flight the height above ground ran 0.23-2.9 m at a held altitude
+  (2.7-2.9 m at 84-86 s, around going outside). baro_thst_cal.py suggests
+  -235, but from a free hover, which it warns is not a valid fit; the range
+  finder residual points to about -200 to -220. Same mechanism as the
+  indoor landings' 1.5-2.2 m EKF offset.
