@@ -748,3 +748,5 @@ Copter, `6f156daabf` autotest. Port `sq/32475-1102f` (on `df174b0731`):
 `r1102b/32475-r12`, `r1102b/32475-r12b`, `sq/32475-1102d`, `sq/32475-1102e`.
 Cold reads: one by the worker, one by a fresh reviewer (Codex out until
 11-04); the reviewer's six points are all taken. Not pushed.
+
+Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `df174b0731` -> `9149e72d4f` (refresh12 `df341758a7` locks it). Reply: https://github.com/ArduPilot/ardupilot/pull/32475#issuecomment-6580087409.

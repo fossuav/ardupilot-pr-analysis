@@ -350,3 +350,5 @@ repairs it.
 The second minor is a note on the last reply: "ESCs failing 2% ... still
 never pass" holds only for evenly spaced misses; with random 2% loss a
 full window can read 1% or under. The draft reply corrects it.
+
+Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `eea919627c` -> `05edaf83de` (refresh12 `df341758a7` locks it). Reply: https://github.com/ArduPilot/ardupilot/pull/31274#issuecomment-6580087118. Description updated.

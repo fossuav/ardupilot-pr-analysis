@@ -266,3 +266,5 @@ The flash figures above understate the cost. MatekF405 includes `minimize_fpv_os
 - master 915868, option off 916024 (+156), on 917060: the items cost 1036 bytes, and 156 stays with them off (primary core index, per-axis flow fusion times, MSP DisplayPort symbol map entries).
 
 Also changed in this round: the AP_OpticalFlow include moved inside the guard, build_options.py depends on `OSD,EKF3`. Branch `sq/34543-1102e` (supersedes `-1102d`): 829f7d11b0 (guard), 77d364508b (descriptions, 766 characters each before), 871498e4aa (Tools). Refresh12 `r1102b/osd-r12d`: 4e14875bcf, 60b39abed7, a07a07d370, e41f3b74a8; there the items cost 1196 bytes on JHEM_JHEF405 (764 on MatekF405).
+
+Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `03bd5ed7d4` -> `871498e4aa` (refresh12 `df341758a7` locks it). Reply: https://github.com/ArduPilot/ardupilot/pull/34543#issuecomment-6580088723. Description updated.

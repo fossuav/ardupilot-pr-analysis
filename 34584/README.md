@@ -138,3 +138,5 @@ angle P assertion now reads the recorded value. Logs in the session scratch
 (`r1102/34584/r12_{base,fix}.BIN`). The release note for the angle P boost
 (shared with #34583) is in the reply. The torn-copy minor stays accepted
 (one more Vector3f in the same unsynchronised record).
+
+Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `36cd051312` -> `474a5f073b` (refresh12 `df341758a7` locks it). Reply: https://github.com/ArduPilot/ardupilot/pull/34584#issuecomment-6580087804.

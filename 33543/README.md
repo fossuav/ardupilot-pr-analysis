@@ -21,3 +21,5 @@ drafted. Rebased onto master `5fdd5da0d0` as `9f1b08db4e` on
 `sq/33543-1102b` so the bot re-reads the PR; QuadPlane
 HighServoFunctionDefault, which loads a defaults file and checks the purge,
 passes there. Not pushed.
+
+Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `9fb1afdec1` -> `9f1b08db4e` (refresh12 `df341758a7` locks it). Description updated.

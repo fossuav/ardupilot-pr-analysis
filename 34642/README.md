@@ -55,3 +55,5 @@ refresh12 `7d40b4a49e` (`r1102b/34642-r12`), PR `02d4f5cab2`
 (`sq/34642-1102`, on top of `c66dba662b`). Not pushed. SITLGyroRate passes
 on both; CubeOrange-SimOnHardWare copter builds with no warnings (the `#else`
 path).
+
+Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `c66dba662b` -> `d464e2156a` (refresh12 `df341758a7` locks it). Reply: https://github.com/ArduPilot/ardupilot/pull/34642#issuecomment-6580088212.

@@ -996,3 +996,5 @@ only from a ~100 ms startup offset, as it pairs records in sequence.
 Seen, not in scope: at the 25 m drop's reset PD jumps from about -6 m to
 36-38 m in every run, before and after the fix (ResetHeight to hgtMea after
 the test's 20 m baro glitch leg).
+
+Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `3c73e8b64b` -> `b39c0e9485` (refresh12 `df341758a7` locks it). Reply: https://github.com/ArduPilot/ardupilot/pull/34942#issuecomment-6580089744.
