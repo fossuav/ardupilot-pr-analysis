@@ -998,3 +998,34 @@ Seen, not in scope: at the 25 m drop's reset PD jumps from about -6 m to
 the test's 20 m baro glitch leg).
 
 Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `3c73e8b64b` -> `b39c0e9485` (refresh12 `df341758a7` locks it). Reply: https://github.com/ArduPilot/ardupilot/pull/34942#issuecomment-6580089744.
+
+## 2026-11-02: Q25 indoor loiter logs on c46a09ec (refresh12 topup4)
+
+`Q25 - MicoAir743v2 - 4.7.2 - c46a09e - Indoor Loiter 1 of 2.bin` and `2 of 2`
+(tester A, the support archive). Flow only, baro height
+(EK3_SRC1_POSZ 1, EK3_RNG_USE_HGT -1), no yaw source. Three flights: log 1 one,
+log 2 two in one boot. INS_ACC_VRFB_Z was still 0.0417 (the card asked for 0),
+so with ACC_ZBIAS_LEARN 10 v3 applied the old total as the change since arming.
+
+- Every landing came down with the EKF 1.5-2.2 m above the baro: in flight the
+  baro read 1.5 m above the range finder (log 2 at 88 s: RF 1.14 m, baro
+  2.64 m, EKF 3.32 m), prop wash indoors, and at touchdown ground effect
+  took it to -1.5 m.
+- Log 2, first landing (disarm 92.16 s): the height innovation sat at -2 m,
+  XKF4.SS went to 0 at 94.2 s (healthy() false on the ground height check),
+  and 5 s later upstream's disarmed "EKF3 IMU0 forced reset" fired (98.57 s):
+  a full InitialiseFilterBootstrap, PD to 0 and yaw from 332.4 to 359.7 deg (no
+  yaw source). Re-arm at 106.16 s went fine. This is a new interaction: #34942
+  putting the height error into healthy() makes filterStatus all zero, which is
+  the forced reset's trigger, so a slow height convergence on the ground now
+  reinitialises the whole filter rather than only refusing arming.
+- Log 1 (disarm 120.36 s) and log 2's second landing (185.26 s): the EKF pulled
+  its height down to the baro through VD (0.16 m/s for 10 s; 0.79 m/s at 5 s),
+  one SS=0 sample in log 2. No "vertical velocity reset at rest": VD was
+  0.06-0.07 m/s when rest began, and the reset is a one-shot at that moment by
+  design; the later VD came from the height correction, not a drop.
+- No "height error" refusal seen: the only re-arm came after the forced reset.
+- Boot (T1): log 2, still from power-on, yaw 0.00-0.03 deg and GZ 0.00-0.01 to
+  arming. Log 1 was turned during boot; once still, yaw wandered +-1.3 deg over
+  8 s while GZ learned -0.29 deg/s against a raw gyro near 0.
+- T2 (#34941, acro over 45 deg) and T3 (CPU load, BRD_IDLE_STATS 0) not flown.
