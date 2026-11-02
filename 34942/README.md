@@ -1029,3 +1029,222 @@ so with ACC_ZBIAS_LEARN 10 v3 applied the old total as the change since arming.
   arming. Log 1 was turned during boot; once still, yaw wandered +-1.3 deg over
   8 s while GZ learned -0.29 deg/s against a raw gyro near 0.
 - T2 (#34941, acro over 45 deg) and T3 (CPU load, BRD_IDLE_STATS 0) not flown.
+
+## 2026-11-02 (evening): a height error no longer forces a reset
+
+`AP_NavEKF3: do not force a reset for a height error on the ground`:
+refresh12 `88dfc049b7` (branch `r1102c/34942-r12`, on `df341758a7`), PR port
+`2826fdfc10` (`sq/34942-1102d`, on `b39c0e9485`). healthy() is split into
+healthyApartFromGndHgt() and the ground height check; updateFilterStatus()
+sets gndHgtErrorHoldsStatus when the status is zero only because of that
+check (otherwise healthy, aligned, quaternion valid, so the attitude flag
+would be set), and the forced reset's timer keeps running while it holds.
+healthy(), filterStatus and all their readers (NavEKF3 lane selection and
+primary health, the pre-arm check, the status flags/ESTIMATOR_STATUS, AHRS)
+are unchanged. A core unhealthy for another reason as well still resets.
+
+Replay A/B through refresh12's Replay (before = `df341758a7`, after =
+`88dfc049b7`):
+- gl2 (Q25 log 2): before, the forced reset at 98.6 s as flown (yaw 332.4 ->
+  354.4 deg); after, no reset, PD converges from -2.27 m and the status turns
+  non-zero at 100.46 s (before: 99.66 s after the reinit), i.e. a re-arm
+  would pass 8.3 s after the disarm; yaw holds 332.3-332.5 deg at rest.
+- gl1 and SFD-O4 logs 66-71: identical on every core (max XKF1 difference 0).
+
+What the flown forced reset cost: after it the EKF learned a Z gyro bias of
+2.9-3.7 deg/s (XKF1.GZ; raw IMU GyrZ at rest -0.01 deg/s), its yaw slid 354
+-> 322 deg at rest, and in the second flight, yaw stick at 1500 throughout,
+the raw gyro shows the vehicle turning at +2.33 deg/s (110-150 s) and +2.81
+deg/s (160-184 s): Loiter held a heading built on a bias that did not exist.
+The no-reset replay keeps GZ at 0.00 and its yaw follows that turn.
+
+Root of the wrong bias (fixed below): yawAngDataStatic (#34942's static
+yaw reference) is not cleared by InitialiseVariables(), and onGroundNotMoving
+survives the reinit, so after any bootstrap reset at rest the pre-reset yaw
+(332.4) is fused against the reinitialised one and the difference goes into
+the gyro bias. A forced reset for another cause, or #32401's arm-pending
+bootstrap reset, would do the same; clearing yawAngDataStatic.time_ms in
+InitialiseVariables() would re-take it.
+
+Tests: EK3HardLandingRearm and EK3_ZeroVelFusionNotUsedWithGPS pass on the
+port and on refresh12; MatekF405 builds with no warnings. No SITL leg: the
+reset needs every status flag zero (no GPS), and a SITL flow landing does not
+hold a >1 m height disagreement for 5 s reliably. Not pushed.
+
+Update, same evening: the static yaw carry-over fixed too, as its own commit
+ahead of the forced-reset one (it is a bug in the static-yaw commit
+`3c73e8b64b`; the forced-reset change is a separate behaviour). The earlier
+`88dfc049b7`/`2826fdfc10` branches are superseded:
+- refresh12 `r1102c/34942-r12b` (on `df341758a7`): `082192f019` retake the
+  static yaw reference after a reset at rest, `2d4b680994` the forced reset.
+- PR `sq/34942-1102e` (on `b39c0e9485`): `fbe93d4ece`, `48d602d374`; hunks
+  identical to refresh12's.
+
+Mechanism confirmed in the source: InitialiseVariables(), run only from
+InitialiseFilterBootstrap(), sets onGround/prevOnGround true and clears
+restStartTime_ms but leaves onGroundNotMoving and yawAngDataStatic, and
+updateMovementCheck() only clears onGroundNotMoving when prevOnGround is
+false, so a still vehicle stays still through the reset and the reference
+(time_ms != 0) is never retaken. Paths that bootstrap a still core: the
+disarmed forced reset, and NavEKF3::InitialiseFilterBootstrap() (on
+refresh12 #32401's arm-pending reset through AHRS reset_configured_backend());
+AHRS reset() at startup only, with the reference still zero. Lane switches
+do not reinitialise a core. The fix clears yawAngDataStatic.time_ms in
+InitialiseVariables(), so SelectMagFusion() retakes it from the new yaw
+(prevTnb is recomputed from the new quaternion before it runs).
+
+Replay A/B of gl2 with the forced reset still happening (Replay of
+`df341758a7` vs `082192f019` alone):
+- XKF1.GZ after 98.6 s: 2.93-3.70 deg/s before, 0.00-0.08 deg/s with the fix.
+- Yaw at rest 100-108 s: 354 -> 322 deg before; 360.0/0.0 deg held with it.
+- Second flight, yaw stick at 1500: before, yaw held about 355 deg (the
+  vehicle turning under it); with the fix the yaw follows the real turn,
+  39.3 -> 91.6 deg in 20 s (2.6 deg/s) against the raw gyro's 2.3-2.8 deg/s.
+- gl1 and logs 66-71: identical with the fix alone and with both fixes;
+  with both, gl2 is identical to the forced-reset change alone (no reset, so
+  the static fix never acts). log67's arm-pending reset is not a DAL event,
+  so no replay exercises that path.
+
+Tests: EK3HardLandingRearm, EK3_ZeroVelFusionNotUsedWithGPS and
+FlowAidingRestartsWithoutYawFusion pass on the port and on refresh12;
+MatekF405 builds with no warnings; branch conventions pass (the mechanical
+gate's only must-fix is the earlier dal.snprintf false positive). Not pushed.
+
+Update after the cold read of `fbe93d4ece`/`48d602d374` (nothing blocking):
+rebuilt as five commits, refactors first (ARCH-19). Superseded:
+`r1102c/34942-r12`/`-r12b`, `sq/34942-1102d`/`-1102e`.
+
+| | refresh12 `r1102c/34942-r12c` (on `df341758a7`) | PR `sq/34942-1102g` (on `b39c0e9485`) |
+|---|---|---|
+| store the static yaw reference through one function (no behaviour) | `13730ea212` | `98285fe3dd` |
+| split the ground height check out of healthy() (no behaviour) | `c072f9f301` | `759034f128` |
+| retake the static yaw reference after any yaw reset | `d4eb8e1b58` | `7e4a0bbcfe` |
+| autotest: static yaw retaken after an EKF reset at rest | `ef670a8cc5` | `d33585757e` |
+| wait longer to force a reset over a ground height error | `7697270b17` | `37f52d6d15` |
+
+- Static yaw: also stored from resetQuatStateYawOnly(), which every yaw
+  reset goes through (compass alignment setYawFromMag(), GPS/external yaw
+  alignYawAngle(), realignYawGPS(), the EKF-GSF reset), so a still vehicle
+  with a compass no longer keeps a pre-alignment reference; none of those is
+  made by the static fusion, so no loop. Stored at once, not just cleared,
+  because a static fusion can follow a yaw reset in the same update.
+- Forced reset: no new member. last_filter_ok_ms is still set only by a
+  non-zero status (a core never healthy is never reset). A core whose
+  status is zero only because of the ground height check (otherwise
+  healthy, aligned, finite quaternion), evaluated only when the status is
+  zero, waits GND_HGT_ERR_RESET_MS = 30 s instead of 5 s, about four times
+  the Q25's 6.8 s; the cap bounds a height held off by a wrong accel bias,
+  which ResetHeight() does not correct and the height timeout (rejected
+  samples only) never reaches. The commit says it changes "fix on-ground
+  height innovation filter never updating"'s five-second reset.
+- Test EKFBootstrapResetStaticYaw: lands at heading 90 with a compass,
+  switches to a GPS set with no yaw, resets from the EKF_RESET aux switch
+  while still, checks the yaw moved (92.5 deg) and |XKF1.GZ| < 0.5 deg/s.
+  Old EKF code fails 3 of 3 (refresh12 2, port 1; GZ 6.30-6.36 deg/s);
+  fixed passes 5 of 5 (refresh12 3, port 2; GZ 0.06-0.11 deg/s). The
+  forced reset stays replay-only.
+- Replay through refresh12 builds: the refactors identical to before on all
+  eight logs; the static fix alone changes only gl2 after 98.66 s (max
+  |GZ| 0.08 deg/s against 3.74, yaw holding then following the real turn);
+  all five commits change only gl2, identical to the no-reset run (status
+  recovers 8.3 s after the disarm).
+- Tests on both branches: EKFBootstrapReset, EK3HardLandingRearm,
+  EK3_ZeroVelFusionNotUsedWithGPS, FlowAidingRestartsWithoutYawFusion pass;
+  MatekF405 0 warnings; branch conventions pass (gate: the old dal.snprintf
+  false positive only).
+
+Final, after a third cold read (Andy's decision): the forced-reset hold is
+dropped. The 5 s reset was written (tridge, EKF2 `8ea7df3efe`, 2018) for an
+idle filter whose healthy() carried this same hgtInnovFiltState test;
+master's EKF3 height test has not tripped since 4.1, so the hold would in
+effect add a 30 s reset; and with the static-yaw fix alone the Q25 replay
+recovers 7.50 s after the disarm (sooner than 8.3 s with the hold) with no
+false bias. The healthy() split went with it (only the hold used it,
+ARCH-14). All the hold branches above are superseded.
+
+| | refresh12 `r1102c/34942-r12d` (on `df341758a7`) | PR `sq/34942-1102i` (on `b39c0e9485`) |
+|---|---|---|
+| store the static yaw reference through one function (no behaviour) | `3d9c8a1417` | `a1ae2f1bc5` |
+| retake the static yaw reference after any yaw reset | `b041cb53a7` | `d0274705ff` |
+| autotest: static yaw retaken after an EKF reset at rest (every core) | `61a0cabc56` | `ae295465bc` |
+| autotest: static yaw reference keeps the compass alignment | `7f4b8e79f0` | `f52182b114` |
+
+- New test StaticYawKeepsCompassYaw: boot at 90 deg with a compass, never
+  move, switch to a GPS source set with no yaw. Without the
+  resetQuatStateYawOnly() store the reference stays at the 0 deg taken
+  before the compass aligned, and core 0's yaw is pulled 21.6-22.1 deg in
+  15 s (fails 3 of 3, threshold 15 deg); with it, 6.9-7.0 deg (passes 6 of
+  6), the residual being what compass fusion moved the yaw after the
+  alignment store while still. The Z gyro bias does not separate them here
+  (0.18-0.20 deg/s both). EKFBootstrapResetStaticYaw now checks every core
+  through a shared helper: pre-fix code 6.36 deg/s on core 0 (fails), fixed
+  0.06 deg/s on both cores.
+- Replay through refresh12 (`df341758a7` vs r12d): gl1 and logs 66-71
+  identical; gl2 differs only after the forced reset at 98.66 s, which still
+  fires: status recovers 7.50 s after the disarm either way; max |GZ| after
+  it 0.08 deg/s against 3.74; yaw holds 360.0/0.0 deg at rest (before:
+  356.7 -> 321.1) and in the second flight follows the real turn, 67.3 ->
+  147.4 deg from 120 to 150 s (2.7 deg/s, raw gyro 2.3-2.8).
+- Tests on both branches: EKFBootstrapResetStaticYaw,
+  StaticYawKeepsCompassYaw, EKFBootstrapReset, EK3HardLandingRearm,
+  EK3_ZeroVelFusionNotUsedWithGPS, FlowAidingRestartsWithoutYawFusion pass;
+  MatekF405 0 warnings; branch conventions pass (gate: the old
+  dal.snprintf false positive only).
+
+Update after the cold read of the two tests (late 2026-11-02): the test
+fixes are folded into the test commits; the EKF commits are unchanged.
+Superseded: `r1102c/34942-r12d`, `sq/34942-1102i`.
+
+| | refresh12 `r1102c/34942-r12e` (on `df341758a7`) | PR `sq/34942-1102k` (on `b39c0e9485`) |
+|---|---|---|
+| store the static yaw reference through one function (no behaviour) | `27d80427f9` | `b1edba2b5a` |
+| retake the static yaw reference after any yaw reset | `757b8963df` | `d23bbcc841` |
+| autotest: static yaw retaken after an EKF reset at rest | `92ba59b269` | `537676d074` |
+| autotest: static yaw reference keeps the compass alignment | `994fbc6263` | `a29dd0dcda` |
+
+- Comments corrected: source set 2 carries no GPS settings over; with
+  only EK3_SRC2_YAW set to 0 (the rest default to none) a still disarmed
+  vehicle drops to AID_NONE and holds its yaw by fusing the static
+  reference. Both tests share static_yaw_test_setup(), which sets the
+  parameters and restarts SITL at heading 90 through
+  customise_SITL_commandline(); the separate reboot is gone.
+- The 7 deg residual in StaticYawKeepsCompassYaw, traced in the log: the
+  compass alignment at 5.88 s used COMPASS_DEC 0 and put the yaw at 77.2
+  deg, which the fixed code stores as the reference; the declination
+  arrived later with no yaw reset, and compass fusion at rest moved the
+  yaw to about 94 deg by "origin set" (20 s) and 92.6 deg at the switch
+  (43.85 s); the static fusion then pulled it back toward 77.2. The test
+  now holds the declination (COMPASS_AUTODEC 0, COMPASS_DEC 0,
+  EK3_MAG_EF_LIM 0): residual 0.1 deg, bound tightened from 15 to 5 deg.
+  Without the resetQuatStateYawOnly() store the reference stays at the 0
+  deg taken before the compass aligned: 25.0-25.2 deg, fails 2 of 2.
+- The residual is a property master already has: the reference is
+  refreshed only while moving (`if (!onGroundNotMoving)`), so a yaw
+  source that moves the yaw at rest leaves it stale until the vehicle
+  moves. Not changed here; a possible follow-up.
+- The bias check is dropped from StaticYawKeepsCompassYaw: it did not
+  separate the fixed and unfixed code (0.18-0.20 deg/s both).
+- Pre-fix EKF (`b39c0e9485`) with the new tests: StaticYawKeepsCompassYaw
+  25.0 deg (fails), EKFBootstrapResetStaticYaw GZ 6.24 deg/s (fails).
+  Fixed: 0.1 deg and 92.5 deg moved with GZ 0.06 deg/s.
+- The port's `import struct` is placed in sorted order (between socket
+  and subprocess); refresh12 already imports it.
+- Tests on both branches, at these heads: EKFBootstrapResetStaticYaw and
+  StaticYawKeepsCompassYaw pass 3 of 3 each (port 4 of 4 counting a
+  re-run on the final head: yaw moved 92.5-92.6 deg, GZ 0.06 deg/s, and
+  0.1 deg on both cores); EKFBootstrapReset, EK3HardLandingRearm,
+  EK3_ZeroVelFusionNotUsedWithGPS, FlowAidingRestartsWithoutYawFusion
+  pass. MatekF405 builds with 0 warnings (874808 B flash, 108220 B free);
+  branch conventions pass; flake8 clean; the mechanical gate's only
+  must-fix is the old dal.snprintf false positive. Replay unchanged from
+  r12d (same EKF hunks). Not pushed.
+
+## 2026-11-02 (evening): squash
+
+The Q25 logs flew 3c73e8b64b ("take the static yaw reference before it is
+first fused"): log 2, still from power-on, held yaw within 0.03 deg to the
+arm, and replay with it reverted differs by up to 101 deg. Folded into
+"keep a shock from holding off the on-ground stillness check" on
+`sq/34942-1102l` (head `d986e313d8`, 16 commits, tree identical to the
+worker's `sq/34942-1102k`; backup `pre-squash/34942-1102` at
+`b39c0e9485`). The four static-yaw commits stay on top, unflown. Not pushed.

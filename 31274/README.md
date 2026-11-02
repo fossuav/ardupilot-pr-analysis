@@ -352,3 +352,12 @@ never pass" holds only for evenly spaced misses; with random 2% loss a
 full window can read 1% or under. The draft reply corrects it.
 
 Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `eea919627c` -> `05edaf83de` (refresh12 `df341758a7` locks it). Reply: https://github.com/ArduPilot/ardupilot/pull/31274#issuecomment-6580087118. Description updated.
+
+## 2026-11-02 (evening): squashed after the Q25 flights
+
+The Q25 indoor logs on c46a09ec flew 988f8abb9e ("keep a DShot error rate
+from a full window after a reset"): ESC.Err read exactly 100% on all four
+outputs from 5.02 s to 10.50 s, then at most 1% (squash-audit-2026-10-31/
+Q25-2026-11-02.md). Folded into "report the bdshot error rate as a
+percentage" on `sq/31274-1102e` (head `2b31e43213`, 14 commits, tree
+identical to `05edaf83de`; backup `pre-squash/31274-1102`). Not pushed.
