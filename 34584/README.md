@@ -140,3 +140,7 @@ angle P assertion now reads the recorded value. Logs in the session scratch
 (one more Vector3f in the same unsynchronised record).
 
 Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `36cd051312` -> `474a5f073b` (refresh12 `df341758a7` locks it). Reply: https://github.com/ArduPilot/ardupilot/pull/34584#issuecomment-6580087804.
+
+## 2026-11-02 (night)
+
+AP-Review round 2 (COMMENT at `474a5f073b`): only the description, which said two new commits (three) and four Vector3f (five). Corrected text drafted; the bot rereads it at the next push.

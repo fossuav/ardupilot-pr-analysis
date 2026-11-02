@@ -64,3 +64,7 @@ branch conventions and the hwdef-check helper pass (its `.elf` flag is a
 gitignored build output).
 
 Pushed 2026-11-02 to andyp1per with a lease: `2f220cecef` -> `c66fffe0a5`. Description posted (the PR had none) and the PR taken out of draft.
+
+## 2026-11-02 (night)
+
+AP-Review round 1 (COMMENT at `c66fffe0a5`): two minors. The bootloader LED moves from PA8 (the LED strip pad) to PE3, the status LED, and the bootloader is rebuilt; the current-scale bench check needs a board. `sq/31216-1102c` head `ba01eac9ac` (three commits, backup `pre-squash/31216-1102`); refresh12 brought to the released-board version (`de64bcd386`, `9e4067f7e0`), and IFLIGHT_BORG_H7 builds there. Not pushed.

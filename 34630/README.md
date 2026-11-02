@@ -350,3 +350,7 @@ The flash figures above understate the cost. MatekF405 includes `minimize_fpv_os
 The earlier note that the quality floor is covered was about the guard only; the shortened descriptions had dropped that the signal strength is scaled so EK3_FLOW_QMIN reads 50 and flashes below it, which is how a user reads the number. Put back in the one line. Also: AP_OpticalFlow include inside the guard, build_options.py depends on `OSD,EKF3`, the description commit counts 955 characters (not 766). Unchanged and now said in the description draft: get_ekf_lane_status() here still gates on active_EKF_type(), as this PR carries the older #34543 copy without c9e766c8cc's DCM fix. Branch `sq/34630-1102e` (supersedes `-1102d`): 3cf3dc8903, 71321f6eb1, 0b2644e19d.
 
 Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `af51f5ef62` -> `0b2644e19d` (refresh12 `df341758a7` locks it). Reply: https://github.com/ArduPilot/ardupilot/pull/34630#issuecomment-6580089230. Description updated.
+
+## 2026-11-02 (night)
+
+AP-Review round 7 (COMMENT at `0b2644e19d`): the EKFn_EN one-liners dropped when the EK3_FLOW_QMIN floor applies. They now say "when it has one (EK3_OPTIONS bit 3)" (`355d45685c`, fast-forward; refresh12 `38acc82154`). The covariance note is accepted as #33484's. Not pushed.
