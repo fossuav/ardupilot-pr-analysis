@@ -243,3 +243,7 @@ Pushed `351aea9eaa` -> `31a28194aa` (force, 14 commits to 12, same tree; backup 
 ## 2026-11-02: AP-Review at the squashed head
 
 COMMENT at `31a28194aa` (round 5). Should fix: rebase, the branch conflicts with master's ScriptingOSDDrawScreen (fe92274205) in `arducopter.py`, so no CI runs. Minors: no compile-time option or build_options.py entry (owed), long EKFn_EN descriptions, test gaps (QUAL, REJ, DRK, tilt arrows). OSDEKFLanes 3/3 and the DCM fallback test 2/2 passed at this head.
+
+## 2026-11-02: rebased onto master
+
+`sq/34543-1102` at `03bd5ed7d4`: the 12 commits cherry-picked onto master `1d44127b86`, with each file's patch identical to `31a28194aa`'s (`git range-diff`: offsets only in three autotest commits). The conflict was master's ScriptingOSDDrawScreen (fe92274205) added at the same place as OSDEKFLanes: both kept, master's test byte-identical, OSDEKFLanes after it and registered after it; the DCM-fallback commit's move of the two OSD helpers to vehicle_test_suite.py then applied as a pure removal. Mechanical gate and check_branch_conventions clean. With CI's CMAC terrain tile: OSDEKFLanes 3/3, Rover OSDEKFLanesDCMFallback 2/2, ScriptingOSDDrawScreen 1/1. Not pushed.

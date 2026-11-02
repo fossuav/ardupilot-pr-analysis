@@ -867,3 +867,7 @@ PR description updated and reply to the third AP-Review round posted 2026-10-14 
 COMMENT, nothing blocks. The one stale line, the #34457 head in "Stacks on
 #34457", was corrected in the description (a7841c86c4 -> 04341318b9, and
 bd94225fe5/d9e44e3e46 named as this PR's own).
+
+## 2026-11-02: the stacking sentence was already fixed
+
+AP-Review's last round (2026-10-13, COMMENT at `d9e44e3e46`) asked for "the first five commits here are that PR" to be corrected. The description already reads "the first seven commits here, ending at 04341318b9, are that PR; bd94225fe5 and d9e44e3e46 are this one", so nothing to change; the bot has not re-reviewed since, as the head has not moved.

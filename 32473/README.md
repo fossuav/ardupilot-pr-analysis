@@ -858,3 +858,7 @@ Pushed `f945737262` -> `1edfa5daf1` (force, 50 commits to 48, restacked onto the
 ## 2026-11-02: AP-Review at the squashed head
 
 COMMENT at `1edfa5daf1` (round 13). Should fix: the baseline is retaken at every arm, so a quick re-arm after landing saves almost nothing (SITL, 6 s apart: 0.140 then 0.015). This is the quick re-arm point #32471's bot accepted as a limitation at `0ffebdf4c3`; answering it here with that reply should close it. Minors: the AccelBiasMovingPlatform docstring and the Lua arm() snapshot (no action).
+
+## 2026-11-02: restacked on #32471's fixes
+
+`sq/32473-1102c` (head `863cc99654`, not pushed): #32473's four commits on #32471's new head `0581269c93`. The bit 3 commit's `update_accel_bias_inhibit()` already writes both conditions as one level, so it replaces #32471's both-ways version unchanged, and the restack adds only #32471's lock, bit 2 sentence and docstring to this PR. All five bias tests pass. Reply drafted, not posted: the quick re-arm should-fix is the point #32471's bot accepted as a limitation (comment 6548809767).

@@ -293,3 +293,25 @@ Andy's decision: keep the gate on the 5 s stats window. A failure that starts la
 COMMENT at `820f2550b0` (round 6, 2026-10-31 23:33), down from REQUEST CHANGES; nothing blocks. One minor left, and it is real: `bdshot_error_rate()` (RCOutput_bdshot.cpp:256) takes max(short-window rate, last window), a floor with no ceiling, so one missed reply in the first 99 frames after a 5 s restart reads 100%, then 50%, 33%, and stays over 1% until the 99th clean reply (about 0.5 s). Takeoff is only delayed, but the motor-test warning (error_rate_pct > 1) can name a healthy ESC.
 
 Correction: the 2026-10-31 reply said "the 33% case goes with it". It does not; the bot's probe shows 1 bad + 1 clean reading 50% and the next clean 33%. Candidate fix, not yet made or measured: divide the short window's errors by the full window length rather than by the frames so far, keeping the max with the last window, so a short window can read no higher than the full one would if the rest of it came back clean (a dead ESC still reads over 1% from its third missed frame).
+
+## 2026-11-02: the post-reset spike fixed
+
+`bdshot_error_rate()` now divides a short window's errors by no fewer than the 250 frames a window needs to stand alone (`MAX(frames, 250)`) instead of by the frames so far, still floored by the last full window's rate, or 100% before there is one; the BDSHOT_ERROR_RATE_MIN_FRAMES comment says it is now also that divisor. On refresh12 as `bed4134fb4` (branch `r1102/31274-r12c`) and on the PR as `eea919627c` on `sq/31274-1102b` over `820f2550b0`, its own commit on top: unflown. RCOutput_bdshot.cpp is byte-identical in the two. Superseded local drafts, same behaviour: `r1102/31274-r12` `92fe4fb5f7`, `r1102/31274-r12b` `39b04921c1`, `sq/31274-1102` `c7e9135887` (errors times 0.4 below 250 frames; reworded and simplified after the cold read).
+
+A/B with the driver's own `bdshot_error_rate()` and reply-counting block extracted verbatim into a host probe (scratchpad r1102/31274: extract.py, probe.cpp, probe_desc.cpp), 200 replies/s unless stated:
+
+| Scenario | before (820f2550b0) | after |
+|---|---|---|
+| healthy ESC, one miss in a window's first 300 frames (worst k) | 100% peak, over 1% for 99 replies (495 ms) | 0.4% peak, never over 1% |
+| dead from a restart, replies until over 1% | 1 | 3 (15 ms) |
+| failing 50/5/2% from boot, good replies read 1% or under | 0/0/0 | 0/0/0 |
+| failing 50/5/2% from 15 ms before a restart | 2/8/8 | 4/53/64 |
+| dead from 10 s, replies after 16 s read 1% or under | 0 of 8800 | 0 of 8800 |
+| healthy missing 0.1/0.2/0.4%, motor test warnings in 114 s | 3/8/9 | 0/3/3 |
+| description row: failing 50% from 20 ms after a restart (500/s) | 0 | 3 |
+
+A mutant with the floor removed reads 716 of 11266 good replies of a 5% ESC and 16 of 8800 dead replies at 1% or under, so the floor rows can go the wrong way. At 1000 replies/s the shape is the same. The warnings left at 0.2 and 0.4% come from windows just past 250 frames holding three misses, which read over 1% on their own count: the 250-frame resolution, not the restart. The price of the fix is two more misses before a failure starting at a restart shows; the description gains a "Not covered" line for it and its onset row changes from 0 to 3.
+
+Builds at the port head, all rc=0 with no warnings: CubeOrange-bdshot copter, iomcu-dshot iofirmware, SITL copter and plane; SmallFastDronev1 copter at the r12 head. Copter.TakeoffCheck, Copter.MotorTestErrorRate and QuadPlane.TakeoffCheck pass (SITL does not run the DShot driver, so these guard the rest of the PR only). Mechanical gate and check_branch_conventions.py clean.
+
+Quick review: Codex unavailable for the cold read (usage limit until 2026-11-04 08:31; the audit task finished first and called the spike CLOSED, and so does a hand audit at the new head), cold read by Claude on `c7e9135887`. No functional bug. Taken: the message's "a dead one passes no more often" was wrong for an ESC dying at a restart, and the takeoff check is where the two extra misses land, as a missed reply leaves the last good RPM in place (now said); 53 vs 8 was one seeded run, now the expected 57 vs 19; the message now says the 5 s counts are what restarts; the comment no longer hard-codes 0.4% or describes the old code; the MIN_FRAMES comment names its second use; one `MAX(frames, 250)` formula for both branches. The probe gives identical numbers on the reworked code, and the mutant without the floor still fails. Not taken: a per-channel low-pass instead of the window, a redesign against the 2026-10-31 decision to keep the 5 s window. Raised outside the commit, from `988f8abb9e`: a channel getting under about 50 replies/s never fills a 250-frame window, so its floor stays 100% (not checked here).
