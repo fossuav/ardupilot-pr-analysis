@@ -1620,3 +1620,7 @@ Round 14's should-fix and minor, plus what the cold reads found (Codex out until
 - `0581269c93` Copter, PR only: the 1 Hz loop drives the bit 2 inhibit both ways. Found by the first cold read: the loop only set it and only arm() cleared it, so an arm from Lua or DDS landing between the loop's armed check and its set left learning inhibited for the whole flight. Not reproduced (a microsecond window); #32473's version already writes the level both ways, and that has flown on refresh12. Side effects, in the message: clearing bit 2 while disarmed lifts the inhibit within a second, and the loop now owns the flag.
 
 AccelBiasMovingPlatform, AccelBiasInhibitLoggedAfterLogRestart and VibrationRectificationBiasLearning pass on the port; all five bias tests pass on refresh12. Reply drafted, not posted.
+
+## 2026-11-02: pushed
+
+Pushed to `0581269c93` (refresh12 `b1093230e6` locks it). Reply posted: https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-6576455088.

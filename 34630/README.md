@@ -331,3 +331,7 @@ REQUEST CHANGES at `c63cdfafdd` (round 5). Blocking: OSDEKFLanes' no-flow flash 
 The blocker is the terrain cause #34543 and refresh12 already fixed (351aea9eaa, b8a7a6be2e on refresh12, folded into #34543's 1356f5f0e1) but #34630's older copy of the test never got: SIM_TERRAIN 0. Probe (throwaway test, three runs each way, CI's tile cached): with terrain the range finder reads 54 cm at rest and the flow lane reads REL for 0.78-0.87 s after the flow stops, `---` from 1.35-1.43 s; with SIM_TERRAIN 0 it reads 0 cm, REL for 4.43-4.53 s, `---` from 5.01 s (the EKF's under-0.5 m on-ground flow hold, then the flow fusion timeout). OSDEKFLanes with the tile: 5/6 before, the failure being the bot's "never showed b'C1 REL' flashing" with the lane straight to a flashing `C1 ---`; 10/10 after; ScriptingOSDDrawScreen 1/1. The bot's suggestion of waiting for the `--` signal strength was not taken: it flashes in both states, so the leg would pass without checking that a REL lane flashes when its flow sensor goes quiet.
 
 Codex unavailable (usage limit to 2026-11-04), cold read by Claude: nothing blocking; minors left as they are - the comment does not name the on-ground hold or the 5 s limit (kept identical to #34543's and refresh12's text), and the commit can fold into c12dd4909d at the final squash. Not pushed; no refresh12 commit needed.
+
+## 2026-11-02: pushed
+
+Pushed to `af51f5ef62` (refresh12 `b1093230e6` locks it). Reply posted: https://github.com/ArduPilot/ardupilot/pull/34630#issuecomment-6576456205.

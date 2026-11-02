@@ -247,3 +247,7 @@ COMMENT at `31a28194aa` (round 5). Should fix: rebase, the branch conflicts with
 ## 2026-11-02: rebased onto master
 
 `sq/34543-1102` at `03bd5ed7d4`: the 12 commits cherry-picked onto master `1d44127b86`, with each file's patch identical to `31a28194aa`'s (`git range-diff`: offsets only in three autotest commits). The conflict was master's ScriptingOSDDrawScreen (fe92274205) added at the same place as OSDEKFLanes: both kept, master's test byte-identical, OSDEKFLanes after it and registered after it; the DCM-fallback commit's move of the two OSD helpers to vehicle_test_suite.py then applied as a pure removal. Mechanical gate and check_branch_conventions clean. With CI's CMAC terrain tile: OSDEKFLanes 3/3, Rover OSDEKFLanesDCMFallback 2/2, ScriptingOSDDrawScreen 1/1. Not pushed.
+
+## 2026-11-02: pushed
+
+Pushed to `03bd5ed7d4` (refresh12 `b1093230e6` locks it). Marked ready for review.

@@ -862,3 +862,7 @@ COMMENT at `1edfa5daf1` (round 13). Should fix: the baseline is retaken at every
 ## 2026-11-02: restacked on #32471's fixes
 
 `sq/32473-1102c` (head `863cc99654`, not pushed): #32473's four commits on #32471's new head `0581269c93`. The bit 3 commit's `update_accel_bias_inhibit()` already writes both conditions as one level, so it replaces #32471's both-ways version unchanged, and the restack adds only #32471's lock, bit 2 sentence and docstring to this PR. All five bias tests pass. Reply drafted, not posted: the quick re-arm should-fix is the point #32471's bot accepted as a limitation (comment 6548809767).
+
+## 2026-11-02: pushed
+
+Pushed to `863cc99654` (refresh12 `b1093230e6` locks it). Reply posted: https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-6576455500.
