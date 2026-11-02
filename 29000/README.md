@@ -75,3 +75,7 @@ Reply posted: https://github.com/ArduPilot/ardupilot/pull/29000#issuecomment-654
 ## 2026-10-31: squashed after the flight audit
 
 Pushed `fbf9c380f9` -> `4293e19e9f` (force, 3 commits to 2, same tree; backup `pre-squash/29000-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_C.md`.
+
+## 2026-11-02: AP-Review at the squashed head
+
+ACCEPT at `4293e19e9f` (2026-10-31 21:31), up from COMMENT. One minor, the pre-existing early-`continue` flag lag in rate_thread.cpp.

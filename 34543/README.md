@@ -239,3 +239,7 @@ Pushed 2026-10-30 to andyp1per with a lease on the old head:
 ## 2026-10-31: squashed after the flight audit
 
 Pushed `351aea9eaa` -> `31a28194aa` (force, 14 commits to 12, same tree; backup `pre-squash/34543-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_B.md`.
+
+## 2026-11-02: AP-Review at the squashed head
+
+COMMENT at `31a28194aa` (round 5). Should fix: rebase, the branch conflicts with master's ScriptingOSDDrawScreen (fe92274205) in `arducopter.py`, so no CI runs. Minors: no compile-time option or build_options.py entry (owed), long EKFn_EN descriptions, test gaps (QUAL, REJ, DRK, tilt arrows). OSDEKFLanes 3/3 and the DCM fallback test 2/2 passed at this head.

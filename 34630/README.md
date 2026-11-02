@@ -319,3 +319,7 @@ Description replaced with the 10-30 draft plus the flight line (bit 6: six in-fl
 ## 2026-10-31: squashed after the flight audit
 
 Pushed `9a64b9bc5f` -> `c63cdfafdd` (force, 37 commits to 33, same tree; backup `pre-squash/34630-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_B.md`.
+
+## 2026-11-02: AP-Review at the squashed head
+
+REQUEST CHANGES at `c63cdfafdd` (round 5). Blocking: OSDEKFLanes' no-flow flash check fails 2 of 4 runs with CI's terrain tile, as the rangefinder reads about 0.55 m on the ground, flow goes invalid and the lane turns from `C1 REL` to a flashing `C1 ---` before REL can flash (the tests2b failure at `9a64b9bc5f`). The bot suggests waiting for the no-data signal strength `b"\x01--"` to flash instead. Should fix: rebase, `arducopter.py` conflicts with master's ScriptingOSDDrawScreen tests, so PR CI was skipped. Minors: reset covariance (owed), flow latch threading (note).

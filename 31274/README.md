@@ -287,3 +287,9 @@ Pushed `d228911760` -> `820f2550b0` (force, 30 commits to 13, same tree; backup 
 ## 2026-10-31: the 5 s window kept
 
 Andy's decision: keep the gate on the 5 s stats window. A failure that starts late in a window is diluted by its earlier good replies (after 2000, a 50% ESC takes about 21 misses to read over 1%); the description lists it under "Not covered". Telemetry flows while disarmed, so an ESC already failing shows before spool-up, and only a failure starting in the spool-up seconds is slow. Revisit with flight data; the options were a short recent window alongside it or a 1 s stats window.
+
+## 2026-11-02: AP-Review at the squashed head
+
+COMMENT at `820f2550b0` (round 6, 2026-10-31 23:33), down from REQUEST CHANGES; nothing blocks. One minor left, and it is real: `bdshot_error_rate()` (RCOutput_bdshot.cpp:256) takes max(short-window rate, last window), a floor with no ceiling, so one missed reply in the first 99 frames after a 5 s restart reads 100%, then 50%, 33%, and stays over 1% until the 99th clean reply (about 0.5 s). Takeoff is only delayed, but the motor-test warning (error_rate_pct > 1) can name a healthy ESC.
+
+Correction: the 2026-10-31 reply said "the 33% case goes with it". It does not; the bot's probe shows 1 bad + 1 clean reading 50% and the next clean 33%. Candidate fix, not yet made or measured: divide the short window's errors by the full window length rather than by the frames so far, keeping the max with the last window, so a short window can read no higher than the full one would if the rest of it came back clean (a dead ESC still reads over 1% from its third missed frame).

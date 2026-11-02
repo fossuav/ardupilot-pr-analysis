@@ -306,3 +306,7 @@ Reply posted: https://github.com/ArduPilot/ardupilot/pull/34210#issuecomment-654
 ## 2026-10-31: squashed after the flight audit
 
 Pushed `aa2cf2ddcf` -> `4836c83d44` (force, 6 commits to 3, same tree; backup `pre-squash/34210-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_C.md`.
+
+## 2026-11-02: AP-Review at the squashed head
+
+ACCEPT at `4836c83d44` (2026-10-31 22:05). Two notes and two minors, none asked to change.

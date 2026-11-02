@@ -854,3 +854,7 @@ armed acro exit in logs 69 and 70 the accel bias variance stayed at its
 ## 2026-10-31: squashed after the flight audit
 
 Pushed `f945737262` -> `1edfa5daf1` (force, 50 commits to 48, restacked onto the squashed #32471; backup `pre-squash/32473-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_A.md`.
+
+## 2026-11-02: AP-Review at the squashed head
+
+COMMENT at `1edfa5daf1` (round 13). Should fix: the baseline is retaken at every arm, so a quick re-arm after landing saves almost nothing (SITL, 6 s apart: 0.140 then 0.015). This is the quick re-arm point #32471's bot accepted as a limitation at `0ffebdf4c3`; answering it here with that reply should close it. Minors: the AccelBiasMovingPlatform docstring and the Lua arm() snapshot (no action).

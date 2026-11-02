@@ -1606,3 +1606,7 @@ Reply posted: https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-654
 ## 2026-10-31: squashed after the flight audit
 
 Pushed `5afa8d69fb` -> `0ffebdf4c3` (force, 50 commits to 44, same tree; backup `pre-squash/32471-1031`). What folded and what stays on top, and why: `squash-audit-2026-10-31/squash_A.md`.
+
+## 2026-11-02: AP-Review at the squashed head
+
+COMMENT at `0ffebdf4c3` (round 14): nothing blocks, and the quick re-arm point is closed as an accepted limitation. Should fix: `get_accel_bias_z_for_imu()` and `set_inhibit_accel_bias_learning()` (AP_AHRS.cpp) touch EKF3 state without `_rsem`, and Lua `arming:arm()`/`disarm()` reach them on the scripting thread; `resetHeightDatum()` and `set_home()` on the same path take it. The getter is const, so the lock needs the method made non-const or the semaphore reached another way. Minor: one sentence on bit 2 now covering a second flight in the same boot (SITL: about 1.2 m rms height error over the first 20 s with bit 2 against 0.55 m without).
