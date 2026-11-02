@@ -60,4 +60,4 @@ Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `c66dba662b` -> `d464e2
 
 ## 2026-11-02 (night)
 
-AP-Review round 2 (COMMENT at `d464e2156a`): fold the Sim on Hardware fix into its target. Folded into "let the SITL gyro rate follow INS_GYRO_RATE" (SITL-only code, so neither commit can fly): `sq/34642-1102c` head `49312747a0`, tree identical; backup `pre-squash/34642-1102`. Not pushed.
+AP-Review round 2 (COMMENT at `d464e2156a`): fold the Sim on Hardware fix into its target. Folded into "let the SITL gyro rate follow INS_GYRO_RATE" (SITL-only code, so neither commit can fly): `sq/34642-1102c` head `49312747a0`, tree identical; backup `pre-squash/34642-1102`. Pushed 2026-11-02 at `49312747a0`.

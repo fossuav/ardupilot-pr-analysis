@@ -353,4 +353,4 @@ Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `af51f5ef62` -> `0b2644
 
 ## 2026-11-02 (night)
 
-AP-Review round 7 (COMMENT at `0b2644e19d`): the EKFn_EN one-liners dropped when the EK3_FLOW_QMIN floor applies. They now say "when it has one (EK3_OPTIONS bit 3)" (`355d45685c`, fast-forward; refresh12 `38acc82154`). The covariance note is accepted as #33484's. Not pushed.
+AP-Review round 7 (COMMENT at `0b2644e19d`): the EKFn_EN one-liners dropped when the EK3_FLOW_QMIN floor applies. They now say "when it has one (EK3_OPTIONS bit 3)" (`355d45685c`, fast-forward; refresh12 `38acc82154`). The covariance note is accepted as #33484's. Pushed 2026-11-02 at `355d45685c`.
