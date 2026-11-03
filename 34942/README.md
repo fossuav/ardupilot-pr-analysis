@@ -1395,6 +1395,6 @@ SIM_GPS2_ENABLE 1 it fails on "EKF3 IMU1 yaw aligned"). Refresh12
 `5a328d4364` (comments), `bcaaa11cfd` (premise check). Port supersedes
 -1103d: `sq/34942-1103e` `4b4e0fe806` (EKF), `d742c388ee` (test) on
 `713ca4946f`, a fast-forward; EKF and test diffs identical to refresh12's
-net change; the 12 tests pass. The description draft also replaces the
+net change; the 12 tests pass. Pushed 2026-11-03 at `d742c388ee` (fast-forward of `713ca4946f`). The description draft also replaces the
 stale "as on master, the reference is the yaw from before the initial
 alignment" sentence (wrong since 566576e804).
