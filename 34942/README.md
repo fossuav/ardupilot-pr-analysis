@@ -1272,3 +1272,43 @@ flow_quality_osd and added_flight_mod).
   -235, but from a free hover, which it warns is not a valid fit; the range
   finder residual points to about -200 to -220. Same mechanism as the
   indoor landings' 1.5-2.2 m EKF offset.
+
+## 2026-11-03: keep the learned gyro bias across a bootstrap reset
+
+Users reported yaw jitter without a compass and poor VALT on the new
+betas. Andy's point: #33498 holds the Z gyro bias in flight at the value
+learned at rest, and a bootstrap reset zeroed it (`ZERO_FARRAY(statesArray)`
+in InitialiseVariables(), then gyro_bias.zero() and the inactive biases),
+so the forced reset this PR makes fire after landings, the EKF_RESET aux
+function and #32401's arm-pending reset all send a quick re-arm off with
+what had been relearned from zero. Seeding from INS_GYROFFS was weighed
+and rejected: the INS takes the stored offsets off every sample
+(AP_InertialSensor_Backend.cpp:166), so the state is the residual and zero
+already means "trust the stored offsets". Q25: INS_GYR_CAL 0, TCAL on,
+residual -0.68 deg/s on 10-30 (b0cb4), -0.4..-0.5 on 10-29, -0.14..-0.25
+on 11-02 flight 1.
+
+SITL A/B (throwaway harness GyroBiasResetAB, scratch r1103/gbab): 0.6 deg/s
+SIM_GYR1-3_BIAS_Z, INS_GYR_CAL 0, offsets 0, flow only, no yaw source; 60
+s at rest, EKF_RESET, wait N, arm, 60 s Loiter hover; GZ in deg/s, drift
+is SIM yaw minus EKF yaw over the hover. Bias before the reset 0.63.
+
+| Armed after the reset | refresh12 df9604a31f: GZ at arm, drift | fix: GZ at arm, drift |
+|---|---|---|
+| 6.8 s (N 2) | 0.44, 15.1 deg | 0.65, 2.8 deg |
+| 15 s (N 10) | 0.64, 3.8 deg | 0.66, 2.4 deg |
+| 35 s (N 30) | 0.67, 3.1 deg | 0.67, 3.0 deg |
+
+The bias relearns from zero in about 10 s at rest, so only a re-arm
+inside that costs the flight. The first attempt changed nothing (0.43,
+15.7 deg): it stopped the later gyro_bias.zero() but InitialiseVariables()
+had already zeroed the state vector; the fix saves the bias before it, as
+refresh12 already saves the origin.
+
+Commits: refresh12 `dfd8194b85` (EKF), `80cbb8106b`
+(EKFBootstrapResetKeepsGyroBias); port `sq/34942-1103a` `2c8c1575d8`,
+`d1d731fa1b` on `d986e313d8`. The test fails on the old code (core 0
+0.61 -> 0.00 deg/s) and passes with the fix (0.61 held); on both branches
+it passes with EKFBootstrapReset, EKFBootstrapResetStaticYaw,
+StaticYawKeepsCompassYaw, EK3HardLandingRearm, FlowGyroZBiasNoYawReference
+and FlowAidingRestartsWithoutYawFusion. Unflown. Not pushed.
