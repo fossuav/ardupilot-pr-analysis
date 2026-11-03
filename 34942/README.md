@@ -1312,3 +1312,34 @@ Commits: refresh12 `dfd8194b85` (EKF), `80cbb8106b`
 it passes with EKFBootstrapReset, EKFBootstrapResetStaticYaw,
 StaticYawKeepsCompassYaw, EK3HardLandingRearm, FlowGyroZBiasNoYawReference
 and FlowAidingRestartsWithoutYawFusion. Unflown. Not pushed.
+
+Andy's decision (same day), option 2 of three: the EKF's own reset keeps
+the gyro biases, the EKF_RESET switch zeroes them (a full reset of a
+filter that may be wrong; the cold read's point that keeping any finite
+bias would carry a phantom like 566576e804's 2.9-3.7 deg/s through an
+EKF_RESET). NavEKF3::InitialiseFilterBootstrap(), the commanded entry,
+calls the new core zeroGyroBiases() first. Master's comment on it said
+"the filter always resets with the existing gyro biases", which the core
+never did; reworded. On SFD #32401's arm-pending reset uses the same
+entry, so it zeroes too; Andy called implicit resets keep, so moving it
+to keep is a #32401 follow-up if wanted. Not taken: keeping only within
+the initial bias uncertainty (2.5 deg/s default), which drops 3.7 but
+only just 2.9.
+
+Test EKFResetGyroBias (replaces EKFBootstrapResetKeepsGyroBias): learn
+0.6 deg/s at rest, EKF_RESET must zero it, relearn, then a 15 m baro step
+(rejected by the height gate; a 3 m step is fused away in 2.5 s with the
+innovation overshooting to -0.85 m and never resets) brings the forced
+reset 5.2 s later and the bias must hold within 0.15 deg/s. Beta EKF code
+fails the forced-reset half (0.65 -> 0.00), keep-everywhere fails the
+EKF_RESET half (0.61 kept), the split passes (0.61 -> 0.00, then 0.64 ->
+0.64-0.67). The EKF_RESET switch sequence is shared with
+EKFBootstrapResetStaticYaw (ekf_reset_by_switch()). Cold-read nits taken:
+both directions checked, the two SITL IMUs only, one-line comments, the
+accel bias reason in the message.
+
+Commits: refresh12 `19e5ca3831`, `76a16f3278` on top of `dfd8194b85`,
+`80cbb8106b`; the PR gets them as two, `sq/34942-1103b` `c83b148144`
+(EKF), `713ca4946f` (test) on `d986e313d8` (supersedes `-1103a`). Both
+pass with the six neighbouring tests. Description addition drafted
+(scratch r1103/34942_desc_new.md). Unflown. Not pushed.
