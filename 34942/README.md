@@ -1383,3 +1383,18 @@ of `e84029d45f`/`c21a862f8a`. All 12 related tests pass on both
 (StaticYaw x2, EKFBootstrapResetStaticYaw, EKFResetGyroBias,
 EKFBootstrapReset, EK3HardLandingRearm, the two flow tests, GPSForYaw,
 GPSForYawCompassLearn, GSF, GSF_reset). Unflown. Not pushed.
+
+Second cold read of the recentYawFusion() commits: no bug; two minors
+taken. (1) recentYawFusion() looks back 5 s, so the reference follows the
+yaw for up to 5 s after the last fusion: in the compass test the yaw went
+92.63 -> 93.68 deg in those 5 s and froze there, so about 1 deg of the
+2.8 is the window and the rest the phantom bias; comments and messages
+now say so. (2) StaticYawLearnsBiasAwaitingGPSYaw never checked that no
+GPS yaw arrived; it now fails on any "yaw align" message (with
+SIM_GPS2_ENABLE 1 it fails on "EKF3 IMU1 yaw aligned"). Refresh12
+`5a328d4364` (comments), `bcaaa11cfd` (premise check). Port supersedes
+-1103d: `sq/34942-1103e` `4b4e0fe806` (EKF), `d742c388ee` (test) on
+`713ca4946f`, a fast-forward; EKF and test diffs identical to refresh12's
+net change; the 12 tests pass. The description draft also replaces the
+stale "as on master, the reference is the yaw from before the initial
+alignment" sentence (wrong since 566576e804).
