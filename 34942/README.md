@@ -1434,3 +1434,44 @@ to refresh12's net change. Port tests: EKFResetGyroBias (400, 50), the
 three other reset/static yaw tests, StaticYawLearnsBiasAwaitingGPSYaw,
 EK3HardLandingRearm, the two flow tests, Plane.Replay; refresh12 also
 the Heli, Plane, QuadPlane and Sub SFD tests. Unflown. Pushed 2026-11-03 at `2804706ae0` (fast-forward of `d742c388ee`).
+
+## 2026-11-03 (afternoon): tester B 4-inch log on 2dc4a918
+
+the support archive,
+SkySakuraH743, QUAD/X_REV, firmware "SmallFastDrone V4.7.2 (2dc4a918)",
+which is not in our refs. Reports: yaw deviation, small but early and
+often; poor centre-stick VALT, "sucked into the floor"; more roll
+deviation, not holding the accel-cal level. Log starts at arming (LOG_
+DISARMED 0): ACRO takeoff 31.9 s, VALT 63.9-177.1 s. No yaw source
+(EK3_SRC1_YAW 0, compass logged), flow, EK3_IMU_MASK 2 (one core on IMU2),
+SCHED_LOOP_RATE 200, ACC_ZBIAS_LEARN 6 with INS_ACC2_VRFB_Z -0.050.
+
+- Floor (82-99 s): descending to about 0.3 m the EKF height (baro, as
+  EK3_RNG_USE_HGT -1) climbs while the range finder falls, VALT backs off
+  and the vehicle sits on the floor from 88 s (RF 0.02-0.13 m). On the floor
+  the baro swings -2.94 to +2.09 m in the prop wash; the pilot holds climb
+  stick (C3 1550-1588) and the EKF believes it climbs to 2.2 m, so throttle
+  stays 0.12-0.13 until 99 s. In June (4.7.0-beta6) the same airframe had
+  EK3_RNG_USE_HGT 3, BARO1_THST_SCALE -210, SURFTRAK_MODE 0, VALT_POS_EXPO
+  0; now -1, -255, 1, 5. EK3_RNG_USE_HGT is index 42 in every build, so the
+  setup changed it, not a firmware index move. CTUN.DSAlt is not logged in
+  VALT, so surface tracking does not act there.
+- Roll: tracking is fine (DesRoll = Roll); from 100 s the pilot holds about
+  +2.3-2.8 deg of roll stick to stay in place. The EKF's lateral accel bias
+  (XKF2.AY) sat at -0.09 through the floor contact and stepped at 99.4 s,
+  as the vehicle lifted off, to -0.26 then +0.29 by 102 s; flow recovery
+  had been deferred ("range stale") from 88.3 s. Hypothesis, not shown from
+  the innovations: flow fusion resuming after 11 s of dead reckoning put
+  part of the correction into lateral accel bias, and the EKF's level is
+  off by that since. In steady hover both IMUs read near zero lateral
+  specific force (IMU1 0.03 deg, IMU0 0.37 deg), so the accel cannot show
+  the tilt there. June needed -0.5 to -1.1 deg in Loiter, on IMU1 with
+  AHRS_TRIM_X +0.0032 (now IMU2, -0.0122).
+- Yaw: XKF1.GZ -0.34 to -0.41 deg/s all flight. Against a tilt-compensated
+  heading from the logged compasses, EKF yaw drifts under 0.1 deg/s in the
+  steady hover 110-134 s (231-235 and 355-360 deg), so the bias is right;
+  the compass is unusable elsewhere (swings with heading). Yaw tracking is
+  close (RATE.Y vs YDes); 12 excursions over 10 deg/s with the yaw stick
+  centred, 3 within 0.5 s of a flow vel reset, 6 in the last 8 s. No
+  estimation cause found.
+- 25 "flow vel reset (axis lockout)" in 145 s of flight.
