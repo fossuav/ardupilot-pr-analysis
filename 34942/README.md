@@ -1343,3 +1343,43 @@ Commits: refresh12 `19e5ca3831`, `76a16f3278` on top of `dfd8194b85`,
 (EKF), `713ca4946f` (test) on `d986e313d8` (supersedes `-1103a`). Both
 pass with the six neighbouring tests. Description addition drafted
 (scratch r1103/34942_desc_new.md). Unflown. Pushed 2026-11-03 at `713ca4946f` (a fast-forward of `d986e313d8`); refresh12 locks it in `9ebc2d45ef`.
+
+## 2026-11-03 (later): bot round 3 minor, the static yaw reference with a fused yaw
+
+AP-Review round 3 (COMMENT at `d986e313d8`, before the gyro bias push):
+one new minor, the two disclosed trade-offs (disarmed DCM fallback on a
+baro step, late-fall re-arm refusal under 0.5 g) unchanged. The minor: a
+declination that arrives after the compass alignment (default
+COMPASS_AUTODEC) turns the yaw with no reset, so a still vehicle
+switched to a source set with no yaw source is pulled back to the stale
+reference; it suggested `|| use_compass()`.
+
+Taken first as suggested (refresh12 `e84029d45f`/`c21a862f8a`); the
+cold read found it wrong for GPS yaw with compass fallback: use_compass()
+is true while a still vehicle waits for GPS yaw, when the compass is not
+fused and the STATIC fusion is the only heading observation, so
+retaking the reference made it learn nothing while P[12][12] still
+collapsed. New test StaticYawLearnsBiasAwaitingGPSYaw (copter-gps-for-yaw,
+SRC1_YAW 3, SIM_GPS2_ENABLE 0, 0.6 deg/s bias, 40 s still):
+
+| store rule | waiting for GPS yaw, GZ | StaticYawKeepsCompassYaw, default dec |
+|---|---|---|
+| none (`713ca4946f`) | 0.63, pass | 7.0-7.1 deg, fail |
+| `use_compass()` | 0.00, fail | 2.2-2.3 deg, pass |
+| `recentYawFusion()` (5 s, #33498's) | 0.62-0.63, pass | 2.8 deg, pass |
+
+Kept recentYawFusion() (ARCH-2: a fused yaw, not a usable compass;
+ARCH-8 reuse). The 2.8 deg residual is a phantom Z gyro bias from the
+compass alignment and declination with a bias-free simulated gyro: XKF1.GZ
+-1.81 deg/s 30 s before the switch, -0.18 at it, and the yaw then turns
+at about that rate (92.63 -> 95.44 deg); pre-existing, not the
+reference. Left: the resetQuatStateYawOnly() store (566576e804) no
+longer has a test that fails without it, as a fused yaw follows every
+alignment while still; it still covers a reset with no fusion after it.
+
+Port `sq/34942-1103d`: `746779f445` (EKF), `facdfb7b81` (test) on
+`713ca4946f`, a fast-forward. Refresh12 `e95d72c3a9`, `56d71821f3` on top
+of `e84029d45f`/`c21a862f8a`. All 12 related tests pass on both
+(StaticYaw x2, EKFBootstrapResetStaticYaw, EKFResetGyroBias,
+EKFBootstrapReset, EK3HardLandingRearm, the two flow tests, GPSForYaw,
+GPSForYawCompassLearn, GSF, GSF_reset). Unflown. Not pushed.
