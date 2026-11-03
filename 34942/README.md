@@ -1488,3 +1488,28 @@ VALT. With no yaw source #33498 should hold it in flight; FuseOptFlow does
 mask state 12 without a recent yaw fusion, so another fusion path (or
 cross-covariance) is learning the Z bias in flight. Next: replay log 63
 and find which fusion moves state 12.
+
+tester B's 4-inch on 4.7.0 (the support archive, `48`, firmware
+57be0525), the same vehicle and settings but for: AHRS_TRIM_X +0.0180
+(4.7.2: -0.0122, a 1.73 deg roll change from a new accel cal at 38 C
+against 32 C), compass off (4.7.2: on, not used for yaw), MOT_HOVER_LEARN
+2 (0), INS_ACC2_VRFB_Z 0.0027 (-0.050), GND_EFFECT_COMP 1 (folded into
+GNDEFF_ALT, which carries it), EK3_FLOW_MIN_H 0.1 (now FLOW_HGT_MIN 0, not
+migrated), FLOW_HF_RATEF 1 (dropped).
+
+- Not like for like: VALT flown at 1.25-2.25 m on 4.7.0 (range finder,
+  never under 0.5 m), at 0.25-0.75 m on 4.7.2 (rarely over 1.25 m). The
+  4.7.0 logs touch the floor only at takeoff and landing; the 4.7.2 logs
+  10 and 15 times in flight, with climb stick held and the EKF believing
+  0.6-1.8 m. 4.7.0 has the same lockout recovery and message and logs no
+  lockout reset at 2 m; 4.7.2 logs 22-23, all low. So the floor symptoms
+  are in a band the 4.7.0 logs never entered.
+- The code difference in that band: below 0.1 m in flight 4.7.0
+  (EK3_FLOW_MIN_H, default 0.1) fused zero flow and held zero velocity;
+  4.7.2's FLOW_HGT_MIN defaults to 0 and discards the flow below it, so
+  tester B's 4.7.2 fuses unfocused flow down to the ground clearance check.
+- Yaw: XKF1.GZ wanders more on 4.7.0 (-1.28..+0.59 deg/s, no #33498); yaw
+  rate tracking in VALT 4.6-5.2 deg/s rms on both. No regression seen.
+- Roll: median desired roll in VALT +0.01/+0.05 (4.7.0) against +0.34/+0.32
+  (4.7.2), upper quartile 1.8-2.4 on both. No difference shown.
+- Wanted: a 4.7.0 low hover at 0.3-0.7 m, or a 4.7.2 flight at 2 m.
