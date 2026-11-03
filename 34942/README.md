@@ -1404,3 +1404,33 @@ reset keeps the learned gyro biases, EKF_RESET zeroes them, the static
 yaw reference is stored within 5 s of a yaw fusion, and the stale "as on
 master, the reference is the yaw from before the initial alignment"
 sentence is replaced. 2151 words.
+
+## 2026-11-03 (afternoon): bot round 4, the EKF step average across a reset
+
+AP-Review round 4 (COMMENT at `713ca4946f`): the kept gyro bias states
+are delta angles per EKF step and InitialiseVariables() restarts
+dtEkfAvg at EKF_TARGET_DT (12 ms), so where the EKF does not step at
+12 ms the kept bias acts at the wrong rate for about 3 s. Confirmed:
+EKFResetGyroBias at SCHED_LOOP_RATE 50 read 0.64 -> 0.64-1.04 deg/s
+after the forced reset (fails); copter's default 400 Hz steps at about
+12.5 ms, so the earlier A/B could not see it. The Q25 runs
+SCHED_LOOP_RATE 200, where the EKF steps at 10 ms (0.83x).
+
+Scaling the kept states by dtEkfAvg after/before was tried and rejected:
+right at the reset, then 0.41 deg/s as the average climbed back. Kept
+dtEkfAvg across the reset instead: 0.64-0.65 at 50 and 400 Hz. Cold
+read: keeping it unconditionally changes the first boot, as during the
+1 s start-up window readIMUData(false) pushes a frame per 24+ ms
+accumulated and drifts the average (magnitude not measured: the
+onboard log starts after the EKF initialises); now kept only for a core
+that has run (ekfStartTime_ms != 0, set only by InitialiseVariables()),
+so a first boot takes the old path. Its other points taken: the stale
+test comment, the context note, the message naming 100-300 Hz too.
+
+Refresh12 `77c33e88d4`, `46e47b0956`, `dd4191b19d`, `1a1c0cd734` (after
+the topup6 promotion `f9fb97e8eb`). Port `sq/34942-1103g` `a74daa3f37`
+(EKF), `2804706ae0` (test) on `d742c388ee`, a fast-forward, identical
+to refresh12's net change. Port tests: EKFResetGyroBias (400, 50), the
+three other reset/static yaw tests, StaticYawLearnsBiasAwaitingGPSYaw,
+EK3HardLandingRearm, the two flow tests, Plane.Replay; refresh12 also
+the Heli, Plane, QuadPlane and Sub SFD tests. Unflown. Not pushed.
