@@ -1513,3 +1513,29 @@ migrated), FLOW_HF_RATEF 1 (dropped).
 - Roll: median desired roll in VALT +0.01/+0.05 (4.7.0) against +0.34/+0.32
   (4.7.2), upper quartile 1.8-2.4 on both. No difference shown.
 - Wanted: a 4.7.0 low hover at 0.3-0.7 m, or a 4.7.2 flight at 2 m.
+
+Sources (Andy asked whether tester B uses flow and the range finder): yes, on all
+four logs. EK3_SRC1_VELXY 5, FLOW_TYPE 6 (DroneCAN), RNGFND1_TYPE 24
+(DroneCAN, down, 0.08-45 m), flow innovations in every XKF5; height is
+baro only (EK3_RNG_USE_HGT -1, SRC1_POSZ 1); GPS fitted, no fix.
+
+Range finder near the floor on 4.7.2: about 600 in-flight samples under
+0.15 m, mostly status 2 (out of range low), 150 status 4 (good) at
+0.10-0.20 m, with "CAN[125] challenging surface detected" twice. I first
+took them for dropouts (XKF5.HAGL 0.65 m, baro 0.6-0.8 m, OF.Qual about
+100), then withdrew that: HAGL is the baro height less a terrain state and
+the baro is the sensor in question; the good samples track a climb
+smoothly (log 63 125.5-126.5 s: 0.16, 0.28, 0.43 m) and the AGL KF
+(XKFA.HAgl 0.13-0.15 m) agrees. So the vehicle was most likely within about
+0.2 m of the floor while the EKF height (baro) read 1.2-1.8 m, as first
+read. The AGL KF never fused its velocity into the EKF (XKFA.VFuse 0 in
+both logs), so no range finder path reaches the EKF height.
+
+Replay of log 63 on refresh12 `f085ae566f` (scratch r1103/replay63/base):
+two replayed cores (100, 101) where the flight ran one; core 100 follows
+the flown yaw (14/9, 109/105, 185/191, 278/280 deg) and height shape, but
+its Z gyro bias stays -0.08 to -0.25 deg/s until the landing where the
+flown one ran to -0.82. Fidelity is limited (log starts at arming, up to
+2.2 m and 40 deg apart), but the in-flight bias learning is the flown
+build's, not this code's. 71054882 and 2dc4a918 are in neither our refs
+nor fossuav/smallfastdrone on GitHub; SkySakuraH743 is in our tree.
