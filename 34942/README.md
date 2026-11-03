@@ -1433,4 +1433,4 @@ the topup6 promotion `f9fb97e8eb`). Port `sq/34942-1103g` `a74daa3f37`
 to refresh12's net change. Port tests: EKFResetGyroBias (400, 50), the
 three other reset/static yaw tests, StaticYawLearnsBiasAwaitingGPSYaw,
 EK3HardLandingRearm, the two flow tests, Plane.Replay; refresh12 also
-the Heli, Plane, QuadPlane and Sub SFD tests. Unflown. Not pushed.
+the Heli, Plane, QuadPlane and Sub SFD tests. Unflown. Pushed 2026-11-03 at `2804706ae0` (fast-forward of `d742c388ee`).
