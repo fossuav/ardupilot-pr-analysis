@@ -1539,3 +1539,34 @@ flown one ran to -0.82. Fidelity is limited (log starts at arming, up to
 2.2 m and 40 deg apart), but the in-flight bias learning is the flown
 build's, not this code's. 71054882 and 2dc4a918 are in neither our refs
 nor fossuav/smallfastdrone on GitHub; SkySakuraH743 is in our tree.
+
+Tester B's Claude's VALT mechanism, checked against the code (2026-11-03):
+- 57be0525's update_ground_effect_detector() re-latches takeoff_expected
+  while airborne below TKOFF_GNDEFF_ALT, on the AGL KF height when there is
+  one ("re-enable ground effect compensation when descending back below
+  threshold"); the 5 s cap clears it and the re-latch sets it in the same
+  call. Current AP_GroundEffect::update() has no re-latch: takeoff_expected
+  only while landed, cleared at 5 s or above GNDEFF_ALT after the hold;
+  touchdown_expected needs a commanded descent under -0.05 m/s. So in a
+  centre-stick low hover neither flag is set after 5 s. Confirmed.
+- VALT's 0.1 m/s correction clamp (mode_valt.cpp:59) keys off those
+  flags, so it does not engage there. Confirmed.
+- "EKF immune to the wash": overstated. With a flag set the baro variance
+  is x4 (gndEffectBaroScaler) and the innovation is floored at -0.5 m on
+  one side only (against the baro pulling the height down). A baro reading
+  high, as tester B's did (EKF 1.2-1.8 m at about 0.15 m), is still fused at
+  reduced weight; 4.7.0 damped it rather than removed it.
+- Not new: 32472/README.md records dropping the re-latch deliberately and
+  predicts this ("a low hover being pulled down at mid-stick is not
+  covered", BF_X log210 pulled onto the floor), with the follow-up
+  deferred. The reason it was dropped (log41: an SFD-only zero-velocity
+  fusion gated on takeoff_expected) no longer applies: that fusion is now
+  gated on onGroundNotMoving only (the comment still names
+  takeoff_expected).
+- Re-latching takeoff_expected also changes it for its other readers: the
+  AGL KF velD step hold (off while set), the terrain re-open on each
+  clear, hover Z-bias learning (paused while set). Alternatives: set
+  touchdown_expected rather than takeoff_expected for a low hover when an
+  AGL height exists (keeps takeoff_expected's meaning; note its 60 s cap),
+  or rangefinder height near the ground (EK3_RNG_USE_HGT 3 is 1.35 m of
+  RNGFND1_MAX 45 m; tester B's range finder drops out at the floor itself).
