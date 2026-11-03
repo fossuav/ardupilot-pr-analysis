@@ -1398,3 +1398,9 @@ SIM_GPS2_ENABLE 1 it fails on "EKF3 IMU1 yaw aligned"). Refresh12
 net change; the 12 tests pass. Pushed 2026-11-03 at `d742c388ee` (fast-forward of `713ca4946f`). The description draft also replaces the
 stale "as on master, the reference is the yaw from before the initial
 alignment" sentence (wrong since 566576e804).
+
+Description updated 2026-11-03 (after the `d742c388ee` push): the forced
+reset keeps the learned gyro biases, EKF_RESET zeroes them, the static
+yaw reference is stored within 5 s of a yaw fusion, and the stale "as on
+master, the reference is the yaw from before the initial alignment"
+sentence is replaced. 2151 words.
