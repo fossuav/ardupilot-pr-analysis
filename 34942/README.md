@@ -1342,4 +1342,4 @@ Commits: refresh12 `19e5ca3831`, `76a16f3278` on top of `dfd8194b85`,
 `80cbb8106b`; the PR gets them as two, `sq/34942-1103b` `c83b148144`
 (EKF), `713ca4946f` (test) on `d986e313d8` (supersedes `-1103a`). Both
 pass with the six neighbouring tests. Description addition drafted
-(scratch r1103/34942_desc_new.md). Unflown. Not pushed.
+(scratch r1103/34942_desc_new.md). Unflown. Pushed 2026-11-03 at `713ca4946f` (a fast-forward of `d986e313d8`); refresh12 locks it in `9ebc2d45ef`.
