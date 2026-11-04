@@ -881,3 +881,37 @@ commits between those heads; not bisected.
 Pushed 2026-10-11: `pr-ekf3-aglkf-veld` `0f6e2e789d` -> `d0c4056d36` (force), autosquashed and rebased onto master `00bf6ac82b`; the one conflict, AP_NavEKF3.h, keeps master's `AP_UInt32 _options;` and adds `AP_Float _aglKfVelMaxSpd;` after it. The whole-PR diff is unchanged but for context lines. copter and Replay build at all 7 commits; EK3_AglKfVelForVelD, EK3_AglKfVelMixedSources and EK3_AglKfVelYieldsToOtherVelD pass at the head. Mechanical gate clean. PR replies drafted, not posted.
 
 Reply to the AP-Review round posted 2026-10-11 (issue comment 6110170371), the text drafted above.
+
+## 2026-11-03: a low hover over a baro wash, tried as a test for this PR
+
+Prompted by tester B's 4-inch sinking into the floor at centre stick in VALT
+(the private analysis repo). On the SFD 4.7.2 stack
+the VALT version of the test had bit 4 holding a noisy-wash hover in 12 of
+12 runs, so it was ported to ALT_HOLD as `EK3_AglKfVelBaroWash` on this
+PR's head `d0c4056d36` (local branch `r1103/33478-wash` in
+`../../fix-33478`, not committed, not pushed; SITL `a68a40b4`). The test is
+`../32472/valt-low-hover/althold_33478_test.py`.
+
+Measured (tier 2), share of a 55 s hands-off hover at about 0.4 m on the
+floor:
+
+- With surface tracking on (SURFTRAK_MODE 1, the default with a downward
+  range finder) and fusion off: 4%. ALT_HOLD then holds the range, so the
+  baro wash hardly matters and the test exercises nothing of this PR.
+- Surface tracking off: fusion off 82% and 64%; bit 4 76% and 62%. With
+  the wash held back 5 s until the fusion was running: off 69% and 65%,
+  bit 4 60% and 22%. The estimate holds its target about 0.4 m above the
+  vehicle with XKFA.VFuse set throughout.
+- The 12 of 12 on the SFD stack was one noise sequence repeated. Seeded,
+  VALT on refresh12, six seeds: fusion off 64, 36, 47, 24, 23 and 32%; bit
+  4 7, 74, 0, 0, 2 and 0%. Vertical speed rms fell from 0.15-0.19 to
+  0.04-0.06 m/s on every seed.
+
+So the test was not attached. Bit 4 steadies the vertical channel and
+usually keeps a low hover off the floor, but a velocity observation cannot
+remove a steady baro bias in height, and the outcome depends on the bias
+taken in before the fusion holds the velocity. That is open item 8 in
+the private analysis repo (the fusion starving the baro of authority over
+position), seen from the other side. If a test for this belongs here, the
+property that held on every seed is the vertical speed under a noisy baro,
+not the floor; it would need seeded noise and a measured threshold.

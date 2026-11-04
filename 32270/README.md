@@ -664,3 +664,29 @@ carrying one SITL parameter store across the builds; the fork's REFRESH_NOTES
 "Parameter indices" table carries the pin. This led to ARCH-22 (aap, confirmed
 2026-10-31): an index a released build used is never given to another
 parameter.
+
+## 2026-11-03: skipping surface tracking costs VALT the floor
+
+VALT skips `update_surface_offset()` because surface tracking's velocity
+offset ate ~90% of stick authority (above). On tester B's 4-inch, the same skip
+leaves a low VALT hover with only the baro, and that baro reads high near
+the floor (p90 +1.8 to +2.0 m under 0.25 m), which pulls the vehicle into
+it. The field record and the SITL runs are
+the private analysis repo and
+`../32472/README.md` from "2026-11-03: the low hover pulled into the
+floor, on 4.7.2".
+
+Tier 2, on #33478's head with the same noisy baro wash and fusion off,
+share of a 55 s hands-off hover at about 0.4 m on the floor:
+
+- ALT_HOLD with SURFTRAK_MODE 1: 4% (one run).
+- ALT_HOLD with SURFTRAK_MODE 0: 82% and 64%.
+- VALT on the SFD stack: 23-65% over eight runs, 24-64% over six seeds.
+
+Tester B has SURFTRAK_MODE 1 and a downward range finder, so ALT_HOLD would hold
+height from it where VALT does not.
+
+Open, not decided: whether VALT should track the surface where the
+authority problem does not arise. That could be at centre stick only, or
+below a height where the baro cannot be trusted. Either would bring the
+range finder into the hold, the case it was skipped for.
