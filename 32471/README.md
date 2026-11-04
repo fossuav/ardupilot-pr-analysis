@@ -1624,3 +1624,293 @@ AccelBiasMovingPlatform, AccelBiasInhibitLoggedAfterLogRestart and VibrationRect
 ## 2026-11-02: pushed
 
 Pushed to `0581269c93` (refresh12 `b1093230e6` locks it). Reply posted: https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-6576455088.
+
+## 2026-11-03 (night): Q25 VALT after a relearn on 722d77b (hypothesis, waiting for logs)
+
+Tester A reflashed to the topup8 beta (`722d77b5de`) and relearned the hover
+Z-bias. VALT then climbed and descended uncommanded, and twice descended
+into a land state after a throttle change back to mid stick (boots 110 and
+111, "VALT Test 1/2"). Replay of both through `c46a09ec56`, tester A's last good
+build, matches the flown EKF exactly, so the week's EKF changes are not it.
+
+- `INS_ACC_VRFB_Z`: +0.042 (boots 59-60), +0.013 (69-70, "bad althold"),
+  -0.059 (110-111). The applied value plus the bias the EKF still learns in
+  flight is about +0.10 m/s/s on every one of them, so the vehicle did not
+  change; the saved correction did. The EKF now carries 0.155 m/s/s itself.
+- Upstream EKF3 (`1053daaf90`, 2023) zeroes all three delta-velocity bias
+  states when one axis variance reaches 5e-9. On the Q25 that fires every
+  ~27 s in flight (boots 69, 70, 110, 111; not 59, 60). Each reset throws
+  away the 0.155 the EKF had learned: boot 110 at 149.7 s, throttle centred
+  8 s either side, climbed 1.4 m (range +1.41, baro +1.09) after the reset
+  while the EKF read 0.08 m/s down.
+- The learner low-passes the EKF bias with a 2 s time constant
+  (`HOVER_BIAS_TC_S`, there since the first version) and saves at disarm, so
+  the saved value is about the last few seconds of hover, wherever that fell
+  in the reset cycle. That fits the scatter above.
+
+Not yet shown: the relearning flight itself (boots 71-109, asked for). An
+earlier guess, a relearn armed with the previous flight's bias still held,
+is less likely than the reset plus the 2 s snapshot. Advice for tester A: set
+`INS_ACC_VRFB_Z` to about 0.10 and do not relearn. Possible fixes: average
+over the whole hover, and skip samples until the EKF bias settles after a
+reset; separately, why the variance reaches the floor every 27 s here.
+
+### 2026-11-04: good flights on c46a09e, the reset cause, and a test
+
+Tester A's boots 82 and 83 (c46a09e, Loiter, "really good") had `INS_ACC_VRFB_Z`
++0.013, an EKF residual of +0.05 to +0.06 and one accel bias reset each.
+Their VALT stretches held: EKF height drift from the range finder 0.09-0.14
+m, against 0.40-0.50 m on boots 110 and 111. The current beta replays them
+exactly as flown, as c46a09e replays 110 and 111. BARO1_THST_SCALE was
+already -205.2 and flow quality was the same (median 39-46). The learning
+flights are lost.
+
+Correction: the resets are not driven by #33478's AGL KF velD fusion
+(EK3_OPTIONS bit 4). XKFA velFused is 0 throughout on the Q25 too. The Z
+accel bias variance reaches the 5e-9 floor because tester A set EK3_ABIAS_P_NSE
+to 0.005 (default 0.02): in SITL at 0.02 it settles at 7.3e-9 and never
+resets, at 0.005 it resets every 34 s or more.
+
+Test `HoverBiasLearnAcrossEKFReset` (refresh12 working tree, not
+committed; text in the session scratch): flow only, 200 Hz loop,
+EK3_ABIAS_P_NSE 0.005, SIM_ACC_VRF_Z 0.10. It hovers in Loiter, reads the
+first reset from the log, drops to SIM_SPEEDUP 1 so the next is read within
+a second, and lands 2 s after it. The learner saves 0.038 (twice, landing
+2.4 and 2.6 s after the reset) against 0.100, failing the 0.03 tolerance.
+A landing 6 s after a reset saves 0.077, and one far from any reset 0.099.
+
+### 2026-11-04: learner fix
+
+The learner now skips its samples for 10 s after the EKF's Z accel bias
+steps by more than 0.02 m/s/s between hover samples (a reset, or the
+convergence after takeoff). A variance gate was considered and not used:
+the converged variance differs with the aiding, so any threshold is a
+configuration guess, where the step at a reset is unambiguous.
+
+- refresh12: `8e2731391b` (Copter), `30bf37ca30` (test).
+- #32471: `015b674440`, `402355ec3d` on `sq/32471-1104b`; #32473 restacked
+  on it as `sq/32473-1104b` (one test-insertion conflict, both kept).
+- HoverBiasLearnAcrossEKFReset: 0.037 without the fix, 0.100 with it, on
+  both branches. VibrationRectificationBiasLearning learns 0.141 against
+  0.15 ("0.130 before" was wrong: it learns 0.141 with no fix too, see
+  below). AccelBiasMovingPlatform,
+  AccelBiasInhibitLoggedAfterLogRestart, and on #32473
+  AccelBiasLearningInhibitedInAcro and AccelBiasAcroExitVelocityError pass.
+- Not flown.
+
+### 2026-11-04: learner fix redone on the EKF's reset time
+
+A cold review of the step version found it compared each hover sample with
+the last one, and the learner only samples in a hover, so drift through a
+climb or forward flight read as a step and held it off for the first 10 s
+of every hover; and that the step was a proxy for a reset the EKF itself
+knows about. Neither step commit was pushed. The fix now has the EKF record
+when a core zeroes its accel biases (at start and at the variance floor),
+AHRS pass it on per IMU, and the learner take no samples for 10 s after it.
+
+The 10 s, measured on tester A's three Q25 logs (two 722d77b VALT, one c46a09e
+loiter), 12 resets: the EKF's Z bias 10 s after each was within 0.01 to
+0.03 m/s/s of its value before the reset, and stayed there to the next. It
+first came back within 0.02 of it 1.8 to 8.5 s after. The variance is no
+convergence signal: V15 falls thirtyfold in the first 2 s after a reset
+while the bias is still 0.08 to 0.24 out. In SITL the EKF overshoots (0.18
+at 4 s against 0.10) and is at 0.10 to 0.11 by 10 s.
+
+Master has moved EKF reset reporting to event counts (pbarker, ab1de86a1e
+and the yaw and attitude counterparts), since its consumers only detected
+events. This one needs how long ago, which a count gives only with state of
+its own in the learner, updated outside the hover; a core switch would
+also change the count with no reset. So a time on both branches.
+
+- refresh12: `46d0769aa8` (AP_NavEKF3), `4881da1067` (AP_AHRS),
+  `02fa7f689f` (Copter, replacing the step), `4fcec27a12` (test: closes
+  its log readers, late guard 2 s, checks the EKF's bias within 0.03 of
+  SIM_ACC_VRF_Z 10 s after the first reset), `7d65eccc93` (notes),
+  `850b2275fa` (test: own closed reader per poll, latest reset first).
+- #32471: `284b2dbf6e`, `4853089ae5`, `063809c7f1`, `8ccebed8cc` on
+  `sq/32471-1104e` from the pushed `479590c600`; #32473 restacked as
+  `sq/32473-1104e`, its own diff unchanged.
+- HoverBiasLearnAcrossEKFReset: refresh12 0.038 without, 0.101 with
+  (EKF 0.110 at 10 s); #32471 0.037 without, 0.0997 with (EKF 0.100);
+  #32473 0.0997. VibrationRectificationBiasLearning 0.141 with no fix, the
+  step fix and this one: that test has no reset in flight (V15 jumps only
+  at EKF start, 43 s before arming). AccelBiasMovingPlatform,
+  AccelBiasInhibitLoggedAfterLogRestart, AccelBiasLearningInhibitedInAcro
+  and AccelBiasAcroExitVelocityError pass.
+- Replay of the two 722d77b VALT logs (nine resets) through refresh12's
+  new EKF: identical to the flown cores.
+- Not flown.
+
+Quick review of the four new #32471 commits (gate, audit, one cold Codex
+read each):
+
+- Audit of the step version's five findings: four closed, the reader churn
+  partial, then fixed below.
+- EKF: the reset time is kept per core, not per IMU, so after an accel
+  switch a core reports the reset of the accel it used before. Not
+  changed: the learner then holds off for up to 10 s it did not need to,
+  after an IMU failure, and never misses a hold. A switch that loads an
+  unconverged inactive bias is a relearn the time does not report, but the
+  learner's per-IMU lookup already returns the wrong core's bias in that
+  case (inherited, a follow-up AP-Review lists).
+- Test: on master `dfreader_for_path()` keeps every reader until the test
+  ends, so a few hundred polls held a few hundred indexes of the growing
+  log. The earlier cold review said so; it was dismissed here as wrong
+  after checking refresh12's older harness, which does not keep them. That
+  dismissal was wrong for master. The test now opens its own reader and
+  closes it. It also takes the latest reset in a read as the first (a read
+  catching two would otherwise leave the landing late), and on master uses
+  `context_set_speedup(1)` so the harness scales its timeouts to match.
+  Re-run: #32471 0.0376 without the fix, 0.0997 with; refresh12 0.101.
+- The PR's AccelBiasInhibitLoggedAfterLogRestart also polls through
+  `dfreader_for_path()`, but only a fresh log after an erase, once a
+  second for up to 120 s; left as it is.
+
+### 2026-11-04: tester B's logs, and the cause is EK3_ABIAS_P_NSE
+
+Tester B's seven 4-inch logs (4.7.0 and 4.7.2; LOG_DISARMED 0, so all in
+flight) have the same floor reset every 35 to 48 s; tester B also flies
+EK3_ABIAS_P_NSE 0.005. His bias sits at -0.02 to -0.06 before each, then
+swings 0.13 to 0.79 m/s/s away within 2 to 8 s and is up to 0.12 out at
+10 s, so a 10 s hold would not cover his quad. He runs ACC_ZBIAS_LEARN 6
+(no save bit), so the learner is not his problem; the resets themselves
+are a disturbance in flight.
+
+The zero-and-restart reset is Paul's backstop from #23807 (2023,
+`1053daaf90`), which also raised the default EK3_ABIAS_P_NSE to 0.02 so
+the variance does not reach the floor; before it, the reset kept the
+biases and set the variance just above the floor, and he changed that to
+recover from a bias learnt wrong while collapsed. 0.005 puts both
+vehicles in the backstop regime. Replay through refresh12 at 0.02 against
+as flown, replayed core: resets B62 4 to 0, B63 3 to 0, tester A VALT1 5 to 0,
+VALT2 4 to 0. Tester A's vertical innovations in the 10 s after where the resets
+were: IPD 0.752 to 0.597 and 0.584 to 0.349 m, IVD 0.076 to 0.035 and 0.052
+to 0.018 m/s. B63's Z bias 2-98% range -0.10..+0.25 to -0.04..+0.13; his
+IPD stays 1.0 to 1.6 m RMS either way (no vertical velocity aiding), so the
+resets are not the whole of his height trouble.
+
+A time hold is a heuristic, and the logs show no hold length that fits
+both vehicles. Proposed instead: the EKF counts accel bias resets, and a
+flight in which the count changed is not saved, with a GCS message naming
+EK3_ABIAS_P_NSE. At the default no reset fires in flight in any of these
+replays, so ordinary flights learn as before.
+
+### 2026-11-04: does 0.02 learn bad biases where 0.005 does not?
+
+The concern: the builds run TCAL so the bias is near constant, and a low
+EK3_ABIAS_P_NSE keeps the EKF from learning a bias in sequences nothing
+validates, such as acro. The build default is 0.02 (AP_NavEKF3.cpp); tester B
+and tester A set 0.005 themselves. Replay of five flights at 0.005 (as flown)
+and 0.02, replayed core, from 10 s after arming to disarm:
+
+| log   | V15 above 2e-8, 0.005 / 0.02 | bias travel X, Y, Z m/s/s, 0.005 | 0.02 |
+|-------|-----------|------------------|------------------|
+| B62  | 41% / 9%  | 8.13, 8.56, 4.46 | 2.32, 2.49, 0.61 |
+| B63  | 46% / 10% | 8.17, 8.24, 5.19 | 2.34, 2.23, 0.90 |
+| VALT1 | 32% / 7%  | 4.69, 5.32, 2.31 | 0.50, 0.39, 0.51 |
+| VALT2 | 19% / 8%  | 4.81, 3.59, 2.22 | 0.99, 0.72, 0.66 |
+
+(travel is the sum of the bias changes; B69's source log has a bad FMT
+record and was left out.) Between resets 0.005 is the stiffer, its
+variance sitting near the 5e-9 floor against about 1e-8 at 0.02, but every
+30 to 40 s the variance collapses and the backstop restarts it at the
+startup value, and the bias then moves freely for seconds. In acro, 10 s
+after arming: B62 (no reset in the segment) travels the same at both,
+Z 0.28 against 0.26; B63 has a reset mid-acro at 0.005 and travels twice
+as far, Z 1.20 against 0.53, X 3.49 against 1.77. Tester A's acro, with
+ACC_ZBIAS_LEARN bit 3, moves the bias at most 0.01 at either value. So a
+low P_NSE does not keep acro from learning; bit 3 does. Open loop
+(Replay), two vehicles, three acro segments.
+
+### 2026-11-04: is there a value below 0.02 that is still good?
+
+Replay sweep of EK3_ABIAS_P_NSE over five flights (B62, B63, tester A VALT1,
+VALT2, loiter2), replayed core, in flight. Floor resets, and the lowest Z
+bias variance as a multiple of the 5e-9 floor:
+
+| P_NSE  | B62     | B63     | VALT1    | VALT2    | loiter2  |
+|--------|----------|----------|----------|----------|----------|
+| 0.005  | 4        | 3        | 5        | 4        | 3        |
+| 0.0075 | 3        | 3        | 4        | 4        | 3        |
+| 0.01   | 2        | 2        | 4        | 6        | 3        |
+| 0.0125 | 0, 1.05x | 0, 1.03x | 3        | 3        | 1        |
+| 0.015  | 0, 1.29x | 0, 1.31x | 0, 1.08x | 0, 1.08x | 0, 1.09x |
+| 0.0175 | 0, 1.55x | 0, 1.57x | 0, 1.27x | 0, 1.27x | 0, 1.27x |
+| 0.02   | 0, 1.82x | 0, 1.85x | 0, 1.45x | 0, 1.45x | 0, 1.46x |
+
+The margin grows about linearly with P_NSE; the Q25 crosses the floor
+near 0.014, tester B's quad near 0.0123. Without resets the bias moves 10 to
+50% less at 0.015 than at 0.02 (Z travel B62 0.43 against 0.61, VALT1
+0.27 against 0.51); once it resets it moves 3 to 9 times more. 0.015 is
+the lowest value with no reset in these flights, with 8% margin on the
+Q25; 0.0175 has 27%, 0.02 45%. The steady variance depends on the
+aiding and the flight, so the margin, not the bare absence of resets,
+is what to choose on.
+
+### 2026-11-04: 0.015 on 26 more flights
+
+Replayed at 0.015, 0.0175 and 0.02 through refresh12: tester A's five c46a09e
+Q25 flights and the seven earlier MicoAir logs of the #34942 set (all
+flown at 0.005, with 2 to 17 floor resets each), and 14 SFD-O4 flights
+(flown at 0.02, none). No floor reset at any of the three values on any
+of the 26. The lowest Z bias variance on the Q25 and Q25v1 at 0.015 is
+1.08 to 1.10x the floor on every flight of any length (1.27x at 0.0175,
+1.45x at 0.02), so it is the filter's steady value for that setup rather
+than chance: thin, but repeatable, and a change that lowers it (more
+aiding, a faster EKF step, another IMU) would cross. SFD-O4 sits at 1.12
+to 1.46x at 0.015. Against 0.02, 0.015 buys little on these flights: total
+bias travel X 7.81 against 8.71, Y 11.95 against 8.33, Z 9.57 against
+10.47 m/s/s (Z less on 16 logs, more on 7), and the baro height innovation
+RMS is the same to 0.03 m except on the q25-308a runaway (8.52 against
+8.29 m).
+
+### 2026-11-04: the time hold replaced by a no-save rule
+
+Proposed by the author: EK3_ABIAS_P_NSE 0.015 for the vehicles that ran
+0.005 (no reset in 31 replayed flights, 8% margin on the Q25; not yet
+settled), and the learner saves nothing from a flight in which the EKF
+restarted its accel bias estimate, so whatever the value, a flight with a
+reset cannot teach the learner its relearning. No time or threshold.
+
+- EKF3 counts, per accel and per core, every restart of the bias estimate
+  (zeroed at start or at the variance floor, or a switch onto or off the
+  accel), kept across a core restart; the frontend returns the sum over
+  the cores for an IMU. AHRS passes it on. Copter reads it before the bias
+  at arming and checks it after the bias at each hover sample, marking the
+  IMU if it changed; a marked IMU skips the save at disarm with
+  "Hover Z-bias not saved: EKF accel bias reset". A count, as master now
+  reports position and yaw resets.
+- #32471 on `sq/32471-1104i`: `f51a339fb7` (AP_NavEKF3), `078e0bf6b5`
+  (AP_AHRS), `6bc9422b24` (Copter), `1ff6d62b40` (autotest
+  HoverBiasNotSavedAfterEKFReset, replacing HoverBiasLearnAcrossEKFReset).
+  #32473 restacked as `sq/32473-1104i` (`30343c7ae7`), its own commits unchanged but for
+  the ACC_ZBIAS_LEARN description line, which both edit.
+- refresh12: `73f97b47ad`, `b4ae684738`, `6da53f93ee`, `3f576c7473`,
+  `b323776746`, `0674518c6e`, `7a6a4a7b6a`, `7c44030ff2`, `2192a62b39` on
+  top of the hold commits, with notes commits after them.
+- Tests: HoverBiasNotSavedAfterEKFReset keeps a saved 0.05 over a flight
+  with one reset and sends the warning; without the Copter commit the
+  flight saves 0.10 and sends nothing. VibrationRectificationBiasLearning
+  (no reset at the default) still learns 0.141 against 0.15; the bias and
+  acro tests pass. Replay of the two 722d77b VALT logs through refresh12's
+  EKF is identical to the flown cores.
+- Quick reviews (Codex cold reads, three rounds): the count was per core,
+  so an accel switch could hand an IMU another accel's count; the arming
+  read took the bias before the count, so a reset between them (arming off
+  the main thread) could hide; and a switch off an accel left that accel's
+  count unchanged while getAccelBiasForIMU() moved to another core. All
+  three fixed. Counting the switch off then failed a subtest of
+  VibrationRectificationBiasLearning: an accel brought back into use on
+  the ground after landing moved the other accel's count, and the check
+  at disarm threw away a clean hover. The count is now checked at each
+  hover sample instead, so only a restart while learning stops the save.
+  The accel switch paths in flight are not exercised by any test.
+- Not flown.
+- Pushed 2026-11-04: pr-vrf-core `479590c600` -> `1ff6d62b40` (fast
+  forward), pr-acro-bias-inhibit `ac401e0deb` -> `30343c7ae7` (forced,
+  after two GitHub internal errors during a Pull Requests incident).
+- Promoted 2026-11-04 as refresh12 topup9 (`a8487f02aa`, code at
+  `75771ce09b`), squashed from 23 commits: the full SFD set 122 of 122 and
+  Rover OSDEKFLanesDCMFallback; SmallFastDronev1 md5 `bf1f14ed`,
+  MicoAir743v2 md5 `c00ca28a`. EK3_ABIAS_P_NSE stays 0.02 by default; the
+  field plan asks tester A and tester B for 0.015. Not flown.

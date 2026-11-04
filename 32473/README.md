@@ -866,3 +866,17 @@ COMMENT at `1edfa5daf1` (round 13). Should fix: the baseline is retaken at every
 ## 2026-11-02: pushed
 
 Pushed to `863cc99654` (refresh12 `b1093230e6` locks it). Reply posted: https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-6576455500.
+
+## 2026-11-04: restacked on #32471's no-save rule and pushed
+
+#32471 gained four commits (an EKF3 count of accel bias restarts per IMU,
+the AHRS pass-through, the learner skipping the save of a flight in which
+the count changed while it was learning, and HoverBiasNotSavedAfterEKFReset;
+see `32471/README.md`). This PR's four commits restacked on them unchanged
+but for the ACC_ZBIAS_LEARN description line, which both edit: #32471 adds
+a Bit 0 sentence on the no-save rule, this PR the bit 3 text, and the
+resolution keeps both, matching refresh12. Pushed `ac401e0deb` ->
+`30343c7ae7` after two GitHub internal errors during a Pull Requests
+incident. HoverBiasNotSavedAfterEKFReset, AccelBiasLearningInhibitedInAcro,
+AccelBiasAcroExitVelocityError and VibrationRectificationBiasLearning pass
+at the head. Promoted in refresh12 topup9 (`a8487f02aa`).
