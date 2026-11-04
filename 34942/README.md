@@ -1570,3 +1570,78 @@ Tester B's Claude's VALT mechanism, checked against the code (2026-11-03):
   AGL height exists (keeps takeoff_expected's meaning; note its 60 s cap),
   or rangefinder height near the ground (EK3_RNG_USE_HGT 3 is 1.35 m of
   RNGFND1_MAX 45 m; tester B's range finder drops out at the floor itself).
+
+The low hover pull-down, reproduced in SITL and A/B'd on 4.7.0, 4.7.2 and
+both alternatives above (2026-11-03): ../32472/README.md, "the low hover
+pulled into the floor, on 4.7.2". Restoring the clamp alone or setting
+touchdown_expected in a low hover gives back 4.7.0's result, about half
+the hold on the floor with a baro reading 1.5 m high at it, and does
+worse than 4.7.2 with a noisy one. Neither is the fix.
+
+Later the same day: the 4.7.0 logs 66 and 67, flown low on the same board,
+hit the floor from near-centre stick 2.0 times a minute below 0.6 m
+against 4.7.2's 9.3. That advantage comes from the range finder switching
+4.7.0's re-latch; baro-only in SITL the builds do not differ. EK3_OPTIONS
+26 steadies the hover and usually holds it in SITL, and is not a reliable
+fix (seeded runs). It also wants EK3_AGL_ABIAS_P 0.3. ALT_HOLD with
+surface tracking holds where VALT does not. All in
+the private analysis repo and `../32472/README.md`.
+
+## 2026-11-03 (evening): the EKF's own reset zeroes X and Y, keeps Z
+
+Prompted by tester B's 4-inch log 69, which armed with a 0.38 deg/s roll gyro bias
+after the vehicle was carried powered. Since `dfd8194b85` the EKF's own
+forced reset keeps all three gyro biases, so biases learned while the
+vehicle is carried survive it. Change (refresh12 `f297033f6e`, not yet on
+this PR's branch): `InitialiseFilterBootstrap()` keeps Z, which with no yaw
+reference is learned only at rest, and starts X and Y from zero, which are
+learned again from gravity within a second at rest. The inactive IMUs'
+biases are treated the same way. A commanded reset still zeroes all three
+(`zeroGyroBiases()`).
+
+Replay of the Q25's 11 replayable 4.7.2 logs, base refresh12 `f085ae566f`
+against base plus this change alone:
+
+- Boots 36, 43, 45, 49, 59, 60, 69, 70: no attitude gap over 1 deg.
+- Boot 52, the replayed reset at 29.7 s: X/Y -0.53/-1.93 deg/s are zeroed
+  where base keeps them. Both relearn to about +0.1/-0.6 within 3 s.
+  Afterwards they differ by 1-2 deg for 11 s of flight, neither better.
+- Boot 55: 0.7 s on the ground and 5 s of flight differ, base slightly
+  closer to DCM.
+- Boot 165: the replayed EKF reset at 31.0 s while the vehicle was held at
+  30-60 deg of tilt. The change started X/Y from zero, and after the vehicle
+  was set down at 44 s it sat within 1 deg of DCM. Base drifted 3-6 deg and
+  to VE -37 m/s disarmed, and needed a second forced reset. Over 47 s
+  disarmed the mean error was 5.7 deg on base and 1.1 deg with the change;
+  over 26 s on the ground, 1.1 and 0.7. The flown EKF (0e2c977) was 11-14
+  deg off at the same time, with -0.75/-1.34 deg/s X/Y biases.
+
+The kept Z can be wrong too: boot 52's -2.3 deg/s Z was learned during a
+divergence before arming. Z is kept by the user's choice (2026-11-03),
+since dropping it gives back the yaw drift `dfd8194b85` fixed.
+
+Test (`fb0e459bba`, then `902d52b738` after a cold review): EKFResetGyroBias
+also simulates 0.6 deg/s X and Y gyro biases. At 400 and 50 Hz the EKF's
+own reset drops X and Y from 0.65 to 0.00, they are back at 0.65 within 2
+s (checked 1.5 s after), and Z stays at 0.64-0.65. EKF_RESET zeroes all
+three. Without `f297033f6e` it fails: X kept at 0.64. EKFBootstrapReset,
+EKFBootstrapResetStaticYaw, StaticYawKeepsCompassYaw,
+StaticYawLearnsBiasAwaitingGPSYaw and EK3HardLandingRearm pass. On the PR
+branch: `4ac4f4b1f8` and `3879fc6a6e`, pushed 2026-11-03. Then rebased onto
+master `802db19de1` (the bot's should-fix): master's `7de72dbde0` moved the
+body odometry members into `bodyOdm`, renamed in the two commits that use
+them, and a comment conflict on `yawAngDataStatic` was taken onto master's
+struct layout. PR head `94f24cdd9c`, mergeable; the PR's six EKF reset and
+re-arm tests pass on it. The pre-rebase branch is kept as `sq/34942-1103j`.
+Promoted to the beta as refresh12 topup8 (`722d77b5de`), the full SFD set
+121 of 121.
+
+The PR branch's own Replay (master-based) cannot replay these 4.7.2 logs:
+its output carries only the flown XKF1 records, so the A/B above stands on
+refresh12's Replay.
+
+Open from the cold review: keeping body Z assumes a vehicle at rest near
+level. On a tailsitter resting on its tail body X is vertical, so the
+reset would drop the bias learned about the vertical and keep one gravity
+relearns anyway (as master drops all three). Keeping the component along
+the vertical from the bootstrap's accelerometer tilt would cover it.
