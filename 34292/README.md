@@ -2538,3 +2538,96 @@ Pushed `3917ef38f2` -> `3dcdfb487b` (force, 27 commits to 25, same tree; backup 
 ## 2026-11-02: AP-Review at the squashed head
 
 ACCEPT at `3dcdfb487b` (2026-10-31 22:05), no changes asked.
+
+## 2026-11-03: the focus floor passed on the floor (tester B's 4-inch log 69)
+
+Tester B flew a 4.7.2 build in ACRO (the private analysis repo).
+The EKF's horizon ran 6.5-7 deg off DCM in flight and 20 deg on the
+ground after landing. In Replay a fresh EKF learned a -1.84 deg/s pitch
+gyro bias in the 3 s the vehicle sat on the floor at hover throttle before
+liftoff, fusing flow there. The range finder (RNGFND1_MIN 0.08, GNDCLR
+0.02) read out of range low, with one Good reading of 0.13 m at 56.99 s.
+That is just above this PR's floor of MAX(minHeight, rngOnGnd + 0.05) =
+0.10 m, so the floor test passed, and the carried height then stayed at
+0.13 m while the vehicle sat still.
+
+Replay (tier 1b), refresh12 `f085ae566f`, scratch patches only:
+
+- Floor minHeight raised from the logged 0 to 0.1 m: identical.
+- Flow withheld when no range has been fused and the sensor reads out of
+  range low: identical.
+- Flow withheld whenever the sensor read out of range low in the last
+  0.5 s: the pitch bias spike is gone (GY within +-0.36 deg/s) and pitch
+  against DCM falls from 5-12 to 0-4 deg. About 4-5 deg of roll error
+  remains.
+
+Open: a sensor reporting below its minimum is the clearest sign of the
+floor, and the floor test does not use it once a single reading above the
+floor has been taken. Not yet a change on this PR; a fix needs its own
+evidence and must not hold flow off for a range finder stuck low in
+flight, which the carried-height test exists for.
+
+### Superseded 2026-11-03 (later): the floor held, and its zero did the harm
+
+The account above is wrong. The 0.13 m reading never became a fused range:
+the EKF fuses the median of three fresh samples, and ignores
+out-of-range-low readings once the vehicle has moved. A Replay printing the
+floor decision on every flow sample shows the check holding the whole time
+on the floor. It fused zero flow while "resting" (out of range low), and
+discarded flow otherwise. No measured flow got through.
+
+Replay results against the -1.99 deg/s pitch bias jump at 57.0-57.3 s:
+
+- The fix proposed above (start the hold on an out-of-range-low report):
+  identical to the baseline.
+- Zero flow only below 0.1 rad/s of body rate: the jump remains.
+- Zero flow scored at a 0.5 m height: the jump remains.
+- No flow at all while the sensor reads out of range low: the jump is gone.
+
+So the harm is this PR's resting branch fusing zero flow while the
+vehicle, at hover throttle on the floor with the stick moving, slides and
+rocks. Out of range low says the vehicle is at the floor, not that it is
+still, and armed there is no stillness test in the EKF. Withholding the
+zero conflicts with the landing leg of OpticalFlowFocusHeight, which
+requires zero flow after an ALT_HOLD landing so aiding does not time out
+before disarm. Open: how to tell a vehicle resting after a landing from
+one spooled up and sliding before liftoff, without a vehicle-class or
+throttle test in the EKF (ARCH-17, ARCH-3).
+
+### Superseded again 2026-11-03 (evening): no harm in flight; a stillness gate tried and dropped
+
+The -1.99 deg/s jump exists only in Replay. Log 69 starts at arming
+(LOG_DISARMED 0), so the replayed EKF initialised armed on the floor, about
+3 s before the episode, with its bias variances still wide. The flown EKF's
+biases held at GX +0.39, GY +0.11, GZ +0.14 deg/s through 54-60 s, and its
+5 deg roll error against DCM was there at arming. The log does not show
+the resting zero doing harm in flight.
+
+A gate was tried (refresh12 working tree, not committed): fuse the resting
+zero only while the IMU reads still, running the onGroundNotMoving test
+while armed too. It removed the jump in log 69's Replay and cut the scratch
+SITL rocking leg from 71 zero fusions to 7 (hover tilt p90 0.83 to 0.08
+deg). OpticalFlowFocusHeight's landing leg still passed.
+
+Replay of the Q25's 11 replayable 4.7.2 logs (5b70a271 boot 36, 308a7e73
+boots 43/45, 0cb49e7 boots 49/52/55, c46a09e boots 59/60/69/70, 0e2c977
+boot 165), base refresh12 `f085ae566f` against the gate:
+
+- The four c46a09e logs: unchanged (no attitude gap over 0.5 deg).
+- The Q25 does not read still on spool-up, and `movedSinceArming` sets
+  within a second of it, so the gate stops the resting zero there.
+- Boot 45: the flown EKF matches the base Replay at spool-up. It armed
+  5 deg off in pitch and 1.4 m/s off in velocity from handling. The first
+  two zero fusions overshot into a +2.3 deg/s pitch bias, and the next took
+  it back within 0.5 s. With the gate it fused two, stopped, and lifted off
+  with the 2.3 deg/s bias and 4-6 deg of pitch error.
+- Boot 36: same pattern from a 0.8 deg/s handling bias; 2 deg nose-up
+  against DCM for 15 s of flight, where base is within 0.5 deg.
+- Boots 49 and 55: worse in flight by about 1 deg for long stretches;
+  43 and 52 mixed.
+- Aiding after landings is not lost by either build.
+
+So on the floor before liftoff the resting zero corrected a flown EKF, and
+harmed only a replayed one. The gate is dropped (Andy, 2026-11-03), and
+a vehicle moving on the floor stays the stated limit. Scripts in the session scratch
+(`td/cmp_td.py`, `segcmp.py`, `detail.py`).
