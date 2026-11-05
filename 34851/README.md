@@ -210,3 +210,17 @@ git checkout HEAD -- libraries/AP_NavEKF3/
 The Replay needs log54 resolved through `find_log.py` (see
 `../REPLAY_LOGS.md`) and the beta at `0e2c97724d` with the change ported;
 `build/sitl/tool/Replay <log>` from an empty directory.
+
+## 2026-11-05: AP-Review at `52c23e263f`
+
+AP-Review, COMMENT
+(https://github.com/ArduPilot/ardupilot/pull/34851#issuecomment-6618204126),
+after a rebase with no code change: the one should-fix still open,
+terrainState not carried across a height reset (OptFlowFusion.cpp:46),
+"add terrainState += posResetD in ResetPositionD(), or land #33585
+first". #35014 (split out of #33585 on 2026-11-04) now carries it; a
+reply pointing there, or a restack on #35014, would answer it.
+
+Reply posted 2026-11-05:
+https://github.com/ArduPilot/ardupilot/pull/34851#issuecomment-6655654927
+(the carry is #35014's, including on leaving range finder height).

@@ -2156,3 +2156,56 @@ and the description edits (first-flight paragraph, opening "With bit 2
 clear" because bit 2 still saves every flight; the parts-that-look-wrong
 bullet; both tests; the quick re-arm bullet replaced by the 10 s and
 deadband notes).
+
+## 2026-11-05: AP-Review at `255d534264`, a first flight opened by an accel switch
+
+AP-Review, COMMENT
+(https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-6654427064),
+one should-fix, new. Verified from the source, not reproduced here: the
+learner opens a first flight on any change of the per-IMU reset count
+while disarmed (Attitude.cpp:244-248), and the count also moves on an
+accel switch (Measurements.cpp:432-435), which loads inactiveBias, still
+the hover bias after a landing, without zeroing anything; with several
+cores on one accel a secondary core's reset moves the summed count
+(AP_NavEKF3.cpp:1363) while the reported core keeps its bias. The bot's
+SITL: INS_USE toggled at rest, armed 15 s later, saved 0.015 against a
+correct 0.084, with no message. Its suggested fix: open a first flight
+only when the core getAccelBiasForIMU() reports zeroed its own bias
+(bootstrap or variance-floor reset), keep the summed count for the
+in-flight check, and test a disarmed switch. Open; not on the beta.
+
+Fixed locally the same day, `r1105/32471-zero-time2` on `255d534264`
+(fast-forward), not pushed:
+
+- `423bf26a83` AP_NavEKF3: find the core using an IMU's accel in one
+  place (coreUsingAccel(), no behaviour change).
+- `9e697d4fe9` AP_NavEKF3: each core records per accel when it last
+  zeroed the bias (bootstrap, all accels; variance floor reset, the
+  active one); getAccelBiasZeroTimeForIMU() returns it from the core
+  getAccelBiasForIMU() reads. A switch takes the time of the estimate it
+  takes.
+- `3a73a249b4` AP_AHRS: get_accel_bias_zero_time_ms_for_imu().
+- `7bba551163` Copter: a first flight is one whose bias at arming was
+  zeroed after the last flight ended, rest counted from the zeroing or
+  from a disarm after an arm without a flight; no disarmed poll
+  (update_hover_bias_rest() becomes update_hover_bias_flew()); the summed
+  count still marks a restart in flight. Ages, not times, so it holds
+  across the millis() wrap (Codex cold read of the first build,
+  `90a2d83f63`, found `<=`/MAX on raw times).
+- `3e76fb4246` autotest: INS_USE toggled at rest after a flight, armed
+  15 s later, must keep the value with "not first flight".
+
+SITL (tier 2): HoverBiasSavedFirstFlightAfterRest fails on the old
+learner at the new subtest (saved again, no message) and passes with
+the fix, every other subtest unchanged (first flight 0.0849, bit 2
+0.286); HoverBiasNotSavedAfterEKFReset, VibrationRectificationBiasLearning,
+AccelBiasMovingPlatform, AccelBiasInhibitLoggedAfterLogRestart and Replay
+pass. Copter and plane build, each commit builds, gate clean. A secondary
+core's restart at rest is covered by the design, not by a test. Reply and
+description edit drafted, not posted. #32473 restacked as
+`r1105/32473-zero-time2` (four commits identical, acro tests pass).
+Pushed 2026-11-05: `255d534264..3e76fb4246` on `pr-vrf-core`
+(fast-forward). Reply posted
+(https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-6656287588);
+description updated (the parts-that-look-wrong bullet now describes the
+zero time, and the tests sentence names the accel switch at rest).

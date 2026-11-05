@@ -1,6 +1,45 @@
 # PR #33507 - estimate the accel-Z bias inside the AGL KF (EKF3)
 
 
+## 2026-11-05: restacked onto #34457's fused floor (pushed as `f11d194786`)
+
+#34457 now fuses the floor below the AGL height as a measurement between range
+samples instead of clearing the velocity on it (`1f0abd73bf`), through a
+`FuseAglKfHeight()` helper (`88a32cdb07`), and names its limits (`1535dabf58`,
+`5e4346a261`). Restacked onto `5e4346a261` on branch `r1105/33507-restack`
+(worktree `r1105-33507`): `8745c38de2` (AP_NavEKF3), `f11d194786` (autotest).
+
+- The conflict was the range update, which #34457 moved into the helper. The
+  helper is now the 3-state Joseph update with a `learnBias` flag: the range
+  path passes `!onFloor`, as the old inline `Kb = onFloor ? 0 : ...` did, and
+  the fused floor passes false, since it is the same on-ground reading and
+  carries nothing about the bias. With Kb 0 the update leaves the bias and
+  `P[2][2]` alone and moves `P[0][2]`, `P[1][2]` by `(1-Kh)*Phb` and
+  `-Kv*Phb`, the same as the prototype the SFD beta's Replay sweeps for
+  #34457 ran, so #34457's Replay figures are this combination. The post-update `MAX(hgt, rngOnGnd)` goes, as on
+  #34457; readers clamp.
+- The bias test's comment no longer says the height is clamped on the ground.
+- Commit messages: the bias commit says the fused floor takes no bias gain
+  either; the test commit's floor velocity figures are replaced.
+
+SITL at `f11d194786` (one lane, the worktree's own autotest.py): all five of
+#34457's AGL KF tests, OpticalFlowAGLKalmanFilter, OpticalFlow and Replay
+pass. OpticalFlowAGLKfFloorVelocity with the bias state and the fused floor:
+-0.038, -0.006, -0.038 m/s over three runs (bound -0.1; -0.0001 on #34457
+alone, -1.29 to -1.41 with no floor handling). Touchdown 0.10-0.16 m (bound
+0.5), no coast below the minimum 0.003 m, after touchdown 0.31 m, hover hold
+9.81 m; bias test: floor std 1.0003, with offset 1.0006, excursion
+deviation 0.07 m, injected bias 0.000 -> 0.342. Copter builds with
+`EK3_FEATURE_OPTFLOW_AGL_KF` 0; copter, plane and Replay build. Mechanical
+gate and branch conventions clean; flake8 clean.
+
+Evidence status: the bias state has flown on the beta on #34457's earlier
+floor handling (clear at the floor); the fused floor with no bias gain has
+SITL and Replay evidence only. The beta itself does not yet carry the fused
+floor.
+
+PR description updated 2026-11-05 for the restack: stack sentence (twelve commits ending at 5e4346a261; 8745c38de2 and f11d194786 this PR), flown-evidence line (bias state flown on the old floor handling; fused floor with no bias gain SITL and Replay only; floor velocity -0.006 to -0.038 m/s), injected bias 0.342, and the fused floor taking no bias gain.
+
 ## 2026-10-07: approved, rebased onto master and squashed (heads `ac92f50e6d`, on #34457 `c3204a1836`)
 
 rishabsingh3003 APPROVED on 2026-10-07 and asked for the merge conflict

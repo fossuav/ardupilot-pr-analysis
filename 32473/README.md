@@ -888,3 +888,12 @@ at the head. Promoted in refresh12 topup9 (`a8487f02aa`).
 Pushed 2026-11-05 (force, `30343c7ae7...a9e4e964fd` on
 `pr-acro-bias-inhibit`). Restack note posted
 (https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-6653781446).
+
+## 2026-11-05: restacked on #32471's zero-time fix (local, not pushed)
+
+`r1105/32473-zero-time2` on `3e76fb4246`: `989d26aa04`, `0ecb55f77f`,
+`43280386ca`, `4e08cbda64`, all identical to the pushed four in the
+range-diff. AccelBiasLearningInhibitedInAcro and
+AccelBiasAcroExitVelocityError pass. Pushed 2026-11-05 (force,
+`a9e4e964fd...4e08cbda64` on `pr-acro-bias-inhibit`). Restack note posted:
+https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-6656288703
