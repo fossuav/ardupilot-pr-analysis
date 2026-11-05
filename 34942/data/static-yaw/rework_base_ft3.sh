@@ -3,11 +3,12 @@
 # stages-v2.py 1 2 3 4 5 G 6 and instrument-v2.diff), replay Flight test 3
 # without and with the static yaw fix, in scratch worktree tfix-ab-34942v,
 # and score both with the rework's arm_table.py.
+# SCRATCH: the scratch directory; WT: the worktree; REFRESH12: the refresh12 checkout
 set -e
-S=/tmp/claude-1000/-home-andy-github-smallfastdrone-beta/c72a7562-fe47-4333-b873-673b10019194/scratchpad/r1030/34942
-D=/home/andy/github/ardupilot-pr-analysis/34942/data/replay
-WT=/home/andy/github/tfix-ab-34942v
-[ -d "$WT" ] || git -C /home/andy/github/sfd-refresh12 worktree add --detach "$WT" 2e2936166d > /dev/null 2>&1
+S=${SCRATCH:?set SCRATCH to the scratch directory}/r1030/34942
+D="$(cd "$(dirname "$0")/../replay" && pwd)"
+WT=${WT:-$HOME/github/tfix-ab-34942v}
+[ -d "$WT" ] || git -C "${REFRESH12:-$HOME/github/sfd-refresh12}" worktree add --detach "$WT" 2e2936166d > /dev/null 2>&1
 cd "$WT"
 [ "$(pwd -P)" = "$WT" ] || exit 2
 if ! grep -q ABTEST libraries/AP_NavEKF3/AP_NavEKF3_Logging.cpp; then

@@ -21,13 +21,15 @@ Usage:
 spends more effort on one row over one range - per-field alignment, a
 restricted alphabet, and a per-column vote - and is what to use on a message.
 """
+import os
 import sys
 from collections import Counter
 import numpy as np
 import cv2
 from scipy.ndimage import gaussian_filter
 
-FONT = '/home/andy/github/ardupilot-rpi/libraries/AP_OSD/fonts/font0.bin'
+# OSD_FONT: the OSD font the firmware under test was built with
+FONT = os.path.expanduser(os.environ.get('OSD_FONT', '~/github/ardupilot/libraries/AP_OSD/fonts/font0.bin'))
 XP, YP, ROWS, COLS, CW, CH = 21.70, 36.0, 13, 30, 12, 18
 BLACK, WHITE, TRANS = 0, 1, 2
 ALPHA = set(' ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789=:.%/-+')

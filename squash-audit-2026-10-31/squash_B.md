@@ -1,6 +1,6 @@
 # Squash B, 2026-10-31: #34543, #34630, #34292
 
-Built in the scratch worktree /home/andy/github/sq-b on new branches
+Built in the scratch worktree sq-b on new branches
 (sq/34543, sq/34630 and sq/34292 already exist from 10-05/10-08 and were
 left alone). Nothing pushed. Push plan: push_B.tsv, remote andyp1per, each
 row leased on the PR's current head.

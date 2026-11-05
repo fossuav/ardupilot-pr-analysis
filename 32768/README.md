@@ -1312,3 +1312,7 @@ untouched meanwhile.
 (3408138/639) -2.88 m (`XKF1.PD` 0.01 -> 2.89, armed 113 s after the origin
 was set); log62 (3408138/641) +0.57 m; log63 (3408138/643) flight 1
 -0.15 m. Recorded, not acted on.
+
+## 2026-11-04 (night): with a recorded origin and no GPS the arm reset keeps a ground height error (Q25 log 08)
+
+Tester A's "08 VALT after EK3 OPTIONS 92" (boot 142, a8487f0): the arm at 115.49 s ran the reset (EV 60, VD zeroed exactly at 115.485) after the land detector had cleared disarmed_in_air (the aux-switch disarm at 113.086 came before LAND_COMPLETE, so the latch was set), but XKF1.PD went only 1.59 -> 1.54 m. As designed here and on master, resetHeightDatum() with validOrigin and no 3D fix carries the old height into ekfGpsRefHgt, so getPosD() - which XKF1 logs and AC_PosControl flies on - is unchanged ("the reported AMSL must not move", BaroDriftClearedAtArm subtest 3). On a GPS-less vehicle with a recorded origin the arm reset therefore clears nothing the controller sees, and a 1.55 m error the touchdown put into the height on the ground (../34942/README.md, same date) flew into flights 3 and 4. Not a regression of this PR; a limit of the no-GPS carry, which only the on-ground check and forced reset can catch.

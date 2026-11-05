@@ -10,7 +10,7 @@ The bot (review 4) still requested changes: the DroneCAN bit can leave a
 DroneCAN baro or airspeed without a backend for the whole boot, the ESC
 bit latches a pending ESC_CALIBRATION, FAST_BOOT lacks @RebootRequired,
 and _fast_boot is signed. All four were checked against the code and
-hold. Work is on r1030/32238 in /home/andy/github/r1030-32238, on top of
+hold. Work is on r1030/32238 in the r1030-32238 worktree, on top of
 the PR head; nothing pushed.
 
 ESC latch: confirmed in SITL. ESC_CALIBRATION=1 with BRD_FAST_BOOT=4

@@ -915,3 +915,94 @@ the private analysis repo (the fusion starving the baro of authority over
 position), seen from the other side. If a test for this belongs here, the
 property that held on every seed is the vertical speed under a noisy baro,
 not the floor; it would need seeded noise and a measured threshold.
+
+## 2026-11-04 (night): does velD fusion make the EKF lag on the Q25? Replay says no
+
+Tester A's Q25, boot 135 ("VALT hunts", a8487f0, EK3_OPTIONS 92, BARO1_THST_SCALE
+-205.2), reported as hunting for altitude at mid stick; and boot 83 ("Loiter
+good", c46a09e) as the control. Hypothesis (not ours to keep): the AGL KF
+velocity, lagging the range finder, is fused as velD with R as small as
+0.05^2 and pins the EKF's VD late. Replay (tier 1b) through the beta Replay
+at a8487f02aa, re-run core C>=100, as flown (92), 76 (bit 4 off) and 68
+(bits 3 and 4 off). References: tilt-corrected range rate (0.2 s centred
+difference) and the IMU vertical acceleration (ATT roll/pitch, IMU0)
+integrated over the window; lag and gain by cross-correlation
+(scratchpad scripts lag_analysis.py, event_table.py, centred.py).
+
+- The event that read as a lag (32.0-32.5 s: RFND 1.41 -> 1.71 m, AccZ
+  -9.7 -> -11.96, EKF height unmoved) was a 34 deg nose-down pitch: the
+  pitch stick swept full range through 31-41 s with the throttle stick
+  fixed at 1525. Tilt-corrected height 1.36 -> 1.43 m; AccZ is body frame.
+  The EKF's velocity change matched the IMU-integrated one in all three
+  variants.
+- No lag in XKF1 velocity: -0.12 to +0.04 s on the three takeoffs, where
+  the two references agree (corr 0.96-0.98). Unchanged by clearing bit 4.
+- Gain with velD on, against off (range rate reference): takeoff 1 0.68
+  against 1.07-1.11; takeoff 2 1.10 against 1.03; takeoff 3 1.04 against
+  1.20-1.22. Velocity rms error lower with velD on every takeoff (0.130,
+  0.066, 0.070 against 0.182-0.186, 0.095-0.101, 0.102-0.103 m/s). Mixed,
+  not a consistent attenuation; takeoff 1 is the first of the boot.
+- AGL KF: HAgl trails the range finder by +0.04 to +0.18 s at takeoffs,
+  which the delayed fusion horizon covers (XKFA is logged at it); VAgl
+  -0.08 to +0.12 s. In hover the references disagree (corr 0.21-0.66), so
+  no lag is measurable there.
+- Centred sticks (>= 4 s): boot 135 detrended height std 0.011-0.069 m,
+  spectral peak 0.08-0.45 Hz, ThO std 0.001-0.011; boot 83 0.026-0.105 m.
+  Slow 0.3-0.5 m drifts over 4-11 s on both. No ~1 Hz hunting found.
+
+Replay shows the estimate VALT would have flown on, not what VALT would
+have done with it (closed loop).
+
+## 2026-11-04 (night): Q25 VALT with bit 4 cleared, a real-flight A/B by accident
+
+Tester A's "07 VALT after althold zbias learn" (boot 140, a8487f0) was flown with EK3_OPTIONS 76, bit 4 cleared, following a field check suggested in-session that evening and withdrawn within the hour once Replay showed velD lowering the vertical velocity error; the withdrawal did not reach tester A first. Everything else as boots 135 and 137 (BARO1_THST_SCALE -205.2, P_NSE 0.015, VRFB 0.0565 applied). XKFA.VFuse 0 throughout, AGL KF valid 94%. Tier 1, one flight each side, not replayed.
+
+- With velD (boots 135, 137): EKF height minus tilt-free range finder -0.5 to +0.3 m per flight, std 0.07-0.36 m.
+- Without (boot 140): the EKF followed a baro that drifted against the range finder after each hard throttle move, 0.4 m low in steady hover, 1.5 m low at 56 s and 2.2 m low at 62 s (log time); EKF minus range +0.6 m at takeoff, -0.8 m by 31 s, -3.1 m at 57.5 s. In the roll and pitch tests (39-48 s) the range finder fell 1.4 to 0.26 m while the EKF held 0.4-0.7 m against a 0.47 m target; at the end VALT descended into the floor with the EKF 2 m below its start, and the vehicle tumbled. Clipping (IMU0 0 -> 57) began at the tumble, not before.
+
+The pilot's "worst performing VALT" is the baro without velD, not the bias value or the loose flight controller mount (VibeZ mean 15.9 against 14.5-15.0 on the good logs).
+
+## 2026-11-04 (night): velD without a horizontal velocity estimate - the gate does not bite on a copter
+
+Asked: should bit 4 fuse without a horizontal velocity estimate (ALT_HOLD with
+no flow or GPS, a takeoff before flow aiding)? Prototype on the beta
+(`r1104/veld-aid-none`, worktree r1104-veld-noaid, uncommitted): without
+`filterStatus.flags.horiz_vel` on a non-fly-forward vehicle, skip the speed
+gate and take the slope term at zero speed. Result: it changes nothing that
+was measured, because on a copter `horiz_vel` is already true in AID_NONE.
+`someHorizRefData` stays true while the synthetic position fusion keeps
+`posTimeout` clear, so the existing gate passes and the speed test sees the
+near-zero horizontal velocity that fusion holds (derived from the source,
+consistent with every run below).
+
+- SITL ALT_HOLD, no GPS, no flow, baro, range finder, bit 4, P_NSE 0.015,
+  SIM_ACC1_BIAS_Z 0.2 + SIM_ACC_VRF_Z 0.1, flat (VelDNoHorizVelProbe, not
+  committed; tier 2): beta a8487f02aa and the prototype alike fuse velD on
+  100% of AID_NONE records, velD error 0.007 m/s rms in a 60 s hover and
+  0.042-0.047 through throttle steps, Z bias 0.28 against 0.30 injected,
+  height drift 0.55 m over the hover. Two runs each, identical to 0.005.
+  Flow control (AID_RELATIVE) identical too.
+- Cost over sloping ground, pre-existing on the beta: forward flight in
+  ALT_HOLD with the range offset ramped at gradient x true ground speed.
+  The velD innovation gate rejects most samples during the ramp (fused 8%
+  at 0.3, 11% at 0.1, against 61% at 0), but the hover after it carries
+  1.02 m of height error at 0.3, 0.49 m at 0.1, 0.27 m at 0 (0.2 s and
+  0.05 s offset steps agree). The speed gate never closes in AID_NONE and
+  the slope term is zero there, on the beta as on the prototype.
+- Replay (tier 1b) of tester A's 02 VALT Test and 03 ZBias Learn Second Attempt
+  through the prototype: no EKF record differs from the beta's Replay.
+- What held velD off at tester A's first takeoff (02, 11-23 s) was the AGL KF
+  velocity settling gate, not `horiz_vel`: XKFA.VAglStd 0.36-0.38 m/s from
+  13 to 20 s against the 0.2 limit while the vehicle sat on the ground at
+  0.03 m of range (RNGFND1_MIN 0.02); it fell below 0.2 at about 22 s and
+  velD fused from 23 s. Why the AGL KF velocity does not settle at rest on
+  the ground is not examined; it is the lead for that takeoff.
+- `EK3_AglKfVelForVelDNoHorizVel` (written, not committed) passes on the
+  beta as well (max velD error 1.02 against 1.01 m/s), so it pins existing
+  behaviour rather than the prototype.
+
+Recommendation: do not carry the prototype (nothing fails without it,
+ARCH-14). The bit 4 text "Only used in flight with a horizontal velocity
+estimate" reads as needing GPS or flow; on a copter it does not. The open
+questions are the slope exposure in AID_NONE and the AGL KF not settling on
+the ground.

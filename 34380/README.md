@@ -566,3 +566,92 @@ until one answers, and nothing new is asked. The test failing on a host
 with 40 CPU burners (6 of 10) is in lines shared with #33585 and stays with
 its follow-up. Its description complaints were written before the
 2026-10-13 description update.
+
+## 2026-11-04: restacked locally on #33585's split and restructure
+
+#33585's datum carry was split onto its own branch and its anchored flow
+height moved into FuseOptFlow() after rmackay9's dev call review (see
+`../33585/README.md`, 2026-11-04). This PR's five commits cherry-picked
+clean onto `r1104/33585-restructure` as `r1104/34380`
+(`1812f5690f`..`12b1f83aee`); their own +/- lines are identical to
+`6dcb4f2b2d..9bb072fa82`, two context lines differ. Its added code reads
+no terrainState. FlowCeilingBacksDownIntoRange, FlowCeilingShortRangeFinder,
+EK3_OptflowAboveRangefinder, EK3_OptflowAnchoredTerrain, OpticalFlowLimits,
+MaxAltFenceAvoid and MinAltFenceAvoid pass on it and on `9bb072fa82`'s
+EKF. Local only; /pr-review owed before a push.
+
+## 2026-11-04 (later): the brief-return timing fix moved to #33585
+
+By Andy's decision after the /pr-review of #33585's restructure, this
+PR's `1f4a368d3a` "time a flat-ground return on fused range readings" and
+its test `9ca2cb6cc5` "cover range readings the terrain gate rejects" move
+down to #33585, whose brief-return restore rmackay9 is reviewing (now
+`f29e662721` and `0e864d3a57` on `r1104/33585-fix`). This PR keeps three
+commits, restacked as `r1104/34380-3` on `r1104/33585-fix`: `28f1aff009`,
+`7692f3b5eb`, `017069f29f`. `git range-diff` against `r1104/34380-2`
+shows all three `=`. The 2026-10-12 record above stays where it is; the
+fix it describes now ships with #33585.
+
+Pass on `r1104/34380-3` (tier 2): FlowCeilingBacksDownIntoRange,
+FlowCeilingShortRangeFinder, OpticalFlowLimits, MaxAltFenceAvoid,
+MinAltFenceAvoid, EK3_OptflowAnchoredTerrain (hand-over leg 1.5 m),
+EK3_OptflowAboveRangefinder. Mechanical gate clean against
+`r1104/33585-fix`; check_branch_conventions.py passes. Local only.
+
+2026-11-04 (late): restacked on #33585's folded branch as
+`r1104/34380-final` (worktree `r1104-34380-final`): `45c85a8e58`,
+`35ef362d6b`, `bf287bd7bd` on `r1104/33585-final` `94f37c4e0f`. `git
+range-diff` against `r1104/34380-3` shows all three `=`. Copter builds;
+FlowCeilingBacksDownIntoRange, FlowCeilingShortRangeFinder,
+OpticalFlowLimits, MaxAltFenceAvoid, MinAltFenceAvoid,
+EK3_OptflowAnchoredTerrain and EK3_OptflowAboveRangefinder pass once
+(tier 2). Gate clean against `r1104/33585-final`;
+check_branch_conventions.py passes. Not pushed.
+
+## 2026-11-04: pushed on the reworked #33585
+
+Force-pushed `9bb072fa82` -> `8ccc90891e`: three commits, unchanged in the range-diff, on #33585's `79800dbe59`. The brief-return timing fix and its test moved down to #33585. Description edits drafted, not yet posted.
+
+Description edited 2026-11-04: the obstacle paragraph, test sentence and return-timing paragraph removed (now #33585's), the stack line says three commits on #33585, which stacks on #35014.
+
+## 2026-11-04 (night): AP-Review at `8ccc90891e`; the should-fix fixed in #33585
+
+AP-Review, REQUEST CHANGES
+(https://github.com/ArduPilot/ardupilot/pull/34380#issuecomment-6635359077).
+The blocking item is the short-reach band, still open and waiting on a
+maintainer; unchanged. The should-fix (ending the anchor on a switch to
+range finder height wrote the anchored ground in after the height reset
+had used the old one) and the minor on EK3_OptflowAboveRangefinder's band
+checks are both #33585's, and are fixed there (`../33585/README.md`, the
+night of 2026-11-04): `131e45c62b` with EK3_OptflowAnchorToRangeHeight
+(-8.8 m to -0.3 m), and the retries in `f28d923b5a`.
+
+Restacked on `r1104/33585-r4` (`af48119e41`) as `r1104/34380-r4`, not
+pushed: `17e88e01c2`, `a166a0e156`, `8d2f99b69e`. Range-diff against
+`8ccc90891e`: the last two `=`; `17e88e01c2` has the same +/- lines and
+differs only in context, where #35014's fix makes the tail of
+getHeightControlLimit() subtract `flowTerrainState()` for every height
+source. r4 replaces `r1104/34380-r3` (`c6d43b6f50`, the same tree), which
+was rebuilt only because the base commits below it were reworded.
+
+Tests at r3 `c6d43b6f50` (tree identical to r4), tier 2:
+FlowCeilingBacksDownIntoRange, FlowCeilingShortRangeFinder,
+OpticalFlowLimits, MaxAltFenceAvoid, MinAltFenceAvoid,
+EK3_OptflowAnchoredTerrain (rise 8.1 m, worst 0.3 m, speed 1.011, TOfs
+spread 0.03 m, 1.4 m after the anchor ends), EK3_OptflowAboveRangefinder,
+EK3_FlowHeightLimitAfterRangeFallback (13.1 m) and
+EK3_OptflowAnchorToRangeHeight (-0.3 m): all 9 pass once. Copter SITL
+builds. Mechanical gate clean against `r1104/33585-r4`;
+check_branch_conventions.py passes.
+
+## 2026-11-05: restacked on #33585's folded branch (`r1104/34380-r5`, not pushed)
+
+#33585's two review fixes were folded into the commits they fix
+(`r1104/33585-r5`, tree identical to r4), so this PR's three commits were
+cherry-picked onto it: `8f4def62f8`, `9bfae9b6d9`, `c2ac997b2f`, all `=`
+in the range-diff, tree identical to `r1104/34380-r4`. Push this, not r4,
+or the stack would carry #33585's unfolded commits.
+
+Pushed 2026-11-05 (force, `8ccc90891e...c2ac997b2f` on
+`pr-avoid-flow-ceiling-backup`), r5 on #33585's r5. Reply posted:
+https://github.com/ArduPilot/ardupilot/pull/34380#issuecomment-6654940477

@@ -880,3 +880,11 @@ resolution keeps both, matching refresh12. Pushed `ac401e0deb` ->
 incident. HoverBiasNotSavedAfterEKFReset, AccelBiasLearningInhibitedInAcro,
 AccelBiasAcroExitVelocityError and VibrationRectificationBiasLearning pass
 at the head. Promoted in refresh12 topup9 (`a8487f02aa`).
+
+## 2026-11-04 (night): restacked on the #32471 first-flight port (pushed 2026-11-05)
+
+`r1104/32473-first-flight` (worktree r1104-32473-ff) on `255d534264`: `d89b4ad65b`, `d59c7cfd96`, `9c1146e8e2`, `a9e4e964fd`. Range-diff against `30343c7ae7`: the last two identical; the first two differ only in the ACC_ZBIAS_LEARN line both PRs edit (kept both: the first-flight sentence and the bit 3 text) and the placement of the acro test beside the new HoverBiasSavedFirstFlightAfterRest. AccelBiasLearningInhibitedInAcro (bias moved 0.000 in acro with bit 3), AccelBiasAcroExitVelocityError and HoverBiasSavedFirstFlightAfterRest pass.
+
+Pushed 2026-11-05 (force, `30343c7ae7...a9e4e964fd` on
+`pr-acro-bias-inhibit`). Restack note posted
+(https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-6653781446).

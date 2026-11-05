@@ -190,3 +190,7 @@ harness has no `context_set_speedup()`, so the SFD copy sets `self.speedup`
 and `SIM_SPEEDUP` by hand (SFD commit `5fa489a2a5`). It is on the SFD flight
 card as an optional ground check: arm on its back in Stabilize and roll
 upright, with no internal error and a re-arm without a reboot.
+
+## 2026-11-04: peterbarker proposes #35001 instead
+
+At the dev call peterbarker pointed at #35001, which only removes the INTERNAL_ERROR, as the simpler fix (comment on land_detector.cpp:73). The comparison (scratch report, not committed): #35001 covers the reported case; this PR additionally keeps a copter being righted landed, which also stops crash_check() disarming one stuck on its back after 2 s. Decision (Andy, 2026-11-04): leave this PR open, as rmackay9 objects to #35001. No reply posted.

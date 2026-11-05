@@ -1,0 +1,138 @@
+diff --git a/Tools/autotest/arducopter.py b/Tools/autotest/arducopter.py
+index 38c1790c79..af7605b351 100644
+--- a/Tools/autotest/arducopter.py
++++ b/Tools/autotest/arducopter.py
+@@ -2445,6 +2445,125 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
+         self.context_pop()
+         self.reboot_sitl()
+ 
++    def UnevenGroundProbe(self):
++        '''PROBE: flow-only flight above the rangefinder range over uneven terrain'''
++        case = os.environ.get("PROBE_CASE", "flat")
++        tag = os.environ.get("PROBE_TAG", "probe")
++        out = os.environ.get("PROBE_OUT")
++        alt = float(os.environ.get("PROBE_ALT", "35"))
++        dist = float(os.environ.get("PROBE_DIST", "1000"))
++        speed = float(os.environ.get("PROBE_SPEED", "5"))
++        wind = float(os.environ.get("PROBE_WIND", "4"))
++        hold = float(os.environ.get("PROBE_HOLD", "60"))
++        origin_dalt = float(os.environ.get("PROBE_ORIGIN_DALT", "0"))
++        terrain = os.environ.get("PROBE_TERRAIN", "1") == "1"
++        bearing = {"flat": 150, "rise": 240, "fall": 30}[case]
++        self.install_terrain_handlers_context(unserveable_requests_fatal=False)
++        self.set_parameters({
++            "SIM_FLOW_ENABLE": 1,
++            "FLOW_TYPE": 10,
++            "SIM_GPS1_ENABLE": 0,
++            "SIM_TERRAIN": 1,
++            "TERRAIN_ENABLE": 1 if terrain else 0,
++            "EK3_IMU_MASK": 1,
++            "AVOID_ENABLE": 0,
++            "EK3_OPTIONS": 0,
++            "LOG_DISARMED": 0,
++            # no GPS, so no automatic declination: align the EKF frame with truth
++            "COMPASS_AUTODEC": 0,
++            "COMPASS_DEC": math.radians(12.4),
++        })
++        self.configure_EKFs_to_use_optical_flow_instead_of_GPS()
++        self.set_analog_rangefinder_parameters()
++        self.set_parameter("RNGFND1_MAX", 8)
++        self.reboot_sitl()
++        start = self.sitl_start_location()
++        self.set_origin(Location(start.lat, start.lng,
++                                 start.get_alt_m(AltFrame.ABSOLUTE) + origin_dalt, AltFrame.ABSOLUTE))
++        if terrain:
++            tstart = self.get_sim_time()
++            while True:
++                if self.get_sim_time_cached() - tstart > 60:
++                    raise NotAchievedException("terrain tiles did not load")
++                m = self.assert_receive_message('TERRAIN_REPORT', timeout=60)
++                if m.pending == 0 and m.loaded > 0:
++                    break
++        self.progress("PROBE tag=%s case=%s alt=%.0f dist=%.0f speed=%.1f terrain=%u origin_dalt=%.0f" %
++                      (tag, case, alt, dist, speed, terrain, origin_dalt))
++        events = []
++
++        def note(what):
++            t = self.get_sim_time_cached()
++            events.append((round(t, 1), what))
++            self.progress("PROBE EVENT t=%.1f %s" % (t, what))
++
++        self.takeoff(4, mode='ALT_HOLD', require_absolute=False, altitude_max=6)
++        self.change_mode('LOITER')
++        self.delay_sim_time(10, reason="settle in loiter below the rangefinder range")
++        note("climb start")
++        self.set_rc(3, 1800)
++        tstart = self.get_sim_time()
++        reached = False
++        while self.get_sim_time_cached() - tstart < 90:
++            m = self.assert_receive_message('GLOBAL_POSITION_INT', timeout=10)
++            if self.mav.flightmode != 'LOITER':
++                note("mode %s during climb at %.1fm" % (self.mav.flightmode, m.relative_alt*0.001))
++                break
++            if m.relative_alt * 0.001 >= alt:
++                reached = True
++                break
++        self.set_rc(3, 1500)
++        if reached:
++            note("climb done")
++            self.delay_sim_time(15, reason="terrain offset to go stale above the range")
++        if self.mav.flightmode == 'LOITER':
++            self.change_mode('GUIDED')
++            note("traverse start")
++            vn = speed * math.cos(math.radians(bearing))
++            ve = speed * math.sin(math.radians(bearing))
++            typemask = (MAV_POS_TARGET_TYPE_MASK.POS_IGNORE | MAV_POS_TARGET_TYPE_MASK.ACC_IGNORE |
++                        MAV_POS_TARGET_TYPE_MASK.YAW_IGNORE | MAV_POS_TARGET_TYPE_MASK.YAW_RATE_IGNORE)
++            tstart = self.get_sim_time()
++            last_mode = 'GUIDED'
++            while self.get_sim_time_cached() - tstart < dist / speed:
++                self.mav.mav.set_position_target_local_ned_send(
++                    0, 1, 1, mavutil.mavlink.MAV_FRAME_LOCAL_NED, typemask,
++                    0, 0, 0, vn, ve, 0, 0, 0, 0, 0, 0)
++                self.delay_sim_time(0.2, reason="velocity target rate")
++                if self.mav.flightmode != last_mode:
++                    last_mode = self.mav.flightmode
++                    note("mode %s during traverse" % last_mode)
++                    if last_mode != 'GUIDED':
++                        break
++            note("traverse end")
++            if self.mav.flightmode == 'GUIDED':
++                self.change_mode('LOITER')
++                self.set_parameters({"SIM_WIND_SPD": wind, "SIM_WIND_DIR": (bearing + 90) % 360})
++                note("hold start")
++                tstart = self.get_sim_time()
++                while self.get_sim_time_cached() - tstart < hold:
++                    self.delay_sim_time(1, reason="hold in wind")
++                    if self.mav.flightmode != 'LOITER':
++                        note("mode %s during hold" % self.mav.flightmode)
++                        break
++                note("hold end")
++        self.set_parameter("SIM_WIND_SPD", 0)
++        if self.mav.flightmode not in ('LAND', 'RTL'):
++            self.change_mode('LAND')
++        try:
++            self.wait_disarmed(timeout=240)
++            note("disarmed")
++        except Exception as e:
++            note("not disarmed: %s" % str(e))
++            self.disarm_vehicle(force=True)
++        self.progress("PROBE EVENTS %s" % str(events))
++        if out is not None:
++            log = self.current_onboard_log_filepath()
++            shutil.copy(log, os.path.join(out, tag + ".BIN"))
++            with open(os.path.join(out, tag + ".events"), "w") as f:
++                f.write(repr(events) + "\n")
++        self.reboot_sitl(force=True)
++
+     def EK3_TerrainStateFollowsHeightReset(self):
+         """A height timeout reset carries the terrain state with the vertical datum"""
+         # ResetHeight() snaps position.z onto the last height measurement. The terrain
+@@ -20025,6 +20144,7 @@ class AutoTestCopter(vehicle_test_suite.TestSuite):
+             self.VibrationFailsafe,
+             self.VibrationCompensationThrottle,
+             self.EK3_AccelBiasInhibitOnGroundMoving,
++            self.UnevenGroundProbe,
+             self.EK3_TerrainStateFollowsHeightReset,
+             self.EK3_TerrainStateFollowsDatumReset,
+             self.EK3_TerrainStateHeldOnDriftReset,

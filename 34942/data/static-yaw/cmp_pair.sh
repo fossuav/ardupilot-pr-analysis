@@ -2,7 +2,8 @@
 # cmp_pair.sh: for each log in loglist2.txt, compare out2-nofix against
 # out2-fix (cmp_replays.py, replayed core 0) and the per-arm verdicts
 # (stale_probe.py "at the arm" lines, in order).
-S=/tmp/claude-1000/-home-andy-github-smallfastdrone-beta/c72a7562-fe47-4333-b873-673b10019194/scratchpad/r1030/34942
+# SCRATCH: the scratch directory the replays were written under
+S=${SCRATCH:?set SCRATCH to the scratch directory}/r1030/34942
 while read -r log; do
     n=$(basename "$log" .bin)
     a=$S/out2-nofix/$n/logs/00000001.BIN

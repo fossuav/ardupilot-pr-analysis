@@ -826,7 +826,7 @@ Head 669172801f -> 71719dd7d4, 7 -> 6 commits on the same base, content identica
 
 ## 2026-10-08: Q25v1 flyaways, the reset re-anchored to noise
 
-Two real flights on a tester A MicoAir743v2 quad (Q25v1), SmallFastDrone
+Two real flights on tester A's MicoAir743v2 quad (Q25v1), SmallFastDrone
 `7b0e4dd8`, which carries this PR, MAVLink flow, no GPS, `EK3_FLOW_QMIN=0`.
 Both Loiter flyaways are this recovery. Each of three resets stepped EKF
 velocity 2.9-3.8 m/s to the velocity **one** 10 ms flow sample implied;

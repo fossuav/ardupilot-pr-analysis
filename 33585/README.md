@@ -15,6 +15,16 @@ Nothing has been re-measured at this head. Every number below keeps the
 commit it was taken on, and any head named above is left as written
 because it is the code those numbers came from.
 
+### Head superseded 2026-11-04: GitHub head `6dcb4f2b2d`, split locally
+
+The GitHub head on 2026-11-04 is `6dcb4f2b2d`, four commits on master
+`802db19de1`, no longer stacked on #33478. Bit 5 is gone: the fallback is
+the default, gated on height, and anchored to terrain data where it
+reaches the EKF. After rmackay9's dev call review that day the datum
+carry was split onto its own branch and the anchored height moved into
+FuseOptFlow(), local only; see "2026-11-04: rmackay9's dev call review"
+at the end.
+
 ## Status (one line)
 
 `EK3_OPTIONS` bit 5 (`OptflowAssumeFlatGnd`) holds `horiz_pos_rel` above the
@@ -1446,3 +1456,460 @@ was already wrong. What this adds: the database height can be wrong without
 the database being wrong, when it is looked up at the position of a lane
 that has no absolute fix, which is not a location (root playbook ARCH-16).
 No fix written.
+
+## 2026-11-04: rmackay9's dev call review; the datum carry split out, the anchored height moved into FuseOptFlow()
+
+rmackay9 left five inline comments at `6dcb4f2b2d` during the 2026-11-04
+dev call. Andy's decisions: (a) the external nav line at Control.cpp:492
+belongs to the datum carry, so the carry becomes its own PR; (e) the
+anchored flow height is chosen in FuseOptFlow() beside bit 2's. (b) the
+anchor itself was answered by Andy on the PR. (c) the restore that undoes
+a brief return and (d) the 10 x bound are undecided and unchanged. The
+triage of all five is in the session scratch (`33585.md`), not here.
+
+All local, nothing pushed, no /pr-review run yet.
+
+### Branches
+
+- `r1104/33585-carry` on master `802db19de1`, needs nothing else:
+  `9377819b2e` AP_NavEKF3 carry (ResetPositionD/ResetHeight, the
+  prevHgtSource ordering, the gndOffsetMeasured latch), `18577f4ff2`
+  AP_NavEKF3 external nav names its height source before its reset,
+  `c24c4d9155` autotest the three datum tests. Draft PR text in the
+  session scratch (`carry-pr.md`). Record: `../carry-split/`.
+- `r1104/33585-restack`: the carry plus `f1e2b2c311` AP_DAL,
+  `9327116332` AP_NavEKF, `2c85876817` the fallback without the carry,
+  `30d50f8bc1` its tests. `git diff 6dcb4f2b2d 30d50f8bc1` is empty, so
+  carry plus restack is the GitHub head's tree exactly.
+- `r1104/33585-restructure`: the restack plus `2e9c3a1e6e` autotest
+  (AnchoredTerrain checks speed against truth) and `17833af182`
+  AP_NavEKF3 (the anchored height chosen in FuseOptFlow()).
+- `r1104/34380` (worktree `r1104-34380`): #34380's five commits
+  cherry-picked clean onto the restructure, `1812f5690f`..`12b1f83aee`.
+  Its own +/- lines are identical to `6dcb4f2b2d..9bb072fa82`; only two
+  context lines differ.
+
+Every code commit builds copter; at `17833af182` plane, rover, sub, heli
+and Replay build, and copter with EK3_FEATURE_OPTFLOW_SRTM=0,
+EK3_FEATURE_OPTFLOW_FUSION=0 and AP_RANGEFINDER_ENABLED=0.
+
+### The carry, each test against what it covers (tier 2)
+
+At `c24c4d9155`, against master `802db19de1` and three mutations of the
+carry:
+
+| test | carry | master | mutation |
+|---|---|---|---|
+| FollowsHeightReset, in range | +0.00 m on -30.01 m | +30.01 m | - |
+| FollowsHeightReset, 1.6 s after range loss | +0.00 m | (first leg fails) | 500 ms window: +30.01 m |
+| FollowsDatumReset | +0.00 m on -5.98 m | +5.99 m | source recorded before the reset: +5.99 m |
+| HeldOnDriftReset | 2.2 m | 2.4 m (passes) | carried unconditionally: 51.8 m |
+
+The external nav line has no test: which start takes the race depends on
+the scheduling phase (2026-09-15 probe, 2 of 10 starts).
+
+### The restructure
+
+SelectFlowFusion() no longer writes the anchored height into terrainState.
+FuseOptFlow() chooses it in an `else if (terrainAnchored())` beside bit
+2's block. The flow speed limit and nav gain scaler, the flow height
+limit, the flat-ground checks (height limit, 10 x bound) and XKF5.HAGL
+read it through flowTerrainState(), so they still judge the ground flow
+is scaled by; XKF5.TOfs is the terrain state, so TOfs - HAGL is no longer
+PD while anchored. The range finder height switch keeps reading the
+terrain state, as for bit 2. The restore's descent check takes the held
+ground from the saved anchor and the latest terrain height, where it took
+the height when the return began (at most 2.5 s earlier). Derived from the
+source: no test separates the anchored height from the held one in the
+fallback's own checks, because no anchored traverse comes near the limit
+or the bound.
+
+Measured and rejected on the way:
+
+| change | why it looked right | what settled it |
+|---|---|---|
+| log the flow scale height as a new XKF5 field | XKF5.HAGL would otherwise show the held ground | XKF5's labels are at the 64-character limit: the logger refused the structure at boot and SITL took no RC input. A new message costs a scarce log ID, so HAGL reads flowTerrainState() instead |
+| terrainAnchored() on the cached gndOffsetValid alone | the old code's write used it | Replay of log61: one XKF5.HAGL record differed (10.07 against 11.73 m at 176.6 s), the step a range return was first fused. The old code re-initialised terrainState from the range before FuseOptFlow() in that step; the cached flag still said anchored. Now it also requires no range fusion in the last 5 s; the Replay then matches |
+
+### Evidence
+
+- EK3_OptflowAnchoredTerrain read the anchor only through XKF5.HAGL,
+  which flowTerrainState() now feeds, so it would pass with the anchor
+  gone from FuseOptFlow(). It now also checks true speed against the
+  EKF's once the ground has risen 5 m (within 10%): restack 1.011,
+  restructure 1.010; anchor removed from the restack 0.829 (height
+  check also fails, 7.8 m), from FuseOptFlow() on the restructure 0.819
+  (height check passes, 0.3 m). Tier 2.
+- Replay of log61 (SFD-O4, 3408138/639) through this branch's own
+  master-based Replay (it runs the EKF on this 4.7.2 beta log), `30d50f8bc1`
+  against `17833af182`. With EK3_OPTIONS 90 (bit 2 off, the anchor in
+  use), every byte of XKF1-4, XKFS, XKQ and XKFA is identical; XKF5
+  differs only in TOfs, 1049 records from 175.6 to 300.4 s (held -6.06 to
+  -1.51 m against the anchored -37.78 to -1.11 m), which is the point.
+  With 94 (as flown, bit 2) nothing in the EKF differs. Three OF records
+  differ in TimeUS in both, a Replay timing artefact. The output mixes
+  beta and master formats, so a parser sees bad headers; the comparison
+  was made byte by byte. Tier 1b for "changes nothing", on a master-based
+  EKF, not the beta's.
+- Uneven-ground rig (2026-09-16 rig, origin set at home, 8 m range finder,
+  1 km traverses at 5 m/s from 35 m, bit 2 clear), restack against
+  restructure, end-of-traverse position error. Closed loop, so runs vary:
+
+  | case | restack | restructure |
+  |---|---|---|
+  | flat | 4.8 m | 4.2 m |
+  | rising | 11.5, 5.5, 6.6 m | 8.6, 9.5, 9.8 m |
+  | falling | 7.7 m | 7.9 m |
+  | off a slope from 6 m | 30.9 m | 28.6 m |
+  | rising, origin 30 m low | 12.3, 9.0, 8.7 m | 7.0, 8.8, 11.6 m |
+  | no terrain data (bound) | LAND at 369 m, 2.4 m | LAND at 370 m, 2.2 m |
+
+  Harness, runner, analyser and every number in
+  `data/uneven-ground-2026-11-04/`. Tier 2.
+- Pass on the restructure: EK3_OptflowAboveRangefinder,
+  EK3_OptflowAnchoredTerrain, the three datum tests, OpticalFlow,
+  OpticalFlowLocation, OpticalFlowLimits, EK3_OptflowTerrainScaleHeight,
+  BaroGroundEffectRangefinderSwitch, Replay. On #34380 restacked, against
+  #34380 as pushed (`9bb072fa82`): FlowCeilingBacksDownIntoRange,
+  FlowCeilingShortRangeFinder, EK3_OptflowAboveRangefinder,
+  EK3_OptflowAnchoredTerrain (1.011 both), OpticalFlowLimits,
+  MaxAltFenceAvoid and MinAltFenceAvoid pass on both.
+
+### Not run
+
+- logm2_log4, the flight behind the carry (4.6.3 SFD, EK3_RNG_USE_HGT 10):
+  not under AP_LOG_ROOTS on this machine, so not replayed. It is a 4.6
+  log; whether master's Replay reads it is untested.
+- log308: still not resolvable here.
+
+### Owed
+
+- /pr-review on `r1104/33585-carry`, `r1104/33585-restructure` and
+  `r1104/34380` before anything is pushed.
+- Opening the carry PR, and #33585's and #34380's descriptions rewritten
+  for the split; replies to rmackay9 on (a) and (e).
+- The SFD refresh: prs.txt gains the carry PR ahead of #33585.
+
+## 2026-11-04: what the anchor cancels on SFD-O4, and bit 2 against the anchor in Replay
+
+Asked after the dev call: do the SFD-O4 flights back the anchor (the
+database's shape layered on the range finder's ground) against the
+database used directly (bit 2)?
+
+### The database ground against the range finder's (tier 1)
+
+33 flights in 31 SFD-O4 logs (log5-7, 18-21, 31-44, 61-71; the
+refresh28 logs carry no RTER records), every Good downward range sample
+in flight at under 20 deg of tilt and above 0.6 m. Bit 2's height above
+ground error is `(-XKF1.PD - RTER) - range x cos(tilt)` on core 0, where
+RTER is the SRTM height minus the EKF origin altitude
+(`AP_AHRS::writeTerrainData()`); it is the EKF's altitude of the ground
+under the vehicle against SRTM's. The anchor removes its value at the
+last in-range moment and keeps how it changes.
+
+- At takeoff (median over the first 5 s in range): median -0.34 m,
+  |error| median 0.37 m, p90 1.40 m, worst 2.23 m (log41) and -2.20 m
+  (log70). As a flow velocity scale error above the range that is 3.7%
+  median and 22% worst at 10 m, 1.8% and 11% at 20 m, 1.2% and 7.4% at
+  30 m.
+- How much it changes in range, against the takeoff value: per-flight
+  medians 0.06 to 2.37 m within 50 m of takeoff (median 0.40 m, in line
+  with the 2026-10-01 0.5 m); 1.7 to 5.4 m at 50-100 m on the eight
+  flights that reached it (10-24 samples each, few). This includes the
+  EKF's own height drift over the flight, so it is an upper bound on
+  the database's shape error. log70's 50-100 m bin (20 m) is a lookup at
+  a drifted primary's position, the log61 mechanism, not the database.
+- GPS altitude against SRTM ground over the same samples: per-flight
+  means -5.8 to +3.3 m. The EKF origin altitude agreed with SRTM better
+  than in-flight GPS did on these flights; why was not established.
+
+So at these sites the constant part the anchor exists to cancel was
+small: no larger than the part it keeps. The flights do not show the
+anchor helping. They show what it costs and saves is under half a metre
+here; the several-metre case (an origin altitude taken from a poor GPS
+fix) is SITL only, 22-46% velocity error at 10 m with a 5 m origin
+error, cancelled by the anchor (2026-10-01).
+
+### Bit 2 against the anchor, Replay (tier 1b)
+
+Replay built from the beta `a8487f02aa` (scratch worktree), each log
+replayed with EK3_OPTIONS | 4 (bit 2) and & ~4 (the anchor); every
+flight also had bit 3 (the AGL KF scales flow while it is valid).
+Replay logs its own cores as C=100+, which a first pass missed. Flow
+core (core 1, source set 2 on flow) horizontal velocity against GPS,
+airborne, range finder not Good and the GPS core above 12 m, samples
+where the flow core's position was more than 20 m from core 0's left
+out; columns are more than 5 s after the last Good range reading:
+
+| log | s | bit 2 rms / worst m/s | anchor rms / worst m/s |
+|---|---|---|---|
+| log5 | 14 | 0.33 / 1.2 | 0.33 / 1.2 |
+| log6 | 118 | 1.77 / 7.0 | 1.77 / 7.0 |
+| log7 | 87 | 1.06 / 8.8 | 1.07 / 8.8 |
+| log31 | 96 | 1.09 / 3.1 | 1.07 / 3.1 |
+| log35 | 94 | 0.89 / 3.1 | 0.88 / 3.1 |
+| log37 | 42 | 0.68 / 1.4 | 0.69 / 1.4 |
+| log41 | 16 | 0.48 / 1.0 | 0.46 / 1.0 |
+| log42 | 81 | 0.88 / 2.9 | 0.87 / 2.9 |
+| log32 | 38 / 43 | 3.96 / 7.8 | 4.52 / 8.6 |
+| log33 | 26 | 3.75 / 6.4 | 3.74 / 6.4 |
+| log34 | 34 / 24 | 3.32 / 9.3 | 2.73 / 6.4 |
+| log20 | 3 / 17 | 2.70 / 3.4 | 3.41 / 6.0 |
+| log61 | 30 | 3.31 / 9.9 | 3.30 / 9.9 |
+| log65 | 15 / 17 | 2.81 / 6.3 | 2.88 / 6.5 |
+| log69 | 11 / 10 | 3.67 / 7.8 | 3.72 / 7.8 |
+| log70 | 7 / 4 | 3.99 / 7.7 | 4.43 / 7.9 |
+
+The first eight are flights where the flow lane stayed with GPS; there
+the two are within 0.02 m/s rms. The rest lose most of their samples to
+the drift filter, and where the filter leaves different samples in each
+run (two figures in the s column) the difference is in what is compared,
+not the estimator; neither wins. Flow innovation ratios (XKF5.NI, core
+1) have the same median (0-15) and p95 (1-50) in both, with at most 2%
+rejected. log39 and log43 have no qualifying samples. Replay re-feeds the
+terrain heights the flight looked up, at the flown primary's position,
+so both arms get the same database heights; where the primary was the
+GPS core that is the true position, which favours both equally, and it
+says nothing about a lookup at a drifted flow lane (log61).
+
+### What this means for SFD-O4's bit 2
+
+Clearing bit 2 on SFD-O4 is not measurably better or worse at its sites
+in Replay, because the database's absolute height there was within half a
+metre of the ground the range finder measured. It would make the next
+flights run the anchor in flight, which nothing has yet, and the anchor
+then carries the evidence rmackay9 asked for. To show a benefit a flight
+needs a large origin altitude error, which these sites did not have.
+
+## 2026-11-04 (later): the review fixes Andy chose
+
+Branch `r1104/33585-fix` (worktree `r1104-33585-fix`) on
+`r1104/33585-restructure2` (`079eda8a1e`, on carry2 `c75fc5a173`). Local
+only, nothing pushed, /pr-review owed.
+
+Andy's decisions after the /pr-review of the restructure: move #34380's
+brief-return timing fix here; log the anchored ground as XKF5.TOfs; hand
+the anchored ground over to the terrain state when the anchor ends
+without a range return. Plus the bot's 1.6 s flake and two comment and
+message fixes.
+
+| commit | what | folds into at push |
+|---|---|---|
+| `f29e662721` | AP_NavEKF3: time a flat-ground return on fused range readings (was #34380 `c411ebb3a2`) | stays its own commit |
+| `0e864d3a57` | autotest: cover range readings the terrain gate rejects (was #34380 `d6b7baa236`) | stays its own commit |
+| `2c87bf81dc` | AP_NavEKF3: log the anchored ground as XKF5.TOfs | `079eda8a1e` |
+| `c2d4f9724a` | AP_NavEKF3: keep the anchored ground in the brief-return snapshot | `079eda8a1e` |
+| `10bcc97e16` | AP_NavEKF3: hold the last anchored ground when the anchor ends | `079eda8a1e` |
+| `7034d5c40d` | autotest: check the ground held once the anchor ends | stays, after the restructure |
+| `9ad154f164` | AP_NavEKF3: say what flowTerrainState() returns | `079eda8a1e` |
+| `847d6d90e7` | autotest: fly a brief return again when it misses its window | `9928db2fc6` |
+
+Folding `c2d4f9724a` ahead of `f29e662721` may need a trivial context
+fix in updateFlatGroundAssumed(). Message rewords drafted in the session
+scratch: `86f0549fc3` "as the commit below moves" becomes "as
+#CARRY_PR moves"; `079eda8a1e`'s message is rewritten for the folded
+result.
+
+### The snapshot change, not asked for
+
+`c2d4f9724a` goes beyond the three decisions. The restructure kept the
+held terrain state in the brief-return snapshot and worked the anchored
+ground out again in the descent check from the latest terrain height,
+which a reviewer flagged as a second copy of the anchor formula and an
+unflown change to that check. Saving flowTerrainState() in the snapshot
+restores the descent check line to the pre-restructure code exactly and
+makes an undone return put the anchored ground back, as before. Derived
+from the source; the log61 Replay below covers it only where the flight
+reached it.
+
+### The hand-over
+
+A flag (`terrainAnchorInUse`) records whether the anchor was in use at the
+last update; when it stops being used and no range sample was fused in
+the last 500 ms, the anchored ground is copied into the terrain state
+once. terrainAnchored() also now requires optical flow in a source set,
+as the old write did, so removing flow from the source sets is one of
+those transitions. SITL (tier 2), EK3_OptflowAnchoredTerrain's new leg
+(bit 2 set in flight after 8 m of rising ground, 5 s hold, XKF5.HAGL
+against SIM.Alt - TERR.TerrH):
+
+| build | worst error after the anchor ended |
+|---|---|
+| without the hand-over: `c2d4f9724a`, with `7034d5c40d`'s test | 7.9 m, fails at 3 m |
+| with it: `10bcc97e16`, the head `847d6d90e7`, `r1104/34380-3` | 1.4 m, 1.2 m, 1.5 m |
+| pre-restructure `95a93964b2` plus the timing fix | 1.2 m |
+
+### Replay of log61 (tier 1b)
+
+log61 (SFD-O4, 3408138/639) through master-based Replay builds of the
+pre-restructure code plus the timing fix (`95a93964b2` + `f29e662721`),
+the head (`847d6d90e7`), and the head less the hand-over. EK3_OPTIONS 90
+(bit 2 off, the anchor in use from 175.6 to 300.4 s) and 94 (as flown):
+
+| comparison | 90 | 94 |
+|---|---|---|
+| pre-restructure + timing fix against the head | 5 bytes, all OF | 3 bytes, all OF |
+| head against head less the hand-over | 6 bytes, all OF | 5 bytes, all OF |
+
+Every EKF record, XKF5 included, is byte-identical: with TOfs logged from
+flowTerrainState() the 1049 XKF5 records that differed at `17833af182`
+no longer do, and the hand-over never fires in this flight (the anchor
+ends on range returns). The OF bytes are the Replay timing artefact seen
+before; 90 against 94 differs in 152622 bytes across XKF1-5, XKQ, XKFM,
+XKTV, which shows the comparison sees EKF changes.
+
+### What still differs from the anchor writing the terrain state
+
+Derived from the source: while the anchor is in use the terrain state is
+the ground held from before it. The range finder height switch reads it
+but cannot act above the range; with EK3_FLOW_USE 2 the terrain
+estimator's flow fusion starts from it; the clamp keeping the terrain
+state below the vehicle no longer applies to the anchored ground once
+terrain data has stopped.
+
+### Tests at `847d6d90e7` (tier 2)
+
+- EK3_OptflowAboveRangefinder 5 of 5, no retries needed (1.6 s case
+  measured 1.4-1.6 s). With its window narrowed to 1.60-1.61 s it flew
+  the case three times and failed "proves nothing", so the retry path
+  runs and cannot pass a case that never meets its window.
+- Pass: EK3_OptflowAnchoredTerrain (8.1 m rise, 0.3 m, speed 1.011),
+  EK3_TerrainStateFollowsHeightReset, FollowsDatumReset,
+  HeldOnDriftReset (2.2 m), FollowsSourceChangeAboveRange,
+  OpticalFlowLimits, OpticalFlow, OpticalFlowLocation,
+  EK3_OptflowTerrainScaleHeight, BaroGroundEffectRangefinderSwitch,
+  Replay.
+- Copter, plane, rover and sub build; copter with
+  EK3_FEATURE_OPTFLOW_SRTM 0, EK3_FEATURE_OPTFLOW_FUSION 0 and
+  AP_RANGEFINDER_ENABLED 0 each. Mechanical gate clean against carry2;
+  check_branch_conventions.py passes.
+- #34380 restacked without the two moved commits: see `../34380/`.
+
+## 2026-11-04 (late): round-two fixes and the fold for push
+
+Round two of the review (one Claude reader, six Codex tasks) at
+`847d6d90e7` found nothing that must change. Should-fixes applied on
+`r1104/33585-fix`, then the branch folded into `r1104/33585-final`:
+
+- `terrainAnchorInUse`'s comment says what it holds (terrainAnchored() at
+  the last update), not that flow was scaled by the anchored ground.
+- `anchoredTerrainState()` is the one place `terrainAnchorOffset -
+  terrain_srtm_alt` is written; flowTerrainState() and the hand-over use
+  it. Comments now say the terrain state is also written at the hand-over
+  and by an undone brief return, and that what falls back at the
+  hand-over is the ground the limits, flat-ground checks and XKF5 read
+  (and flow where no other height scales it); the folded message names
+  the range finder becoming the height source as a fourth trigger.
+- XKF5 TOfs goes through float_to_int16() as HAGL does. Master casts
+  terrainState with `(int16_t)` and no saturation; the anchored ground
+  can lie further from the origin, so it is likelier to need it.
+- EK3_OptflowAnchoredTerrain checks that XKF5 TOfs less HAGL follows
+  XKF1 PD over the traverse (its spread, since PD is the output
+  observer's): 0.03 m at the head; 8.27 m with TOfs logging the terrain
+  state held from before the climb, which fails the 1 m check.
+- The brief-return retry restores SIM_SONAR_SCALE, and EK3_SRC1_VELXY in
+  the drop-flow case, with an acknowledged set after each flight, so a
+  lost unacknowledged restore cannot compound across attempts.
+
+Tests at `69cbfa2176` (tier 2): EK3_OptflowAnchoredTerrain (rise 8.1 m,
+worst 0.3 m, speed 1.010, TOfs spread 0.03 m, 1.5 m after the anchor
+ends), EK3_OptflowAboveRangefinder 3 of 3 with no retries, the four
+datum tests, OpticalFlowLimits and Replay pass. Replay of log61 at
+EK3_OPTIONS 90 and 94 through Replay built at `69cbfa2176` against the
+one built at `847d6d90e7`: every EKF record identical (8 bytes of 33 MB
+differ, outside the EKF records).
+
+The fold (`r1104/33585-final`, on `r1104/33585-carry2`), one cherry-pick
+group per commit, copter built at each: `34fedc1b50` AP_DAL, `638be3258d`
+AP_NavEKF, `4f913ceab6` keep flow nav alive (with the freshness comment
+and the `#CARRY_PR` reword, placeholder still in), `be7d7a34f7` the
+above-range tests (with the retry and the acknowledged restore),
+`711ba1116e` the anchored speed check, `927f8db52a` the restructure (with
+the TOfs, snapshot, hand-over, comment and helper fixes and the updated
+message), `b60954a47f` and `d9ce030040` the moved timing fix and its
+test, `94f37c4e0f` the hand-over test with the TOfs check. `git diff
+r1104/33585-fix r1104/33585-final` is empty; range-diff pairs every
+commit, the timing fix differing only in context. Gate clean against
+carry2; check_branch_conventions.py passes. Not pushed.
+
+## 2026-11-04: pushed after the dev call rework
+
+Force-pushed `6dcb4f2b2d` -> `79800dbe59` (twelve commits: #35014's three, then nine), built as `r1104/33585-push`, tree-identical to `r1104/33585-final` with #35014's number in the one message that names it. Reviewed in three rounds (Claude reviewers and Codex cold reads, audit 7 closed, the rest maintainer design points or disclosed limits; round three found only that no test drives TOfs into saturation). All #33585 tests pass at the final head; copter, plane, rover and sub build, and copter with EK3_FEATURE_OPTFLOW_FUSION, EK3_FEATURE_OPTFLOW_SRTM or AP_RANGEFINDER_ENABLED off. Description and the five replies to rmackay9 drafted, not yet posted.
+
+Description replaced 2026-11-04 (the stack on #35014, the evidence tier, the head's numbers, the restore and bound paragraphs, the known limits; the previous body is not archived on the PR). Replies posted to rmackay9's five dev call comments: (a) https://github.com/ArduPilot/ardupilot/pull/33585#discussion_r4469311438 (b) https://github.com/ArduPilot/ardupilot/pull/33585#discussion_r4469311955, correcting the earlier "in my testing" to say the comparison was SITL and giving the 33-flight offset and the 16-log Replay (c) https://github.com/ArduPilot/ardupilot/pull/33585#discussion_r4469312291 (d) https://github.com/ArduPilot/ardupilot/pull/33585#discussion_r4469312721, offering the EK3_TERR_GRAD tie or opt-in flat ground (e) https://github.com/ArduPilot/ardupilot/pull/33585#discussion_r4469313167. Open with rmackay9: (b) whether the anchor stays, (c) the restore, (d) the bound.
+
+## 2026-11-04 (night): AP-Review at `79800dbe59`, the anchor hand-over
+
+AP-Review, COMMENT
+(https://github.com/ArduPilot/ardupilot/pull/33585#issuecomment-6635357075):
+one minor, the same finding as #34380's should-fix of the same evening.
+Fixed, together with #34380's minor on the stimulus checks in
+EK3_OptflowAboveRangefinder.
+
+The hand-over. When the range finder becomes the height source while the
+anchor is in use (a source set with range finder height, then a descent
+back into range), selectHeightForFusion() forms the range height against
+the terrain state, which still holds the ground from before the anchor,
+and resets the height to it. SelectFlowFusion() writes the anchored ground
+in one step later, so the height above ground steps by the difference
+until a height timeout reset. The fix writes anchoredTerrainState() into
+the terrain state and ends the anchor in selectHeightForFusion(), after
+this step's source is chosen and before the range height is formed. Once
+the anchor is ended the later SelectFlowFusion() hand-over finds nothing
+to do.
+
+`r1104/33585-r4` on `r1104/33585-carry3` (`fb335374dd`, #35014 with its
+fix), not pushed:
+
+- `131e45c62b` AP_NavEKF3: hand the anchored ground over before range
+  height is formed. Fold into `22ad1aa947` "choose the anchored flow
+  height in FuseOptFlow()" (was `b490318ffc`; the restructure is not on
+  the beta, so it is unflown).
+- `f28d923b5a` autotest: retry the range finder bands in
+  EK3_OptflowAboveRangefinder. The 4.8-5.5 m leg after a climb out and
+  back, and the 5.8-7.9 m open loop climb with no height source, are
+  flown up to three times, with a force disarm and reboot after a miss,
+  as the brief returns already are. Fold into `65e6d04ee9` "cover optical
+  flow nav above the rangefinder range" (was `e2cc5b54a7`).
+- `af48119e41` autotest: EK3_OptflowAnchorToRangeHeight. Terrain on, an
+  8 m range finder, origin set with no GPS. It climbs to 30 m under baro
+  height, traverses 100 s over ground about 10 m higher, switches to a set
+  with range finder height and descends into range: XKF5 HAGL must stay
+  within 2 m of SIM truth for 15 s. Without the fix, -8.8 m and relative
+  position lost; with it, -0.3 m (tier 2). Own commit.
+
+Range-diff against `79800dbe59` pairs all nine earlier commits: seven
+`=`, and `2dc5af4764` (keep flow nav alive) and `22ad1aa947` (the
+restructure) differ only where #35014's fix conflicted in
+getHeightControlLimit(), resolved to the unconditional subtraction
+(`height -= terrainState`, then `height -= flowTerrainState()`). r4 replaces `r1104/33585-r3` (same tree) to shorten
+two subjects that the gate flagged.
+
+Tests at r3 `ddc9c1f43a` (tree identical to r4), tier 2:
+EK3_OptflowAboveRangefinder, EK3_OptflowAnchoredTerrain (rise 8.2 m,
+worst 0.3 m, speed 1.010, TOfs spread 0.02 m, 1.4 m after the anchor
+ends), EK3_OptflowAnchorToRangeHeight (-0.2 m), the four datum tests,
+EK3_FlowHeightLimitAfterRangeFallback, OpticalFlowLimits, OpticalFlow,
+BaroGroundEffectRangefinderSwitch and Replay: all 12 pass.
+
+Replay of log61 (tier 1b), at EK3_OPTIONS 90 and 94, through Replay built
+at r3 against Replay built at `r1104/33585-final` (tree-identical to the
+pushed head): 0 EKF records (C >= 100) differ at either setting. Mechanical
+gate clean against carry3; check_branch_conventions.py passes.
+
+## 2026-11-05: the two review fixes folded (`r1104/33585-r5`, not pushed)
+
+Rebuilt by cherry-pick on `r1104/33585-carry3`: `131e45c62b` (the
+hand-over) folded into the restructure, now `2f02cfd690`, its message
+gaining a paragraph on the hand-over with the -8.8 m / -0.3 m SITL
+numbers; `f28d923b5a` (the band retries) folded into the test, now
+`23a783c47f`, with one sentence. Tree identical to r4; range-diff shows
+only the folds and those message lines. Copter SITL builds at
+`2f02cfd690`, the only commit whose C++ changed (the later ones add tests
+only). Mechanical gate clean against carry3; check_branch_conventions.py
+passes. Head `1cf2ecd440`.
+
+Pushed 2026-11-05 (force, `79800dbe59...1cf2ecd440` on
+`pr-optflow-flat-ground`), the folded r5 on #35014's new head. Reply
+posted:
+https://github.com/ArduPilot/ardupilot/pull/33585#issuecomment-6654940173

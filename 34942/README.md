@@ -1002,7 +1002,7 @@ Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `3c73e8b64b` -> `b39c0e
 ## 2026-11-02: Q25 indoor loiter logs on c46a09ec (refresh12 topup4)
 
 `Q25 - MicoAir743v2 - 4.7.2 - c46a09e - Indoor Loiter 1 of 2.bin` and `2 of 2`
-(tester A, the support archive). Flow only, baro height
+(tester A's Q25). Flow only, baro height
 (EK3_SRC1_POSZ 1, EK3_RNG_USE_HGT -1), no yaw source. Three flights: log 1 one,
 log 2 two in one boot. INS_ACC_VRFB_Z was still 0.0417 (the card asked for 0),
 so with ACC_ZBIAS_LEARN 10 v3 applied the old total as the change since arming.
@@ -1443,7 +1443,7 @@ comparisons are withdrawn, and so is the conclusion that the setup
 changed EK3_RNG_USE_HGT; good 4.7.0 logs of this vehicle are to come.
 The findings from log 62 alone stand.
 
-the support archive,
+`62 12-31-1979 7-00-00 PM.bin` (tester B's 4-inch, SFD 4.7.2 logs),
 SkySakuraH743, QUAD/X_REV, firmware "SmallFastDrone V4.7.2 (2dc4a918)",
 which is not in our refs. Reports: yaw deviation, small but early and
 often; poor centre-stick VALT, "sucked into the floor"; more roll
@@ -1645,3 +1645,68 @@ level. On a tailsitter resting on its tail body X is vertical, so the
 reset would drop the bias learned about the vertical and keep one gravity
 relearns anyway (as master drops all three). Keeping the component along
 the vertical from the bootstrap's accelerometer tilt would cover it.
+
+## 2026-11-04 (night): Q25 touchdown snaps the height to a prop-washed baro, carried into a quick re-arm
+
+Boot 142 ("08 VALT after EK3 OPTIONS 92", a8487f0), flight 2: at 0.11 m on the landing the flow lane stopped aiding (112.29 s) and the EKF height stepped from +0.28 to +1.55 m with the range finder at 0.05 m. Entering AID_NONE sets position.z from the delayed baro (master Control.cpp:434, "reset the vertical position state to faster recover from baro errors experienced during touchdown"; the beta subtracts baroHgtOffset), and the baro was in touchdown prop wash (+1.06 m at 112.0, -1.00 m at 113.0). Re-armed 2.4 s after the disarm: the arm-time EKF_ALT_RESET event fired but the EKF still read +1.59 m on the ground, no height-error refusal (below the threshold) and no forced reset (too soon), so flights 3 and 4 flew with the EKF +1.18 and +1.06 m above the range finder, and in flight 3 VALT held the EKF at 2.83 m while the vehicle climbed 0.6 m on the range finder, AGL KF and baro over 14 s. Why the arm reset left the 1.55 m is not yet traced (derived from the log timing and the source; not replayed).
+
+### 2026-11-04 (night): the touchdown snap traced and a gate prototyped
+
+Tonight's eight Q25 logs: seven landings entered AID_NONE near the ground with touchdown_expected set, and the snap stepped the height by 1.3-7 m each time (log 01: -6.3 to -7.95; 02: -6.96; 05: -5.14, -3.22; 06: -2.40; 08: +1.32). A forced reset or an arm-pending bootstrap reset before the next arm cleared it (05, 06); a re-arm before either carried it (08). Snaps without the flags can help: in log 01 one pulled a 6.6 m in-flight error (baro thrust scale 0) back to the ground baro. Prototype r1104/rearm-datum `89170afd20` (local) skips the snap while takeoff or touchdown is expected, as bb615f0f93 does for a source switch. Replay, EKF minus range finder 5-10 s after each takeoff, base -> gate: log 08 flights 3/4 +1.27/+1.10 -> +0.23/+0.04; log 05 flights 4/5 -2.79/-5.40 -> +0.30/+0.49; log 06 flight 2 +0.00 -> +0.98 (the snap's error had tripped the forced reset that cleaned the estimate; without it the pre-touchdown -0.8 m error carried); log 01 mixed (baro misconfigured). Tier 1b, estimator only; no SITL test written. Not a clear win on its own: the wider gap is that nothing re-zeroes the height on the ground before a quick re-arm without GPS (../32768/README.md, same date).
+
+### 2026-11-04 (night): option A made final, the touchdown height reset gated on ground effect
+
+Andy chose option A (gate alone; the range finder is not a reliable on-ground signal). Local branch r1104/touchdown-snap-v2 on a8487f02aa (worktree r1104-rearm-datum): `68cfa26202` AP_NavEKF3: skip the AID_NONE height reset in ground effect (the prototype 89170afd20 unchanged in code, message final), `2f9c02d822` autotest EK3TouchdownHeightNotSnapped. Not pushed, not flown.
+
+Flag claims checked against the source: AP_GroundEffect latches takeoff_expected while armed with land_complete (AP_GroundEffect.cpp:90-94; Copter passes throttle_up only for manual-throttle modes, so in ALT_HOLD/VALT the takeoff anchor refreshes on the ground and the flag holds until the release after takeoff); touchdown_expected needs a slow (<1 m/s) descent demand with the D controller active, slow horizontal and height under GNDEFF_ALT, inside the touchdown window. Caveats: GNDEFF_ALT < 0 clears both flags, so the gate is off; a fast or manual-throttle (STABILIZE) descent is outside touchdown_expected until land_complete latches takeoff_expected; disarmed both are false, so the reset runs. The extra test is the same !assume_zero_sideslip() as bb615f0f93, so planes in forward flight keep the reset. The snap writes stateStruct.position.z only (no posResetD, output observer left to converge); skipping it leaves meaHgtAtTakeOff set (its only other use is the low-pass), and flowFocusRngPosD and lastKnownPositionD consistent.
+
+SITL A/B (tier 2), EK3TouchdownHeightNotSnapped, one core, flow and range finder, no GPS, recorded origin, flow timeout ends aiding with a baro glitch for prop wash: landed and armed, -3 m glitch (floored as ground effect): base -3.18 m at the ground, gate -0.32/-0.28 m (two runs); next flight re-armed 1 s after the disarm hovers -0.30/-0.42 m off on the gate and -0.46 m on base, as the clean SITL baro pulls the height back (on the Q25 it persisted). Disarmed (-20 m glitch, rejected): -21.0 base, -21.3 gate, so the reset still runs; in flight at 4 m after the takeoff window: -21.25 on the gate. Two early harness errors corrected on the way: LOCAL_POSITION_NED is not sent without aiding (heights now read from XKF1/RFND in the log), and a disarm before clearing the glitch let the un-floored baro in after the disarm (the glitch is now cleared as the motors stop). Related tests pass on the gate (17): EKFBootstrapReset, EKFBootstrapResetStaticYaw, EK3HardLandingRearm, BaroGroundEffectAtTakeoff, BaroGroundEffectResetSuppression, BaroGroundEffectRangefinderSwitch, HeightDatumKeptOnArmWhileMoving, HeightDatumKeptOnMidairRearm, BaroDriftClearedAtArm, BaroDriftClearedAfterMidairDisarm, EK3_TerrainStateFollowsHeightReset, EK3_TerrainStateFollowsDatumReset, EK3_TerrainStateHeldOnDriftReset, EKF3RangeFinderOnGround, FlowAidingRestartsWithoutYawFusion, OpticalFlow, Replay. Copter and plane build; gate: the 13 pre-existing E131s only.
+
+Upstream: master has the identical reset (AP_NavEKF3_Control.cpp:432-434) and the same baroInGndEffect test, so it applies with a three-line hand port (master has no baroHgtOffset subtraction or flowFocusRngPosD line); the test helpers and AHRS recorded origin all exist on master. Suggested as its own PR: a three-line change with one failure, independent of #34942 (on-ground height check, forced reset) and #32768 (arm-time datum reset), though both are where its consequences showed; cross-reference both. Log 06 is the open cost: its height was already about 1 m off at the landing, and the reset's larger error is what tripped the forced reset that cleaned it.
+
+### 2026-11-05: the touchdown snap on master, A/B before an upstream PR
+
+Ported to master `1348fd162b` as `r1105/ekf3-touchdown-snap` (local, not pushed): `8ca1873254` AP_NavEKF3 (the gate, three lines, no baroHgtOffset or flowFocusRngPosD on master), `0497299028` autotest (EK3TouchdownHeightNotSnapped, comments rid of #34942 and #32768 mechanisms). Mechanical gate clean, check_branch_conventions passes.
+
+SITL A/B on master (tier 2), fix reverted against fix, binaries md5-checked. The test as committed, a -3 m glitch (reads low, as ground effect does): landed, the height moves -3.21 m on master and -0.28/-0.29 m with the fix; the next flight re-armed 1 s after the disarm hovers 0.11-0.16 m off on master and 0.03-0.05 m with it. Unlike the beta, master has no arm-time datum reset with home set (AP_Arming_Copter.cpp:723-733 moves home instead), so the clean baro pulls the error back while disarmed and the next flight does not carry it. The next-flight check therefore does not fail on master; the ground check does.
+
+Throwaway probes (the test edited, not committed):
+
+| case | master | fix |
+|---|---|---|
+| +3 m glitch (reads high, as the Q25's), height when aiding stops | +3.30/+3.32 m | +1.36/+1.50 m, rising |
+| +3 m, next flight after a 1.6 s disarm | -0.15/-0.23 m | -0.18/-0.19 m |
+| -3 m, no disarm, height 7 s after aiding stops | -3.07 m | -1.76 m (dead zone floor creep) |
+| -3 m, no disarm, takeoff overshoot (error peak / range peak) | +0.63 m / 2.87 m | +0.21 m / 2.44 m |
+| +3 m, no disarm, error at liftoff (8 s on the ground) | +3.13 m | +4.17 m |
+
+Reading high, the ground effect dead zone does not hold the baro out, so with the reset skipped ordinary fusion takes the height to the baro anyway and overshoots (the Z accel bias learns the step), ending further off after 8 s armed on the ground than the reset left it. The beta's Replay gains (log 08, log 05) came through #32768's arm-time reset, which master lacks: #32768's head adds reset_height_datum() where home is already set (AP_Arming_Copter.cpp:756-757), master resets the datum at arm only when home is not set. Not opened upstream.
+
+Corrected the same day: an earlier line here said the Q25's baro read high, from log 08 alone. Replayed, the snaps on the four correctly configured landings went both ways (below), mostly low. The master commit message's "the ground effect dead zone that keeps a baro reading low out of the height" is also wrong: the dead zone clamps each baro innovation to -0.5 m, which slows the pull to a creep but does not stop it (below).
+
+### 2026-11-05: replay of the armed sits, and a long sit on the beta build
+
+Held from the topup10 push for this. Replay (beta Replay with and without the gate, replayed core C=100), EKF height minus range finder from each AID_NONE entry near the ground with touchdown expected to the end of the armed sit:
+
+| log | entry | armed after | base at disarm | gate at disarm |
+|---|---|---|---|---|
+| 08 | 112.4 s | 0.7 s | +1.47 m | +0.21 m |
+| 05 | 131.2 s | 0.6 s | -4.88 m | -0.09 m |
+| 05 | 162.5 s | 0.2 s | -4.78 m | +0.06 m |
+| 06 | 87.0 s | 1.1 s | -3.24 m | -0.81 m |
+| 01 (no baro thrust compensation) | 179.4, 242.6, 374.7, 443.5 s | 0.3-2.2 s | +10.47, +9.87, +0.41, +0.85 m | +15.15, +6.30, +7.06, +11.55 m |
+
+Every Q25 landing disarmed within 2.2 s of aiding stopping, so the logs hold no long armed sit. On log 01 the EKF height was already 6-15 m off in flight and the snap resynced it; the gate keeps that error (3 of 4 worse).
+
+SITL on the beta build (topup9 + gate, the binaries the Replay A/B used), the landed subtest edited to sit armed 10 s after aiding stops, then take off without a disarm (tier 2, constant glitch):
+
+| glitch | base, 2 / 8 / 14 s | gate, 2 / 8 / 14 s | range peak after takeoff, base / gate |
+|---|---|---|---|
+| +3 m (reads high) | +3.34 / +3.25 / +3.11 m | +1.98 / +3.86 / +4.58 m | 2.95 / 3.48 m |
+| -3 m (reads low) | -3.20 / -3.06 / -3.02 m | -0.50 / -2.27 / -3.65 m | 3.07 / 3.04 m |
+
+With a sustained error ordinary fusion takes the height to the baro within about 10 s either way, past it for a high reading (the Z accel bias learns the step); the dead zone only slows a low reading to about 0.3 m/s. No #34942 on-ground check or forced reset fired while armed. So the gate protects the seconds after aiding stops, which covers every Q25 landing on record, and not a long armed sit with the baro still wrong; at idle on the ground the prop wash error is likely smaller than SITL's constant glitch, which is unmeasured. The test comments that the dead zone "keeps it out of the height" hold only over the second they measure.
+
+Placement: the next-flight cost needs #32768's arm-time reset with home set, and #32768 already changes this AID_NONE line (the baroHgtOffset frame fix), so the gate fits #32768 better than a standalone PR. #32768 is frozen under maintainer review; adding to it is the author's decision. Decided the same day: added to #32972 instead, beside its ResetHeight suppression (../32972/README.md, 2026-11-05); the master branch `r1105/ekf3-touchdown-snap` is not used.
+
+Topup10 (the gate without #32972's later armed term, and its test) pushed to the SFD beta 2026-11-05 after the replay above, `a8487f02aa..1bb9af74de`; the next refresh takes #32972's version.

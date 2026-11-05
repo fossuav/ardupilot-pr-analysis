@@ -17,7 +17,8 @@ import sys
 try:
     from pymavlink import mavutil
 except ImportError:
-    sys.path.insert(0, '/home/andy/github/ardupilot-master/modules/mavlink')
+    # MAVLINK_PATH: an ArduPilot checkout's modules/mavlink, if pymavlink is not installed
+    sys.path.insert(0, os.path.expanduser(os.environ.get('MAVLINK_PATH', '~/github/ardupilot/modules/mavlink')))
     from pymavlink import mavutil
 
 import matplotlib

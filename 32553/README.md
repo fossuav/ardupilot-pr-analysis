@@ -947,7 +947,7 @@ only printed.
 
 ### Replay of the indoor loiter logs cannot test it
 
-Logs 200-206 (SFD O4, `/mnt/d/logs/IndoorLoiter`, copied to
+Logs 200-206 (SFD O4, the IndoorLoiter logs, copied to
 `~/replay-cache/32553`) replayed through beta with the reset, without it and
 with the reopen moved PD by at most 0.11 m. That is **not** evidence that the
 stack fixed the flight problem. `takeoff_expected` and `touchdown_expected`

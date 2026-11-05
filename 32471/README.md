@@ -1671,6 +1671,20 @@ accel bias variance reaches the 5e-9 floor because tester A set EK3_ABIAS_P_NSE
 to 0.005 (default 0.02): in SITL at 0.02 it settles at 7.3e-9 and never
 resets, at 0.005 it resets every 34 s or more.
 
+#### Superseded 2026-11-04 (evening) by the boot 83 log itself
+
+"XKFA velFused is 0 throughout" does not hold for boot 83 ("Loiter good",
+c46a09e, STAT_BOOTCNT 83, EK3_OPTIONS 92): XKFA.VFuse (velFused, AGL KF
+velocity fused as velD within 250 ms) is 1 on 65% of its 2064 records.
+Boots 125 and 127 (a8487f0, EK3_OPTIONS 92) fuse it on 81% and 79%. Which
+log the 0 was read from is not recorded. The P_NSE conclusion is untouched
+(the 0.015 sweep replayed these flights with the fusion as flown, and no
+reset fired), but "not driven by" is not shown: velD fusion is extra
+vertical information that lowers the Z bias variance towards the floor, so
+it is a plausible contributor to how thin the Q25's margin is (1.08x at
+0.015). Not measured. The original line is left because the SITL figures
+beside it stand.
+
 Test `HoverBiasLearnAcrossEKFReset` (refresh12 working tree, not
 committed; text in the session scratch): flow only, 200 Hz loop,
 EK3_ABIAS_P_NSE 0.005, SIM_ACC_VRF_Z 0.10. It hovers in Loiter, reads the
@@ -1914,3 +1928,231 @@ reset cannot teach the learner its relearning. No time or threshold.
   Rover OSDEKFLanesDCMFallback; SmallFastDronev1 md5 `bf1f14ed`,
   MicoAir743v2 md5 `c00ca28a`. EK3_ABIAS_P_NSE stays 0.02 by default; the
   field plan asks tester A and tester B for 0.015. Not flown.
+
+### 2026-11-04 (evening): Q25 relearn on topup9 (a8487f0), boots 125 and 127
+
+Tester A relearned with EK3_ABIAS_P_NSE 0.015 and INS_ACC_VRFB_Z 0 (ACC_ZBIAS_LEARN
+9, learn and save without applying), nine VALT flights in one boot ("01 ZBias
+Learn"), then flew VALT with the result applied ("02 VALT Test", ACC_ZBIAS_LEARN
+10). Tier 1, from the logs; not replayed.
+
+- BARO1_THST_SCALE was 0 on both, against -205.2 on boot 83 (c46a09e, "Loiter
+  good"). Baro minus range finder in hover: -0.27 +/- 0.19 m on boot 83, +6.1
+  to +6.5 m (std to 3.1 m) on boots 125 and 127, which is 205 Pa x 0.38
+  throttle. On the first VALT takeoff the baro read +12 m while the vehicle
+  rose 0.44 m and settled back on the ground; the EKF followed it to 8.4 m,
+  VALT cut the throttle to zero and the vehicle sat on the ground for 5 s.
+  The reported "fails to take off ... struggles to hold altitude ... lands
+  with the motors at hover throttle" is this, not the learner. The re-arm
+  height errors of 2.6 to 4.3 m that forced arm-pending bootstrap resets fit
+  the same baro error.
+- At 0.015 the Z accel bias variance sits 8 to 10% above its 5e-9 floor once
+  converged (XKV2.V15 5.4-5.5e-9), and no floor reset occurred in either log.
+  XKF2.AZ then moves by less than its 0.01 logging step through a whole
+  flight. The learner's motors-on delta (hover bias minus bias at arm) is
+  therefore set almost entirely by the state at arm: after an arm-pending
+  bootstrap reset 1 s before arming the baseline is 0 and the flight saves
+  the whole bias the EKF relearns (flights 2, 3, 6, 9: +0.064, +0.063,
+  +0.065, +0.062); after a quick re-arm the baseline is the last flight's
+  hover bias and it saves about 0 (flights 4, 5, 7: +0.004, -0.001,
+  +0.003). The quick re-arm half is the limitation accepted at 0ffebdf4c3;
+  the bootstrap reset half is new: a reset before arming is outside the
+  restart count the learner reads at arm, so it is not flagged, and the
+  save then includes whatever the EKF would have learned at rest. Flights 1
+  and 8 saved nothing and logged no message; not explained.
+- With 0.0624 applied, VALT flight 1 (armed 2.6 s after the EKF started)
+  settled to an EKF residual of 0.00 to -0.02 after a takeoff swing to
+  +0.43 driven by the baro spike, so 0.062 is close to the hover total on a
+  flight that starts from a fresh EKF. Whether it double counts a static
+  part on a flight armed after a long rest is not shown by these logs, and
+  the whole learning session ran with the baro thrust error in it.
+- AGL KF velD (EK3_OPTIONS bit 4) was set and fused on 79-81% of records in both logs, but not at the first VALT takeoff: the EKF stayed AID_NONE until 20 s (aiding started 19.2 s, 7 s after lift-off) and velD needs a horizontal velocity estimate, so it first fused at 23 s. The +12 m baro spike at 11-13 s had no vertical velocity measurement against it. A takeoff made 2.6 s after boot, before flow aiding has started, gets no velD.
+  - Superseded 2026-11-04 (night) by SITL and Replay (../33478/README.md, the AID_NONE prototype): "velD needs a horizontal velocity estimate" was read from the gate's name and is wrong for a copter. With no aiding the synthetic position fusion keeps filterStatus.flags.horiz_vel true, so velD fuses in ALT_HOLD with no GPS or flow (100% of a 60 s SITL hover). What held it off at this takeoff was the AGL KF velocity settling check: XKFA.VAglStd 0.36-0.38 m/s against the 0.2 limit from 13 to 20 s while the vehicle rested at 0.03 m of range, so fusion started at 23 s. The baro spike point stands; the stated cause does not.
+
+### 2026-11-04 (night): the at-arm baseline after an EKF bias restart, measured
+
+SITL (tier 2), beta a8487f02aa (worktree r1104/vrf-arm-baseline, throwaway
+probes VRFArmBaselineProbe/2, not committed): flow only, baro height, one
+core, SIM_ACC1_BIAS_Z 0.20 (static), SIM_ACC_VRF_Z 0.10, ACC_ZBIAS_LEARN 1,
+30 s ALT_HOLD/Loiter hovers. The EKF settles at 0.18 at rest and 0.26-0.27 in
+the hover, so a correct save is the 0.08 increment. Arms after EKF_RESET
+(aux 187) or boot were forced to reach tester A's timings.
+
+| armed after the EKF last started the Z bias | AZ at arm | saved, P_NSE 0.015 / 0.02 |
+|---|---|---|
+| 3.5 s, after a reset | 0.05 | 0.223 / 0.224 |
+| 4.6 s, after boot | 0.09 | 0.185 / 0.178 |
+| 5.7 s, after a reset | 0.13 | 0.145 / 0.147 |
+| 7.5 s, after a reset | 0.16 | 0.113 / - |
+| 13.6 s, after boot | 0.18 | 0.085 / - |
+| 14.7 s, after a reset | 0.18 | 0.081 / 0.087 |
+| 20 s or more, after the EKF's own reset at rest | 0.18-0.19 | 0.083-0.084 / - |
+| quick re-arm 4 s after landing, no restart | 0.26 | 0.017 / - |
+
+- At rest after a restart the Z bias stays 0.00 for about 2 s, reaches
+  0.10 at 5 s and is within 0.02 of 0.18 at 8 s and 0.01 at 10 s (five
+  restarts, both P_NSE values). After landing with no restart it does not
+  relax towards the static value at all: 0.26-0.28 for the 10 s of rest
+  recorded. The Q25 (boot 125, OGNM 1 throughout, so not inhibited) reached
+  0.02 about 10 s after the EKF started and 0.03 at arming 24 s after; the
+  final static value there is not known.
+- On this beta the EKF also restarts at rest by itself: after each flow-only
+  SITL landing, "EKF3[1] height error 1.1m" was followed by #34942's forced
+  reset 3-20 s later. The flights that saved correctly after a long rest
+  did so because that reset relearned the static bias from zero, not
+  because the bias relaxed.
+- So a restart count cannot separate the cases: a restart since the last
+  disarm (or since boot) precedes the correct saves (13.6 s after boot, 20 s
+  after a forced reset) as well as the wrong ones (1-6 s). What separates
+  them is the time since the restart, about 10 s at rest. The variance at
+  arm separates them as well in SITL (wrong: XKV2.V15 1.3e-6 or more;
+  correct: 9.5e-8 or less; Q25 converged at rest 4.7e-8), but a variance
+  threshold is the configuration guess the 2026-11-04 time-hold review
+  rejected.
+
+Decision needed (Andy): a flight armed less than 10 s after the EKF last
+restarted that IMU's accel bias is not saved, with the existing warning.
+Copter can record the time it sees the restart count change while
+disarmed, so neither AHRS nor EKF3 changes. Not implemented. The quick
+re-arm limitation is unchanged by it.
+
+### 2026-11-04 (night): second Q25 relearn, baro thrust scale restored (boot 131)
+
+BARO1_THST_SCALE -205.2 again, ACC_ZBIAS_LEARN 3, P_NSE 0.015, VRFB 0 at boot, three VALT flights. Height fixed: EKF minus range finder -0.21 +/- 0.07, -0.38 +/- 0.16, -0.50 +/- 0.19 m; no arm-pending reset, no failsafe, AGL KF velD fused. The learner did not produce a usable value: flight 1 (armed 10.6 s after the EKF started, Z bias +0.01 at arm, +0.06 to +0.07 in hover, the one flight whose baseline was an at-rest estimate) saved nothing and sent no message, as flight 1 of boot 125 did; flights 2 and 3 were re-armed 1.3 s and 3.7 s after landing and saved -0.002 and -0.005. No floor reset, no accel switch (IMU0 AH never 0) and ground-effect flags clear by 3 s, so neither restart path nor the ground-effect check explains flight 1. In VALT the logged desired climb rate (CTUN.DCRt) is non-zero on every 10 Hz sample of every flight (medians 0.006-0.114 m/s), against the learner's exact-zero test; saves on other flights show the 100 Hz loop does find qualifying samples, so this is open, not explained. Needs a SITL VALT run.
+
+### 2026-11-04 (night, later): why flight 1 saved nothing, and the first-flight rule
+
+Flight 1 of both Q25 learning boots (125, 131) and flight 8 of boot 125
+took no learner sample at all, so the save skipped them with no message.
+The learner samples only from Copter's hover-throttle path, which needs
+the position controller's desired climb rate to be zero (`is_zero()`).
+PSCD.DVD (the desired Down velocity; CTUN.DCRt is the target velocity,
+which includes the position correction, and is not the field to read)
+decays to 1e-12 and below on every flight that saved, and holds 0.003 to
+0.018 m/s on the three that did not. The throttle stick rested at a
+median of 1598, 1603 and 1600 us on those three against 1491-1500 on
+most others. With RC3 987-2011, RC3_DZ 30 and THR_DZ 100 the deadband
+top is about 1597.5 us, so the stick sat just above it: a steady climb
+demand the learner never samples. Tier 1, from the logs. Not a bug in the
+learner's arithmetic; a pilot resting the throttle at the deadband edge
+learns nothing, and was not told.
+
+Andy's decision (2026-11-04): save only from the first flight after the
+EKF restarts an IMU's accel bias at rest, and only if armed at least 10 s
+after the restart (the at-rest settle time measured above). Built on the
+beta as branch `r1104/vrf-first-flight` (worktree r1104-vrf-arm), local:
+
+- `a8807ac325` Copter: report an EKF accel bias reset before the first
+  hover sample (the bot's minor at `1ff6d62b40`: the save tested learnt
+  before restarted).
+- `c1cc9d4ef8` Copter: save the hover Z-bias only from the first flight
+  after a rest. Copter samples the restart count at 100 Hz while
+  disarmed (the boot start counts) and notes when it changed; at arming
+  the baseline is OK only if a restart was seen, no flight has been made
+  since, and it is at least 10 s old. Taking off (not just arming) uses
+  the slot up, as after any flight, including a manual-throttle one, the
+  bias at rest stays the hover bias. A restart in flight is absorbed at
+  disarm and does not open a new slot. With bit 2 any flight saves, as
+  before (the baseline is 0 by design). Messages at disarm, one per
+  flight: "...not saved: EKF accel bias reset", "...not saved: armed
+  <10s after EKF start", "...not saved: not first flight", and "Hover
+  Z-bias not learned: no steady hover" for a first flight that took no
+  sample. ACC_ZBIAS_LEARN description gains one sentence.
+- `f1d59698d0` autotest: HoverBiasSavedFirstFlightAfterRest, five flights
+  in one boot, flow only, static 0.20, motors-on 0.10 (tier 2):
+
+| leg | without (a8807ac325) | with (c1cc9d4ef8) |
+|---|---|---|
+| first flight, armed 15 s after EKF start | 0.0847 | 0.0846 |
+| re-arm 2 s after landing | saved 0.0063, no message | kept, "not first flight" |
+| armed 2 s after an EKF reset at rest | saved 0.2329, no message | kept, "armed <10s" |
+| first flight, throttle 1605 (above the deadband) | nothing saved, no message | "not learned: no steady hover" |
+| reset at rest, armed 15 s after | 0.0863 | 0.0863 |
+
+  With the change the test passes; without, it fails at the second leg
+  (the per-leg "without" column is from a non-failing variant of the
+  same legs). VibrationRectificationBiasLearning (0.141 against 0.15),
+  HoverBiasNotSavedAfterEKFReset, AccelBiasMovingPlatform,
+  AccelBiasInhibitLoggedAfterLogRestart, AccelBiasLearningInhibitedInAcro
+  and AccelBiasAcroExitVelocityError pass with the change; none needed
+  adjusting. Copter and plane build. Not flown; not ported to #32471.
+- Open: whether the learner should sample a small steady climb demand
+  rather than an exact zero (a stick at the deadband edge is a hover);
+  that is a change to a gate shared with hover throttle learning, left
+  for Andy.
+
+### 2026-11-04 (night): third Q25 relearn, first flight after a rest, AltHold (boot 137)
+
+Tester A rebooted, waited for relative aiding (15.0 s) and armed 21.8 s after the EKF started, in ALT_HOLD (ACC_ZBIAS_LEARN 3, P_NSE 0.015, BARO1_THST_SCALE -205.2, VRFB 0 at boot). Flight 1: Z bias +0.01 at arm, +0.06 to +0.07 in hover, saved +0.0624. A #34942 forced reset fired 5.9 s before flight 2 was armed; flight 2 flew with 0.0624 applied, its EKF residual stayed +0.01 to +0.03 (mean +0.012) in hover, and it saved +0.0565. So the motors-on increment on the Q25 is about +0.06 with a static part near +0.01, and a correction of 0.062 leaves the EKF a residual of about 0.01 (tier 1, one boot). Under the first-flight rule (r1104/vrf-first-flight) flight 2 would have kept 0.0624 ("armed <10s after EKF start"). The earlier "no qualifying sample in VALT" reading of CTUN.DCRt was the wrong field (it includes the position correction; PSCD.DVD is the demand): flight 1 of boots 125 and 131 saved nothing because the throttle rested at 1598-1603 us, just above the deadband edge (about 1597.5 us), where VALT demands a steady 0.003-0.018 m/s climb and the learner, which needs an exact zero demand, takes no sample.
+- 2026-11-04 (night), boot 140 ("07 VALT after althold zbias learn"): flown with VRFB 0.0565 applied but EK3_OPTIONS 76 (bit 4 cleared); the poor VALT and the crash were the baro without AGL KF velD (record in ../33478/README.md), so this flight says nothing about the VRFB value.
+- 2026-11-04 (night), boot 142 ("08 VALT after EK3 OPTIONS 92"): bit 4 back on, VRFB 0.0565 applied, four VALT flights with no failsafe or reset; EKF minus range finder +0.01 +/- 0.43 and +0.35 +/- 0.14 m on flights 1 and 2. VibeZ mean 21.4 (p95 32) against 15-16 earlier in the evening, the flight controller mount loose; the EKF residual Z bias in hover was +0.03 to +0.04 on top of the 0.0565 applied (total about 0.09, against about 0.07 at boot 137), consistent with more rectification at higher vibration. One boot, not replayed.
+
+### 2026-11-04 (night): first-flight rule, review round 2 on the beta
+
+Full review of r1104/vrf-first-flight (a8807ac325, c1cc9d4ef8, f1d59698d0;
+three Claude reviewers, four Codex cold reads). Fixed as new commits on
+the same branch, not yet folded or ported:
+
+- dc53f21285 Copter: time armed on the ground is not rest (armed, the
+  EKF fuses no zero velocity): a disarm with no flight restarts the 10 s
+  if the restart count changed while armed or the flight was TOO_SOON;
+  update_hover_bias_rest() returns unless ACC_ZBIAS_LEARN bit 0 is set
+  (ARCH-4); "armed <10s after EKF reset"; "not learned: no steady hover"
+  only with bit 2 clear; comments say what was measured ("~10 s at
+  rest"); the Lua/DDS interleave is documented as accepted. "Took off"
+  stays !ap.land_complete (Andy, 2026-11-04: it is the flag the learner
+  samples on; no second takeoff flag). This commit also moved the restart
+  test to the count at disarm, which 33ea78968f takes back.
+- 33ea78968f Copter: the restart is read at each hover sample again, not
+  at disarm. Reading it at disarm failed VibrationRectificationBiasLearning
+  ("An accel that learnt nothing keeps a value set while armed": an accel
+  brought back into use after landing moves the other accel's count, and
+  the clean save of INS_ACC2_VRFB_Z was refused) - the case recorded above
+  on 11-04 as tried and dropped, re-introduced by the review item that
+  asked for a count at disarm. What stays: the count is read before the
+  IMU-in-use test at each sample, and the save tests the restart before
+  it, so a core switching off the IMU in flight is reported, where before
+  it was skipped without a word.
+- b679b58eb0 AP_InertialSensor: the four INS_ACCn_VRFB_Z descriptions
+  state the first-flight rule.
+- 9d72ba3336 autotest: four new legs and test fixes (below);
+  HoverBiasNotSavedAfterEKFReset waits for the full "EKF accel bias
+  reset" text, as its prefix matched the new messages.
+
+HoverBiasSavedFirstFlightAfterRest at 33ea78968f, SITL static 0.20,
+motors-on 0.10, two runs: first flight 0.0848 / 0.0847 (held to 0.085
++/- 0.02); second flight with SIM_ACC_VRF_Z doubled kept, "not first
+flight"; bit 2 not-first flight 0.2865 / 0.2865 (held to 0.285); armed
+2 s after a reset kept, "armed <10s"; reset, 3 s rest, arm without flying
+(auto-disarm), immediate re-armed flight kept, "armed <10s"; settled
+rest, arm without flying, then a flight 0.0824 / 0.0817 and nothing said
+at the ground disarm; throttle above the deadband "not learned"; INS_USE
+0 in flight kept, "EKF accel bias reset"; reset then 15 s: 0.0860 /
+0.0864. The same test on f1d59698d0 (recording, not failing): the armed
+wait leg saved 0.098 with no message, and the INS_USE leg said nothing;
+the bit 2 and settled-ground-arm legs pin existing behaviour and pass
+there, and fail on 33ea78968f-era code with the bit 2 exemption removed
+(0.085 kept against 0.285) or every non-flight disarm restarting the
+10 s (0.5 kept against 0.085). HoverBiasNotSavedAfterEKFReset,
+VibrationRectificationBiasLearning (0.141 against 0.15),
+AccelBiasMovingPlatform, AccelBiasInhibitLoggedAfterLogRestart,
+AccelBiasLearningInhibitedInAcro, AccelBiasAcroExitVelocityError pass.
+Copter and plane build; gate clean but for the 13 pre-existing E131s.
+Not flown.
+
+### 2026-11-04 (night): first-flight rule folded and ported to the PR (pushed 2026-11-05)
+
+Beta: bit 2 latched at arming, as Codex found the baseline chosen with bit 2 at arming but the save reading it at disarm (`07483b392c`, test `5e2877ade9`: bit 2 set mid-hover keeps 0.5 with "Hover Z-bias not saved: ACC_ZBIAS_LEARN changed"; without the latch the message is not sent). Folded on `r1104/vrf-first-flight-sq` (tree-identical to `r1104/vrf-first-flight`): `f87bb0e5d6` Copter, report every EKF accel bias reset the learner sees (the restart tested before whether the learner sampled and whether the IMU is in use; a8807ac325 kept as its own fix, widened by 33ea78968f's in-use ordering); `447a13307e` Copter, the first-flight rule with the armed-time, bit-0 poll and bit-2 latch fixes; `1b418d8b03` AP_InertialSensor descriptions; `a4b027a5b6` the test; `bc47a8452f` HoverBiasNotSavedAfterEKFReset full text. Each builds.
+
+PR port `r1104/32471-first-flight` (worktree r1104-32471-ff) on `1ff6d62b40`: `793dc2fb26`, `34c63c0940`, `132b6b8fa3`, `7ab3872f68`, `255d534264`. ACC_ZBIAS_LEARN sentence hand-ported onto the PR's parameter text; test takeoff() given altitude_min for master; the one-line wait fix left as its own commit so the push stays a fast-forward. On master's EKF (SITL): HoverBiasSavedFirstFlightAfterRest passes twice (first flight 0.0849, bit 2 flight 0.286, later first flights 0.081/0.085), HoverBiasNotSavedAfterEKFReset, VibrationRectificationBiasLearning, AccelBiasMovingPlatform and AccelBiasInhibitLoggedAfterLogRestart pass; copter and plane build; gate clean but for three pre-existing subject-length notes; check_branch_conventions passes. GPS spot check (throwaway probe, GPS copter, static 0.20, motors-on 0.10): after an EKF reset at rest the Z bias was within 0.01 of its final 0.18 from 6.2 s; a first flight armed 11.4 s after a reset saved 0.0952, one armed 30.4 s after 0.0955, so 10 s holds with GPS on master's EKF.
+
+Pushed 2026-11-05 as a fast-forward, `1ff6d62b40..255d534264` on
+`pr-vrf-core`. No /pr-review state was saved at the port head; the full
+review ran on the beta copy of the same five commits
+(`r1104/vrf-first-flight-sq`). Posted the same day: the correction to the
+31 Oct "learns afresh" reply
+(https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-6653781117)
+and the description edits (first-flight paragraph, opening "With bit 2
+clear" because bit 2 still saves every flight; the parts-that-look-wrong
+bullet; both tests; the quick re-arm bullet replaced by the 10 s and
+deadband notes).

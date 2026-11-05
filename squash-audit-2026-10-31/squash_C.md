@@ -1,6 +1,6 @@
 # Squash C, built 2026-10-31 (not pushed)
 
-Built in `/home/andy/github/sq-c` on fresh branches `sq/<PR>` from each PR's
+Built in the sq-c worktree on fresh branches `sq/<PR>` from each PR's
 current head, by cumulative `cherry-pick -n` plus `commit`. Folded commits
 keep the first commit's author and date. Every branch's tree equals its PR
 head (`git diff <old head> sq/<PR>` empty). Push plan: `push_C.tsv`

@@ -1,6 +1,6 @@
 # Field test results, 2026-09-16: OSD and RC input on RPI_UAVFC
 
-Data from the tester in the support archive, taken with the build described in
+Data from the tester, taken with the build described in
 [field-test-osd-rcin.md](field-test-osd-rcin.md). Two sessions:
 
 | Session | RC path | Uptime at file pull | Log |

@@ -27,7 +27,7 @@ in 6 of 13 attempts; held until `position_ok()` in `0a4ae24f1e`, with a
 
 ## Where it came from
 
-The Q25v1 QMIN failsafe flight of 2026-10-08 (tester A MicoAir743v2 flow
+The Q25v1 QMIN failsafe flight of 2026-10-08 (tester A's MicoAir743v2 flow
 quad, SmallFastDrone `7b0e4dd8`, `EK3_FLOW_QMIN=75`; record owed in
 the private analysis repo). The #33484 quality latch took
 flow out at 67.40 s and `FS_EKF_ACTION=2` put the vehicle in AltHold at

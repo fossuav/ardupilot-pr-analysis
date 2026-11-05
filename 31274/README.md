@@ -361,3 +361,130 @@ outputs from 5.02 s to 10.50 s, then at most 1% (squash-audit-2026-10-31/
 Q25-2026-11-02.md). Folded into "report the bdshot error rate as a
 percentage" on `sq/31274-1102e` (head `2b31e43213`, 14 commits, tree
 identical to `05edaf83de`; backup `pre-squash/31274-1102`). Not pushed.
+
+### Superseded 2026-11-04 by a reread of the same logs
+
+ESC.Err read 100% only to 6.02 s. From 6.06 s it read the first stats
+window's own rate: 32%, rising to 44% at 6.18 s, falling to 6.5% at
+10.0 s, held there to 10.5 s, then 1% or under. Same on all six Q25
+boots on `c46a09ec56` and `722d77b5de` (below). The paragraph above took
+every reading over 1% for 100%, and the squash-audit addendum
+(`squash-audit-2026-10-31/Q25-2026-11-02.md`) has the same wording. Left
+as written; the 100% branch did run, for the first second.
+
+## 2026-11-04: the boot reading, the reply-rate floor, and a unit test
+
+From tridge's dev call questions (comment 6625045530: why 100% at
+startup). Local branch `r1104/31274-rate` on the PR head `2b31e43213`,
+not pushed. `722d77b5de`'s RCOutput_bdshot.cpp is byte-identical to the
+PR head's; `c46a09ec56`'s differs only in dividing a short window by its
+frames, which no reading below reaches.
+
+### Why ESC.Err reads high for 5.5 s after boot (tier 1, model tier 2)
+
+Q25, MicoAir743v2, SERVO_DSHOT_RATE 2, SCHED_LOOP_RATE 200,
+SERVO_DSHOT_ESC 3, four DShot600 outputs on one timer, TKOFF_RPM_MIN 0.
+The worst of the four outputs:
+
+| Log | first ESC | 100% to | then peak | at or under 1% from |
+|---|---|---|---|---|
+| c46a09e Indoor Loiter 1 of 2 | 5.02 | 6.02 | 43.7% | 10.54 |
+| c46a09e Indoor Loiter 2 of 2 | 5.02 | 6.02 | 44.3% | 10.54 |
+| c46a09e Inside house brown floor | 5.02 | 6.02 | 43.9% | 10.54 |
+| c46a09e Loiter good then failsafes ... dim auto bay | 5.03 | 6.03 | 44.2% | 10.55 |
+| 722d77b VALT Test 1 of 2 | 5.02 | 6.02 | 43.8% | 10.54 |
+| 722d77b VALT Test 2 of 2 | 5.11 | 6.07 | 46.8% | 10.55 |
+| 0cb49e7 Test new code seemed fine (master's formula) | 6.44 | - | 79.3% | 11.32 |
+
+The traces repeat to the count across boots days and builds apart. A
+model of the PR's counting fits each within 0.2 to 0.4% rms
+(`boot_model.py` in that session's scratch): the first counted reply
+restarts the window, since the counters start at uptime zero; DShot
+starts at about 5.0 s, when the firmware finishes initialising; about
+194 counted replies a second per output until the rate thread starts at
+5.86 s (the driver's 800 Hz floor over four outputs), 449 to 477 after
+(2 kHz); the ESCs miss their first 57 to 85 replies and every reply in a
+0.15 to 0.2 s gap at 6.0 to 6.2 s, about 140 in all. The gap follows the
+rate thread's DShot rate change by about 0.13 s on every boot. Its cause
+is not found; DShot commands are not it, as their reply slots are not
+counted.
+
+So of the 5.5 s, about 1 s is the PR's 100% before 250 replies, about
+4 s is those misses held in a window anchored to uptime, and 0.5 s is
+that window's rate held as the floor until the next one counts 250.
+Master counts the same misses: `0cb49e7` (master's errors/(1+frames)
+with the PR's miss counting) read 79% at 6.44 s and was not under 1%
+until 11.3 s. SFD-O4's 0.7 s (2026-10-31 above) fits: misses that land
+before the first restart at 5 s are thrown away with it.
+
+Effect: within about 10.5 s of boot a motor test warns on every motor,
+and with TKOFF_RPM_MIN set a takeoff is held until then. The Q25 armed
+at 17 s or later and has TKOFF_RPM_MIN 0, so none of this bound.
+
+### The 50 replies a second
+
+A window that never counts 250 replies never sets a rate, so a channel
+counting fewer than 50 a second reads 100% for good. Confirmed in the
+source and pinned by the test below (47.6 a second reads 100% for a
+minute, 50 a second reports). No stock FMU configuration is near it:
+set_dshot_rate() never pulses below 800 Hz (the 1 kHz timer at low loop
+rates), and a timer captures one reply per pulse from at most four
+outputs, so at least 200 a second. The Q25 counts 194 before its rate
+thread and 449 to 477 after, so about a tenth of pulses go uncounted
+there; a channel would need three quarters uncounted. It binds a
+shorter window: a 1 s window with the same 250 needs 250 a second,
+which the Q25 does not get before its rate thread (derived from the
+source).
+
+### IOMCU
+
+`iomcu-f103-dshot` defines HAL_WITH_BIDIR_DSHOT and compiles
+RCOutput_bdshot.cpp; `iomcu-dshot` does not. The PR does not touch
+Tools/IO_Firmware, so IOMCU ESC.Err does not change until the binaries
+are rebuilt, normally for a release. Then it reads as the FMU outputs do
+(100% before 250 replies, the miss counting, the 250 divisor). AP_IOMCU
+passes it on without the percentage flag, so the takeoff check and the
+motor test ignore it either way. The current description's "ESC.Err
+logs exactly what it did before" for IOMCU holds only until that
+rebuild.
+
+### Unit test, and the refactor it needs
+
+SITL does not run the DShot driver (its ESC backend reports
+SIM_ESC_ERR_RATE directly), so the counting moved, unchanged, into a
+header the host build can test:
+- `d9f71c7a59` AP_HAL: `BDShotErrorRate<N>` in
+  `AP_HAL/utility/BDShotErrorRate.h`, the driver's arrays, mask and
+  code, members in the same order and types.
+- `df901690db` AP_HAL_ChibiOS: the driver uses it. The reply is decoded
+  before it is counted, which reads nothing the restart writes.
+- `2eb366d50a` AP_HAL: `tests/test_bdshot_error_rate`, 9 cases: no reply
+  yet; healthy from boot (100% to the 250th reply); start-up misses held
+  for their window (80 misses at 200 a second: over 1% for 6.25 s); the
+  50 a second floor; dead after a restart (over 1% from the third miss);
+  dead late in a window (the tenth miss after 900 good); one miss after
+  a restart (0.4%); an ESC that restarts (over 1% for 5.25 s after it
+  answers again); a pause (keeps the last window's rate).
+
+Checks: all 9 pass. Three mutants of the header (no 100% default,
+divide by the frames so far, no floor) fail 4, 3 and 7 cases. A host
+probe feeding the PR head's code, copied, and the new class the same 80
+million replies over 200 random streams (pauses, loss changes, the
+millis() wrap) published identical rates to the bit. CubeOrange-bdshot
+copter builds 4 bytes smaller in flash and RAM, iomcu-f103-dshot
+iofirmware the same size, no warnings; check_branch_conventions.py
+passes. Whether the refactor goes on the PR is Andy's call.
+
+### Fix options, not made (derived from the fitted model, not run)
+
+Neither half alone shortens the Q25's boot reading; both together do:
+- Skip misses before an output's first good reply: the gap's misses then
+  fall in the first 250 frames, read 30% at 6.16 s and are held to
+  10.8 s, worse than now.
+- Skip the gap alone: the 57 start-up misses read 23% at about 6.2 s and
+  hold to about 10.5 s.
+- Both: 100% to about 6.3 s, then 0%.
+The gap's cause has to be found first; a bench boot log at
+SERVO_DSHOT_RATE 0 against 2 would show whether it follows the rate
+change. Shortening the window instead raises the reply-rate floor in
+proportion (above).

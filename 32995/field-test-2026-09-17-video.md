@@ -1,7 +1,7 @@
 # OSD video from the round-three build, delivered 2026-09-17
 
 Two DVR captures of the analog downlink, and nothing else this round - no
-`.bin` log and no `@SYS` files. In the support archive:
+`.bin` log and no `@SYS` files. From the tester:
 
 | File | Length | RC path |
 |---|---|---|
@@ -327,6 +327,8 @@ VID rail (README GPIO18; DEVELOPMENT.md and the hwdef pin names GPIO19).
 ## Reproduce
 
 ```sh
+# set OSD_FONT to the AP_OSD font0.bin of the firmware under test if it is not
+# at ~/github/ardupilot/libraries/AP_OSD/fonts/font0.bin
 python3 tools/osd_video_blocks.py extract VID3_CRSF.mov blocks_crsf.npz
 python3 tools/osd_video_blocks.py report blocks_crsf.npz
 python3 tools/osd_video_ocr.py screen VID3_CRSF.mov blocks_crsf.npz

@@ -1,11 +1,12 @@
 #!/bin/bash
 # bisect_srcset.sh K [K...]: for each K, build refresh12 topup2's tip plus
 # #34942's first K EKF3 commits (as picked on refresh12) in the scratch
-# worktree /home/andy/github/tfix-ab-34942b and run MAV_CMD_SET_EKF_SOURCE_SET.
-S=/tmp/claude-1000/-home-andy-github-smallfastdrone-beta/c72a7562-fe47-4333-b873-673b10019194/scratchpad
-WT=/home/andy/github/tfix-ab-34942b
+# worktree tfix-ab-34942b and run MAV_CMD_SET_EKF_SOURCE_SET.
+# SCRATCH: the scratch directory holding tfix/; WT: the worktree; REFRESH12: the refresh12 checkout
+S=${SCRATCH:?set SCRATCH to the scratch directory}
+WT=${WT:-$HOME/github/tfix-ab-34942b}
 PICKS=(e78e5ccda2 e9e0c912b2 a9c2061a3f b80e115edc a6770bfbad 4dae59caf7 992bb00935)
-[ -d "$WT" ] || git -C /home/andy/github/sfd-refresh12 worktree add --detach "$WT" 35e04e1064 > /dev/null 2>&1
+[ -d "$WT" ] || git -C "${REFRESH12:-$HOME/github/sfd-refresh12}" worktree add --detach "$WT" 35e04e1064 > /dev/null 2>&1
 cd "$WT" || exit 2
 [ "$(pwd -P)" = "$WT" ] || exit 2
 for k in "$@"; do

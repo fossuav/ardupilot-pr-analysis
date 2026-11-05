@@ -686,3 +686,74 @@ Head f8bb0e5bb6 -> 08146e80d9, 10 -> 4 commits on the same base, content identic
 - 1bc26699c4 AP_NavEKF3: support negative EK3_GND_EFF_DZ as baro noise floor
 - de7062749a AP_NavEKF3: hold the pre-takeoff height during ground effect spool-up
 - 08146e80d9 autotest: add BaroGroundEffectAtTakeoff test
+
+## 2026-11-05: the touchdown AID_NONE reset gate added (local, not pushed)
+
+Moved here from a standalone upstream PR (../34942/README.md, 2026-11-05):
+it is the AID_NONE sibling of this PR's ResetHeight suppression, and its
+next-flight cost needs #32768's arm-time reset with home set, which this
+stack carries. `r1105/32972-touchdown2` on `4919792466` (fast-forward):
+
+- `13fe97b7ea` AP_NavEKF3: skip the AID_NONE height reset in ground
+  effect (Control.cpp, the reset gated on armed, takeoff or touchdown
+  expected, and not fly-forward).
+- `5bf36c15d4` autotest: EK3TouchdownHeightNotSnapped, beside
+  BaroGroundEffectResetSuppression; next-flight threshold 0.6 m.
+
+SITL on this stack (tier 2), gate reverted against gate, md5-checked
+binaries. Test as committed, -3 m glitch: landed -3.19/-3.20 m without,
+-0.21 to -0.35 m with (five runs); next flight re-armed 1 s after the
+disarm -0.83/-0.98 m without, -0.17 to -0.33 m with. 10 s armed sit then
+a takeoff without a disarm, error at 2 / 8 / 14 s:
+
+| EK3_GND_EFF_DZ, glitch | without | with |
+|---|---|---|
+| 4, +3 m | +3.35 / +3.27 / +3.14 | +1.76 / +3.81 / +4.56 |
+| 4, -3 m | -3.23 / -3.06 / -3.02 | -0.28 / -1.91 / -3.58 |
+| -8, +3 m | +1.41 / -0.71 / -0.02 | -0.03 / -0.02 / -0.02 |
+| -8, -3 m | -1.42 / +0.64 / -0.03 | -0.03 / -0.03 / -0.03 |
+
+With the negative dead zone this PR's held reference and the gate
+together hold the landed height for both signs; with the default dead
+zone the gate covers only the seconds after aiding stops. Replay of the
+Q25 landings is in ../34942/README.md (2026-11-05). The Q25 runs
+EK3_GND_EFF_DZ 4.
+
+Related tests pass with the gate (19): EK3TouchdownHeightNotSnapped,
+BaroGroundEffectAtTakeoff, BaroGroundEffectResetSuppression,
+BaroGroundEffectRangefinderSwitch, HeightKeptOnAidingLossWithAltOffset,
+BaroDriftClearedAtArm, HeightDatumKeptOnArmWhileMoving,
+HeightDatumKeptOnMidairRearm, BaroDriftClearedAfterMidairDisarm,
+AmslAltPreservedOnRearmAtDifferentElevation,
+BaroDriftClearedWithRangefinderHeightSwitch, BaroDriftClearedWithAltOffset,
+GroundEffectCompensation_takeOffExpected and _touchDownExpected,
+TakeoffGroundEffectAlt, TouchdownGroundEffectAlt,
+EK3_AccelBiasZeroVelOptFlow, OpticalFlow, Replay. Plane builds. Mechanical
+gate: nothing on the new commits (three pre-existing squashed-subject
+should-fixes in this PR's messages, two subject-length notes in #32768's).
+
+Disclosed: touchdown_expected can read true in a steady hover far from
+launch with no height above ground (AP_GroundEffect.cpp:135 has no
+deadband, :156 asserts near_ground beyond 20 m; this thread, 2026-09-09);
+aiding stopping then skips the reset in flight and loses its resync.
+
+Quick review (gate, thread, one Codex cold read of the two commits). The
+cold read found the gate did not require motorsArmed: the flags are
+refreshed in throttle_loop at 50 Hz, after the EKF, so for up to one
+period after a disarm an AID_NONE entry would still skip the reset. Narrow
+(a flow timeout has to land in that window; the one disarm-triggered
+AID_NONE entry, with no yaw source, calls ResetHeight() first), but the
+armed state is what prop wash needs, so it was added and the commits
+rebuilt as above (the first build, `d1449c5905`/`3d8208c5ff` on
+`r1105/32972-touchdown`, differs only in that term). Re-run with it:
+EK3TouchdownHeightNotSnapped twice (landed -0.32 m, next flight -0.14 and
+-0.20 m), BaroGroundEffectAtTakeoff, BaroGroundEffectResetSuppression,
+HeightKeptOnAidingLossWithAltOffset, GroundEffectCompensation_touchDownExpected,
+TouchdownGroundEffectAlt, OpticalFlow and Replay pass; copter, plane and
+Replay build. The SITL table above was measured without the armed term,
+which changes nothing while armed. Pushed 2026-11-05 as a fast-forward,
+`4919792466..5bf36c15d4` on `pr-baro-gnd-effect`. Comment posted
+(https://github.com/ArduPilot/ardupilot/pull/32972#issuecomment-6654940776);
+description updated (the summary now covers touchdown, a bullet for the
+gate with its numbers and limits, the touchdown_expected-in-hover
+disclosure, and the test in the test plan).

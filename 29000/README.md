@@ -6,7 +6,7 @@ Branch `andyp1per/pr-fast-rate-tcal`. Record started 2026-10-30.
 ## 2026-10-30: the boot-time park kept the start-up rates
 
 AP-Review at 4cc85b68cf (rebased, code unchanged since dfff83a3a3). Local
-branch r1030/29000 in /home/andy/github/r1030-29000, not pushed.
+branch r1030/29000 in the r1030-29000 worktree, not pushed.
 
 Boot-time park, confirmed. Learning only starts at boot (`tcal_learning` is
 set only in `AP_InertialSensor::init()`), so the PR's gate parks the rate

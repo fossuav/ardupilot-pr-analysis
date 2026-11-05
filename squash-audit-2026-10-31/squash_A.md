@@ -1,6 +1,6 @@
 # Squash A, 2026-10-31: #34942, #32471, #32473
 
-Built in /home/andy/github/sq-a (new worktree, now detached at sq/32473-1031).
+Built in the sq-a worktree (new, now detached at sq/32473-1031).
 Nothing pushed; push plan in push_A.tsv (remote andyp1per, leases on the
 current heads, all confirmed with ls-remote).
 
@@ -50,7 +50,7 @@ were verified by the 10-31 RISK A/B.
 
 ## #32473, pr-acro-bias-inhibit: f945737262 -> sq/32473-1031 1edfa5daf1
 
-(sq/32473 already exists from 2026-10-04 in /home/andy/github/sq-32473; not
+(sq/32473 already exists from 2026-10-04 in the sq-32473 worktree; not
 touched.)
 - Restacked on sq/32471: d3b5890246 -> df2bc0b558, 115050a65d -> 28fcc46137,
   968ea7d7e5 -> 719b2caffe, 3ca94847db -> 1edfa5daf1. f945737262 drops (its

@@ -13,7 +13,11 @@ on the beta. Fix and autotest open as #34941 (head `247d0fb74e`),
 replayed on both flights (see the last two sections). It is the
 root of the SFD-O4 Loiter that did not stop (log61), with the terrain
 lookup in `../33585/` deciding which way the velocity was wrong when the
-pilot switched.
+pilot switched. 2026-11-04: tridge requested changes over a hard turn or
+flip with no flow reading; measured on logs 61-70 and a SITL harness,
+and a pass/fail test written for the PR (local `r1104/34941-tilt`,
+`ca8ddec8a6` on top of the harness commit, to fold), see the last
+section. Not pushed; not answered on the PR yet.
 
 ## What happens
 
@@ -263,3 +267,159 @@ never zeroed. The range was good only in parts (log70 162-167 s and
 217-222 s, 9.5-14 m), and there core 1 stayed within 1-3 m/s of GPS. Above
 the range finder it read up to 14 m/s high (log69 129-136 s), which is flow
 scale error. Replay matches both logs on both cores to 1e-7. Passed.
+
+## 2026-11-04: tridge's hard-turn review, measured
+
+tridge (CHANGES_REQUESTED, dev call 2026-11-04): a hard turn or a flip
+with no flow reading in it could leave the lane worse with this change;
+the usual answer is to take the first, possibly bad, reading after the
+gap. Measured at PR head `247d0fb74e` against its base `278a68a57a`.
+
+### The flights (tier 1)
+
+`tools/tilt_recovery.py`: a stretch is a run of the flow core's own
+cos(roll)cos(pitch) at or below 0.71; a flow update is an XKF5 record for
+that core whose FIX/FIY/NI changed, accepted when NI is under 100; the
+velocity error is core 1 against core 0, the GPS lane. XKF5 comes at the
+flow rate, so times are to 0.1 s. Stretches of 1 s or more.
+
+SFD-O4 logs 69 and 70, flown with this change (refresh12 topup3):
+
+- 21 stretches of 5.0 to 19.3 s, the case the change alters. The first
+  flow update after levelling was accepted after 17 of them; after the
+  other 4 it was rejected 1, 2, 3 and 5 times and accepted 0.2 to 0.6 s
+  after levelling. No timeout in either flight. The coasted velocity was
+  2.2 to 13.9 m/s off at levelling (1.0 to 7.4 at the start of the
+  stretch) and 0.4 to 7.8 m/s off 2 s later. Large coasted errors passed
+  the gate: 10.3 m/s at 9 m HAGL after 14.4 s (NI 29), 8.4 m/s at 8 m
+  after 19.0 s (NI 58). The velocity variance had grown with the coast.
+- 17 stretches of 1.4 to 4.6 s, where the change does nothing. The first
+  update was rejected after 6 of them, and flow was accepted again only
+  after 0.3 to 9.8 s (1 to 39 rejected updates).
+
+SFD-O4 logs 61 and 65, flown without it (beta `52b1d36f`): 6 stretches
+of 5.4 to 14.1 s, each with the timeout firing inside it and the velocity
+zeroed, 11.0 to 24.7 m/s off at levelling, the first update rejected
+after 4; and 21 stretches of 1.0 to 4.4 s, the first update rejected
+after 6, flow accepted again after up to 10.5 s.
+
+So a lane that rejects the returning flow for seconds is real, but in
+these flights it followed short stretches, on both builds. After the long
+stretches this change covers, the returning flow was taken within 0.6 s.
+Where rejection after a short stretch ran into a second tilt (log70
+260.7 s and 303.4 s), the credit kept the lane from timing out, which
+on master would have zeroed it at 20 and 14 m/s.
+
+### SITL (tier 2)
+
+`OpticalFlowTiltRecovery`, a measurement harness (local
+`r1104/34941-harness`, `2e7606da05` on the PR head; also
+`tools/OpticalFlowTiltRecovery-harness.patch`): core 0 on GPS flies the vehicle; core 1, flow only, is measured
+against SITL truth. Turns banked 55 deg at 70 deg/s from 11 m/s for 3, 8
+and 15 s; one FLIP, and three back to back; at 12 and 30 m; with a
+compass yaw for the flow core, with none, and with a 3% gyro scale error
+on all axes. A 1% yaw gyro scale error is on in every case. Both builds
+also carry `tools/xkf5_all_cores.py`, a logging-only change so XKF5 is
+written for the flow core (master logs the primary only); binaries md5
+`1913fd01` (PR) and `d0e18d80` (base), different. Three runs each,
+interleaved; median (range). Velocity errors are in each attitude's own
+yaw frame.
+
+| Leg | Build | Error at levelling m/s | First sample accepted | Error +2 s / +10 s | Position error at +10 s | Timeouts |
+|---|---|---|---|---|---|---|
+| compass 12 m, 8 s | base | 10.3 | 3 of 3 | 9.8 / 8.9 (1.1-8.9) | 127 m | 1 |
+| | PR | 1.2 | 3 of 3 | 0.3 / 0.1 | 3.4 m | 0 |
+| compass 12 m, 15 s | base | 10.4 | 1 of 3 | 9.3 / 1.2 | 150 m | 3 |
+| | PR | 1.0 | 3 of 3 | 0.2 / 0.1 | 2.4 m | 0 |
+| compass 30 m, 15 s | base | 10.8 | 3 of 3 | 10.9 / 5.7 | 203 m | 3 |
+| | PR | 2.8 | 3 of 3 | 1.4 / 0.7 | 3.6 m | 0 |
+| no yaw 12 m, 8 s | base | 10.3 | 3 of 3 | 9.7 / 9.7 (1.3-10.4) | 131 m | 1 |
+| | PR | 1.4 | 3 of 3 | 0.2 / 0.1 | 6.2 m | 0 |
+| no yaw 30 m, 15 s | base | 10.6 | 3 of 3 | 10.1 / 1.8 | 169 m | 3 |
+| | PR | 2.4 | 3 of 3 | 0.9 / 0.3 | 3.5 m | 0 |
+| gyro 3% 12 m, 15 s | base | 10.4 | 1 of 3 | 9.4 / 0.8 | 136 m | 3 |
+| | PR | 2.9 | 3 of 3 | 0.8 / 1.4 | 10.0 m | 0 |
+| gyro 3% 30 m, 15 s | base | 10.7 | 3 of 3 | 11.2 / 9.3 | 219 m | 3 |
+| | PR | 7.1 | 3 of 3 | 3.7 / 1.9 | 10.5 m | 0 |
+
+The 3 s turns and the flips, under 5 s, match where both lanes started
+clean (compass 12 m 3 s: 0.5 m/s at levelling on both, accepted, no
+timeout). Later short legs on the base inherit a lane still 1 to 5 m/s
+off from the long turn before it, which its zeroed velocity is slow to
+shed even with 8 s at rest between legs; the full table is
+`data/OpticalFlowTiltRecovery-2026-11-04.csv`, regenerated by
+`tools/sitl_csv_summary.py`. Over all 54 legs the PR accepted the first
+returning sample every time and never timed out. The base timed out in
+every 8 and 15 s turn and zeroed a velocity of about 10 m/s; it then
+accepted flow, but the zero's small variance left it 6 to 12 m/s off for
+5 s or more.
+
+What SITL does not capture: its IMU is clean, so the coast drifts 1 to
+3 m/s over 15 s (7 m/s with the 3% gyro scale error) where the flights
+drifted 2 to 14 m/s. No SITL leg pushed the coast outside the gate, so
+the PR's own worst case, rejected flow timing the lane out 5 s after
+levelling, has not been produced in SITL or seen in flight.
+
+### What this says about the variance widening proposed this morning
+
+After a long stretch it would rarely fire (4 of 21 in flight, each
+resolved by itself in 0.6 s; none in SITL). The long rejections are after
+short stretches, on both builds, so widening there addresses an existing
+gap rather than one this change opens. Those rejections may be right:
+in log70 the range finder was out of range or had no data in the second
+after levelling for 5 of the 6 short stretches whose flow was then
+rejected, and in range for 7 of the 8 long stretches whose flow was
+accepted (`RFND.Stat`). Without a range the flow is scaled by the
+terrain estimate, which can be wrong, and taking the reading would pull
+the velocity off. If it is written it is its own change, measured
+against logs 61, 63, 65, 69 and 70.
+
+Pass/fail check proposed for the PR from the harness: the 12 m, 8 s
+compass turn, flow core velocity error 2 s after levelling under 2 m/s
+and no "IMU1 stopped aiding" (PR 0.3 m/s in 3 runs, base 9.5 to 9.8).
+That uses XKF1, which master logs for every core, so it does not need
+the XKF5 change.
+
+### The test for the PR (2026-11-04, later)
+
+Andy's call: add a pass/fail test to the PR; he answers tridge with the
+numbers. `OpticalFlowTiltTurnRecovery` keeps two of the harness legs at
+12 m, flown in one flight: an 8 s banked turn with a compass yaw, then a
+15 s turn with no yaw source for the flow core (dropped in flight, as
+arming needs the cores' yaws to agree), with the 1% yaw gyro scale error
+throughout. It reads only XKF1, which master logs for every core, and
+SITL truth (SIM, SIM2), and fails if the flow core's velocity is more
+than 2 m/s off 2 s after levelling or "IMU1 stopped aiding" is seen from
+the start of a turn to 6 s after levelling. The other harness legs were
+dropped for runtime.
+
+The XKF5 logging change was reverted in both worktrees and both
+binaries rebuilt: PR at `ca8ddec8a6`, md5 `549a3242`; base `278a68a57a`
+with the test file copied in, md5 `87ce81f0`, the same as before the
+logging change. Three runs each, 2026-11-04 (tier 2):
+
+| Build | 8 s turn, compass yaw | 15 s turn, no yaw source | Result |
+|---|---|---|---|
+| PR `247d0fb74e` + test | 0.07, 0.05, 0.04 m/s, no timeout | 0.32, 0.32, 0.33 m/s, no timeout | pass 3 of 3 |
+| base `278a68a57a` + test | 10.08, 10.07, 9.53 m/s, 1 timeout | 10.47, 11.49, 11.12 m/s, 3 timeouts | fail 3 of 3 |
+
+The flow core's velocity error 2 s after levelling, against a 2 m/s
+limit: the PR is at a sixth of it, the base at five times it. The turns
+held flow off for 8.0 to 8.1 s and 15.1 to 15.3 s. Wall time about 6 to
+7 s a run here, the same as the PR's OpticalFlowTiltNoTimeout on the
+same host. Tools/scripts/check_branch_conventions.py passes and
+arducopter.py is flake8 clean.
+
+Rewriting the harness commit needs a push grant, so the test is a
+second commit, `ca8ddec8a6`, on top of the harness commit `2e7606da05`.
+Its message is the one the folded commit should carry; together they
+add only the test (128 lines in arducopter.py against the PR head).
+
+## 2026-11-04: test pushed and tridge answered
+
+Pushed `247d0fb74e` -> `38635910f0` (fast-forward): OpticalFlowTiltTurnRecovery. Reply to tridge's review with the flight and SITL numbers: https://github.com/ArduPilot/ardupilot/pull/34941#issuecomment-6633996392
+Plain-language explainer posted 2026-11-04 (master gives up after 5 s and is sure the vehicle stopped, so it rejects the first flow reading; this PR keeps a growing-uncertainty estimate, so the first reading is taken; flips and sub-5 s turns unchanged): https://github.com/ArduPilot/ardupilot/pull/34941#issuecomment-6634720930
+
+## 2026-11-04 (night): AP-Review round 2 at 38635910f0
+
+COMMENT. Low: the tilt credit is cleared only by an accepted fusion (OptFlowFusion.cpp:707), so after a tilt under 5 s whose first returning flow is rejected the lane coasts up to 5 s after levelling before timing out, where master times out 5 s after the tilt began (bot SITL, 4 s bank: 4.8 s against 0.8 s). That qualifies the reply and the explainer posted earlier ("a flip or a turn under 5 s is unchanged"): true when the first flow after levelling is fused, not when it is rejected. Correction drafted, not posted; whether to clear the credit when the tilt ends is Andy's decision. Minor (uncapped credit for long tilts) unchanged.
