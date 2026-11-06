@@ -573,3 +573,11 @@ fixes the PR's original flow case as well as the GPS case the earlier
 version made worse. Tier 2. Gate: check_branch_conventions passes against
 the base, astyle clean. Not pushed (a force push over the PR head), the
 description not updated; both wait for Andy.
+
+Pushed 2026-11-06 as a force push with a lease, `3ec57dc67d..3bdb50c65b`
+on `pr-loiter-brake-drag` (the three commits above), no `/pr-review` run
+first by Andy's choice, left to the review bot. Title now "AC_WPNav: feed
+the vehicle's own drag forward in Loiter (LOIT_DRAG_COEF)"; description
+rewritten (the user-visible stop, the two jobs of the drag model, the
+SITL table, and the earlier version's GPS regression as the reason for the
+default).
