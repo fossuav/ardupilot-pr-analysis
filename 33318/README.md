@@ -273,3 +273,50 @@ read about 0.1-0.3 of the real motion at 0.8 m and 0.5 at 1.7 m (0.77-0.96
 over a plain matte rug, 0.88 on the same floor in June daylight). Nothing
 in log73 measures this PR. Pack 1 is to be flown again in daylight or over
 a matte mat.
+
+## 2026-11-06: the A/B flown on SFD-O4 (logs 79-80), and a correction
+
+Correction to the 2026-10-30 section above: the SFD beta never carried the
+opt-in (bit 1) rework, which stayed on the local branch fix/33318. Every
+beta since June (`5fe8c79f8d`; `52b1d36f`, `ea8cef60`, `52ec3c77` checked)
+has this PR's change unconditionally, so it ran on log61-65 and every flight
+since, including log63's full-stick pushes released at 2.8-9.6 m/s on the
+GPS lane, none of which pulled back (none stopped hands-off either). The
+"did not run" there is wrong.
+
+Topup11 added an SFD-only switch, LOIT_OPTIONS bit 6, which puts the drag
+back in the feed-forward as master has it. SFD-O4, beta `52ec3c77`, indoors
+in daylight on flow, LOIT_SPEED_MS 15, LOIT_ANG_MAX 45, LOIT_BRK_DELAY 1:
+log79 with the change (LOIT_OPTIONS 1), log80 without (65), one flight
+each, the same short pitch pulses (0.2-0.5 s, a third of full stick, 1-1.7
+m/s) every 2-2.5 s along one line at 0.75-1.2 m. The flow read 0.72-0.85 of
+the speed against the rotor-drag reference on both. Tier 1:
+
+| | log79, change on | log80, change off | SITL, on / off |
+|---|---|---|---|
+| peak speed / desired, median of 19-20 pulses | 1.06 (0.92-1.17) | 1.11 (0.94-1.23) | 1.08 / 1.44 |
+| roll-back after the longest hands-off release | -0.07 m/s | -0.14 m/s (with a small counter nudge) | -0.08 / -0.40 m/s |
+| target minus position along the motion, 2 s after a release, mean | +0.10 m (18) | -0.00 m (10) | - |
+
+Without the change the O4 runs about 0.1 m further ahead of its target as
+it stops, the predicted direction, about three times the scatter between
+releases but a tenth of SITL's effect, and neither flight pulls back. Two
+reasons it is small here: the drag term scales with speed and these stops
+began at 1-1.7 m/s, and at these settings the model,
+g tan(LOIT_ANG_MAX) v / LOIT_SPEED_MS = 0.65 m/s/s per m/s, is about twice
+the O4's own drag (body X specific force on log63's GPS lane, 0.28-0.37
+m/s/s per m/s from 2 to 10 m/s, wind not separated). With the model at
+twice the airframe's drag, the velocity integrator carries about half the
+modelled drag either way, about 0.3 v with the change and 0.35 v without;
+with a matched model it carries almost nothing with the change and all of
+it without. (That split is derived from the steady-state relation in
+`analysis.md`, not measured here.)
+
+Kept on the beta as LOIT_OPTIONS 1 by Andy's decision (2026-11-06): the
+O4 is to fly Loiter fast, where the drag term reaches 6.5 m/s/s at 10 m/s.
+Still open for the PR: no hands-off stop at speed has been flown either
+way; the head on GitHub is the unconditional change, with AP-Review's GPS
+SITL roll-back (-0.22 m/s at LOIT_SPEED_MS 5 / 30 deg) unanswered and the
+opt-in rework unpushed; and the AP_NavEKF3 commit (the AGL KF height for
+the flow limits, untested by the autotest) is a different subsystem and
+belongs in its own PR.

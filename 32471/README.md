@@ -2235,3 +2235,15 @@ So the zero-time path of `34c63c0940` + `7bba551163` has flown. Not run: an
 accel switch at rest (the case `7bba551163` exists for, and where beta and
 PR differ), an EKF accel bias reset (`6bc9422b24`, `793dc2fb26`), bit 2.
 Squash decision: `squash-audit-2026-10-31/O4-2026-11-05.md`.
+
+## 2026-11-06: the learner's saved value swings between first flights
+
+SFD-O4 logs 79 and 80 (beta `52ec3c77`, new boots, ACC_ZBIAS_LEARN 11),
+five minutes apart, each saved as a first flight: log79 IMU0 0.029 ->
+0.039, IMU1 0.019 -> 0.040; log80 0.039 -> -0.002, 0.040 -> 0.013. With
+log78's hop 1 (0.026 -> 0.029) the three first flights of 11-05/06 saved
+IMU0 values from -0.002 to 0.039, a spread the size of the correction.
+Each had only about 7 s of steady hover before stick pulses (the card asked
+for 45 s), and log80 climbed from 0.8 to 1.2 m through its Loiter. Not
+analysed: whether the learner's sample was taken in those few seconds, and
+what the EKF's Z accel bias did across them.
