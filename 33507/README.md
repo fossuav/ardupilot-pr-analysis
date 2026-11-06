@@ -131,7 +131,7 @@ AGL KF floor on the reading before offset correction" and `df974dddee`
 pushed; needs a `/prepare-for-push` grant for this branch and #34457's.
 
 The gate from `876a8aa750` never closed in flight. On SFD-O4 log22
-(`STAT_BOOTCNT` 553, analysis repo `logs/log22-30_sfdo4.md`) a dataflash
+(`STAT_BOOTCNT` 553, the private analysis repo) a dataflash
 probe in a Replay build showed the range measurement 0.15 mm above
 `rngOnGnd` on every ground sample: the on-ground reading is lifted by the
 position offset correction in `SelectVelPosFusion()` (`RNGFND1_POS_X`

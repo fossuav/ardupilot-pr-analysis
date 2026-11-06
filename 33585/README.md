@@ -502,7 +502,7 @@ pre-existing and not closed, and that falling back to `terrainState` is the obvi
 repair and does not work.
 
 **The carry commit was wrong about its own flight.** Cross-checking against
-`analysis/logs/logm2_log4.md` rather than against memory: the message said the core
+the private analysis repo rather than against memory: the message said the core
 "recovered only when the terrain estimator's 5 second re-anchor fired". The re-anchor
 did fire, at 114.9 s, and it repaired the terrain state - `RI` back to 0.00 - but not
 the core, whose velocity had already diverged. That core dead reckoned to 20.66 m/s

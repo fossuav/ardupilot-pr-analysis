@@ -66,8 +66,7 @@ total_loss=1.25    climb_back=1.35
 ```
 
 I read the 1.35 m climb-back as a defect and clamped the target to the current
-height. **That was wrong and has been reverted.** `the private analysis repo
-throw_mode_drop.md` documents the climb-back as intentional, under "Target
+height. **That was wrong and has been reverted.** The private analysis repo documents the climb-back as intentional, under "Target
 Altitude and Climb-Back": it is trajectory-planned, cannot overshoot, never
 exceeds the release altitude, and for hand drops (DCSND=0) recovering altitude
 is the point - it preserves ground clearance. It is explicitly contrasted with
@@ -201,7 +200,7 @@ diff does not implement.
   the first time `|yaw_err| <= 30 deg` with no rate condition, so a fast spin
   latches it within the first revolution and the ride and slew branches become
   unreachable. I gated the latch on spin rate; **that has been reverted.**
-  the private analysis repo records the same observation from
+  The private analysis repo records the same observation from
   drop2/log1 #2 ("still spinning ~25 rad/s through the realign - yaw-lock
   fired spuriously") and the decision: gate the *message*, not the lock,
   because gating the lock coasts the spin in the zero-torque ride branch
@@ -348,8 +347,8 @@ it would need when it is revisited:
 ## What reading ../analysis changed
 
 The review above was done without the development record in
-the private analysis repo and `throw_yaw_accuracy.md`. Reading
-them afterwards overturned four conclusions, all in the same direction: I had
+the private analysis repo. Reading
+it afterwards overturned four conclusions, all in the same direction: I had
 treated deliberate, flight-validated decisions as defects because the PR diff
 does not carry the reasoning behind them.
 

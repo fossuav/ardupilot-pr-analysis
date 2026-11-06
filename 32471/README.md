@@ -1784,10 +1784,10 @@ read each):
 
 Tester B's seven 4-inch logs (4.7.0 and 4.7.2; LOG_DISARMED 0, so all in
 flight) have the same floor reset every 35 to 48 s; tester B also flies
-EK3_ABIAS_P_NSE 0.005. His bias sits at -0.02 to -0.06 before each, then
+EK3_ABIAS_P_NSE 0.005. Their bias sits at -0.02 to -0.06 before each, then
 swings 0.13 to 0.79 m/s/s away within 2 to 8 s and is up to 0.12 out at
-10 s, so a 10 s hold would not cover his quad. He runs ACC_ZBIAS_LEARN 6
-(no save bit), so the learner is not his problem; the resets themselves
+10 s, so a 10 s hold would not cover their quad. They run ACC_ZBIAS_LEARN 6
+(no save bit), so the learner is not their problem; the resets themselves
 are a disturbance in flight.
 
 The zero-and-restart reset is Paul's backstop from #23807 (2023,
@@ -1799,9 +1799,9 @@ vehicles in the backstop regime. Replay through refresh12 at 0.02 against
 as flown, replayed core: resets B62 4 to 0, B63 3 to 0, tester A VALT1 5 to 0,
 VALT2 4 to 0. Tester A's vertical innovations in the 10 s after where the resets
 were: IPD 0.752 to 0.597 and 0.584 to 0.349 m, IVD 0.076 to 0.035 and 0.052
-to 0.018 m/s. B63's Z bias 2-98% range -0.10..+0.25 to -0.04..+0.13; his
+to 0.018 m/s. B63's Z bias 2-98% range -0.10..+0.25 to -0.04..+0.13; their
 IPD stays 1.0 to 1.6 m RMS either way (no vertical velocity aiding), so the
-resets are not the whole of his height trouble.
+resets are not the whole of their height trouble.
 
 A time hold is a heuristic, and the logs show no hold length that fits
 both vehicles. Proposed instead: the EKF counts accel bias resets, and a
@@ -2209,6 +2209,59 @@ Pushed 2026-11-05: `255d534264..3e76fb4246` on `pr-vrf-core`
 (https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-6656287588);
 description updated (the parts-that-look-wrong bullet now describes the
 zero time, and the tests sentence names the accel switch at rest).
+
+## 2026-11-05: AP-Review at `3e76fb4246`, an accel switch before the first flight
+
+Should-fix: the rest wait now starts only at the EKF's zeroing, so an
+accel that left use for a few seconds after boot and came back handed
+the first flight a bias estimate that had stopped learning part settled
+(an out-of-use accel's inactive estimate is frozen; an in-use one only
+follows the active accel at 1e-4). The bot saved 0.223 armed about 3 s
+after the switch and 0.125 armed 25 s after, against 0.087. Its fix
+(restart the rest wait at the switch, as `255d534264` did) would still
+save the second.
+
+Reproduced at `3e76fb4246` with a temporary probe (EK3_IMU_MASK 1,
+INS_USE 0 from 2.8 to 9.8 s after "EKF3 IMU0 initialised", then a 30 s
+ALT_HOLD hover): no switch 0.0869; armed 3 s after 0.1991; armed 25 s
+after 0.0912, no message either way. With the fix (first build, before
+`cab832f2f7`, which a single core does not reach) both switched cases
+save nothing and say "Hover Z-bias not saved: accel switched on ground";
+no switch 0.0873.
+
+Local branch `r1105/32471-switch2` (worktree `r1104-32471-ff`), on
+`3e76fb4246`, not pushed:
+
+- `cab832f2f7` AP_NavEKF3: `coreUsingAccel()` prefers the core set up
+  on the accel while it runs on it. Codex's cold read of the first
+  version found the hole: with two cores, core 0 switching onto IMU1
+  made it IMU1's reporter (first match), so IMU1's reported zero time
+  became core 0's, which the learner would read as a fresh zeroing and
+  clear the switch. Only the learner reads these getters. Not shown in
+  SITL: the cores start together there, so their zero times match.
+- `c7fcf29ee3` Copter: `update_hover_bias_rest()` (the 100 Hz hook, back
+  under its old name) notes, while disarmed, a reset count change with
+  no new zeroing as a switch; a zeroing clears it. A new baseline,
+  SWITCHED, after NOT_FIRST and before TOO_SOON, refuses the first
+  flight until the EKF zeroes the bias again.
+- `0c4475f079` autotest: HoverBiasSavedFirstFlightAfterRest resets the
+  EKF, takes the accel out of use for 7 s, arms 25 s later: kept, with
+  the message. On `3e76fb4246` it saved 0.092 over the 0.085 kept, no
+  message.
+
+Left as is, from Codex's second read: the reset count is summed over
+cores, so a core switching onto or off another core's accel also stops
+that accel saving, though its own core's estimate carries on. A refused
+save, never a wrong one, in a boot that already has an accel out of use;
+the in-flight version of it predates this round. Stated in the Copter
+commit message.
+
+SITL (tier 2): all five learner tests pass at `0c4475f079`
+(HoverBiasSavedFirstFlightAfterRest, HoverBiasNotSavedAfterEKFReset,
+VibrationRectificationBiasLearning, AccelBiasMovingPlatform,
+AccelBiasInhibitLoggedAfterLogRestart) and Replay passes. Gate and
+branch conventions clean; quick review recorded. #32473 restacked as `r1105/32473-switch`
+(four commits identical).
 
 ## 2026-11-06: the first-flight rule flown, SFD-O4 logs 73 and 78
 

@@ -38,7 +38,7 @@ Two more findings dissolved the same way:
 
 The lesson is procedural. The review read the diff, the thread and the
 playbooks, and never read the evidence repo. Three of its four headline
-findings were about mechanisms already documented there. the private analysis repo
+findings were about mechanisms already documented there. The private analysis repo
 is now the first stop.
 
 ## What the review got right

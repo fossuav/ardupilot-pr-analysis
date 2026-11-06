@@ -910,7 +910,7 @@ floor:
 So the test was not attached. Bit 4 steadies the vertical channel and
 usually keeps a low hover off the floor, but a velocity observation cannot
 remove a steady baro bias in height, and the outcome depends on the bias
-taken in before the fusion holds the velocity. That is open item 8 in
+taken in before the fusion holds the velocity. That is an open item in
 the private analysis repo (the fusion starving the baro of authority over
 position), seen from the other side. If a test for this belongs here, the
 property that held on every seed is the vertical speed under a noisy baro,

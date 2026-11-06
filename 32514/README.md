@@ -63,7 +63,8 @@ Self-review (Claude, with Codex cold reads of each new commit) returned
 REQUEST CHANGES on `8d4ffc52a8`. Changes, as `fixup!`/`amend!` commits on
 `pr32514-port` awaiting an autosquash:
 
-- `land_complete` alone is not a landed state: on tester C's copter F3 (the private analysis repo) NOT_LANDED was never
+- `land_complete` alone is not a landed state: on tester C's copter F3 (the private
+  analysis repo) NOT_LANDED was never
   logged and `time_flying_ms` stayed 0 for a whole flight. Gating on it
   alone would have disabled the position failsafe for such a flight. The
   hold now also needs the motors not at `THROTTLE_UNLIMITED`, which no
@@ -99,7 +100,7 @@ position from the EKF while landed" and `6dd30a236d` "autotest: check a
 landed vehicle trips no EKF failsafe without a position". Not pushed;
 needs a `/prepare-for-push` grant.
 
-Found in the field on SFD-O4 (the analysis repo's `logs/log22-30_sfdo4.md`).
+Found in the field on SFD-O4 (the private analysis repo).
 With an optical flow lane primary, #34292's focus floor stops flow aiding a
 few seconds after touchdown; in LOITER this PR's check then counted the
 missing position and tripped a second later, switching a landed vehicle to

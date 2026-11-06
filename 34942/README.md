@@ -1480,7 +1480,7 @@ SCHED_LOOP_RATE 200, ACC_ZBIAS_LEARN 6 with INS_ACC2_VRFB_Z -0.050.
   estimation cause found.
 - 25 "flow vel reset (axis lockout)" in 145 s of flight.
 
-Log 63 (the support archive, firmware 71054882, also not in
+Log 63 (firmware 71054882, also not in
 our refs; same settings, LOG_REPLAY 1 on both): ACRO 32-92 s, VALT
 92-160 s. XKF1.GZ is 0.00 at takeoff (log 62: -0.39, learned on the
 ground) and runs to -0.82 deg/s by 70 s in ACRO, then -0.41 to -0.78 in
@@ -1489,7 +1489,7 @@ mask state 12 without a recent yaw fusion, so another fusion path (or
 cross-covariance) is learning the Z bias in flight. Next: replay log 63
 and find which fusion moves state 12.
 
-tester B's 4-inch on 4.7.0 (the support archive, `48`, firmware
+Tester B's 4-inch on 4.7.0 (logs 47 and 48, firmware
 57be0525), the same vehicle and settings but for: AHRS_TRIM_X +0.0180
 (4.7.2: -0.0122, a 1.73 deg roll change from a new accel cal at 38 C
 against 32 C), compass off (4.7.2: on, not used for yaw), MOT_HOVER_LEARN
@@ -1540,7 +1540,7 @@ flown one ran to -0.82. Fidelity is limited (log starts at arming, up to
 build's, not this code's. 71054882 and 2dc4a918 are in neither our refs
 nor fossuav/smallfastdrone on GitHub; SkySakuraH743 is in our tree.
 
-Tester B's Claude's VALT mechanism, checked against the code (2026-11-03):
+Tester B's account of the VALT mechanism, checked against the code (2026-11-03):
 - 57be0525's update_ground_effect_detector() re-latches takeoff_expected
   while airborne below TKOFF_GNDEFF_ALT, on the AGL KF height when there is
   one ("re-enable ground effect compensation when descending back below

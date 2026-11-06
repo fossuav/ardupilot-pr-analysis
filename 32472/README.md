@@ -192,7 +192,7 @@ It asserts nothing; it prints one VALTLOW line per wash case.
 
 ## 2026-11-03: the low hover pulled into the floor, on 4.7.2
 
-tester B's 4-inch (SkySakuraH743, baro height, DroneCAN flow and a DroneCAN
+Tester B's 4-inch (SkySakuraH743, baro height, DroneCAN flow and a DroneCAN
 range finder used for flow only, EK3_RNG_USE_HGT -1, VALT_POS_EXPO 5,
 GNDEFF_ALT 1, GNDEFF_TMO 3) reported "sucked into the floor" at centre
 stick in VALT on the SmallFastDrone 4.7.2 beta. Log 62 at 86-93 s is the
@@ -332,14 +332,14 @@ the SFD board default (bits 2, 3, 4, 6).
   up over a minute, and a velocity observation cannot remove a bias in
   height. Tester B's baro does not do that at hover height: between 0.25 and 1.0
   m on the range finder, baro minus range had medians -0.07 to -0.24 m and
-  p90s up to +0.24 m in logs 62 and 63; his large errors are below 0.25 m.
-  So the noisy case is the closer model of his flights.
-- tester B flies without bit 4: EK3_OPTIONS 10 is bits 1 and 3. SkySakuraH743
+  p90s up to +0.24 m in logs 62 and 63; their large errors are below 0.25 m.
+  So the noisy case is the closer model of their flights.
+- Tester B flies without bit 4: EK3_OPTIONS 10 is bits 1 and 3. SkySakuraH743
   does not include sfd_defaults.parm, and on 4.7.0 velD fusion was bit 5,
-  also off in his 10, so it is not what changed between his builds.
+  also off in their 10, so it is not what changed between their builds.
 - SITL's analog range finder reads down to 0 m (RNGFND1_MIN 0). Tester B's has
   RNGFND1_MIN 0.08 and drops out at the floor, where the AGL KF velocity
-  stops being fused. With his minimum and his EK3_OPTIONS the noisy case
+  stops being fused. With their minimum and their EK3_OPTIONS the noisy case
   still sits on the floor (29-65%); adding bit 4 alone holds it (0-2%,
   EKF height error 0.04-0.09 m rms).
 
@@ -348,7 +348,7 @@ the SFD board default (bits 2, 3, 4, 6).
 The flight record, with tester B's own logs scanned for the time spent low in
 AltHold or VALT and for the baro against the range finder (tier 1):
 
-- tester B's 4.6 logs (the VAlt comparison set, 4.6.3-SFD, March 2026; and an
+- Tester B's 4.6 logs (the VAlt comparison set, 4.6.3-SFD, March 2026; and an
   AltHold set from January and February 2026) flew baro height with EK3_GND_EFF_DZ -4 or +4 to +7. Near the floor
   their baro read 1-6 m low against its own value higher up. Low reads
   push the estimate down and VALT up, away from the floor, and the EKF's
@@ -360,12 +360,12 @@ AltHold or VALT and for the baro against the range finder (tier 1):
   nothing in the EKF or AP_GroundEffect handles that sign. Its 4.7.0 logs
   47 and 48 spent no time under 0.5 m, so there is no 4.7.0 low hover on
   this airframe to compare with.
-- The reference the reference 4-inch quad, the same airframe type on the same 4.7.0 branch,
+- The reference 4-inch quad, the same airframe type on the same 4.7.0 branch,
   settled onto the deck at mid-stick with the clamp and the corrected
   thrust scale, the estimate reading 0.16-0.60 m high on the way down
   (log81, the private analysis repo). Those logs
   are not on the primary machine; the figures are the note's.
-- tester B's June 4-inch (tester B's June 4-inch, 4.7.0-beta6) used the range finder for
+- Tester B's June 4-inch (4.7.0-beta6) used the range finder for
   height (EK3_RNG_USE_HGT 3, EK3_GND_EFF_DZ -8) and from log57 the AGL KF
   velocity (EK3_OPTIONS 56, bit 5 on that numbering), and flew mostly GPS
   modes.
@@ -422,7 +422,7 @@ contact on 4.7.0 and mostly not on 4.7.2, as the re-latch predicts.
   EKF height from the log start had medians of -0.38 and +0.22 m. The
   range finder decides when the protection is on, and variant B does the
   same. Without one, the switch falls back to the baro-corrupted height
-  that made the reference the reference 4-inch quad's gate fire at random
+  that made the reference 4-inch quad's gate fire at random
   (the private analysis repo).
 - The 4.7.0 switch is rough. The flag chatters around 1 m, often several
   times a second, and three times HAGL read about 1 m with the vehicle on
@@ -458,7 +458,7 @@ above (`bc53e5f4`, `38999a35`); share of the hold on the floor:
 - The noise floor the record recommends for baro-only vehicles (DZ -8)
   does not help here: 52% of the noisy hold on the floor on both builds,
   against 37-38% at DZ 4, inside the scatter but the same way on both.
-- So tester B's 4.7.0 advantage on the 4-inch (logs 66 and 67) comes from his
+- So tester B's 4.7.0 advantage on the 4-inch (logs 66 and 67) comes from their
   range finder switching the protection. Without one, neither build holds
   a low hover over a baro that reads high near the floor.
 
@@ -473,7 +473,7 @@ is above.
   (SURFTRAK_MODE 1 by default) and holds the range, so with fusion off it
   sat on the floor 4% of the hover. VALT skips surface tracking by design
   (`mode_valt.cpp`), which is why VALT sinks where ALT_HOLD does not. Tester B
-  has SURFTRAK_MODE 1, so ALT_HOLD would use his range finder this way.
+  has SURFTRAK_MODE 1, so ALT_HOLD would use their range finder this way.
 - With SURFTRAK_MODE 0, bit 4 alone does not hold the hover on #33478:
   fusion off 82% and 64% on the floor, bit 4 76% and 62%. The EKF held
   its target about 0.4 m above the vehicle with VFuse set throughout: a

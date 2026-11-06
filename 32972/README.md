@@ -566,7 +566,7 @@ What this does and does not argue:
 - **log7 carries `LOG_REPLAY=1`.** Any of these can be run against the
   flight's own sensor stream, which is tier 1b, rather than argued.
 
-Full flight note in the private analysis repo (`logs/log7_sfdo4.md`).
+Full flight note in the private analysis repo.
 Public-facing text should cite this as "flight tests show the
 ground-effect innovation floor can pin the height innovation at -0.5 m in
 cruise when the gate latches on a horizontal-drift fallback, costing 5.6 m

@@ -113,7 +113,7 @@ The SFD beta at `6f5d6dc0` carries this PR with #32514 and #32270's
 `FS_EKF_ACTION=4` (VALT). Q25v1 flew the field plan's T2-T4 with
 `FS_OPTIONS=80` and a source set switch to set 2, which has no horizontal
 source: 16 failsafe cycles over seven logs (`t2f1`-`t3f3`, `t4`; the
-private record is the private analysis repo). These are
+record is in the private analysis repo). These are
 the first flights of the restore.
 
 | outcome | cycles |

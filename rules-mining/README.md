@@ -131,5 +131,5 @@ committed `data/` is the 2026-10-14 run that produced ARCH-3 to ARCH-10.
   awaits a maintainer, #33585's timing-window retry is a follow-up,
   #33359's accel-bias sweep is owed, #32270 is parked for SFD tracking.
 - The Q25v1 field test: T3 is to be re-flown on the beta at `26f507edf4` or
-  later (the SFD field plan in smallfastdrone); the write-up is
+  later (the field plan in the SFD tree); the write-up is
   in `../analysis`.

@@ -849,8 +849,7 @@ blend rather than step) are *untested*. Neither log replays
 (`LOG_REPLAY=0`); a SITL repro with `SIM_FLOW_RND` near 1.5 rad/s is the
 route, and has to be shown to reproduce on the current code first.
 
-Full record: the private analysis repo and the Q25v1 section
-of the private analysis repo
+Full record: the Q25v1 notes in the private analysis repo
 (analysis `0643515`).
 
 ### Amended 2026-10-08: Q25v1 log 3 replays
@@ -1035,7 +1034,7 @@ Replay-testable, on a tree whose `XKF1` format matches the flight's.
 `Q25 - MicoAir743v2 - QMIN EKF Failsafe Test.bin`, `STAT_BOOTCNT` 44,
 SmallFastDrone `7b0e4dd8` (carries this PR), `LOG_REPLAY=1`,
 `EK3_FLOW_QMIN` 75, `EK3_OPTIONS` 28. Full record: analysis `bbfb643`,
-the private analysis repo "QMIN failsafe test". Quoted, not
+in the private analysis repo. Quoted, not
 re-measured, except the L4 timings above.
 
 - Three flights, `XKF7.FVC` 0 throughout: the quality gate latched where
@@ -1064,7 +1063,7 @@ The 2026-10-11 push (`f0804c0644`) autosquashed review fixes that change behavio
 ## 2026-10-14: latch release and the range step, from an outdoor flight
 
 Q25v1 flew Loiter outdoors over grass and concrete on the SFD beta at
-`6f5d6dc0` (the private record is the private analysis repo).
+`6f5d6dc0` (the record is in the private analysis repo).
 Two things this PR does went wrong there.
 
 **The car bonnet.** Flying onto a car bonnet, the range fell from 1.41 m

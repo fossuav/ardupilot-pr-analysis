@@ -42,14 +42,14 @@ Pending arm today treats every pre-arm failure as transient.
 
 1. Pending arm should only wait on failures that can clear themselves. On
    the carrier drop it waited forever on a battery capacity check. On a
-   MicoAir743v2 quad in THROW with idling motors (t25 log, not committed)
+   MicoAir743v2 quad in THROW with idling motors (Q25 log, not committed)
    it waited forever on "Throttle (RC3) is not neutral", re-running the
    pre-arm at 4 Hz against a failure only the stick can clear. In both
    cases the pilot had no route to an armed vehicle short of fixing the
    underlying check, and in a drop the refusal is the crash.
 
 2. The bootstrap reset should be gated on the failure being EKF-related.
-   In the t25 case it fired at ARMING_PEND_TIM=1 s for a throttle-position
+   In the Q25 case it fired at ARMING_PEND_TIM=1 s for a throttle-position
    failure, re-initialising the EKF while the vehicle sat in THROW: THRO
    logging stops at 11.18 s, exactly 1 s after the arm switch at 10.187 s,
    with a downstream ERR at 13.2 s. The same sequence on a moving carrier
@@ -105,5 +105,5 @@ asserts that no "EKF bootstrap reset" message is sent would cover both.
 
 - `pr-copter-pending-arm` - the PR branch.
 - Related: #32475 (throw mode; the mid-stick arming exemption there is
-  gated on THROW_MOT_START=0, which is what put the t25 vehicle into
+  gated on THROW_MOT_START=0, which is what put the Q25 vehicle into
   pending in the first place).

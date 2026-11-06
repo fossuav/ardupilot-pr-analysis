@@ -164,7 +164,7 @@ carrier at 1 g is always rejected, 1.9 g at 15 rad/s, 6 g at 30 rad/s.
 - The mid-stick arming exemption applies only with THROW_MOT_START=0. With
   motors idling (=1) a MicoAir743v2 quad was refused with "Throttle (RC3)
   is not neutral" although THROW never applies the stick to the motors
-  before detection (t25 log, not committed). Not addressed in this PR.
+  before detection (Q25 log, not committed). Not addressed in this PR.
 - Five autotests that exercise the spin, tumble, yaw-absolute, next-mode
   and abort-restore paths exist on the SmallFastDrone branch and are not in
   the PR.

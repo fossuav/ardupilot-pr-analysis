@@ -69,7 +69,7 @@ It surfaces when the vehicle climbs past the switch ceiling and falls back to
 baro carrying drift that was never cleared, and the GPS re-anchor in
 `resetHeightDatum()` is skipped too, so the reported AMSL keeps it.
 
-the private analysis repo records the accommodation that
+The private analysis repo records the accommodation that
 used to cover this - allow the reset when `onGroundNotMoving` even if
 `activeHgtSource` is RANGEFINDER through `EK3_RNG_USE_HGT` blending, provided
 the *configured* primary source is not the rangefinder. It did not survive into

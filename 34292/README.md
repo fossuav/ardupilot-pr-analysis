@@ -673,8 +673,8 @@ cause.
 
 What is known: the private analysis repo records
 `RNGFND1_GNDCLR=0.075`, but on a *forward-declared* sensor
-(`RNGFND1_ORIENT=0`) that the EKF never consumes, and the private analysis repo
-records no rangefinder at all. Tester B's June 4-inch's setting is not recorded in
+(`RNGFND1_ORIENT=0`) that the EKF never consumes, and another
+4-inch quad records no rangefinder at all. Tester B's June 4-inch's setting is not recorded in
 `../../analysis`, and log67 is not in either repo.
 
 **To settle it:** read `RNGFND1_GNDCLR` (or `RNGFND1_GNDCLEAR` on that
@@ -1886,7 +1886,7 @@ What "landed" means took three tries, and the first two were wrong:
   Plane's is_flying (is_flying.cpp update_is_flying_5Hz) with no GPS fix ever
   and no airspeed sensor reduces to airspeed_EAS && !is_still, so it can read
   false in flight; a landing roll-out is below the floor and moving. Copter's
-  own flag is suspect too, see the tester C F3 note (no NOT_LANDED logged through
+  own flag is suspect too, see the tester C's F3 note (no NOT_LANDED logged through
   a flight) and 32972 (land_complete forced true by a mid-air disarm).
 - Kept: COPTER vehicle class && time_flying_ms == 0. Plane, QuadPlane and
   Rover keep the discard.
@@ -1937,7 +1937,7 @@ liftoff, never in flight. Ground wander before disarm on log281 replayed cores
 log19 flow lane 0.63 m to 0.07 m.
 
 Open: a copter whose land detector reads landed in flight (mid-air disarm and
-re-arm, the tester C F3 case) and is below the floor would fuse zero. Sensors that
+re-arm, the tester C's F3 case) and is below the floor would fuse zero. Sensors that
 report quality 0 at the ground store no sample, so get no benefit (safe).
 
 Pushed 2026-10-03: 34be757539 -> e36aab7b08 (fast-forward; RangeFinder and DAL before the EKF commit; every commit builds).
