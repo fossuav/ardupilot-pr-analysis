@@ -107,3 +107,44 @@ asserts that no "EKF bootstrap reset" message is sent would cover both.
 - Related: #32475 (throw mode; the mid-stick arming exemption there is
   gated on THROW_MOT_START=0, which is what put the Q25 vehicle into
   pending in the first place).
+
+### 2026-11-06: AP-Review fixes on `r1106/32401-fix3` (`9bf9ddc25d..749911703c`, 11 commits on `c2a704089d`, not pushed)
+
+GCS disarm while disarmed now cancels a pending arm (the GCS handler never
+called disarm() then) and Copter's disarm() clears it before its early
+return; a pending request is dropped once the vehicle is armed by any route;
+the EKF reset waits for `AHRS::pre_arm_check(false)` to fail, so it no longer
+fires while waiting for GPS; arm-time failures follow the 3 s pre-arm
+cadence through a quiet flag in AP_Arming; ARMING_PEND_TIM is compiled out
+without AP_AHRS_EKF_RESET_ENABLED and tagged Copter, and ARMING_OPTIONS bit
+3 documented as Copter-only with no time limit.
+
+SITL, PR head against the branch (fresh builds in a private directory):
+GCS disarm while pending armed 0.8 s after the check cleared, now stays
+disarmed; force-arms 1.775-1.915 s into a 2 s ARMING_PEND_TIM reset the EKF
+on the armed vehicle 5/5, now 0/11; `SIM_GPS1_LCKTIME=40` (log67's late
+first fix) armed 39.2 s after the fix, now 10.2 s with no reset; GPS off at
+runtime 35.8 s after it returned, now 1.8 s; "Throttle too high" 30 texts in
+10 s, now 4. An AHRS inconsistency still gets one reset.
+
+PendingArmOnSwitch (`569aa098f5`, `749911703c` after a Codex cold read
+found three gaps): each leg fails with the commit it covers reverted - the
+late-GPS leg (switch raised before the fix) with 580e434977 reverted, the
+3-6 report bound with an always-quiet build (1) and the PR head (30), the
+force-arm-before-the-deadline leg with c8ee610aab reverted (2/2, reset then
+EKF failsafe). That leg's arm at 1.8 s sits 25-100 ms inside the window it
+needs; correct code passes either side of it.
+
+The branch is rebuilt by cherry-pick with `4bc594f1c6` reworded as
+`c2a704089d` (its message described rudder pending and a position-
+controller reinit the commit does not contain) and the last test commit's
+subject shortened; the tree is identical to the tested head.
+
+Kept Copter-only, as decided on 2026-11-06, in answer to peterbarker's
+CHANGES_REQUESTED ("If this is done it shouldn't be
+Copter-specific"): 926a50aa6b documents it for Copter only; the request flag
+and its cancel paths are in AP_Arming and RC_Channel. Open: Notify's arming-failed
+event still fires on every failed retry; failures that cannot clear
+themselves (battery, throttle) still wait.
+
+Pushed 2026-11-06: `pr-copter-pending-arm` `4bc594f1c6...749911703c` (forced, first commit reworded). Description updated. Reply posted: https://github.com/ArduPilot/ardupilot/pull/32401#issuecomment-6690423927

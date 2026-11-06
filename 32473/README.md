@@ -903,3 +903,11 @@ https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-6656288703
 `pr-acro-bias-inhibit` `4e08cbda64...782e58d3ac` (force): its four commits
 unchanged (range-diff `=` on all four), restacked on #32471's
 `0c4475f079`.
+
+### 2026-11-06: restacked as `r1106/32473-fresh` (`16a9f14b47`) on #32471's `279457aa35`, not pushed
+
+Four commits unchanged by range-diff. AccelBiasLearningInhibitedInAcro
+(0.000 held, 0.420 after, 0.260 with the bit clear),
+AccelBiasAcroExitVelocityError and HoverBiasSavedFirstFlightAfterRest pass.
+
+Pushed 2026-11-06: `pr-acro-bias-inhibit` `782e58d3ac...16a9f14b47` (forced, restack). Reply posted: https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-6690424944

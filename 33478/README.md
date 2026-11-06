@@ -1177,3 +1177,34 @@ Pushed 2026-11-06: `pr-ekf3-aglkf-veld` `0157fd50fc..505ecae715`
 (fast-forward, one commit). Description updated (the summary, the step
 gate bullet and a Testing line for the settled-start rule) and reply
 posted: https://github.com/ArduPilot/ardupilot/pull/33478#issuecomment-6687333995
+
+### AP-Review on `505ecae715`, answered on `r1106/33478-docs2` (`d322e6c4d0`, not pushed)
+
+Two commits on `505ecae715`, fast-forward:
+
+- `256698b64a` AP_NavEKF3: bit 4's text says a jump counts as a step
+  only from a range innovation under 0.25 m or after a gap in the range.
+- `d322e6c4d0` autotest: the temporary noisy-range runaway leg above is
+  now in `EK3_AglKfVelForVelD` (Z accel bias 0.4 m/s/s, EK3_ALT_M_NSE 1,
+  SIM_SONAR_RND 0.1), failing when its held XKFA samples span over 5 s or
+  velD error passes 2.5 m/s. With the rule: one hold (47.9-52.9 s, from a
+  jump 1.2 s after the offset), its samples in the window spanning 2.5 s,
+  velD 1.61 m/s, pass. The same test at `0157fd50fc` (the rule removed):
+  the same first hold plus a second at 59.2-61.5 s, 12.5 s into the
+  runaway, spanning 9.6 s, fails. A Codex cold read suggested measuring
+  the longest continuous hold instead, so two separate noise holds could
+  not fail it; declined, since the regression is itself a second separate
+  hold and that measure would pass it. The comment says so (rebuilt from
+  `3915da28dc`, which said "held 2.5 s").
+
+Description edits drafted: the 0-45% figure from six range finders is
+marked as measured before the settled-start condition (an upper bound
+now); a line that a return edge within about 1.2 s of the first (a narrow
+object) is not counted, so the hold after it can end up to 1.2 s sooner
+(the bot's own figure, with drift under 0.2 m in its SITL run); and a
+Testing line for the new leg. The bot's suggestion to move the step
+detector state into `AglKalmanFilter` is declined in the reply: that class
+is master's and holds only the filter's estimate, while the step and hold
+state belong to this PR's fusion gate.
+
+Pushed 2026-11-06: `pr-ekf3-aglkf-veld` `505ecae715..d322e6c4d0` (fast-forward). Description updated. Reply posted: https://github.com/ArduPilot/ardupilot/pull/33478#issuecomment-6690423618

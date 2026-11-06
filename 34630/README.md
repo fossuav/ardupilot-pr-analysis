@@ -354,3 +354,12 @@ Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `af51f5ef62` -> `0b2644
 ## 2026-11-02 (night)
 
 AP-Review round 7 (COMMENT at `0b2644e19d`): the EKFn_EN one-liners dropped when the EK3_FLOW_QMIN floor applies. They now say "when it has one (EK3_OPTIONS bit 3)" (`355d45685c`, fast-forward; refresh12 `38acc82154`). The covariance note is accepted as #33484's. Pushed 2026-11-02 at `355d45685c`.
+
+### 2026-11-06: restacked as `r1106/34630-restack` (`b9e7518181`) on #33484's `707e0e621f`, not pushed
+
+All 29 commits identical by range-diff; the tree differs from `3a44baaca3`
+only by the comment. The covariance note is answered in #33484's record. A
+minor noted for later: XKF7 stops logging when the AGL KF option is cleared
+while a latch is still active (AP_NavEKF3_Logging.cpp:240).
+
+Pushed 2026-11-06: `pr-osd-ekf-lanes-flow-reset` `3a44baaca3...b9e7518181` (forced, restack). Reply posted: https://github.com/ArduPilot/ardupilot/pull/34630#issuecomment-6690426917

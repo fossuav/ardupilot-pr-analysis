@@ -923,3 +923,15 @@ squash.
 
 `pr-agl-kf-zbias` `f11d194786...21772c51af` (force): its two commits
 unchanged (range-diff `=`), restacked on #34457's `717595bef8`.
+
+### 2026-11-06: restacked as `r1106/33507-tests2` on #34457's `d8da8db695`, not pushed
+
+`690a2229a0`, `878cb60d8d` (range-diff `=`), then `1ed5fa2dc4` raises the
+floor bias-std bound 0.03 -> 0.95. Real 1.0003/1.0006; floor fusion learning
+the bias 0.90/0.90; no floor gate 0.030/0.019 (the 0.030 passed the old
+bound); corrected-reading-only gate 0.042/0.024. All six AGL KF tests pass
+on the stack: KalmanFilter 1.0003/1.0006, FloorVelocity -0.0173 m/s,
+Touchdown 0.16-0.18 m, NoCoastBelowMin 0.004 m, NoCoastAfterTouchdown
+0.050-0.343 m, NoFloorHoldInHover 9.82 m.
+
+Pushed 2026-11-06: `pr-agl-kf-zbias` `21772c51af...1ed5fa2dc4` (forced, restack). Description updated. Reply posted: https://github.com/ArduPilot/ardupilot/pull/33507#issuecomment-6690425806

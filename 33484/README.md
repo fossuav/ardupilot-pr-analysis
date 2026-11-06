@@ -1288,3 +1288,21 @@ reset saved.
 `6bbe92baae` ran on log73 without changing the outcome (it ran once before,
 the Q25's ft3 at 130.22 s); it stays as before, your call (B.md).
 `c092795b40` cannot fly on this vehicle.
+
+### 2026-11-06: #34630's minors (`707e0e621f` on `r1106/33484-fix`, not pushed)
+
+The stale `aglKfValid` comment in EK3_FlowAxisLockoutRecovery now reads
+`aglKf.valid`. The reset's missing yaw term was measured, not added: against
+the flow term it scales as (yaw sigma x flow rate / EK3_FLOW_M_NSE)^2, and
+the recovery only runs with each flow axis under EK3_FLOW_MAX (2.5 rad/s),
+so the 6 m/s at 0.6 m case (10 rad/s) cannot reach it. Replay of an acro
+flight with three in-flight resets on its own firmware: yaw sigma 1.4-1.7
+deg at 16-21 m/s and 9.5-14 m; the term adds 1-5% to the velocity variance
+and moves the flow lane by at most 0.007 m/s; the full Jacobian (tilt, vD,
+cross-covariances) gives the same P to 0.01 (m/s)^2 and no better speed
+error after the resets. Diagonal-only yaw variance (as calcTiltErrorVariance
+uses) under-reads: 0.9-1.2 deg in flight. Threading note answered:
+writeOptFlowMeas() already runs unlocked on the PX4Flow bus thread on
+master. EK3_FlowAxisLockoutRecovery passes before and after.
+
+Pushed 2026-11-06: `pr-vel-flow-axis-gate` `c092795b40..707e0e621f` (fast-forward). Reply posted: https://github.com/ArduPilot/ardupilot/pull/33484#issuecomment-6690426557

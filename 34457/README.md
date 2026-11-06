@@ -987,3 +987,21 @@ test failed waiting for 0 ("Failed to attain RangeFinderDistance want
 0.0, reached 0.55"). A/B: fails with the tile, passes with terrain off.
 Test-only, three lines; no quick review. Pushed as a fast-forward,
 `5e4346a261..717595bef8` on `pr-aglkf-floor-velocity`.
+
+### 2026-11-06: AP-Review at `717595bef8` (COMMENT), answered on `r1106/34457-tests` (`3c61127e59`, `d8da8db695`, not pushed)
+
+`3c61127e59` makes OpticalFlowAGLKfTouchdown require at least 50 XKFA
+samples per 10 s landing window, all valid and finite; 100 were measured,
+all valid. Mutant (velocity clear restored, lifted samples logged invalid):
+old test passed at 0.38-0.39 m with a real lift of 2.47-2.52 m, new test
+fails. Real code 3/3, 0.11-0.22 m. A Codex audit found NoCoastAfterTouchdown
+had the same hole: `d8da8db695` requires every sample valid and finite, at
+least 20 of the 40 in a window shortened from 6 s to 5 s, since its last
+second crossed the AGL KF's own 5 s range timeout and was invalid on the
+correct build. A mutant whose hold gave up after 3 s and hid the lifted
+samples passed the old test (34 valid, hidden 1.25 m) and fails the new one;
+with the hold disabled it fails at 1.82 m; real code 3/3 at 0.28-0.29 m.
+The member move was declined because it would churn #33507's restack. The
+'test blimp' red is SIMCompare and unrelated.
+
+Pushed 2026-11-06: `pr-aglkf-floor-velocity` `717595bef8..d8da8db695` (fast-forward). Reply posted: https://github.com/ArduPilot/ardupilot/pull/34457#issuecomment-6690425361

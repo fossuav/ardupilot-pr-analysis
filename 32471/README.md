@@ -2324,3 +2324,22 @@ the 2026-11-05 accel-switch round: `cab832f2f7`, `c7fcf29ee3`,
 ## 2026-11-06: reply posted
 
 https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-6684178965
+
+### 2026-11-06: AP-Review at `0c4475f079`, fixed on `r1106/32471-fresh2` (`15f39b438a`, `279457aa35`, not pushed)
+
+An accel out of use when the EKF starts: no core reports an out-of-use
+accel, so the learner first saw its boot zero time on the accel's return and
+took it for a fresh zeroing. Reproduced: INS_USE 0 at boot, 1 at +9 s, armed
+at +14 s, saved 0.2297 with no message (correct 0.0845). `15f39b438a` counts
+a zero time as a zeroing only while it is under `HOVER_BIAS_ZERO_SEEN_MS`
+(1 s) old, and polls while armed so an armed ground zeroing is still fresh;
+ACC_ZBIAS_LEARN set without its reboot now also refuses the first flight.
+`279457aa35` adds the boot leg to HoverBiasSavedFirstFlightAfterRest, which
+keeps 0.0847 with "accel switched on ground". All five learner tests pass.
+Comparing against the last poll time was rejected: GCS-task resets carry the
+frame start time and could fall before a poll in the same loop. The
+summed-count minor is left as is. Codex cold read: no findings. A minor
+noted for later: hoverZBiasApplied's comment says the offset exists only
+with the motors running, which reads oddly against bit 2's whole-bias save.
+
+Pushed 2026-11-06: `pr-vrf-core` `0c4475f079..279457aa35` (fast-forward). Reply posted: https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-6690424549
