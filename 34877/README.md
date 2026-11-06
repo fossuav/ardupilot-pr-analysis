@@ -120,3 +120,14 @@ waf_c_optimization, fix/puya-py25q128ha-littlefs and others).
 
 Gate and branch conventions clean. Reply and a description edit drafted,
 not posted.
+
+## 2026-11-06: pushed
+
+`semaphore-recursion-example` `ede19eaf75..9377f42416` (fast-forward, the
+round-1 fixes). Reply and description edit still drafted, not posted.
+
+## 2026-11-06: reply posted
+
+https://github.com/ArduPilot/ardupilot/pull/34877#issuecomment-6684181139
+
+Description updated (the SITL timeout and the loaded-machine runs).

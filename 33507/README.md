@@ -918,3 +918,8 @@ carries this PR's AGL KF bias state; the Replay A/B is in
 `../34457/README.md` (2026-11-06). This PR's own two commits
 (`8745c38de2`, `f11d194786`) were not separated by that replay. Nothing to
 squash.
+
+## 2026-11-06: pushed
+
+`pr-agl-kf-zbias` `f11d194786...21772c51af` (force): its two commits
+unchanged (range-diff `=`), restacked on #34457's `717595bef8`.

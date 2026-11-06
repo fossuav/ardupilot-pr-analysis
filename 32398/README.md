@@ -67,3 +67,7 @@ uncommitted change.
 ## 2026-11-02: retitled
 
 AP-Review (2026-09-30, COMMENT at `3552323d24`) asked for the title to match the commit subject. Retitled to "Copter: take the arming delay in milliseconds and compile it out at zero" (was "Copter: make ARM_DELAY customizable via hwdef and avoid race in ARMING_DELAY_MSEC"). The optional `#if ARMING_DELAY_MS < 0` `#error` was not added. peterbarker's change request is still recorded. The bot re-reviews only when the head moves.
+
+## 2026-11-06: reply posted
+
+https://github.com/ArduPilot/ardupilot/pull/32398#issuecomment-6684180341

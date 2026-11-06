@@ -143,3 +143,9 @@ in-controller probe), and the throttle mix (not logged anywhere).
 - `data/thr-mix-ab/master.BIN`, `fixed.BIN` - SITL, `TMIX` probe, 1 kHz / 200 Hz,
   takeoff then LAND.
 - `data/thr-mix-ab/rise_time.py` - time from mix 0.11 to 0.49 while rising.
+
+## 2026-11-06: reply posted
+
+https://github.com/ArduPilot/ardupilot/pull/34583#issuecomment-6684180895
+
+Description updated (the ATSC bullet points to #34584, 474a5f073b).

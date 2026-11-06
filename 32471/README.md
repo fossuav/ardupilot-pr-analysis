@@ -2314,3 +2314,13 @@ takeoff and fell again (core 1 0.02 -> 0.07 -> 0.00, core 0 0.01 -> 0.07 ->
 spread between first flights recorded above; likely the cause of that spread,
 not proven. Arming within a minute of power-on, so the board does not warm
 on the ground first, is the next thing to try.
+
+## 2026-11-06: pushed
+
+`pr-vrf-core` `3e76fb4246..0c4475f079` (fast-forward, the three commits of
+the 2026-11-05 accel-switch round: `cab832f2f7`, `c7fcf29ee3`,
+`0c4475f079`). Replies not yet posted.
+
+## 2026-11-06: reply posted
+
+https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-6684178965

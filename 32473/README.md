@@ -897,3 +897,9 @@ range-diff. AccelBiasLearningInhibitedInAcro and
 AccelBiasAcroExitVelocityError pass. Pushed 2026-11-05 (force,
 `a9e4e964fd...4e08cbda64` on `pr-acro-bias-inhibit`). Restack note posted:
 https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-6656288703
+
+## 2026-11-06: pushed
+
+`pr-acro-bias-inhibit` `4e08cbda64...782e58d3ac` (force): its four commits
+unchanged (range-diff `=` on all four), restacked on #32471's
+`0c4475f079`.

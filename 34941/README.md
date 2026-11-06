@@ -423,3 +423,7 @@ Plain-language explainer posted 2026-11-04 (master gives up after 5 s and is sur
 ## 2026-11-04 (night): AP-Review round 2 at 38635910f0
 
 COMMENT. Low: the tilt credit is cleared only by an accepted fusion (OptFlowFusion.cpp:707), so after a tilt under 5 s whose first returning flow is rejected the lane coasts up to 5 s after levelling before timing out, where master times out 5 s after the tilt began (bot SITL, 4 s bank: 4.8 s against 0.8 s). That qualifies the reply and the explainer posted earlier ("a flip or a turn under 5 s is unchanged"): true when the first flow after levelling is fused, not when it is rejected. Correction drafted, not posted; whether to clear the credit when the tilt ends is Andy's decision. Minor (uncapped credit for long tilts) unchanged.
+
+## 2026-11-06: reply posted
+
+https://github.com/ArduPilot/ardupilot/pull/34941#issuecomment-6684179265

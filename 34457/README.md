@@ -978,3 +978,12 @@ fused floor held every landing to 0.16-0.28 m. The cost seen: at the arm
 after landing 2 the fused floor still read 0.20/0.18 m against 0.05 m with
 the clamp, as the floor is fused with R = sq(EK3_RNG_M_NSE) rather than
 set. Squash decision: `squash-audit-2026-10-31/O4-2026-11-05.md`.
+
+## 2026-11-06: the touchdown test over flat ground, pushed
+
+`717595bef8` autotest: OpticalFlowAGLKfTouchdown sets SIM_TERRAIN 0. Over
+the CMAC terrain tile the range finder read 0.55 m on the floor, and the
+test failed waiting for 0 ("Failed to attain RangeFinderDistance want
+0.0, reached 0.55"). A/B: fails with the tile, passes with terrain off.
+Test-only, three lines; no quick review. Pushed as a fast-forward,
+`5e4346a261..717595bef8` on `pr-aglkf-floor-velocity`.

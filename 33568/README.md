@@ -730,3 +730,9 @@ the flow lane at 3-6 m with `LOIT_SPEED_MS 15` reached 9.9 m/s, and the cap
 there, (`EK3_FLOW_MAX` - 1) x the AGL KF height (local commit
 `cd693d0596`), was 20-36 m/s. It binds only below `LOIT_SPEED_MS` / 6.4,
 2.3 m. Core 1 tracked GPS within 0.5-1 m/s throughout.
+
+## 2026-11-06: reply posted
+
+https://github.com/ArduPilot/ardupilot/pull/33568#issuecomment-6684179544
+
+Description updated (the replay is of an earlier revision, one at this head still to do; the #34380 paragraph gives the merge order and the disabled test).

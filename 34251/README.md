@@ -38,3 +38,7 @@ Pushed 2026-10-30 to andyp1per with a lease on the old head: `64b0c17788`
 ## 2026-10-31: description and replies posted
 
 Title changed to "Copter, Plane: stop INS_HNTC2 MODE and HMNCS changing across a reboot" and description replaced with the 10-30 draft (MODE 1 / HMNCS 3 on every boot; the conversion stays on 4.7). The original body is kept in that session's scratchpad only; the PR history shows it.
+
+## 2026-11-06: reply posted
+
+https://github.com/ArduPilot/ardupilot/pull/34251#issuecomment-6684180081

@@ -1052,3 +1052,127 @@ for the correlation, and check the core's claimed vertical velocity and
 height std against an independent reference (the range finder in a hover).
 Proposed as ARCH-26 in aap. SFD notes: `Tools/SFD/FLIGHT_VALIDATION.md`
 (2026-11-06).
+
+## 2026-11-06: reply posted
+
+https://github.com/ArduPilot/ardupilot/pull/33478#issuecomment-6684180644
+
+Description updated (three AGL KF fixes, the step hold and when it does not apply, VHold).
+
+## 2026-11-06: the step hold through a hard manoeuvre (Q25), and the trade-off measured
+
+Tester A's Q25 (flow only, baro height at EK3_ALT_M_NSE 2), flight 04 of
+the topup11 set, replayed on IMU0 through the SFD topup11 Replay
+(`3d0a333e09`, tier 1b). An ACRO punch at 61.9 s: IMU0 clipped 11 times
+(VibeZ 42). From 62.25 s the IMU-driven velocity in both the EKF and the
+AGL KF had the descent stopped while the range kept falling for another
+0.5 s (consistent with a clip-induced velocity error; not separated from
+the alternatives). The range innovation was already -0.44 m and growing
+when the detector fired at 62.6 s (-0.62); five more "steps" to 65.65 s,
+all from innovations of -0.32 to -0.99 m, held the AGL velocity out until
+70.7 s. Meanwhile the EKF climbed at 0.5-1.2 m/s to 4.9 m against a range
+of 1.3-1.6 m at hover throttle, under a 2.2 m ceiling.
+
+The open item of 2026-10-08 ("any hold during a runaway leaves nothing to
+bring velD back inside the gate") holds on a real flight: by 64.25 s the
+velD error was past the AGL velD gate. A build that ends the hold when the
+EKF and AGL KF velocities disagree by 0.5 m/s releases at 64.25 s and
+fuses nothing (VTR 0.7-2.5) until after 68 s; the head resumed at 70.75 s,
+once the baro had pulled velD back inside.
+
+Replay A/B, each build one change from topup11. Q25: core 0 height against
+the range finder, rms / worst (m). SFD-O4 two-lane logs: the flow lane's
+velD rms (m/s) / height rms (m) against the GPS lane.
+
+| build | Q25 04 | log37 | log40 | log41 | log44 |
+|---|---|---|---|---|---|
+| topup11 (hold as merged) | 1.27 / 3.99 | 0.105 / 0.43 | 0.047 / 0.32 | 0.050 / 0.18 | 0.053 / 0.43 |
+| no hold | 0.71 / 2.98 | 0.259 / 0.74 | 0.084 / 0.82 | 0.061 / 0.21 | 0.123 / 0.98 |
+| a step inside a hold does not extend it | 1.17 / 3.99 | 0.167 / 0.57 | 0.047 / 0.32 | 0.054 / 0.19 | 0.057 / 0.47 |
+| release when EKF and AGL KF velD differ > 0.5 m/s | 1.21 / 3.99 | 0.166 / 0.52 | 0.047 / 0.32 | 0.050 / 0.18 | 0.053 / 0.43 |
+| a step counts only from an innovation under 0.3 m | 0.71 / 2.98 | 0.199 / 0.62 | 0.047 / 0.32 | 0.050 / 0.18 | 0.053 / 0.44 |
+| the same under 0.15 m | 0.71 / 2.98 | 0.258 / 0.73 | 0.047 / 0.32 | 0.058 / 0.20 | 0.053 / 0.44 |
+
+The other seven two-lane logs (31-36, 38, 39) move by 0.006 m/s or less
+under every build (log35 0.094 against 0.088 without the hold). The other
+Q25 flights: without the hold 01, 03 and 05 are 0.05-0.10 m better (its
+range flicks between two readings about 0.2 m apart, which the 0.15 m
+detector takes for steps); the settled rule leaves them as they are.
+Trusting the baro more does not remove the cost: flight 04 at
+EK3_ALT_M_NSE 1 reads 0.80 / 3.53 with the hold and 0.62 / 2.75 without.
+
+What separates the cases, from a probe build printing each step: every
+hold on log40 and log44 starts from an innovation within 0.07 m of zero, a
+terrain edge seen from a settled filter. Flight 04's start from -0.44 m and
+growing. Log37 (5 m above home, the range reading 6-10 m over falling
+ground, 4-7 m/s) also starts its holds from 0.25-1.2 m innovations, and
+there it is the AGL KF that is wrong: fused at 126-136 s it pulls the flow
+lane 0.4-0.85 m/s off the GPS lane. The same signature as flight 04 with
+the opposite answer; flow only, the baro is the one remaining reference,
+and on the Q25 it was itself 2-4 m off through the manoeuvre.
+
+Not changed. The settled rule at 0.3 m is the only build that fixes the
+Q25 case and keeps log40, log41 and log44; it gives up about half the
+hold's benefit on log37. The remaining 3 m on flight 04 without any hold
+is the clip, which nothing in EKF3 sees on a flow-only vehicle (its bad-IMU
+check needs GPS velD). Probe and variant builds were scratch only.
+
+Flown evidence, the same day (Q25 flight 06, on IMU0, SFD beta
+`52ec3c77`): two step holds, at 98.8 s (range -0.31 m) and 114.3 s
+(+0.43 m) as the quad crossed something on the floor and back, both from
+an innovation of 0.02 m. EKF height within 0.05 m through each. Replayed
+through the settled-start build, both holds are kept and the fusion
+pattern is identical.
+
+### The settled-start rule on the PR (`r1106/33478-settled2`, pushed as `505ecae715`)
+
+`505ecae715` on the PR head `0157fd50fc`: a jump counts as a step only
+from an innovation under 0.25 m (`aglKfStepFromMax`), or after a gap in
+the range over `aglKfRngGapMax_ms`, where the last innovation is stale.
+The Replay A/B is on topup11, as above: Replay of these SFD logs at the PR
+head is not readable (the master-based build writes records in layouts
+that do not match the formats it copies from the SFD logs), and the beta
+carries the same hold, gate and detector, field names aside.
+
+Threshold sweep (Q25 04 height rms against the range, m; log37 and log41
+flow-lane velD rms against the GPS lane, m/s; log40/44 unchanged by all):
+
+| from under | Q25 04 | log37 | log41 |
+|---|---|---|---|
+| (merged hold) | 1.27 | 0.105 | 0.050 |
+| 0.15 m | 0.71 | 0.258 | 0.058 |
+| 0.2 m | 0.71 | 0.201 | 0.051 |
+| 0.25 m (chosen), with the gap term | 0.71 | 0.199 | 0.051 |
+| 0.3 m | 0.71 | 0.199 | 0.050 |
+| 0.35 m, 0.4 m | 0.91 | 0.199 | 0.050 |
+
+The gap term changes nothing on any of these logs; no log or test here
+reaches it. Q25 flight 06 keeps both its holds with the final build.
+
+SITL, `EK3_AglKfVelForVelD` from each worktree's own autotest (tier 2),
+plus a temporary leg, not committed: the test's Z accel bias runaway
+(0.4 m/s/s) with the baro trusted (EK3_ALT_M_NSE 1).
+
+| leg | PR head | `505ecae715` |
+|---|---|---|
+| ground drops 1 m | drift 0.21 m, VHold 5.0 s | 0.22 m, 5.0 s |
+| ground rises 1 m | drift 0.23 m, VHold 5.0 s | 0.23 m, 5.0 s |
+| runaway, clean range | no hold, velD 1.28 m/s, drift 6.96 m | no hold, 1.28 m/s, 6.90 m |
+| runaway, SIM_SONAR_RND 0.1 | held 9.6 s, velD 1.60 m/s, drift 2.58 m | held 2.5 s, 1.44 m/s, 2.56 m |
+| the rest of the test | pass | pass |
+
+The 2026-10-08 never-recovered runaway (4.1 m/s) does not reproduce with
+the baro trusted, on either build. Mechanical gate clean.
+
+Cold read of the first version (`01139e780c`, 0.3 m, no gap term), no
+must-fix: the stale innovation after a range gap or a run of rejected
+samples (taken: the gap term); a second edge inside a hold from a large
+innovation does not extend it, and counting jumps back toward zero was
+suggested (declined: Q25 04's later steps at 64.82, 64.87 and 65.65 s are
+exactly such jumps and would restart the hold, while log40/44 keep their
+full benefit without them); the margin of 0.3 m against 04's -0.32 m
+(taken: 0.25 m from the sweep); the constant's comment (taken).
+
+Pushed 2026-11-06: `pr-ekf3-aglkf-veld` `0157fd50fc..505ecae715`
+(fast-forward, one commit). Description edit and reply drafted, not
+posted.
