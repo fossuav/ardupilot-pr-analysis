@@ -1054,3 +1054,9 @@ Replay under 2026-10-06 is still neither posted nor in the description.
 Pushed 2026-10-11: `pr-terrain-reset-ge` `9fb70f0f8d` -> `a3ec1e8016` (force, autosquashed), 2 commits, messages only (every tree unchanged). Mechanical gate (/pr-review checks, with the new squashed-subject scan) clean. PR replies drafted, not posted.
 
 Reply to the AP-Review round posted 2026-10-11 (issue comment 6110170989), the text drafted above.
+
+## 2026-11-06: SFD-O4 log78, four takeoffs
+
+Beta topup11 `52ec3c77`: "EKF3 IMU0 terrain offset reopened after takeoff"
+at all four takeoffs of one boot (38.8, 55.1, 71.2, 86.1 s), IMU1 as well
+on the last two. Already flown and squashed; nothing new to fold.

@@ -261,3 +261,15 @@ stop completed hands-off. And at 3-6 m the EKF cap was 20-36 m/s, above
 occur. The flight that settles it holds still after a release below 2.3 m,
 where the cap binds. log61 (3408138/639): Loiter on the GPS lane entered at
 10.5 m/s with a 30 deg lean and stopped in 1.8 s.
+
+## 2026-11-06: SFD-O4 log73 is not the A/B
+
+The topup11 card's pack 1 (beta `52ec3c77`, LOIT_OPTIONS 1 against 65 via
+the temporary bit 6) began with log73 (2026-11-05, LOIT_OPTIONS 1, this PR
+on). Loiter drifted in the direction of each stick release and would not
+hold, and the hand carries that followed (logs 74-77) showed why: indoors
+after dark, looking straight down at the semi-glossy floor, the flow sensor
+read about 0.1-0.3 of the real motion at 0.8 m and 0.5 at 1.7 m (0.77-0.96
+over a plain matte rug, 0.88 on the same floor in June daylight). Nothing
+in log73 measures this PR. Pack 1 is to be flown again in daylight or over
+a matte mat.

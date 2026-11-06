@@ -14,6 +14,8 @@ for the Q25, Replay rebuilt at `0cb49e7dfb`).
   #34380, #33585, #34457, #33507, #34933, #34851, #34456 and older ones).
 - `C.md`: Copter, rate thread and system PRs (#29000, #31274, #34210, #34696,
   #32514, #32270, #32475, #32401 and the rest).
+- Addenda: `Q25-2026-11-02.md` (the Q25 on `c46a09ec`) and
+  `O4-2026-11-05.md` (SFD-O4 logs 73-78 on topup11 `52ec3c77`).
 
 Analysis only: nothing was squashed. The scripts and A/B outputs they name
 lived in that session's scratchpad and are not kept here; the tables carry

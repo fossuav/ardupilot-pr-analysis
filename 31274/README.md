@@ -488,3 +488,12 @@ The gap's cause has to be found first; a bench boot log at
 SERVO_DSHOT_RATE 0 against 2 would show whether it follows the rate
 change. Shortening the window instead raises the reply-rate floor in
 proportion (above).
+
+## 2026-11-06: SFD-O4 log78, four takeoffs in one boot
+
+Beta topup11 `52ec3c77`, TKOFF_RPM_MIN 1000: four takeoffs in one boot,
+none held ("Takeoff blocked" or "ESC RPM or errors out of range" never
+sent), `ESC.Err` at most 0.02-0.03% on every motor in flight. The boot
+reading is as in October (99.7% decaying to 10.7% over 5.5 s), so neither
+`4697e3f3f6` (the 250-frame window) nor `2b31e43213` (the stale latch) is
+shown to have acted. Both stay on top.

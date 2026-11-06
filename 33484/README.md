@@ -1274,3 +1274,18 @@ velocity, and only within range-finder reach.
 
 Flown, not replayed; a Replay without the recovery would show what each
 reset saved.
+
+## 2026-11-06: SFD-O4 logs 73 and 78 on topup11
+
+- log73 (2026-11-05, indoor Loiter on a flow sensor reading 0.1-0.5 of the
+  real motion): one lockout recovery, core 1 at 175.47 s (`XKF7.FVC` 0 ->
+  1). Replay with the beta's `e7d3b3a914` (the PR's `6bbe92baae`, reset
+  only on a sample the other axis passed) reverted is identical to the
+  as-flown Replay on both cores (no XKF1 difference, the same recovery):
+  the check ran and the other axis had passed.
+- log78 (four hops): no lockout recovery; "flow recovery deferred, range
+  stale" just before two touchdowns, as in October (the squashed commit).
+
+`6bbe92baae` ran on log73 without changing the outcome (it ran once before,
+the Q25's ft3 at 130.22 s); it stays as before, your call (B.md).
+`c092795b40` cannot fly on this vehicle.

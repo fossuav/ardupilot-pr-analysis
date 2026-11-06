@@ -757,3 +757,11 @@ which changes nothing while armed. Pushed 2026-11-05 as a fast-forward,
 description updated (the summary now covers touchdown, a bullet for the
 gate with its numbers and limits, the touchdown_expected-in-hover
 disclosure, and the test in the test plan).
+
+## 2026-11-06: SFD-O4 logs 73 and 78 did not run the touchdown gate
+
+Beta topup11 `52ec3c77` carries the gate with this PR's armed term
+(`7322a6b901`, test `6b6a14d960`). Neither log lost flow aiding near the
+ground: the flow core started relative aiding at 5.2 s and kept it, and
+the other core ran without aiding from boot, so no AID_NONE entry and no
+height reset. `13fe97b7ea` stays unflown.

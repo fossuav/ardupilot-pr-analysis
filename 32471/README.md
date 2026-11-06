@@ -2209,3 +2209,29 @@ Pushed 2026-11-05: `255d534264..3e76fb4246` on `pr-vrf-core`
 (https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-6656287588);
 description updated (the parts-that-look-wrong bullet now describes the
 zero time, and the tests sentence names the accel switch at rest).
+
+## 2026-11-06: the first-flight rule flown, SFD-O4 logs 73 and 78
+
+Beta topup11 `52ec3c77` carries the 11-04/11-05 commits as `e88cbd9b9b`
+(`793dc2fb26`), `05f313c6e7` (`34c63c0940`), `5d46fde634`, `09b1b5f673`,
+`0d2b150cb3`, `bb09f5e010`, `9838f25717`, `f2f380cbb3`, `7f45f8b4f6`
+(`7bba551163`), `9dd2305f5f`, plus three beta-only commits for the
+accel switch on the ground (`60bf5c0258`, `364bd902f8`, `724cd6edda`).
+The zero-time test that opens a first flight is line for line the same on
+the beta and the PR head; they differ only in the beta's accel-switch path
+("Hover Z-bias not saved: accel switched on ground") and in the name of
+the rest function.
+
+- log78 (2026-11-05), one boot, ACC_ZBIAS_LEARN 11: the 0.8 s arm without
+  a takeoff said nothing; hop 1 (11 s) saved (`INS_ACC_VRFB_Z` 0.0256 ->
+  0.0292, IMU1 0.0147 -> 0.0188); hops 2-4 each "Hover Z-bias not saved:
+  not first flight". The boot bootstrap's zeroing opened the first flight
+  and nothing zeroed the bias again.
+- log73 (same day, an earlier boot): its one flight saved too (boot
+  values 0.030/0.024, next boot 0.025/0.014), from a Loiter that drifted
+  on a flow sensor reading 0.1-0.5 of the real motion.
+
+So the zero-time path of `34c63c0940` + `7bba551163` has flown. Not run: an
+accel switch at rest (the case `7bba551163` exists for, and where beta and
+PR differ), an EKF accel bias reset (`6bc9422b24`, `793dc2fb26`), bit 2.
+Squash decision: `squash-audit-2026-10-31/O4-2026-11-05.md`.

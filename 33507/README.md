@@ -910,3 +910,11 @@ bd94225fe5/d9e44e3e46 named as this PR's own).
 ## 2026-11-02: the stacking sentence was already fixed
 
 AP-Review's last round (2026-10-13, COMMENT at `d9e44e3e46`) asked for "the first five commits here are that PR" to be corrected. The description already reads "the first seven commits here, ending at 04341318b9, are that PR; bd94225fe5 and d9e44e3e46 are this one", so nothing to change; the bot has not re-reviewed since, as the head has not moved.
+
+## 2026-11-06: #34457's fused floor flown under the bias state
+
+SFD-O4 log78 (topup11 `52ec3c77`) flew #34457's fused floor on a beta that
+carries this PR's AGL KF bias state; the Replay A/B is in
+`../34457/README.md` (2026-11-06). This PR's own two commits
+(`8745c38de2`, `f11d194786`) were not separated by that replay. Nothing to
+squash.

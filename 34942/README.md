@@ -1710,3 +1710,45 @@ With a sustained error ordinary fusion takes the height to the baro within about
 Placement: the next-flight cost needs #32768's arm-time reset with home set, and #32768 already changes this AID_NONE line (the baroHgtOffset frame fix), so the gate fits #32768 better than a standalone PR. #32768 is frozen under maintainer review; adding to it is the author's decision. Decided the same day: added to #32972 instead, beside its ResetHeight suppression (../32972/README.md, 2026-11-05); the master branch `r1105/ekf3-touchdown-snap` is not used.
 
 Topup10 (the gate without #32972's later armed term, and its test) pushed to the SFD beta 2026-11-05 after the replay above, `a8487f02aa..1bb9af74de`; the next refresh takes #32972's version.
+
+## 2026-11-06: the reset at rest flown, SFD-O4 log78
+
+SFD-O4 log78 (flown 2026-11-05 indoors), beta topup11 `52ec3c77`: four hops
+in ALT_HOLD, each a full-rate descent to the floor (1.1-1.9 m/s, 6.5-7.7 g),
+disarm, re-arm 2.4-3.1 s later. The first flights of the reset at rest:
+after hops 2 and 4 the main filters still carried 0.99-1.01 and 0.50-0.52
+m/s of descent on the floor, and "EKF3 IMUn vertical velocity reset at
+rest" took `XKF1.VD` to 0.00 about 0.1 s after the disarm, on both cores
+after hop 2 and on core 0 after hop 4 (core 1 read 0.36 m/s there, under the
+0.5 m/s threshold, and was left). No "height error" refusal on any re-arm.
+Beta copies: `992bb00935` + `467782a96c` (the PR's `3888b0f7d9`),
+`4795b33bc8` (`85855176cd`), `742952b71f` (`1237f11460`).
+
+Replay with `4795b33bc8` (the wait for the fusion horizon) reverted,
+against the as-flown Replay, tier 1b:
+
+| | as flown | without the wait |
+|---|---|---|
+| resets at rest | the same three | the same three |
+| VD zeroed by the 10 Hz XKF1 sample at | 64.27 s / 93.87 s | 64.17 s / 93.77 s |
+| baro around the reset, hop 2 / hop 4 (inferred from the timing) | settled (-0.27 / -0.19 to +0.12 m) | touchdown spike (-0.58 to -1.23 / -0.68 m) |
+| core 0 height at the next arm, hop 2 | PD +0.72 m | +0.81 m |
+| core 0 height 2 s after hop 4's reset | PD +1.74 m | +2.13 m |
+| max abs(VD) in the 2 s after each reset | 0.02-0.07 m/s | 0.02-0.06 m/s |
+
+So the wait has flown and acted, in a different way from the one its
+commit message describes: without it the velocity did not rebuild (no
+second reset was needed either way), but, judging by the baro timing,
+ResetHeight() took a sample still depressed by the touchdown, and the
+height on the ground ended 0.1 m
+(hop 2) and 0.4 m (hop 4) further from the floor. (Both builds read 0.7-2.2
+m off the floor on the ground there: the range finder was out of range low
+and the baro drifted.)
+
+Not run: the clip (`1237f11460`), as no height sample was rejected
+(`XKF4.SH` at most 0.33 armed and 0.08 disarmed on log78, 0.17 on log73);
+the gyro bias, step average and EKF-own-reset commits, as there was no
+forced EKF reset. The static yaw commits were not checked by Replay: the O4
+fuses its compass at rest, so they are probably idle there.
+
+Squash decision: `squash-audit-2026-10-31/O4-2026-11-05.md`.

@@ -945,3 +945,36 @@ prototype did); the beta does not carry the soft floor.
 Quick review at `5e4346a261`: gate clean, one Codex cold read of the five commits (no issues found). Pushed 2026-11-05 as a fast-forward, `713beeb50b..5e4346a261` on `pr-aglkf-floor-velocity`.
 
 Climb probe re-flown at the pushed head (`plots/aglkf_4_climb_sitl_fused_floor.png`): velocity / true 1.01 and 1.02, worst height error 0.28 / 0.40 m; the touchdown coast is gone (height stays on the floor, velocity dips to -0.4 m/s and settles in about 4 s); the 0.25 m overshoot after the climb stops remains. Also checked for the description: on log9 the fused floor holds the pre-takeoff dwell at -0.01 m/s (no floor handling -0.51 on today's code); replay_sweep's own floor-velocity column for log9 reads -8.8 m/s with the fused floor against -1.1 with the clear, but that is in-flight floor contact with no range data (the descent kept in the velocity), not ground wind-up. On the beta the main filter's records differ slightly between the clear and the fused floor from early in each flight (the AGL KF feeds velD fusion and flow scaling there); in-flight height error and takeoffs unchanged across the 34. Posted 2026-11-05: description rewritten (leads with the halved climb velocity on master; the fused floor, the named limits, the costs); reply to rmackay9 https://github.com/ArduPilot/ardupilot/pull/34457#issuecomment-6657687701 (graph to be attached by hand); reply to AP-Review's touchdown should-fix https://github.com/ArduPilot/ardupilot/pull/34457#issuecomment-6657688047; follow-ups in peterbarker's threads #discussion_r4480275715 (0.25) and #discussion_r4480276044 (0.3).
+
+## 2026-11-06: the fused floor flown, SFD-O4 log78
+
+SFD-O4 log78 (flown 2026-11-05 indoors), beta topup11 `52ec3c77`, which
+carries this PR's 11-05 commits as `1bf3d76145`, `ab0260f547`,
+`64115088c0`, `4718d30adf` and the tests `6df2392ac4`, `1a7ec50d81`, with
+#33507's bias state under them. Flow lane primary, EK3_OPTIONS 94. Four hops
+in ALT_HOLD to 1-2 m, each ended by a full-rate descent (1.1-1.9 m/s at
+touchdown, 6.5-7.7 g), a disarm and a re-arm 2.4-3.1 s later. On the ground
+the range finder read 0-0.04 m (out of range low), so the floor was the AGL
+KF's only height reference. As flown, `XKFA.HAgl` held 0.05-0.20 m on both
+cores until each next arm.
+
+Replay with `ab0260f547` reverted (the clamp and velocity clear back)
+against the as-flown Replay, which matches the flight. Worst AGL KF height
+from touchdown to the next arm, tier 1b:
+
+| landing | core | fused floor (as flown) | clamp and clear |
+|---|---|---|---|
+| 1 | 0, 1 | 0.19 m | 0.19 m |
+| 2 | 0 | 0.22 | 0.25 |
+| 2 | 1 | 0.25 | 0.39 |
+| 3 | 0 | 0.16 | 0.18 |
+| 3 | 1 | 0.18 | 0.45 |
+| 4 | 0 | 0.22 | 0.50 |
+| 4 | 1 | 0.28 | 0.28 |
+
+So `1f0abd73bf` has flown and acted: the touchdown lift the clear
+double-counts reached 0.39-0.50 m on three of eight core-landings, and the
+fused floor held every landing to 0.16-0.28 m. The cost seen: at the arm
+after landing 2 the fused floor still read 0.20/0.18 m against 0.05 m with
+the clamp, as the floor is fused with R = sq(EK3_RNG_M_NSE) rather than
+set. Squash decision: `squash-audit-2026-10-31/O4-2026-11-05.md`.

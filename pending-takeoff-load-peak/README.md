@@ -181,3 +181,11 @@ var_info2 41/42, which no branch has used, and `95ad9b9c37` puts
 VALT_POS_EXPO back on 30. A store carried across SITL builds (with
 AP_CPU_IDLE_STATS_ENABLED=1) reads AVG 3 / PEAK 50 on the beta and
 95 / 99.5 after the move.
+
+## 2026-11-06: #33366 over five armings in one boot, SFD-O4 log78
+
+Beta topup11 `52ec3c77`, `BRD_IDLE_STATS 1`, TKOFF_CPU_AVG 95, TKOFF_CPU_PEAK
+99.5. Five armings in one boot (a 0.8 s arm without takeoff, then four
+hops): no "Takeoff blocked". threads.txt across them: LOAD 88.6 -> 90.8%,
+PEAK 92.1 -> 98.9%. The peak has 0.6% left to the 99.5% default by the
+fifth arming; the average 4%.
