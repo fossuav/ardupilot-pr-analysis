@@ -1174,5 +1174,6 @@ full benefit without them); the margin of 0.3 m against 04's -0.32 m
 (taken: 0.25 m from the sweep); the constant's comment (taken).
 
 Pushed 2026-11-06: `pr-ekf3-aglkf-veld` `0157fd50fc..505ecae715`
-(fast-forward, one commit). Description edit and reply drafted, not
-posted.
+(fast-forward, one commit). Description updated (the summary, the step
+gate bullet and a Testing line for the settled-start rule) and reply
+posted: https://github.com/ArduPilot/ardupilot/pull/33478#issuecomment-6687333995

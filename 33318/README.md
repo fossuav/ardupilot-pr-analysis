@@ -581,3 +581,42 @@ the vehicle's own drag forward in Loiter (LOIT_DRAG_COEF)"; description
 rewritten (the user-visible stop, the two jobs of the drag model, the
 SITL table, and the earlier version's GPS regression as the reason for the
 default).
+
+## 2026-11-06: AP-Review at `3bdb50c65b` (COMMENT), fixed (`r1106/33318-fix2`)
+
+Rebuilt on the base `802db19de1`: the three pushed commits with the EKF
+one's message reworded (tree identical to `3bdb50c65b` after the third),
+then four on top.
+
+- `b5c0ec3d85` AP_NavEKF3 (was `35e9aa089d`): message says aglKf.hgt, and
+  no longer says the cap feeds the Loiter drag term (the speed limit
+  cancels out of it in calc_desired_velocity) or that the default is
+  unchanged (the next fix makes it so).
+- `d53edafe4e` AP_NavEKF3: the comment names FuseOptFlow (was
+  `e94bd58d6f` on `r1105/33318-fix`).
+- `5dc10bde3b` AP_NavEKF3: the ground clearance floor on the speed limit
+  only, as master; with the option off or compiled out the function is the
+  base's (was `7331433ef4`).
+- `046acca4cc` AC_WPNav: the drag term subtracted only from the
+  acceleration handed to the position controller, not stored in
+  `_desired_accel_ne_mss`. The value the position controller receives is
+  unchanged to rounding; Sub's terrain recovery (clears once at
+  ArduSub/mode_auto.cpp, then updates every loop) no longer accumulates it.
+  Not exercised in SITL.
+- `079952af70` AC_WPNav: LOIT_DRAG_COEF text: the magnitude, from steady
+  forward flight; too high a value rolls the vehicle back after a stop.
+
+SITL at the code of this series (comment and doc lines differ only):
+LoiterAirframeDragFeedForward -0.36 m/s at 0, -0.00 at 0.3 (-0.37 / -0.00
+recorded at `3bdb50c65b`); LoiterFlowBrakeOvershoot, OpticalFlowLimits and
+OpticalFlow pass. Copter, sub and plane build, every new commit builds,
+gate clean but the existing 74-char subject note. Cold read: no must-fix;
+its prose points taken (the two message claims above, the over-setting
+warning was "above the real drag" where the rollback only exceeds 0's
+above Loiter's own model, a three-line comment cut to one, "unchanged to
+rounding", "forward" for "straight"). Pushing it needs a force push for the
+reworded message.
+
+Pushed 2026-11-06: `pr-loiter-brake-drag` `3bdb50c65b...079952af70`
+(force, with a lease; the first commit reworded, two identical, four
+added). Reply posted: https://github.com/ArduPilot/ardupilot/pull/33318#issuecomment-6687691446
