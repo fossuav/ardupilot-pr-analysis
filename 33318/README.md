@@ -436,7 +436,93 @@ Kept on the beta as LOIT_OPTIONS 1 by Andy's decision (2026-11-06): the
 O4 is to fly Loiter fast, where the drag term reaches 6.5 m/s/s at 10 m/s.
 Still open for the PR: no hands-off stop at speed has been flown either
 way; the head on GitHub is the unconditional change, with AP-Review's GPS
-SITL roll-back (-0.22 m/s at LOIT_SPEED_MS 5 / 30 deg) unanswered and the
+SITL roll-back (-0.03 to -0.25 m/s at full stick on default settings; reproduced below) unanswered and the
 opt-in rework unpushed; and the AP_NavEKF3 commit (the AGL KF height for
 the flow limits, untested by the autotest) is a different subsystem and
 belongs in its own PR.
+
+## 2026-11-06: GPS Loiter stops in SITL, AP-Review's roll-back reproduced
+
+A throwaway probe (`LoiterStopProbe33318`, in a scratch worktree of the SFD
+beta at `0c193625ca`, not committed): GPS Loiter at 20 m, LOIT_ACC_MAX_M 2,
+LOIT_BRK_ACC_M 2.5, LOIT_BRK_JRK_M 5 unless stated. Full stick forward or
+back for 2-3 s, release, 8 s hands off, four stops per row, with this PR's
+change (LOIT_OPTIONS 1) and without it (65, the SFD switch that restores
+master's feed-forward). Along the push, from PSCN/PSCE, and the velocity
+I-term from PIDN/PIDE. Two airframes: SITL's default quad, and one with
+linear drag at the O4's measured 0.30 m/s/s per m/s (frame JSON `refSpd`
+10, `refAngle` 17, `mdrag_coef` 1; measured 0.30-0.31 from 2 to 9 m/s in
+the probe). SITL caps Loiter's lean at ATC_ANGLE_MAX (30 by default), so
+LOIT_ANG_MAX 45 needs ATC_ANGLE_MAX raised; the O4 flies 80. Tier 2, no
+wind.
+
+| airframe | LOIT_SPEED_MS, lean (model drag per m/s) | model / real drag | stop from | change on: past target, slide back, roll-back | change off |
+|---|---|---|---|---|---|
+| default quad | 5, 30 deg (1.13) | about 3 | 3.8 m/s | 0.31 m, 0.28 m, -0.10 m/s | -0.54 m/s: stops early, back, then forward |
+| default quad | 15, 30 deg (0.38) | about 1 | 6.6 m/s | 0.57 m, 0.39 m, -0.13 m/s | clean |
+| default quad | 15, 45 deg (0.65) | about 1.5 | 8.0 m/s | 0.79 m, 0.65 m, -0.24 m/s | -0.23 m/s: early stop, creeps forward |
+| O4 drag | 15, 45 deg (0.65) | 2.1 | 8.4 m/s | 0.48 m, 0.38 m, -0.11 m/s | -0.33 m/s: early stop, back, 0.7 m forward |
+| O4 drag | 33, 45 deg (0.30) | 1.0 | 8.2-8.6 m/s | 0.46 m, 0.26 m, -0.06 m/s | clean: within 0.3 m of target, no reversal |
+
+The I-term at release says why. With the change it carries the airframe's
+real drag (+0.3 to +1.2 m/s/s at release, winding to +1.6 to +2.9 after)
+and keeps pushing after the stick is released, so the vehicle runs past its
+target and slides back, by more the more drag the airframe has. Without it
+the I-term carries real minus modelled drag (-2.2 at three times, -0.7 to
+-1.2 at 1.5-2 times, +0.1 matched), and when the model is too high it
+brakes the vehicle ahead of the plan: it stops early, rolls back while the
+target is still moving, then moves forward to it. So master's feed-forward
+is consistent when the model matches the airframe, as lthall said, and this
+PR's is consistent only for an airframe with no drag; each is better where
+the other's error is larger, and they cross near a model of twice the real
+drag. AP-Review's GPS finding reproduces wherever the model is about right.
+The June case the PR was written for (the flow cap inflating the drag about
+eight times, before #33639) is the far end of the first row.
+
+Stop length, metres per m/s of release speed, O4-drag airframe:
+
+| setting | change on | change off |
+|---|---|---|
+| 15 m/s, 45 deg, LOIT_BRK_DELAY 1 | 1.66 | 1.34 |
+| same, delay 0.5 | 1.51 | 1.21 (roll-back -0.43 m/s) |
+| same, delay 0.5, LOIT_BRK_JRK_M 20 | 1.48 | 1.17 (-0.46) |
+| 33 m/s, 45 deg, delay 1 | 2.59 | 2.26 |
+| same, delay 0.5, jerk 20 | 2.21 | 2.01 |
+| same, delay 0.2, jerk 20 | 2.11 | 1.81 (still clean) |
+
+Matching the model lengthens the stop, because Loiter's modelled drag is
+both the stop profile and, in master's feed-forward, the assumed airframe
+drag. LOIT_BRK_ACC_M is already at the top of its documented range (2.5).
+
+### The airframe's drag in the feed-forward, prototyped
+
+Both feed-forwards assume something about the airframe's drag: master that
+it equals the stop model (A v / LOIT_SPEED_MS), this PR that it is zero.
+Prototype (scratch worktree only, not for commit): keep this PR's change,
+so the modelled drag only shapes the stop, and add back k v_desired, the
+lean the airframe's own drag needs at the desired speed, with k a temporary
+parameter LOIT_DRAG_K. k = 0 is this PR; k equal to the model's A /
+LOIT_SPEED_MS is master. O4-drag airframe, 15 m/s at 45 deg, the same
+probe:
+
+| k (true 0.30) | brake delay | I-term at release / 1 s after | roll-back | past target, slide back | stop, m per m/s |
+|---|---|---|---|---|---|
+| 0.30 | 1 s | -0.01 / +0.02 m/s/s | none | 0.17 m, 0 | 1.50 |
+| 0.30 | 0.5 s | -0.00 / -0.01 | none | 0.17 m, 0 | 1.40 |
+| 0.20 | 0.5 s | +0.31 / +0.64 | -0.01 m/s | 0.13 m, 0.10 m | 1.42 |
+| 0.40 | 0.5 s | -0.31 / -0.65 | none | stops slightly early | 1.36 |
+| this PR alone (0) | 0.5 s | +0.96 / +1.93 | -0.13 m/s | 0.48 m, 0.40 m | 1.51 |
+| master (65) | 0.5 s | -1.18 / -2.32 | -0.43 m/s | early stop, back, forward | 1.21 |
+
+With the true drag the I-term stays at zero through the push and the stop,
+the vehicle stays within 0.14 m of its target, and the stop keeps the
+strong model's length; a third too low or too high still stops without a
+reversal. So the stop profile and the airframe's drag are two things, and
+the consistent feed-forward needs both. Where k would come from: a Loiter
+parameter, or EK3_DRAG_MCOEF (the EKF's rotor drag per m/s for wind
+estimation, unset on the O4; log63 puts it near 0.30), which keeps one
+source of truth but turns on the EKF's drag fusion with it. Defaulting k
+to the model's A / LOIT_SPEED_MS gives master's behaviour unchanged.
+
+Not flown. The O4's drag figure is from log63's GPS lane up to 10 m/s,
+wind not separated.
