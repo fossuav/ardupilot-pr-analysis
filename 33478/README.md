@@ -1006,3 +1006,49 @@ ARCH-14). The bit 4 text "Only used in flight with a horizontal velocity
 estimate" reads as needing GPS or flow; on a copter it does not. The open
 questions are the slope exposure in AID_NONE and the AGL KF not settling on
 the ground.
+
+## 2026-11-06: an ALT_HOLD creep in flight from the covariance collapse, SFD-O4 log81
+
+The open issue at the top (the fusion collapses P[posD] and starves the
+barometer) seen in flight. SFD beta `52ec3c77`, EK3_OPTIONS 94 (bit 4, this
+PR's fusion, on the flow core), EK3_ALT_M_NSE 1, EK3_RNG_USE_HGT 6 (baro
+height above 0.9 m), EK3_AGL_ABIAS_P 0.05. A 55 s ALT_HOLD hover after about
+four minutes powered on the ground. From 272 to 309.5 s, stick in the
+deadband, the flow core (core 1, primary) held its height at 1.51-1.56 m
+on a 1.61 m target while the range finder rose 1.14 -> 1.76 m in steps, the
+baro 0.80 -> 1.24 m and the GPS core 0.70 -> 1.43 m. The flow core read a
+0.05-0.09 m/s climb (the range finder's rate about 0.015 m/s), velD
+innovation -0.01, baro innovation standing at -0.45 to -0.74 m. The pilot saw
+the vehicle creep up about 20 cm at a time.
+
+Replay (beta Replay, core 1 identical to the flight, core 0 within 6 mm),
+flow core height minus range finder over 272-309 s, tier 1b:
+
+| build | drift | flow core climb, mean | AGL KF velocity minus its height rate | height std / velD std (hover medians) |
+|---|---|---|---|---|
+| as flown | -0.49 m | 0.065 m/s | +0.041 m/s (max +0.091) | 0.084 m / 0.029 m/s |
+| EK3_AGL_ABIAS_P 0.3 | -0.54 m | 0.047 m/s | +0.012 m/s (max +0.049) | - |
+| bit 4 off (EK3_OPTIONS 78) | -0.04 m | 0.121 m/s | not fused | 0.233 m / 0.082 m/s |
+
+With the fusion the core's height variance is about 7.7 times smaller, so
+the baro at 1 m noise moves it about a seventh as much, and a velocity a few
+cm/s off integrates into a height that cannot follow the vehicle; ALT_HOLD
+holds that height and the vehicle climbs. Faster AGL KF bias tracking cuts
+the AGL KF's velocity error by two thirds but not the drift, so the error in
+the fused velocity is the trigger and the overconfidence the cause. Without
+the fusion the height follows but the vertical velocity is worse (0.12 m/s
+against 0.015 true), so the fusion is worth keeping, fused honestly.
+
+Why its velocity was off: the AGL KF's accel-bias state only starts learning
+at liftoff (from 0, std 1.0), claims std 0.017 within 12 s, then moves
+another 0.1 m/s/s (+0.068 -> -0.037) as the IMUs cooled 12 degC in the
+hover; both main cores' accel Z bias moved about 0.07 m/s/s over the same
+time, with or without bit 4.
+
+Fix direction (not done): the AGL KF velocity is a filtered estimate whose
+error persists between samples, fused every step as if independent. Fuse it
+at the rate new range information enters the AGL KF, or inflate its noise
+for the correlation, and check the core's claimed vertical velocity and
+height std against an independent reference (the range finder in a hover).
+Proposed as ARCH-26 in aap. SFD notes: `Tools/SFD/FLIGHT_VALIDATION.md`
+(2026-11-06).

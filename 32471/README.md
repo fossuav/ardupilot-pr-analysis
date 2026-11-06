@@ -2300,3 +2300,17 @@ Each had only about 7 s of steady hover before stick pulses (the card asked
 for 45 s), and log80 climbed from 0.8 to 1.2 m through its Loiter. Not
 analysed: whether the learner's sample was taken in those few seconds, and
 what the EKF's Z accel bias did across them.
+
+### 2026-11-06 (later): the bias the learner samples moves with temperature
+
+SFD-O4 log81 (beta `52ec3c77`, ACC_ZBIAS_LEARN 11), a learning flight after
+about four minutes powered on the ground: the IMUs warmed about 6 degC (to
+40.0 and 41.4 degC) and then cooled 12 degC in the 55 s hover (to 28.4 and
+29.3 degC by 310 s). Both EKF cores' accel Z bias rose about 0.05 m/s/s after
+takeoff and fell again (core 1 0.02 -> 0.07 -> 0.00, core 0 0.01 -> 0.07 ->
+0.02), the same in Replay with the AGL KF velD fusion off; INS_TCALn covers
+4.5-70 degC. The learner saved IMU0 -0.002 -> 0.013 and IMU1 0.013 ->
+-0.002. So within one hover the bias it samples moves by more than the
+spread between first flights recorded above; likely the cause of that spread,
+not proven. Arming within a minute of power-on, so the board does not warm
+on the ground first, is the next thing to try.

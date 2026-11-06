@@ -526,3 +526,16 @@ to the model's A / LOIT_SPEED_MS gives master's behaviour unchanged.
 
 Not flown. The O4's drag figure is from log63's GPS lane up to 10 m/s,
 wind not separated.
+
+### 2026-11-06 (later): LOIT_DRAG_COEF indoors, SFD-O4 logs 82-83
+
+The airframe-drag feed-forward, as `LOIT_DRAG_COEF` on the SFD beta (topup12,
+`9b4d90f9de`, test `650930dcc8`), flown indoors in daylight on flow:
+log82 at 0, log83 at 0.3, LOIT_OPTIONS 1, LOIT_BRK_DELAY 0.3. Flow against
+the drag reference 0.75-0.88. Median peak speed over desired 0.99 and 1.04;
+releases with 3 s or more hands off: three in log82 (from 1.5-1.9 m/s,
+roll-back at most 0.07 m/s), one in log83 (from 0.5 m/s, 0.09 m/s); after a
+release the vehicle sat a median 0.15 and 0.06 m behind its target. No
+difference these speeds can show (the drag lean is under 3 deg at 1.5 m/s),
+and nothing worse: with 0.3 it stopped and stayed, no creep forward. The
+outdoor test at 8-10 m/s is still to fly.
