@@ -539,3 +539,37 @@ release the vehicle sat a median 0.15 and 0.06 m behind its target. No
 difference these speeds can show (the drag lean is under 3 deg at 1.5 m/s),
 and nothing worse: with 0.3 it stopped and stayed, no creep forward. The
 outdoor test at 8-10 m/s is still to fly.
+
+## 2026-11-06 (later): the PR reworked as LOIT_DRAG_COEF (local, not pushed)
+
+Commit hashes above: the SFD beta was rebased onto `909cde934e` and pushed
+the same day, so the topup12 commits cited earlier as `9b4d90f9de`
+(AC_WPNav) and `650930dcc8` (autotest) are now `6b6e59d60d` and
+`83465e9ad2` on the beta, and the logs 79-80 record `0c193625ca` is
+`c690633256`. Logs 82-83 flew a build reporting `9b6b564a`, the
+pre-rebase head, the same code.
+
+Local branch `r1106/33318-v2` on the PR's base `802db19de1` replaces
+`b35595a852` (the drag taken out of the feed-forward for everyone):
+
+- `35e9aa089d` AP_NavEKF3: the AGL KF height for the flow speed limits,
+  `3ec57dc67d` unchanged.
+- `c8f00ae46b` AC_WPNav: LOIT_DRAG_COEF (AC_Loiter index 12), the
+  vehicle's drag per m/s. Set, the feed-forward carries the lean that drag
+  needs at the desired speed and the modelled drag only shapes the stop.
+  At 0, the default, the modelled drag stands in and the feed-forward is
+  master's exactly (`brake + (drag - drag)`). Unlike the beta's topup12,
+  where 0 means the drag out.
+- `3bdb50c65b` autotest: LoiterAirframeDragFeedForward, two GPS stops on
+  `models/quad-linear-drag.json` (linear drag 0.30 m/s/s per m/s) at
+  LOIT_SPEED_MS 15, 45 deg, ATC_ANGLE_MAX 80. Most backward speed after
+  release: -0.37 m/s at 0 (master's feed-forward), -0.00 at 0.3.
+  LoiterFlowBrakeOvershoot (master's, no assertions) still runs.
+
+Throwaway probe on the same branch (not committed), master's flow jab
+(LOIT_SPEED_MS 5, 30 deg, about 2 m, SITL's default frame), twice each:
+most backward speed -0.39 m/s at 0, -0.01 at 0.3. So the coefficient
+fixes the PR's original flow case as well as the GPS case the earlier
+version made worse. Tier 2. Gate: check_branch_conventions passes against
+the base, astyle clean. Not pushed (a force push over the PR head), the
+description not updated; both wait for Andy.
