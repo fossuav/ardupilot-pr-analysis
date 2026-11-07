@@ -626,3 +626,44 @@ added). Reply posted: https://github.com/ArduPilot/ardupilot/pull/33318#issuecom
 AP-Review's only point was the history. d53edafe4e and 5dc10bde3b amend b5c0ec3d85, and 046acca4cc and 079952af70 amend 92792083ed, so master would get a commit that floors the option-off nav-gain scaler and a later one that reverts it. Rebuilt on the same base `802db19de1` as one commit per subsystem: `71177ef8ae` AP_NavEKF3 (from b5c0ec3d85, d53edafe4e and 5dc10bde3b), `3c4dfc8c88` AC_WPNav (from 92792083ed, 046acca4cc and 079952af70), `eeb29ea447` autotest (from 9b114e85e3). Each message describes the final code. The EKF one says only the speed limit is floored and both limits are unchanged with the option off. The WPNav one keeps the drag-model explanation and the SITL figures, and adds why the drag term stays out of the stored feed-forward (Sub's terrain recovery). The autotest one gives 0.36 m/s, measured at this tree. The tree is identical to `079952af70`. Every commit builds copter (sub and plane too at the AC_WPNav commit), with a reconfigure at each because SITL's ROMFS model list is fixed at configure time. LoiterAirframeDragFeedForward passes at the head, at -0.36 m/s with 0 and -0.00 with 0.30. The gate and check_branch_conventions are clean apart from the existing 74-char subject note. Pushing it means a force push over `079952af70`.
 
 Pushed 2026-11-07: `pr-loiter-brake-drag` `079952af70...eeb29ea447` (forced, squash, same tree). Reply posted: https://github.com/ArduPilot/ardupilot/pull/33318#issuecomment-6706615855
+
+## 2026-11-07: first flights at speed, SFD-O4 logs 85-86 (tier 1)
+
+The SFD beta (refresh13 topup1, build reporting `ea9c6ab5`) carries this
+PR at `079952af70`, the tree of the head `eeb29ea447`. SFD-O4 outdoors on
+GPS in Loiter, `LOIT_SPEED_MS` 15, `LOIT_ANG_MAX` 45, `LOIT_BRK_DELAY`
+0.3, `LOIT_OPTIONS` 1, one flight per value on one pack: log85
+(3408138/695) at `LOIT_DRAG_COEF` 0.3, log86 (3408138/697) at 0, which is
+master's feed-forward. Three hands-off releases in each from 10.7-12.6
+m/s, nose first, two eastbound and one westbound in each, 5.8-8.8 s hands
+off. Measured along the direction of motion at the release, from
+PSCN/PSCE (target TPN/TPE, velocity VN/VE) and GPS velocity:
+
+| | log85, 0.3 | log86, 0 | SITL, 0.3 / 0 |
+|---|---|---|---|
+| position against the target at the release | 0.22-0.39 m behind | 0.80-0.83 m ahead | |
+| most ahead of the target in the stop | 0.15-0.47 m | 1.25-1.65 m | |
+| most backward speed after the stop, EKF | -0.01 to -0.06 m/s | -0.32 to -0.83 m/s | -0.00 / -0.36 m/s |
+| the same from GPS velocity | 0.00 m/s | -0.34 to -0.80 m/s | |
+| back past the target | none | 0.56-0.79 m | |
+| forward creep afterwards | none | 0.14-0.23 m/s for 3-5 s | |
+
+At 0 the vehicle flew 0.4-0.6 m/s above the desired speed in the push,
+stopped about 2 s after the release while the desired speed was still
+about 1 m/s, rolled back through the target and crept forward again: the
+shape LoiterAirframeDragFeedForward measures at 0, at up to twice its
+size. The eastbound roll-backs (0.76, 0.83 m/s) were larger than the
+westbound one (0.32); wind was not measured. At 0.3 it followed the
+desired speed down, under 0.3 m/s 2.4-3.3 s after the release, and
+settled within 0.15 m of the target. 0.3 is the drag measured on log63
+(0.28-0.37 m/s/s per m/s from 2 to 10 m/s), not tuned on these runs.
+
+Limits: three stops per value on one airframe, and the values were flown
+one flight each rather than alternated, with log86 0.7 V lower on the
+same pack.
+
+log84 (3408138/693, the same build) has one more stop at 0.3, on an entry
+into Loiter from ACRO at 7.7 m/s rather than a release: it ran 1.6 m past
+its target and slid back at up to 0.37 m/s (GPS 0.20-0.26). None of the
+six releases above repeats it. Mode entry is a separate case, not
+measured further.

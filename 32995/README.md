@@ -1144,6 +1144,13 @@ microSD at 25 MHz and the fractional PIO dividers.
 
 Details in [bench-2026-11-07.md](bench-2026-11-07.md).
 
+### Superseded 2026-11-07 by the quad's `OSD_TYPE`
+
+"First flights of ... the fractional PIO dividers" holds for bidirectional
+DShot only. The quad runs `OSD_TYPE` 5 (MSP DisplayPort), and the PIO OSD
+is type 6, so it never ran; it needs a board with analog video. Left in
+place for DShot, which did fly on its divider.
+
 ## 2026-10-31: two more release-testing logs, the compass coupling moved
 
 PR head unchanged at `e45dae01b1`. Logs 6 and 7 from the quad on

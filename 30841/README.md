@@ -45,3 +45,12 @@ The second was that no test set the parameter. `5e6288c3b1` adds Copter ESCTelem
 Mechanical gate clean. The PR description's "runs at 100 Hz on every vehicle" needs the same correction.
 
 Pushed 2026-11-07: `pr-esc-logging` `9816840ba6..5e6288c3b1`. Description updated (the rate sentence, and ESCTelemLogRate under testing). Reply posted: https://github.com/ArduPilot/ardupilot/pull/30841#issuecomment-6706615668
+
+## 2026-11-07: flown on the SFD beta, SFD-O4 log84 (tier 1)
+
+The SFD beta (refresh13 topup1, build reporting `ea9c6ab5`) carries this
+PR at `9816840ba6`; the head `5e6288c3b1` changes only the parameter text
+and adds the test. On SFD-O4 log84 (3408138/693), with `ESC_TLM_LOG_RATE`
+25 from the SFD board defaults and `LOG_DISARMED` 2, ESC logged at 25.0 Hz
+per motor over 245 s armed (6125 records each) and at 24.9 Hz over the
+whole 468 s log, disarmed included, with the main loop at 1972-2007 Hz.

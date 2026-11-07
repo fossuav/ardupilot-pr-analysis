@@ -154,3 +154,16 @@ Pushed 2026-11-06: `pr-copter-pending-arm` `4bc594f1c6...749911703c` (forced, fi
 The branch conflicted with master in AP_Arming.h (master replaced the AP_BoardConfig_config.h include with IMU_heater_config.h) and in the arducopter.py test lists (master regrouped them), so CI was skipped. Rebuilt by cherry-pick on upstream/master `b7c08d4dbc`: range-diff shows only those two resolutions (PendingArmOnSwitch now sits beside ArmSwitchAfterReboot in tests1e) and context from master's AP_Int32 -> AP_UInt32 change. Three fixes on top: quiet retries no longer call AP_Logger::arming_failure() (`57b68a9f79`) or set Notify's arming_failed (`bd6eeb0e93`), and set_pending_arm() no longer re-runs pre_arm_checks(true) (`026ae77fc2`). A temporary STATUSTEXT probe at each site counted, over 10 s of a pending arm with the throttle high, 36 buzzer events and 36 persistence refreshes before and 4 of each after; a mode that cannot arm gave the same numbers. A pre-arm failure (ACRO_BAL_ROLL -1) printed as "Arm:" then "PreArm:" and now prints once. Each arming_failure() also resets and re-queues the at-arm @SYS file-content logging (code reading), so the 4 Hz retries restarted it every 250 ms; it now restarts every 3 s, as a pilot retrying the switch on master would. PendingArmOnSwitch, ArmSwitchAfterReboot and ArmFeatures pass; Copter, Plane and Rover build. No autotest covers the buzzer: Notify events and the logger's persistence are not visible over MAVLink in SITL.
 
 Pushed 2026-11-07: `pr-copter-pending-arm` `749911703c...026ae77fc2` (forced, rebased on master `b7c08d4dbc`). Reply posted: https://github.com/ArduPilot/ardupilot/pull/32401#issuecomment-6706614896
+
+## 2026-11-07: a pending arm in the field, SFD-O4 log86 (tier 1)
+
+The SFD beta (refresh13 topup1, build reporting `ea9c6ab5`) carries this
+PR at `749911703c` with the 11-07 fixes ported as `ab91920d11`,
+`7802cbd99d` and `beab832ffe`. On SFD-O4 log86 (3408138/697),
+`ARMING_PEND_TIM` 5, the arm switch went up at 28.60 s before the EKF had
+a position: "Arm: Need Position Estimate" once, then "Arm pending". The
+switch went down at 29.70 s: "Arm pending cancelled". The EKF started
+using GPS at 32.65 s, and the switch up at 33.10 s armed at once (ARM
+method 2). Not covered: the 3 s retry cadence and its buzzer (the arm was
+pending for 1.1 s), the EKF reset at `ARMING_PEND_TIM`, the cancel by a
+GCS disarm, and a pending arm that completes by itself.
