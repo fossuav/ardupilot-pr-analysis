@@ -911,3 +911,9 @@ Four commits unchanged by range-diff. AccelBiasLearningInhibitedInAcro
 AccelBiasAcroExitVelocityError and HoverBiasSavedFirstFlightAfterRest pass.
 
 Pushed 2026-11-06: `pr-acro-bias-inhibit` `782e58d3ac...16a9f14b47` (forced, restack). Reply posted: https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-6690424944
+
+### 2026-11-07: restacked as `r1107/32473-clock2` (`7c0932de0b`) on #32471's `ed77480c74`
+
+AP-Review at `16a9f14b47` was ACCEPT, with two minors that ask for no change: the X/Y variance after an armed acro exit and the bit 2 same-boot leftover bias. Restacked onto #32471's age fix: the four commits are patch-identical, and the tree differs from `16a9f14b47` only by that fix. AccelBiasLearningInhibitedInAcro, AccelBiasAcroExitVelocityError and HoverBiasSavedFirstFlightAfterRest pass at the new head.
+
+Pushed 2026-11-07: `pr-acro-bias-inhibit` `16a9f14b47...7c0932de0b` (forced, restack). Reply posted: https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-6706615461

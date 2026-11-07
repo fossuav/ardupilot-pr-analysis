@@ -935,3 +935,9 @@ Touchdown 0.16-0.18 m, NoCoastBelowMin 0.004 m, NoCoastAfterTouchdown
 0.050-0.343 m, NoFloorHoldInHover 9.82 m.
 
 Pushed 2026-11-06: `pr-agl-kf-zbias` `21772c51af...1ed5fa2dc4` (forced, restack). Description updated. Reply posted: https://github.com/ArduPilot/ardupilot/pull/33507#issuecomment-6690425806
+
+### 2026-11-07: restacked as `r1107/33507-finite` on #34457's `e1c95f7d8c`
+
+Commits 6e218cb0ef, fae59a24fc and 651b648a9b (range-diff `=`). The tree differs from 1ed5fa2dc4 only by e1c95f7d8c. UTMGlobalPosition and the six AGL KF tests pass in tests1d order: KalmanFilter 1.0003/1.0006 (bias 0.000 -> 0.344), FloorVelocity -0.0057 m/s, Touchdown 0.10-0.16 m, NoCoastBelowMin 0.004 m, NoCoastAfterTouchdown rise 0.30 m, NoFloorHoldInHover 10.41 m. Force push.
+
+Pushed 2026-11-07: `pr-agl-kf-zbias` `1ed5fa2dc4...651b648a9b` (forced, restack). Description updated (the floor bias-std bound 0.95 and the stack sentence). AP-Review's only point at `1ed5fa2dc4` was that description sentence, so no reply.

@@ -363,3 +363,16 @@ minor noted for later: XKF7 stops logging when the AGL KF option is cleared
 while a latch is still active (AP_NavEKF3_Logging.cpp:240).
 
 Pushed 2026-11-06: `pr-osd-ekf-lanes-flow-reset` `3a44baaca3...b9e7518181` (forced, restack). Reply posted: https://github.com/ArduPilot/ardupilot/pull/34630#issuecomment-6690426917
+
+### 2026-11-07: restacked on #34543's `871498e4aa` as `r1107/34630-restack2` (`11985e483f`), not pushed
+
+AP-Review at `b9e7518181` (COMMENT), should-fix: during a DCM fallback the lane items go blank, because this PR's copy of #34543 gated `get_ekf_lane_status()` on the active EKF. Rebuilt from #33484's `707e0e621f`. First come #34543's 15 commits, unchanged (range-diff 14 `=`; the one `!` is #33484's context around `flowPassTimeAxis_ms`; the -U0 changed lines are identical). Then this PR's own 14 commits.
+
+- Dropped: the copies of #34543's guard, shorten and build-option commits; `6ce4673ffb` (SIM_TERRAIN 0, now in #34543's test commit); `f00272b60a` and `b9e7518181`, both empty in the one-line descriptions.
+- The description edits moved into the one-line form: the floor clause into "show the flow signal strength against the lane's quality floor", the bit 3 clause into "say the EKF lane quality floor needs EK3_OPTIONS bit 3".
+- The tree differs from `b9e7518181` only by #34543's `c9e766c8cc` (configured EKF3 and started) and `faaf49b10d` (`Rover.OSDEKFLanesDCMFallback`, the MSP helpers moved to vehicle_test_suite.py).
+- At the head, `OSDEKFLanes`, `EK3_FlowAxisLockoutRecovery` and `Rover.OSDEKFLanesDCMFallback` pass. With the gate put back to `active_EKF_type()`, the Rover test fails: row 9 is blank through the fallback, "never showed b'C0 CST' flashing".
+- Copter builds at every commit. The covariance and latch-threading notes are unchanged.
+- No SFD port: the beta already carries #34543 at `871498e4aa`.
+
+Pushed 2026-11-07: `pr-osd-ekf-lanes-flow-reset` `b9e7518181...11985e483f` (forced, restack). Description updated (fourteen commits, the stale DCM paragraph removed). Reply posted: https://github.com/ArduPilot/ardupilot/pull/34630#issuecomment-6706615090

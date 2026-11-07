@@ -620,3 +620,9 @@ reworded message.
 Pushed 2026-11-06: `pr-loiter-brake-drag` `3bdb50c65b...079952af70`
 (force, with a lease; the first commit reworded, two identical, four
 added). Reply posted: https://github.com/ArduPilot/ardupilot/pull/33318#issuecomment-6687691446
+
+### 2026-11-07: AP-Review at `079952af70` (COMMENT), squashed (`r1107/33318-squash`)
+
+AP-Review's only point was the history. d53edafe4e and 5dc10bde3b amend b5c0ec3d85, and 046acca4cc and 079952af70 amend 92792083ed, so master would get a commit that floors the option-off nav-gain scaler and a later one that reverts it. Rebuilt on the same base `802db19de1` as one commit per subsystem: `71177ef8ae` AP_NavEKF3 (from b5c0ec3d85, d53edafe4e and 5dc10bde3b), `3c4dfc8c88` AC_WPNav (from 92792083ed, 046acca4cc and 079952af70), `eeb29ea447` autotest (from 9b114e85e3). Each message describes the final code. The EKF one says only the speed limit is floored and both limits are unchanged with the option off. The WPNav one keeps the drag-model explanation and the SITL figures, and adds why the drag term stays out of the stored feed-forward (Sub's terrain recovery). The autotest one gives 0.36 m/s, measured at this tree. The tree is identical to `079952af70`. Every commit builds copter (sub and plane too at the AC_WPNav commit), with a reconfigure at each because SITL's ROMFS model list is fixed at configure time. LoiterAirframeDragFeedForward passes at the head, at -0.36 m/s with 0 and -0.00 with 0.30. The gate and check_branch_conventions are clean apart from the existing 74-char subject note. Pushing it means a force push over `079952af70`.
+
+Pushed 2026-11-07: `pr-loiter-brake-drag` `079952af70...eeb29ea447` (forced, squash, same tree). Reply posted: https://github.com/ArduPilot/ardupilot/pull/33318#issuecomment-6706615855
