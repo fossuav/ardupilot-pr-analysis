@@ -267,6 +267,13 @@ commits used to make.
 
 ## Status (one line)
 
+2026-11-07, later: Auto flown on the same build. Port clean, every
+waypoint reached; RTL's landing came in fast from the quad's vertical
+waypoint settings and GPS height, both configuration. The GPS failsafe,
+commit 48 and the PIO OSD remain unflown.
+
+Earlier:
+
 2026-11-07: head `1fcec947c5`, 71 commits, tree identical to the
 `f0f78b48ec` that alpha2 carries. First flights of the 200 MHz build: the
 port clean in flight, scheduler load 29-41% against log 5's 54-69%, one
@@ -1104,6 +1111,34 @@ rest is not:
   (issuecomment-5671163072). Andy's hardware test of the change set is
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
+
+## 2026-11-07, later: an Auto mission
+
+Log 9, the same quad and build an hour after log 8, on a fresh pack, with
+`EK3_SRC1_POSZ` changed from baro to GPS. Takeoff to 25 m, ten spline
+waypoints, RTL.
+
+- The port was as clean as in log 8: worst rate-loop gap 0.93 ms in
+  flight, load 34-41%, nothing dropped. Log 8's logging drop did not
+  recur. The 13 mission items stored and read back.
+- Every waypoint was reached, within 0.8-4.8 m. The quad flew at its 30
+  deg lean limit for 94% of the mission, as `WP_ACC` 60, `WP_ACC_CNR` 80
+  and `WP_JERK` 120 ask for more than 30 deg gives, and fell up to 17 m
+  behind its target on the tight turns.
+- RTL's landing never slowed to `LAND_SPD_MS` 0.5: the target was still
+  5.9 m/s at 9 m and 2 m/s near the ground when the pilot took over. Two
+  causes, both configuration. `WP_ACC_Z` 10 with `WP_SPD_DN` 10 starts the
+  slowdown too late: SITL lands at 0.8 m/s with them, 0.5 m/s with either
+  alone, and 0.5 m/s with `LAND_SPD_HIGH_MS` 2. And GPS height wandered 3 m
+  on the ground against the baro's 0.3 m, so home was set low and the quad
+  reached the ground believing it was about 1.5 m up.
+- The compass's static offset moved about 100 mG between logs 8 and 9,
+  measured both from the EKF's learned body field and from the fit; it
+  coincides with the pack change. EKF yaw within 4 deg of true throughout.
+- The cold board's current input read about half the eRPM model's
+  current, and `CurrTot` went negative on the ground.
+
+Details in [bench-2026-11-07.md](bench-2026-11-07.md), "Log 9".
 
 ## 2026-11-07: first flights at 200 MHz
 
