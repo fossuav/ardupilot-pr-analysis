@@ -442,3 +442,44 @@ from GPS (95th percentile 2.33, worst 4.06), against 0.15 / 0.59 / 2.22
 for core 0, which fuses GPS, so that part is the timing between the two.
 As on logs 69-70 (2026-10-31, the earlier head), the lane was never
 zeroed.
+
+## 2026-11-07 (later): what the lane carries through long tilts, SFD-O4 logs 87-88 (tier 1, 1b)
+
+The same build as log84 above, at this PR's head `38635910f0`. SFD-O4
+log87 (3408138/699) and log88 (3408138/701) flew ACRO with core 1, the
+flow lane, primary through 96 s and 163 s of it, mostly above the 15 m range
+finder. As this PR intends, the lane never timed out: relative aiding
+throughout, no lockout reset (XKF7.FVC 0). What it carried instead was
+the IMU's estimate. Past the 45 deg tilt gate it fuses no flow, its flow
+innovations frozen for up to 16 s, and its velocity error against core 0
+(GPS) grows; level, it shrinks:
+
+| | over 45 deg | growth tilted | shrink level | mean error tilted / level |
+|---|---|---|---|---|
+| log84, 211-422 s | 107 of 211 s | +0.12 m/s per s | -0.09 m/s per s | 1.3 / 1.2 m/s |
+| log87, 105-205 s | 68 of 100 s | +0.28 | -0.77 | 7.7 / 4.4 |
+| log88, 136-299 s | 98 of 163 s | +0.12 | -0.11 | 4.1 / 2.4 |
+
+The position integrates it: core 1 was 26 m from core 0 at 130 s on
+log88 and 145-296 m from 265 to 280 s, and an RTL on it went to the wrong
+home (#34456's record, 2026-11-07). log87's Loiter on core 1 drifted 7 m
+in 5 s hands off on the error it carried out of the ACRO, falling from
+1.8 to 0.7 m/s in that time, while 0.5 s averages of raw flow stayed
+within about 0.4 m/s of GPS.
+
+Replay of both logs reproduces the flown cores exactly. Ruled out, each
+moving core 1's median velocity error by 3 % or less: `EK3_OPTIONS` 90
+against 94 (the terrain-database flow height), `EK3_FLOW_DELAY` 30, 50
+and 70 against 10, and a throwaway probe (not committed) that held the
+flow gyro bias at zero or learned it only below 0.5 rad/s; the bias is
+learned against the delayed IMU rate (`AP_NavEKF3_core.cpp` accumulates
+`delAngBodyOF` from `imuDataDelayed`), on master as well. Ruled out from
+the log: yaw, as rotating core 1's velocity by the yaw difference leaves
+the error unchanged (correlation 0.11 and -0.29 with the direction
+error). The growth rate while tilted (0.28 m/s per s on log87 against
+0.12) is not explained; log87's yaw difference ran higher (95th
+percentile 16 deg against 6), not measured as the cause.
+
+Master would have timed the lane out 5 s into each tilt and zeroed its
+velocity on re-entry; this PR's trade is a lane that keeps an inertial
+estimate instead, and these numbers are its size after minutes of ACRO.

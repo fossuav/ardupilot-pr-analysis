@@ -1764,3 +1764,7 @@ reset at rest" or forced reset after any of the three landings (land
 complete to disarm 0.9-2.0 s). None re-armed after a landing without a
 reboot, so these flights do not cover the re-arm; log78 above is the
 last flight that did.
+
+Logs 87-88 (2026-11-07, same build, SFD-O4 3408138/699 and /701): XKF1.VD
+-0.01 to 0.00 m/s at each arm, no refusal, no reset at rest after either
+landing. No re-arm after a landing.

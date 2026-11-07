@@ -1022,3 +1022,7 @@ and log86 (697) after Loiter only. From land complete to disarm (0.9-2.0
 s) `XKFA.HAgl` held 0.05 m on both cores on all three (0.06 m on log85's
 core 1). These were short sits armed on the ground, so they say nothing
 about a long armed sit.
+
+Logs 87-88 (2026-11-07, same build, SFD-O4 3408138/699 and /701): after
+ACRO and a Loiter descent, `XKFA.HAgl` held 0.05 m on both cores from land
+complete to disarm (at once on log87, 1.6 s on log88).

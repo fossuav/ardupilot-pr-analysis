@@ -667,3 +667,7 @@ into Loiter from ACRO at 7.7 m/s rather than a release: it ran 1.6 m past
 its target and slid back at up to 0.37 m/s (GPS 0.20-0.26). None of the
 six releases above repeats it. Mode entry is a separate case, not
 measured further.
+
+Description updated 2026-11-07 with the flight results above: the real
+roll-back (0.8 m/s from 12 m/s) in the opening paragraph, a flight row in
+the table, and a paragraph on how the flights were run and their limits.

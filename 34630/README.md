@@ -391,3 +391,9 @@ and core 1 2.6-3.2 m/s above GPS in the second before. The range finder
 was back within about a second each time, and a second later core 1 read
 0.6 m/s from GPS with no reset. log70 (2026-10-31) had one deferral, with
 core 1 6-7 m/s high, converging within 2 s.
+
+Logs 87-88 (2026-11-07, same build, SFD-O4 3408138/699 and /701): three
+more "flow recovery deferred, range stale" (log87 at 290.9 s, at the
+touchdown; log88 at 101.1 and 133.0 s), none followed by a reset, and
+XKF7.FVC 0 on both cores through 96 s and 163 s of ACRO with the flow
+lane primary.

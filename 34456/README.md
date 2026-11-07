@@ -543,3 +543,29 @@ reply to peterbarker are drafts held for Andy to read before posting.
 
 Description replaced with the 10-30 draft (the selected set picks the lane; EK3_PRIMARY never written). The original body is kept in that session's scratchpad only; the PR history shows it.
 Reply posted: https://github.com/ArduPilot/ardupilot/pull/34456#issuecomment-6548810405 (peterbarker: why the source set event gets a retry).
+
+## 2026-11-07: an RTL after a flow-set selection flew to the flow lane's home, SFD-O4 log88 (tier 1, 1b)
+
+The SFD beta (refresh13 topup1, build reporting `ea9c6ab5`) carries this
+PR at the head `62e7e604d0`. SFD-O4 log88 (3408138/701): source set 2
+selected by switch at 135.7 s in ACRO, "EKF3 lane switch 1" 6 ms later,
+and never switched back. The selection did what this PR intends. What
+followed is a consequence of it, not a defect in it: an RTL by switch at
+298.5 s flew on core 1, a relative-aiding flow lane with no absolute
+position, whose position was then 173 m from core 0's (GPS). The vehicle
+was 63-67 m from home with home at 101-107 deg; core 1 put home 108-110 m
+away at 295-299 deg. RTL flew 290-294 deg at 30 m/s, read itself home at
+303 s 163 m from it, and held there until the pilot took over at 308.2 s.
+
+Why core 1 was that far off is #34941's record (2026-11-07): through
+sustained ACRO the flow lane spends most of its time past the 45 deg flow
+tilt gate on the IMU alone. Replay of log88 reproduces both cores exactly.
+
+Open, for the description at least: with GPS on another lane, selecting
+the flow set leaves every mode that flies to home or to a location on a
+position with no absolute reference. A flow-only vehicle has no better
+one and relies on RTL using it, so a guard (an RTL entry that selects a
+lane with an absolute position when one is healthy, or a warning) would
+be a vehicle-level decision, not this PR's. `FS_DR_ENABLE` RTL would act
+the same way on this lane; core 1 never set the dead-reckoning bit on
+logs 87 or 88, so it did not.

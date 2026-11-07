@@ -1913,3 +1913,15 @@ Pushed 2026-11-05 (force, `79800dbe59...1cf2ecd440` on
 `pr-optflow-flat-ground`), the folded r5 on #35014's new head. Reply
 posted:
 https://github.com/ArduPilot/ardupilot/pull/33585#issuecomment-6654940173
+
+## 2026-11-07: bit 2 off in Replay of SFD-O4 logs 87-88 (tier 1b)
+
+The SFD beta (refresh13 topup1) carries this PR at `1cf2ecd440`. Replay
+of SFD-O4 log87 (3408138/699) and log88 (3408138/701), flown with
+`EK3_OPTIONS` 94 (bit 2 set, so the anchor bypassed), again with 90 (bit
+2 clear, so the anchor can engage; whether it did was not checked). Core
+1, the flow lane, through ACRO mostly above the 15 m range finder,
+against core 0 (GPS): median velocity error 6.84 -> 6.71 m/s on log87 and
+3.41 -> 3.49 m/s on log88; position error at the end of the window 127
+-> 160 m and 174 -> 314 m. Neither height path helps; the error comes from
+the time past the 45 deg flow tilt gate (#34941's record, 2026-11-07).
