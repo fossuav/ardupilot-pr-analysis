@@ -267,6 +267,14 @@ commits used to make.
 
 ## Status (one line)
 
+2026-11-07: head `1fcec947c5`, 71 commits, tree identical to the
+`f0f78b48ec` that alpha2 carries. First flights of the 200 MHz build: the
+port clean in flight, scheduler load 29-41% against log 5's 54-69%, one
+0.3 s logging drop on the ground after disarm, not explained. RTL flew;
+commit 48 still unflown.
+
+Earlier:
+
 2026-10-31: head unchanged at `e45dae01b1`. Two more logs on `1f8685e9`:
 the port clean, no failsafe, EKF yaw within 6 deg; the airframe's compass
 coupling fell by a third, so `COMPASS_MOT` needs refitting once Andy says
@@ -1096,6 +1104,45 @@ rest is not:
   (issuecomment-5671163072). Andy's hardware test of the change set is
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
+
+## 2026-11-07: first flights at 200 MHz
+
+PR head `1fcec947c5` (71 commits), whose tree is identical to
+`f0f78b48ec`, the head the alpha2 branch was rebuilt on; only the history
+was rewritten. Log 8 from the quad on `4d4220d9`, the alpha2 branch, with
+log 5's parameters but for the gyro calibration, so against log 5 the
+build is the only change. First flights of the 200 MHz clocks, 100 MHz
+continuous-read flash, the new SRAM placement, external AHRS out, the
+microSD at 25 MHz and the fractional PIO dividers.
+
+- The port was clean in flight: rate loop 1600 Hz, worst gap 0.91 ms, 2.23
+  ms at the arming instant (log 5: 6.51), no long loops anywhere, nothing
+  dropped on any UART, DShot telemetry from all four ESCs with no errors.
+- Scheduler load (`PM.Load`) 29-41% in flight and 31-33% disarmed, against
+  54-69% and 57-58% in log 5. The bench measured an 11-point fall; the
+  quad's is about 25. Not reconciled. Free heap is about 6 KB less.
+- 281 log messages, 0.3 s of every stream, dropped 1.4 s after the last
+  disarm, on the ground. Both loops ran on, so the writer stalled, about
+  0.8 s from the buffer figures. A flash-write park would have stalled the
+  loops; the card's latency and the new 25 MHz SPI clock are left. Logs
+  2-7 dropped nothing.
+- The board sat 15 minutes on the ground waiting for 7 satellites (first
+  fix 147 s, origin 787 s, as logs 2 and 6). It warmed to 25 degC, the
+  current pin read up to 7 A with the motors stopped, and `COMPASS_MOT`
+  turned that into 110-176 mG: the rebuilt mag-field arming check matches
+  the logged 151-162 > 150 and reads 76-78 without it, and the heading on
+  the ground moved -8.5 deg cold and +20 deg warm.
+- The compass's coupling to battery current is 20.5 mG/A, back within 10%
+  of log 5's 22.7 from 13.8-15.4 on 2026-10-31, so what changed then did
+  not stay changed; which pack flew is the likelier variable. EKF yaw
+  within 6 deg of true throughout, no failsafe.
+- Throttle (`CTUN.ThO`, what `COMPASS_MOTCT` 1 multiplies) explains the
+  interference within a few mG of current in logs 5 and 8, and is zero on
+  the ground. Not flown.
+- RTL flew for the first time: home from 34 m at 20 m, a 3.4 m overshoot,
+  held within 1 m, descent started; the pilot took over at about 11 m.
+
+Details in [bench-2026-11-07.md](bench-2026-11-07.md).
 
 ## 2026-10-31: two more release-testing logs, the compass coupling moved
 
