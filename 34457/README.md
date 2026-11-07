@@ -1011,3 +1011,14 @@ Pushed 2026-11-06: `pr-aglkf-floor-velocity` `717595bef8..d8da8db695` (fast-forw
 One optional minor. e1c95f7d8c (local, r1107/34457-finite) makes OpticalFlowAGLKfTouchdown fail on any non-finite XKF1.VD sample in the 3 s before a landing, before it takes max() for the touchdown speed. max() returns a NaN that comes first, and NaN < 1.0 is false. A mutant that set the first sample of each window to NaN passed the old test, reading "touchdown at nan m/s", and fails the new one. The real code passes at 2.48-2.50 m/s with 0.11-0.15 m of lift. The floor-hold known limit is unchanged. Test-only, fast-forward.
 
 Pushed 2026-11-07: `pr-aglkf-floor-velocity` `d8da8db695..e1c95f7d8c`. Reply posted: https://github.com/ArduPilot/ardupilot/pull/34457#issuecomment-6706616216
+
+## 2026-11-07: three landings outdoors, SFD-O4 logs 84-86 (tier 1)
+
+The SFD beta (refresh13 topup1, build reporting `ea9c6ab5`) carries this
+PR at `d8da8db695`, with the head's test-only finiteness check
+(`e1c95f7d8c`) ported as `71a1aa7623`. Three landings outdoors on GPS:
+log84 (3408138/693) after 211 s of ACRO and a Loiter descent, log85 (695)
+and log86 (697) after Loiter only. From land complete to disarm (0.9-2.0
+s) `XKFA.HAgl` held 0.05 m on both cores on all three (0.06 m on log85's
+core 1). These were short sits armed on the ground, so they say nothing
+about a long armed sit.

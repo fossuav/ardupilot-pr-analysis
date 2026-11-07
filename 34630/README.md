@@ -376,3 +376,18 @@ AP-Review at `b9e7518181` (COMMENT), should-fix: during a DCM fallback the lane 
 - No SFD port: the beta already carries #34543 at `871498e4aa`.
 
 Pushed 2026-11-07: `pr-osd-ekf-lanes-flow-reset` `b9e7518181...11985e483f` (forced, restack). Description updated (fourteen commits, the stale DCM paragraph removed). Reply posted: https://github.com/ArduPilot/ardupilot/pull/34630#issuecomment-6706615090
+
+## 2026-11-07: the stale-range deferral flown again, SFD-O4 log84 (tier 1)
+
+The SFD beta (refresh13 topup1, build reporting `ea9c6ab5`) carries this
+PR at `b9e7518181`, whose tree differs from the head `11985e483f` only by
+#34543's commits, which the beta carries at `871498e4aa`. SFD-O4 log84
+(3408138/693), `EK3_OPTIONS` 94, `EK3_FLOW_QMIN` 40: 211 s of ACRO with
+core 1 on flow, mostly above the 15 m range finder. No lockout reset on
+either core (XKF7.FVC and FVU 0 throughout; the count does not depend on
+bit 6's announcement). Two "EKF3 IMU1 flow recovery deferred, range
+stale", at 303.58 s and 324.31 s, each with the range finder out of range
+and core 1 2.6-3.2 m/s above GPS in the second before. The range finder
+was back within about a second each time, and a second later core 1 read
+0.6 m/s from GPS with no reset. log70 (2026-10-31) had one deferral, with
+core 1 6-7 m/s high, converging within 2 s.

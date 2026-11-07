@@ -427,3 +427,18 @@ COMMENT. Low: the tilt credit is cleared only by an accepted fusion (OptFlowFusi
 ## 2026-11-06: reply posted
 
 https://github.com/ArduPilot/ardupilot/pull/34941#issuecomment-6684179265
+
+## 2026-11-07: flown again at the head, SFD-O4 log84 (tier 1)
+
+The SFD beta (refresh13 topup1, build reporting `ea9c6ab5`) carries this
+PR at the head `38635910f0`. SFD-O4 log84 (3408138/693): 211 s of ACRO
+outdoors at 10-27 m/s and up to 50 m, core 0 on GPS and primary, core 1
+on flow (`EK3_SRC_OPTIONS` 8), mostly above the 15 m range finder. Six
+stretches held over 45 deg of tilt for 5.1-8.7 s, with the range finder
+good for 0-29 % of each. Core 1 stayed in relative aiding from boot to
+disarm, with no "stopped aiding" / "started relative aiding" pair and no
+lockout reset (XKF7.FVC 0). Above 5 m/s its speed was a median 0.83 m/s
+from GPS (95th percentile 2.33, worst 4.06), against 0.15 / 0.59 / 2.22
+for core 0, which fuses GPS, so that part is the timing between the two.
+As on logs 69-70 (2026-10-31, the earlier head), the lane was never
+zeroed.

@@ -1752,3 +1752,15 @@ forced EKF reset. The static yaw commits were not checked by Replay: the O4
 fuses its compass at rest, so they are probably idle there.
 
 Squash decision: `squash-audit-2026-10-31/O4-2026-11-05.md`.
+
+## 2026-11-07: three arms outdoors at the head, SFD-O4 logs 84-86 (tier 1)
+
+The SFD beta (refresh13 topup1, build reporting `ea9c6ab5`) carries this
+PR at the head `94f24cdd9c`. Three flights outdoors on GPS, one arm each:
+log84 (3408138/693) armed 3.3 min after power-on, log85 (695) after 5.8
+min, log86 (697) after 33 s. XKF1.VD just before each arm read 0.00-0.01
+m/s on both cores. No "height error" refusal, and no "vertical velocity
+reset at rest" or forced reset after any of the three landings (land
+complete to disarm 0.9-2.0 s). None re-armed after a landing without a
+reboot, so these flights do not cover the re-arm; log78 above is the
+last flight that did.
