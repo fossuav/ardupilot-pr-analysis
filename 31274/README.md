@@ -518,3 +518,15 @@ rate as a percentage" (`493b335397`), now `31c0cbe292`. The stale latch
 (`0f9555fb6f`, was `2b31e43213`) stays on top: it needs serial ESC
 telemetry alongside DShot, or a log longer than the 71.6 min micros()
 wrap, and neither airframe has flown either.
+
+## 2026-11-07 (evening): AP-Review at `0f9555fb6f`, the ESC.Err doc, pushed
+
+AP-Review (COMMENT, nothing blocking) found the description saying ESC.Err
+and AP_Periph's relayed DroneCAN error_count were unchanged, when on
+bidirectional DShot outputs of a flight controller or AP_Periph they now
+read the 250-frame percentage, 100 until an output has counted 250
+replies. `c922349b3c` says so in the ESC.Err field doc, and the
+description's sentence now says ESC.Err carries what each driver reports.
+
+Pushed 2026-11-07: `pr-motortest-error-rate` `0f9555fb6f..c922349b3c`
+(fast-forward). Description updated.

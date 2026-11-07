@@ -951,3 +951,10 @@ patch-identical (`b47647db89`, was `6e218cb0ef`). The bound fix
 `651b648a9b` (0.03 -> 0.95) folds into its test `fae59a24fc`, now
 `a869b2ac57`. The PR description still cites the old SHAs in its
 stacking sentence.
+
+## 2026-11-07 (evening): AP-Review at `a869b2ac57`, the stacking sentence
+
+AP-Review's only ask was the description's stacking sentence, which named
+the pre-squash SHAs. Already fixed: it now reads "the first twelve commits
+here, ending at e6d636fab3, are that PR; b47647db89 and a869b2ac57 are
+this one" (posted after the review was taken).

@@ -35,3 +35,16 @@ the skipped disarm does and carries the fix's SITL figures. The
 nested-context fixup `806fd8d2cf` folds into the test `5554038196`, now
 `2a11dfad65`. The AC_Fence commit is unchanged apart from its parent
 (`0473515e97`).
+
+## 2026-11-07 (evening): AP-Review at `2a11dfad65`, rebased onto master, pushed
+
+AP-Review (COMMENT) asked for a rebase: master moved the fence tests from
+tests1d to tests2c, so the test-list entry conflicted and GitHub skipped
+CI. Rebased onto master `b7c08d4dbc` with MinAltFenceZeroThrottle
+registered in tests2c beside MinAltFence; the diff is otherwise the same
+line for line. SITL copter builds clean and MinAltFenceZeroThrottle
+passes (breach at zero throttle, RTL, climb check). The mixed-breach
+recovery window stays deferred to a separate PR.
+
+Pushed 2026-11-07: `pr-min-alt-disarm` `2a11dfad65...a2dcc51bb7` (force,
+rebase). GitHub reads it as mergeable.

@@ -63,3 +63,22 @@ and parameter text only, and its target flew at 25 Hz on SFD-O4 logs
 tree; backup `pre-squash/30841-1107`): the doc fix is folded into the
 logging commit, now `8e1560997c`, whose message gains the loop-rate
 paragraph and the flight rate. The ESCTelemLogRate test is `af27953c1b`.
+
+## 2026-11-07 (evening): AP-Review at `af27953c1b`, rebased onto master, pushed
+
+AP-Review (COMMENT) repeated two points first raised at `5e6288c3b1`,
+never answered. The rebase: master's new Copter test lists conflicted
+with the registration, so GitHub skipped CI. Rebased onto master
+`b7c08d4dbc`; master's RateThreadPostFilterGyroLog and ESCTelemLogRate
+had landed in the same place and are both kept, and ESCTelemLogRate is
+registered in tests1a beside the RPM notch tests. The diff is otherwise
+the same line for line. SITL copter builds clean and ESCTelemLogRate
+passes (10.0, 50.0 and 0.0 Hz per ESC).
+
+Still open, not a documentation change: the log buffer can drop ESC rows
+and read a rate low. The bot suggests LOG_FILE_BUFSIZE 32767 with a
+reboot, a longer drain and assert_log_has_no_dropped_blocks() (on master)
+before the rate check.
+
+Pushed 2026-11-07: `pr-esc-logging` `af27953c1b...c15a37c45d` (force,
+rebase). GitHub reads it as mergeable.

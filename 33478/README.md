@@ -1240,3 +1240,28 @@ now `e82adc8e66`; the noisy-range leg and its span (`d322e6c4d0`,
 `74c4ceb8c4`) into the step test (`0157fd50fc`), now `bf9810a469`. The
 first five commits keep their SHAs, so #33359's copies of the two AGL KF
 commits stay patch-identical.
+
+## 2026-11-07 (evening): AP-Review on the noisy-range leg's catch rate, docs corrected, pushed
+
+AP-Review raised at `74c4ceb8c4` (12:50) and again at `bf9810a469` a
+should-fix this record had not triaged: the noisy-range leg mostly misses
+the regression it guards. With `innovSettled` forced true it failed 3 of
+13 runs there (spans 7.6, 9.6, 9.6 s; the others passed at 2.2-4.9 s) and
+then 0 of 4 at `bf9810a469`, against 3 of 3 in this record's runs at
+`74c4ceb8c4`. Its account: the second hold starts 8.9-12.5 s into the
+runaway and the window closes at about 13.8 s, so the span only passes the
+limit when enough of that hold is inside it. Not measured here beyond the
+three runs above.
+
+Documentation corrected, test logic unchanged: the test commit's comment
+and message, and the PR description's testing bullet, now give those
+catch rates instead of saying the leg fails the regression.
+`d1bf6d5093` replaces `bf9810a469` with only the comment changed.
+
+Still open, a test change: count XKFA.VHold onsets inside the window (the
+bot's suggestion). The first hold starts before the window opens and the
+regression's second one inside it, so an onset count should separate them;
+it needs head and mutant runs to show it.
+
+Pushed 2026-11-07: `pr-ekf3-aglkf-veld` `bf9810a469...d1bf6d5093` (force,
+tip commit rebuilt). Description updated.

@@ -759,3 +759,14 @@ Pushed `9149e72d4f` -> `e730ee0cd6` (force, 34 commits to 32, same tree;
 backup `pre-squash/32475-1107`). The test fixups `d14edd6e51` and
 `fc699dca1b` fold into `8e931047e5`, now `8f308f83ec`. The hand-over fix
 is `af058e18d5` and the source set fix `0be31dc2ed`.
+
+## 2026-11-07 (evening): AP-Review at `e730ee0cd6`, a compiled-out next mode (open)
+
+AP-Review (COMMENT) found that with THROW_NEXTMODE set to AltHold or Acro
+in a build without that mode (master's MODE_ALTHOLD_ENABLED,
+MODE_ACRO_ENABLED), nextmode() returns nullptr and the vehicle stays in
+throw, but nextmode_requires_position() still answers false, so
+requires_position() is false: the EKF failsafe does not act in throw's
+position hold and the XY controller does not restart after a position
+loss. Confirmed from the source. Proposed, not made: return true when
+nextmode() is nullptr, as its own commit on top.

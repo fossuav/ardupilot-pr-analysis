@@ -1808,3 +1808,16 @@ cores).
 Replay at topup9 does not reproduce the arm-pending bootstrap resets
 (flights 01, 02 and 05 diverge from there), so those windows are not
 evidence either way. Four commit messages no longer name the airframes.
+
+## 2026-11-07 (evening): AP-Review at `4eec3d0dbf`, the rest check's latch (open)
+
+AP-Review (COMMENT) found `velDCheckedAtRest` cleared only in
+SelectVelPosFusion(), once per EKF step, while updateMovementCheck() moves
+`restStartTime_ms` on every IMU sample. Confirmed from the source: a
+not-still blip shorter than one EKF step (two or three IMU samples) after
+the check has run leaves it latched for the new rest. Reaching that needs
+an instantaneous gyro or accel trigger with the filtered metrics under
+their hysteresis, which in practice means a raised INS_ACCEL_FILTER; the
+height check still refuses arming while the height disagrees. Proposed,
+not made: clear the latch where updateMovementCheck() sets
+onGroundNotMoving false, as its own commit on top (unflown).
