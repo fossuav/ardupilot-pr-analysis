@@ -2349,3 +2349,26 @@ Pushed 2026-11-06: `pr-vrf-core` `0c4475f079..279457aa35` (fast-forward). Reply 
 Minor: the seed reads the clock before the AHRS getters. An arm from Lua or DDS can be held off behind an EKF update that zeroes the bias, stamped with that update's frame start, which comes after the arm's clock read. The zero age then wraps, and the first flight skips the 10 s rest wait. A first fix (`4eaecd3f84`, superseded) clamped every learner age at 0 when it was negative as an int32. A cold read found that this also read a time over 24.8 days old as fresh in the 100 Hz hook, clearing the accel-switch flag; it also refused first flights 24.9 days after a zeroing. `ed77480c74` instead treats a zero time up to `HOVER_BIAS_STAMP_LEAD_MS` (1 s) ahead of the seed's clock as age 0, and leaves every other age as it was. The bound is one main loop of at most 20 ms (SCHED_LOOP_RATE of 50 Hz or more) with the same overrun margin as `HOVER_BIAS_ZERO_SEEN_MS`. The hook is unchanged: it runs on the main thread, where the EKF stamps the zero time. SITL does not reach the race, so the evidence is an extracted-method probe (the learner block copied verbatim from each commit, with a fake EKF bias settling to 0.2 at rest and 0.3 in flight). At `279457aa35` a zeroing stamped 1-500 ms after the arm's clock saved 0.300; at `ed77480c74` it is refused. With no race it saves 0.100, across the wrap and at 24.9 days. A switch at 24.9 days to a boot-zeroed estimate keeps the hook's switch flag, as on the base. A lead over 1 s, or arming through a zero time's own 49.7-day wrap, is still misread, as it is on the base. All five learner tests pass at `ed77480c74`. #32473 is restacked as `r1107/32473-clock2` (`7c0932de0b`, four commits patch-identical), and its acro tests pass. The maintainer follow-ups and #32473's two minors need nothing.
 
 Pushed 2026-11-07: `pr-vrf-core` `279457aa35..ed77480c74`. Reply posted: https://github.com/ArduPilot/ardupilot/pull/32471#issuecomment-6706615297
+
+## 2026-11-07: test and doc folds, messages reworded, pushed
+
+Pushed `ed77480c74` -> `3b3b5009d9` (force, 68 commits to 65, same tree;
+backup `pre-squash/32471-1107`). Folded: the bit 2 description
+(`b14455380c`) into "learn the hover Z-bias as the change since arming"
+(`de4513c4c8`, v3, flown), now `7fe2b097c3`; the test docstring
+`1c14a2347b` into `4cf1fb531f`, now `525380aadb`; the test wait text
+`255d534264` into `1ff6d62b40`, now `17c4ec7b9c`. One commit message no
+longer names an airframe.
+
+What flew (SFD-O4 logs 79-88, the Q25 on topup11): the first-flight rule
+(`5a04512b3e`, was `34c63c0940`) saved on every first flight since log78.
+Its four later fixes (`46a3a537b2`, `d921a9919a`, `bd4f4c0604`,
+`3b3b5009d9`, were `7bba551163`, `c7fcf29ee3`, `15f39b438a`,
+`ed77480c74`) ran only through the common path, a boot zeroing opening
+each first flight. Their own cases (an accel switch at rest, an accel out
+of use at boot that comes back, an arm racing a zeroing) did not occur:
+the Q25's topup11 flights 01-02 had IMU0 out of use from boot, but it
+never came back. They stay on top. Folding them into the rule is Andy's
+call, since they have only ever flown together with it. The rest stays
+as on 2026-10-31: no restarted log, no in-flight accel bias reset, and
+bit 2 never set.

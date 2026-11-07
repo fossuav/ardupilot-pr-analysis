@@ -497,3 +497,24 @@ sent), `ESC.Err` at most 0.02-0.03% on every motor in flight. The boot
 reading is as in October (99.7% decaying to 10.7% over 5.5 s), so neither
 `4697e3f3f6` (the 250-frame window) nor `2b31e43213` (the stale latch) is
 shown to have acted. Both stay on top.
+
+## 2026-11-07: the 250-frame window flown, squashed and pushed
+
+`4697e3f3f6` divides a short DShot window's errors by at least 250
+frames. It ran armed with the motors spinning: only that division gives
+exactly 0.400% for one error in a window under 250 frames, and three
+flights read it (tier 1). SFD-O4 log80, 60.12-60.16 s at 11,200 rpm:
+ESC0 0.400%, ESC2 0.800%. log82, 60.11-60.15 s: ESC2 0.400%. The Q25 on
+topup9 (`a8487f0`), flight 01, 380.19-380.63 s through a spool-up from 0
+to 2,700 rpm: ESC1 0.400% for 0.44 s, then one error over the frames.
+Divided by the frames so far, as before, that spool-up would have read
+over 1% for about the first 100 frames (derived from the source, not
+measured). No takeoff decision was shown to change: the Q25 flies
+`TKOFF_RPM_MIN` 0, and there was no motor test.
+
+Pushed `2b31e43213` -> `0f9555fb6f` (force, 14 commits to 13, same tree;
+backup `pre-squash/31274-1107`). It folds into "report the bdshot error
+rate as a percentage" (`493b335397`), now `31c0cbe292`. The stale latch
+(`0f9555fb6f`, was `2b31e43213`) stays on top: it needs serial ESC
+telemetry alongside DShot, or a log longer than the 71.6 min micros()
+wrap, and neither airframe has flown either.

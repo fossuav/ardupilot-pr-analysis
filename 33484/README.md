@@ -1306,3 +1306,31 @@ writeOptFlowMeas() already runs unlocked on the PX4Flow bus thread on
 master. EK3_FlowAxisLockoutRecovery passes before and after.
 
 Pushed 2026-11-06: `pr-vel-flow-axis-gate` `c092795b40..707e0e621f` (fast-forward). Reply posted: https://github.com/ArduPilot/ardupilot/pull/33484#issuecomment-6690426557
+
+## 2026-11-07: the other-axis gate on the Q25 at topup11, worse on the ground (tier 1b)
+
+Replay of the Q25's topup11 flights (`52ec3c7` 01-06 and 08, and the
+second board's `52ec3c77` 05-07) on the as-flown build, against the same
+build with `6bbe92baae`'s check removed (`otherAxisPassed || true`).
+Flights 01 and 05-08 and the second board's are identical; 02, 03 and 04
+differ.
+
+- 03: at touchdown (68.2 s, range 0.02 m) the gate blocked a reset. As
+  flown, core 0's horizontal speed then ran from 0.54 to 2.42 m/s on the
+  landed vehicle, disarmed from 69.5 s, and its position 10.3 m by
+  75.5 s, until the log ends. Without the gate the reset took it to 0.08
+  m/s at once, and it held 0.04-0.07 m/s.
+- 02: on the ground before takeoff (armed, range 0.03 m) the gate delayed
+  a reset by 0.6 s: 0.39 m/s as flown at 17.0 s, against 0.03 without;
+  equal from 17.5 s. The later runaway on the ground (40-44 s, to 3.2
+  m/s) is the same either way.
+- 04: at takeoff (33.3 s, range rising through 0.23 m) a reset is taken
+  without the gate. In the hover after, horizontal speed is 0.04-0.29 m/s
+  as flown and 0.02-0.22 m/s without; there is no truth in flight to say
+  which is right.
+
+With the `ft3` reset of 2026-10-31 (acted, not shown better), the gate
+has now acted four times on this airframe: clearly worse once (03) and
+slightly worse once (02), both with the vehicle on the ground. SFD-O4
+log73 is identical without it (2026-11-06 above). It stays on top of the
+PR, unsquashed, and needs a fix or removal; not attempted here.

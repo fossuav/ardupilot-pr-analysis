@@ -1768,3 +1768,43 @@ last flight that did.
 Logs 87-88 (2026-11-07, same build, SFD-O4 3408138/699 and /701): XKF1.VD
 -0.01 to 0.00 m/s at each arm, no refusal, no reset at rest after either
 landing. No re-arm after a landing.
+
+## 2026-11-07: squashed after the flight audit, pushed
+
+Pushed `94f24cdd9c` -> `4eec3d0dbf` (force, 23 commits to 17, same tree;
+backup `pre-squash/34942-1107`). Evidence is Replay of the as-flown build
+against the same build with the change removed (tier 1b), on the Q25's
+topup9 (`a8487f0`, flights 01-08) and topup11 (`52ec3c7`) flights and
+SFD-O4 logs 79-88. Folded, because a flight ran them:
+
+- The wait for the fusion horizon (`85855176cd`) into the reset at rest
+  (`3888b0f7d9`), now `d9fcd71c65`. It acted on SFD-O4 log78 (2026-11-06
+  above) and on the Q25's topup11 flight 02: without it the reset comes
+  one sample earlier, 40.28 against 40.38 s, and VD then agrees within
+  0.02 m/s.
+- The three commits that keep the gyro bias across the EKF's own reset
+  (`e02a1e519f`, `77881cc64d`, `0f535b65e3`) into one, `775836f3e8`
+  "keep the learned Z gyro bias across the EKF's own reset". Topup9
+  flight 02, forced reset at 192.38 s: XKF1 GZ -0.24 deg/s before and
+  after (master zeroes it), GX 0.06 to 0.00. Flight 06, forced reset at
+  94.19 s with the vehicle still: GX 0.19 to 0.00 (Replay without the X
+  and Y zeroing keeps 0.19), and without the kept step average VD moves
+  0.011 m/s, PD 0.03 m and yaw 0.56 deg after the reset.
+- Their tests, each after its code: `984340b85c` and `b099c2274f`.
+
+Flown but kept as its own commit: retaking the static yaw reference after
+any yaw reset (`1ef8031a12`, was `a73dc01a73`). It acted on topup9 flight
+06 (without it yaw differs by up to 2 deg and GZ by 0.04 deg/s over the
+next minute), but it calls the function the structure-only commit
+`42bd695cbb` adds, which stays separate.
+
+On top, unflown, each with its test after it: the 2 m clip on rejected
+ground height samples (`9b6a08bc8e`; identical without it on all 8
+topup9 and 15 topup11 logs, the gate never narrower than 2 m) and storing
+the static yaw reference within 5 s of a yaw fusion (`c620168731`; the
+Q25 has no yaw sensor, and SFD-O4 is identical without it on both
+cores).
+
+Replay at topup9 does not reproduce the arm-pending bootstrap resets
+(flights 01, 02 and 05 diverge from there), so those windows are not
+evidence either way. Four commit messages no longer name the airframes.

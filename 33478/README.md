@@ -1214,3 +1214,29 @@ Pushed 2026-11-06: `pr-ekf3-aglkf-veld` `505ecae715..d322e6c4d0` (fast-forward).
 The bot's minor: one whole step hold already spans 5 s of XKFA.VHold samples, so the noisy-range leg's 5.0 s span limit only passed because its window opens 4 s after the offset and cuts the start off its one hold. Measured from the logs, a whole hold spans 4.901 to 5.0005 s (XKFA from the 10 Hz logging loop), either side of 5 s. A first fix at 6 s (`e5fb0e90f4`, not pushed) drew a should-fix from a cold read: a jump inside the window could extend a hold by most of a second and still pass. `74c4ceb8c4` sets the limit to the hold plus two log periods, 5.2 s, written in the test as `step_hold_s + 2 * xkfa_period_s`. At the new head the test passes 3 of 3 (noisy leg span 2.5 s, velD 1.58-1.60 m/s). With the settled-start rule removed (a scratch mutant) it fails 3 of 3 on a 9.60 s span. In one earlier mutant run of six the only hold started 5.3 s into the runaway, wholly inside the window, spanned 5.0005 s and was caught by the velD bound (3.46 m/s), not the span. A hold made 0.5 s longer in the EKF is not seen by this leg (it reads 3.0 s, cut by the window; the step legs read 5.5 s but do not bound it), and with the settled rule also removed all three runs failed on the 9.6 s second hold instead, so no run shows 5.2 s catching what 6 s would miss; the choice rests on the measured spread of one hold. #33585's head (`1cf2ecd440`) does not carry this test. The SFD beta carries the leg without the span check (its XKFA has no VHold), so there is nothing to port. The double-fusion guard minor asks for no change.
 
 Pushed 2026-11-07: `pr-ekf3-aglkf-veld` `d322e6c4d0..74c4ceb8c4`. Reply posted: https://github.com/ArduPilot/ardupilot/pull/33478#issuecomment-6706616030
+
+## 2026-11-07: the settled-start rule flown, squashed and pushed
+
+SFD-O4 logs 84-87 (refresh13 topup1, `896e11846d`) ran `505ecae715` on
+core 1, the flow lane with bit 4. Replay with it removed (tier 1b): core
+1's XKFA.VFuse first differs at 446.4 s (log84), 386.4 s (85), 75.4 s
+(86) and 273.4 s (87); log88 is identical. Over each window, as flown /
+without:
+
+| log | core 1 velD vs GPS, rms (m/s) | core 1 - core 0 height at the end (m) | fused fraction |
+|---|---|---|---|
+| 84 | 0.156 / 0.162 | -0.62 / -0.54 | 0.30 / 0.17 |
+| 85 | 0.162 / 0.164 | +0.31 / +0.40 | 0.54 / 0.46 |
+| 86 | 0.140 / 0.143 | -0.06 / -0.03 | |
+| 87 | 0.658 / 0.658 | +0.27 / +0.28 | |
+
+It held off fewer fusions, as designed, and velD was no worse against
+GPS. The case the rule was written for (an accel clip) did not occur.
+
+Pushed `74c4ceb8c4` -> `bf9810a469` (force, 11 commits to 7, same tree;
+backup `pre-squash/33478-1107`). The rule and its EK3_OPTIONS doc
+(`256698b64a`) fold into the step hold (`db556ec936`, flown on log44),
+now `e82adc8e66`; the noisy-range leg and its span (`d322e6c4d0`,
+`74c4ceb8c4`) into the step test (`0157fd50fc`), now `bf9810a469`. The
+first five commits keep their SHAs, so #33359's copies of the two AGL KF
+commits stay patch-identical.

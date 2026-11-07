@@ -1026,3 +1026,23 @@ about a long armed sit.
 Logs 87-88 (2026-11-07, same build, SFD-O4 3408138/699 and /701): after
 ACRO and a Loiter descent, `XKFA.HAgl` held 0.05 m on both cores from land
 complete to disarm (at once on log87, 1.6 s on log88).
+
+## 2026-11-07: test fixes squashed, pushed
+
+Pushed `e1c95f7d8c` -> `e6d636fab3` (force, 16 commits to 12, same tree;
+backup `pre-squash/34457-1107`). The four touchdown test fixes
+(`717595bef8`, `3c61127e59`, `d8da8db695`, `e1c95f7d8c`) fold into the
+touchdown test `53f7be5d37`, now `e04b365f5d`. `d8da8db695` changes
+`713beeb50b`'s lines, but goes here, after the fused floor it was
+checked against: at `713beeb50b` (clamp and clear) its stricter check may
+fail.
+
+The fused floor (`841b88516b`, was `1f0abd73bf`) has flown and been
+verified (log78 above, and it held 0.05 m on both cores at every landing
+of SFD-O4 logs 84-88), but stays its own commit. Folding it into
+`7387e2ac70` would move the structure commit `88a32cdb07`, rebase the
+coast stop and floor hold onto the fused floor, and change the PR's
+first commit. Left for the merge squash.
+
+Two commit messages no longer name the airframes ("34 flights of one
+quad", "23 flights of another quad").

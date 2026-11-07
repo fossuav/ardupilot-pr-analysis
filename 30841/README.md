@@ -54,3 +54,12 @@ and adds the test. On SFD-O4 log84 (3408138/693), with `ESC_TLM_LOG_RATE`
 25 from the SFD board defaults and `LOG_DISARMED` 2, ESC logged at 25.0 Hz
 per motor over 245 s armed (6125 records each) and at 24.9 Hz over the
 whole 468 s log, disarmed included, with the main loop at 1972-2007 Hz.
+
+## 2026-11-07: the doc fix squashed, pushed
+
+`365b5d6cd4` (ESC_TLM_LOG_RATE is capped by the loop rate) is comments
+and parameter text only, and its target flew at 25 Hz on SFD-O4 logs
+84-88. Pushed `5e6288c3b1` -> `af27953c1b` (force, 3 commits to 2, same
+tree; backup `pre-squash/30841-1107`): the doc fix is folded into the
+logging commit, now `8e1560997c`, whose message gains the loop-rate
+paragraph and the flight rate. The ESCTelemLogRate test is `af27953c1b`.

@@ -750,3 +750,12 @@ Cold reads: one by the worker, one by a fresh reviewer (Codex out until
 11-04); the reviewer's six points are all taken. Not pushed.
 
 Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `df174b0731` -> `9149e72d4f` (refresh12 `df341758a7` locks it). Reply: https://github.com/ArduPilot/ardupilot/pull/32475#issuecomment-6580087409.
+
+## 2026-11-07: two test fixups squashed, pushed
+
+No flight since 2026-10-31 entered Throw (SFD-O4 logs 73-88, the Q25 on
+topup9 and topup11), so the two fixes stay on top, each with its test.
+Pushed `9149e72d4f` -> `e730ee0cd6` (force, 34 commits to 32, same tree;
+backup `pre-squash/32475-1107`). The test fixups `d14edd6e51` and
+`fc699dca1b` fold into `8e931047e5`, now `8f308f83ec`. The hand-over fix
+is `af058e18d5` and the source set fix `0be31dc2ed`.

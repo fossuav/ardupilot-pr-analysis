@@ -941,3 +941,13 @@ Pushed 2026-11-06: `pr-agl-kf-zbias` `21772c51af...1ed5fa2dc4` (forced, restack)
 Commits 6e218cb0ef, fae59a24fc and 651b648a9b (range-diff `=`). The tree differs from 1ed5fa2dc4 only by e1c95f7d8c. UTMGlobalPosition and the six AGL KF tests pass in tests1d order: KalmanFilter 1.0003/1.0006 (bias 0.000 -> 0.344), FloorVelocity -0.0057 m/s, Touchdown 0.10-0.16 m, NoCoastBelowMin 0.004 m, NoCoastAfterTouchdown rise 0.30 m, NoFloorHoldInHover 10.41 m. Force push.
 
 Pushed 2026-11-07: `pr-agl-kf-zbias` `1ed5fa2dc4...651b648a9b` (forced, restack). Description updated (the floor bias-std bound 0.95 and the stack sentence). AP-Review's only point at `1ed5fa2dc4` was that description sentence, so no reply.
+
+## 2026-11-07: restacked on #34457's squash, one test fix folded, pushed
+
+Pushed `651b648a9b` -> `a869b2ac57` (force, 19 commits to 14 with
+#34457's; backup `pre-squash/33507-1107`), on #34457's `e6d636fab3`. Its
+own diff is identical to the old one, and the bias state commit is
+patch-identical (`b47647db89`, was `6e218cb0ef`). The bound fix
+`651b648a9b` (0.03 -> 0.95) folds into its test `fae59a24fc`, now
+`a869b2ac57`. The PR description still cites the old SHAs in its
+stacking sentence.

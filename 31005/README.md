@@ -23,3 +23,15 @@ recovery window, as on master; no test covers the interlock gate (SITL heli
 only).
 
 Pushed 2026-11-06: `pr-min-alt-disarm` `957228a8e4..806fd8d2cf` (fast-forward). Reply posted: https://github.com/ArduPilot/ardupilot/pull/31005#issuecomment-6690424237
+
+## 2026-11-07: squashed, nothing in it flown, pushed
+
+`FENCE_ENABLE` is 0 on every SFD-O4 and Q25 log, so neither the min alt
+change nor its fix has flown, and the fix folds into it. Pushed
+`806fd8d2cf` -> `2a11dfad65` (force, 5 commits to 3, same tree; backup
+`pre-squash/31005-1107`). `943b540cef` (auto_armed on the hand-over)
+folds into `3027988a2b`, now `51bbd04ec9`, whose message now says what
+the skipped disarm does and carries the fix's SITL figures. The
+nested-context fixup `806fd8d2cf` folds into the test `5554038196`, now
+`2a11dfad65`. The AC_Fence commit is unchanged apart from its parent
+(`0473515e97`).

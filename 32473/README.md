@@ -917,3 +917,12 @@ Pushed 2026-11-06: `pr-acro-bias-inhibit` `782e58d3ac...16a9f14b47` (forced, res
 AP-Review at `16a9f14b47` was ACCEPT, with two minors that ask for no change: the X/Y variance after an armed acro exit and the bit 2 same-boot leftover bias. Restacked onto #32471's age fix: the four commits are patch-identical, and the tree differs from `16a9f14b47` only by that fix. AccelBiasLearningInhibitedInAcro, AccelBiasAcroExitVelocityError and HoverBiasSavedFirstFlightAfterRest pass at the new head.
 
 Pushed 2026-11-07: `pr-acro-bias-inhibit` `16a9f14b47...7c0932de0b` (forced, restack). Reply posted: https://github.com/ArduPilot/ardupilot/pull/32473#issuecomment-6706615461
+
+## 2026-11-07: restacked on #32471's squash, pushed
+
+Pushed `7c0932de0b` -> `c1a80e5209` (force, 72 commits to 69 with
+#32471's; backup `pre-squash/32473-1107`), on #32471's `3b3b5009d9`.
+Nothing folded: its four commits (`f0366a0ab6`, `d6c351a060`,
+`2d51698807`, `c1a80e5209`) each have their old commit's tree, and its
+own diff is identical. Bit 3 and the kept variance flew again on SFD-O4
+logs 84, 87 and 88 (ACC_ZBIAS_LEARN 9, acro).

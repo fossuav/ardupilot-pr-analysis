@@ -483,3 +483,11 @@ percentile 16 deg against 6), not measured as the cause.
 Master would have timed the lane out 5 s into each tilt and zeroed its
 velocity on re-entry; this PR's trade is a lane that keeps an inertial
 estimate instead, and these numbers are its size after minutes of ACRO.
+
+## 2026-11-07: the two test commits squashed, pushed
+
+Pushed `38635910f0` -> `76bdb6617a` (force, 3 commits to 2, same tree;
+backup `pre-squash/34941-1107`). OpticalFlowTiltTurnRecovery
+(`38635910f0`) folds into the first test commit (`247d0fb74e`), now
+`76bdb6617a`, whose message names both tests. The EKF commit is
+unchanged (`8412571a33`).
