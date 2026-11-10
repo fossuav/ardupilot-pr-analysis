@@ -2631,3 +2631,13 @@ So on the floor before liftoff the resting zero corrected a flown EKF, and
 harmed only a replayed one. The gate is dropped (Andy, 2026-11-03), and
 a vehicle moving on the floor stays the stated limit. Scripts in the session scratch
 (`td/cmp_td.py`, `segcmp.py`, `detail.py`).
+
+## 2026-11-10: rmackay9's cut-down version, #35077
+
+rmackay9 opened #35077 on 2026-11-09: `FLOW_HGT_MIN`, the per-sample DAL
+value and the in-flight discard from this PR, gated on the EKF's height
+above ground, without the ground handling, the dropout hold or the default
+floor. In SITL its landing left armed stops aiding and fails the EKF to
+LAND 5.8 s after touchdown; this PR's `on_ground()` zero, ported onto it,
+keeps aiding. Results, the ported branch and the two comments posted are
+in `../35077/README.md`.

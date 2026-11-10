@@ -1,6 +1,17 @@
 # AGL KF: clear the velocity when the height rests on its floor
 
 
+## 2026-11-10: a SITL landing that reproduces the coast (from #35077)
+
+The touchdown coast that reproduced only erratically here (3 mm and
+0.37 m in two runs) reproduces with master's AGL KF in #35077's landing
+test, on branch `flow-hgt-min-on-ground` with `EK3_OPTIONS` 8. The leg is
+ALT_HOLD with `PILOT_SPD_DN` 0.5 and `RNGFND1_MIN` raised to 0.2 once
+airborne, as SITL's range finder reads 0 on the ground. The height read
+0.48 m at touchdown and climbed to 0.86 m over 4.6 s, until the 5 s
+timeout. Not yet run with this PR's coast stop. Details in
+`../35077/README.md`.
+
 ## 2026-10-07: rebased onto master and squashed to two commits (head `c3204a1836`)
 
 Done for #33507, which is stacked on this PR and was approved on 2026-10-07
