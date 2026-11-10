@@ -1265,3 +1265,25 @@ it needs head and mutant runs to show it.
 
 Pushed 2026-11-07: `pr-ekf3-aglkf-veld` `bf9810a469...d1bf6d5093` (force,
 tip commit rebuilt). Description updated.
+
+## 2026-11-10: a customer quad on `7b00f3b5` (tier 1, 1b)
+
+One IMU, ARK Flow with its range finder on DroneCAN, `EK3_OPTIONS` 92,
+`EK3_RNG_USE_HGT` 10. VFuse 1 for 0.28-0.91 of airborne time, VTR peak
+0.10. Replay with bit 4 off, climb-rate (-VD) error against the range
+rate:
+
+| window | bit 4 off | as flown |
+|---|---|---|
+| log20 VALT hover, 117-121 s | +0.30 m/s | -0.03 m/s |
+| log20 descent, 121-122.4 s | +0.27 m/s | +0.08 m/s |
+| log16 descent, 273-280 s | +0.11 m/s | +0.02 m/s |
+| log16 136.5-139.5 s | -0.01 m/s | -0.08 m/s |
+
+log20 (1245450/47) 116.74 s: the fusion switched back on after a 1.4 s gap
+(since the hand-back to baro at 115.3 s) with VAgl -0.35 to -0.41 m/s, and
+the EKF height fell 0.53 m in 0.7 s, ending 0.32 m below the range. With
+bit 4 off in Replay it climbed instead, 0.81 m above the range by the end
+(a false climb of 0.3-0.95 m/s). Right on balance; the switch-on overshot
+by about 0.47 m. That it went through the velocity-position covariance
+built up in the gap is a hypothesis.

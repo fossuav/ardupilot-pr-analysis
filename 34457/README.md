@@ -12,6 +12,14 @@ airborne, as SITL's range finder reads 0 on the ground. The height read
 timeout. Not yet run with this PR's coast stop. Details in
 `../35077/README.md`.
 
+## 2026-11-10: four touchdowns on a customer quad (tier 1)
+
+Beta `7b00f3b5` (this PR's floor velocity clear and coast stop), one IMU,
+ARK Flow with its range finder on DroneCAN. At all four touchdowns, logs
+15, 16, 18 and 20 (1245450/43-47), the AGL KF held 0.10-0.13 m from the
+range loss to the disarm: no coast. A -0.58 m/s velocity cleared within
+0.5 s (log16, 284.7 s).
+
 ## 2026-10-07: rebased onto master and squashed to two commits (head `c3204a1836`)
 
 Done for #33507, which is stacked on this PR and was approved on 2026-10-07

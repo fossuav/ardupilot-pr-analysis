@@ -655,3 +655,10 @@ or the stack would carry #33585's unfolded commits.
 Pushed 2026-11-05 (force, `8ccc90891e...c2ac997b2f` on
 `pr-avoid-flow-ceiling-backup`), r5 on #33585's r5. Reply posted:
 https://github.com/ArduPilot/ardupilot/pull/34380#issuecomment-6654940477
+
+## 2026-11-10: 87 s above the cap on a customer quad (tier 1)
+
+Beta `7b00f3b5`, flow-only (no GPS), 15 m range finder: log16
+(1245450/44) spent 86.6 s above master's 9.5 m flow height cap (0.7 x 15 -
+1), peak 17.3 m, in LOITER throughout, with aiding held (see #33585's
+record, same date, for the height above the range finder).

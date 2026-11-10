@@ -690,3 +690,12 @@ Open, not decided: whether VALT should track the surface where the
 authority problem does not arise. That could be at centre stick only, or
 below a height where the baro cannot be trusted. Either would bring the
 range finder into the hold, the case it was skipped for.
+
+## 2026-11-10: VALT after drops on a customer quad (tier 1)
+
+Logs 18 and 20 (1245450/46, /47) on the beta `7b00f3b5`, VALT entered at
+the end of a throw. Climb rate against demand 0.20 m/s rms on both; height
+against target 0.08 / 0.12 m rms (max 0.28 / 0.55 m). With the stick
+centred the EKF height held to +-0.05 m. The climbs after both hand-overs
+were the pilot's stick, carried over from the throw. log20's disarm was the
+pilot's switch after a hard landing, not the land detector.

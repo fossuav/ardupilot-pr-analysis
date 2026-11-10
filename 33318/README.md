@@ -671,3 +671,20 @@ measured further.
 Description updated 2026-11-07 with the flight results above: the real
 roll-back (0.8 m/s from 12 m/s) in the opening paragraph, a flight row in
 the table, and a paragraph on how the flights were run and their limits.
+
+## 2026-11-10: LOIT_DRAG_COEF on a customer quad (tier 1)
+
+Beta `7b00f3b5`, flow-only, no GPS, so every number is from the EKF
+estimate. `LOIT_DRAG_COEF` 0.01 on logs 15-16, 0.2 on logs 18 and 22
+(1245450/43-49).
+
+- The drag the feed-forward carries while braking, (PSC DA - dDV/dt)/|DV|,
+  read the flight's own coefficient each time: 0.01 and 0.20.
+- The airframe's drag, fitted from lean against EKF speed in steady
+  flight: 0.15-0.21 m/s^2 per m/s, so 0.2 suits it. In steady flight the
+  velocity integrator carried 0.09-0.13 x V at 0.01 and -0.04 to +0.05 x
+  V at 0.2.
+- At 0.01, hands-off releases from 0.51-1.64 m/s stopped in 0.8-1.9 s,
+  ran 0.15-0.40 m past the target and slid back 0.21-0.32 m: the
+  signature of a coefficient below the airframe's drag. No hands-off stop
+  was flown at 0.2.

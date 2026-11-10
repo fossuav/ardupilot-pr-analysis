@@ -1925,3 +1925,18 @@ against core 0 (GPS): median velocity error 6.84 -> 6.71 m/s on log87 and
 3.41 -> 3.49 m/s on log88; position error at the end of the window 127
 -> 160 m and 174 -> 314 m. Neither height path helps; the error comes from
 the time past the 45 deg flow tilt gate (#34941's record, 2026-11-07).
+
+## 2026-11-10: above a 15 m range finder on a customer quad (tier 1)
+
+Beta `7b00f3b5`, one IMU, ARK Flow and its 15 m AFBR range finder on
+DroneCAN, no GPS. log16 (1245450/44, replays exactly) was out of range
+high 251.8-265.0 s, the range 15.7-17.3 m, in LOITER.
+
+- The AGL KF stayed valid on its 5 s coast to 256.8 s, reading 1.0-1.3 m
+  below the range: its velocity decayed while still integrating the
+  climb's deceleration (-0.48 against the EKF's -0.08 m/s), so the flow
+  was scaled about 10% low meanwhile (from the source; hypothesis).
+- After that the flat-ground height (terrain offset frozen at -0.82 m)
+  tracked the range within 0.1-0.9 m and aiding held: EKF speed against
+  flow x range 0.98 over 24 windows, against 0.99-1.02 in range.
+- When the range came back the terrain offset re-anchored by 0.48 m.

@@ -73,3 +73,13 @@ on the flow lane at about 25 m would have scaled the velocity gains by
 12/25, about 0.48 (derived from the parameter and the logged HAGL; the
 scaler itself is not logged). It had no bearing on that Loiter, whose
 velocity estimate was near zero (`../34941/`).
+
+## 2026-11-10: the detune at 12 m on a customer quad (tier 1)
+
+Beta `7b00f3b5`, `EK3_FLOW_GAIN_H` 12, log16 (1245450/44) in LOITER to
+17.3 m. The position gain scaler, recovered from PSCN/PSCE, read 1.00 up
+to 12 m, 0.90 at 12.5-14 m, 0.82 at 14-15.5 m and 0.72 at 15.5-17 m:
+exactly 12/h. No ringing at full gain from 4 to 12 m (the 1 s high-passed
+desired lean 1.0-1.4 deg rms in every band). Hands-off hold above 15 m,
+with the range finder out of range, was poor: median 1.21 m from the
+target (p95 1.96), not separable from the out-of-range height and wind.

@@ -1821,3 +1821,13 @@ their hysteresis, which in practice means a raised INS_ACCEL_FILTER; the
 height check still refuses arming while the height disagrees. Proposed,
 not made: clear the latch where updateMovementCheck() sets
 onGroundNotMoving false, as its own commit on top (unflown).
+
+## 2026-11-10: a customer quad on `7b00f3b5` (tier 1)
+
+- Reset at rest on log15 (1245450/43) at 112.67 s: -VD -0.62 -> -0.07 m/s
+  and the height -7.90 -> -0.90 m, after the EKF had followed a prop-wash
+  baro while the vehicle sat on the ground with the props spinning.
+- "EKF3[1] height error 1.1m" pre-arm on log18 (1245450/46) at 202.5 s is
+  core 0 (the message prints the index plus one; the board has one IMU).
+  It was right: the vehicle was being carried, with the height innovation
+  0.9-1.5 m over 200.5-202.5 s. The arm at 229.8 s was accepted.

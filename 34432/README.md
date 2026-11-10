@@ -51,3 +51,13 @@ it at arming). Neither did better in any of six scenarios.
   over 3 min, so about 0.08 m over a default 10 s DISARM_DELAY wait.
 - Fixed wing (fly_forward) is excluded; QuadPlane VTOL is included.
 - Only the takeoff is tested; touchdown uses the same two conditions.
+
+## 2026-11-10: a touchdown the flag did not cover (tier 1)
+
+A customer quad on the beta `7b00f3b5`, range finder height below 1.5 m.
+With `touchdown_expected` set, the height held when the range was lost at
+touchdown while the baro read -10.4 m (log16), -8.2 m (log15) and -6.4 m
+(log18) in ground effect. On log20's crash landing (1245450/47, 125.54 s)
+the flag was clear: the descent was -0.81 m/s and the flag toggled 10
+times through the impact. The height dropped 5.39 m to the baro (see
+#33359's record, same date).

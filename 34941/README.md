@@ -491,3 +491,52 @@ backup `pre-squash/34941-1107`). OpticalFlowTiltTurnRecovery
 (`38635910f0`) folds into the first test commit (`247d0fb74e`), now
 `76bdb6617a`, whose message names both tests. The EKF commit is
 unchanged (`8412571a33`).
+
+## 2026-11-10: a hand-held vehicle dead-reckoned for 12 s (tier 1; the comparison is a hypothesis)
+
+A customer quad on the beta `7b00f3b5` (one IMU, ARK Flow on DroneCAN, no
+GPS), log20 (1245450/47). Armed in THROW and carried at about 58 deg tilt
+from 97.26 to 109.9 s, then 8-9 rad/s of flow over the 4.2 rad/s input
+cap after the release: no flow fused for 16 s (97.26-113.42), and no
+timeout, so aiding held (AID 2, no "stopped aiding"). The EKF
+dead-reckoned to 3.7 m/s (2.08, 3.05) by 108 s on a vehicle held in the
+hand. From the source, not measured: master would have timed out about
+102.3 s and re-entered relative aiding at zero velocity, nearer the truth
+for a held vehicle. "Throw height achieved, lost position" followed at
+111.6 s. log20 replays near-exactly while armed (0.026 m/s), so a Replay
+with this PR removed can settle it.
+
+### 2026-11-10: confirmed by Replay, and the timeout kept when not flying (tier 1b, tier 2)
+
+Replay of log20 with this PR reverted, against the unchanged beta build:
+during the carry the hold made things worse. As flown the velocity
+dead-reckoned 1.7 -> 4.0 m/s (102-109 s) and relative position was
+invalid 103.3-110.5 s; reverted, the lane timed out at 102.3 s and near
+107.3 s, restarted at 0.03-0.07 m/s, stayed at or under 1.3 m/s and kept
+relative position throughout. It did not cause the throw's "lost
+position" at 111.6 s: neither build had a relative position 111.3-112.2
+s (the revert regained it at 112.3 s, as flown at 113.5 s).
+
+Fix: the withheld time counts only while `dal.get_time_flying_ms() > 0`,
+the vehicle's own flying state (Copter's land detector, Plane's
+`is_flying()`, the armed state on Rover and Sub), through the DAL so
+Replay follows it. `!onGround` would not do: on a copter it means not
+armed, and the carry was armed. A wrong reading gives master's timeout or
+this PR's hold, never worse than one of the two.
+
+- Replay with the fix: log20 matches the revert through the carry (to
+  112.2 s) and the hold from the throw's detection on. Logs 16, 61, 63,
+  65, 84, 87 and 88 have 0 differing EKF records, so log61 and log65's
+  gains stand.
+- SITL `OpticalFlowTiltTimeoutNotFlying` (the IMUs rolled 90 deg, run
+  disarmed and then armed at zero throttle): no timeout within 15 s
+  without the fix; with `!onGround` the disarmed run passes and the armed
+  one fails; with the fix both time out 5.00 s after aiding starts, on
+  the PR branch and on the beta. `OpticalFlowTiltNoTimeout` and
+  `OpticalFlowTiltTurnRecovery` still pass.
+- Commits, not pushed: `fix1110/34941` `9609f96a0d` (AP_NavEKF3) and
+  `2e71d2c61b` (autotest), with four `amend!` commits on the test to
+  autosquash before the push. Quick review COMMENT: a "first millisecond
+  of flight" finding refuted (the withheld time was already uncounted the
+  instant before), the test rewritten twice on its findings, AP-Review's
+  minor on uncapped tilt credit still open.

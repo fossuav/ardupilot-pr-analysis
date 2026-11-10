@@ -770,3 +770,28 @@ requires_position() is false: the EKF failsafe does not act in throw's
 position hold and the XY controller does not restart after a position
 loss. Confirmed from the source. Proposed, not made: return true when
 nextmode() is nullptr, as its own commit on top.
+
+## 2026-11-10: three drops on a customer quad (tier 1)
+
+A customer quad on the beta `7b00f3b5` (one IMU, ARK Flow on DroneCAN, no
+GPS), `THROW_TYPE` 1 (drop), `THROW_NEXTMODE` 29 (VALT), logs 18, 20 and
+22 (1245450/46, /47, /49).
+
+- Detection 0.244-0.250 s after release (THRO stages 1-5). All three were
+  upward tosses flown as drops: VelZ +6.33, +3.98 and +3.35 m/s at
+  detection.
+- Upright from 128, 137 and 69 deg to under 5 deg in 0.94, 0.80 and 0.65
+  s; HgtStabilise 1.58, 0.97 and 1.18 s. Motors peaked 1594-1741 of about
+  1950. Yaw within 0.4 deg of its target.
+- The beta's own VALT hand-off (not part of this PR) counted VALT as
+  needing a position. log20's drop had none ("Throw height achieved, lost
+  position", "Throw: VALT Hold waiting for position"): it held level for
+  1.73 s at 0.13-0.33 m with no horizontal control and the sticks ignored,
+  and after 5 s would have stayed in THROW. Fixed on the beta; see the
+  2026-11-10 entry in the SFD fork's `Tools/SFD/FLIGHT_VALIDATION.md`.
+- log22 103.67 s: a flow lockout reset during PosHold (#33484) stepped the
+  velocity to 3.2 m/s at -54 deg roll and the hand-off waited; the pilot
+  took LOITER 1.7 s later.
+- Medium confidence, not followed up: with `THROW_YAW_TYPE` 1 the yaw
+  target looked far from the EKF track (256 against 10-14 deg on log22,
+  251 against 295-314 deg on log18).

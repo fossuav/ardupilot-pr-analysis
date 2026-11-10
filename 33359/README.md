@@ -1130,3 +1130,27 @@ with the GPS lane primary; the other four logs are identical.
 Not squashed: `0c2e335f61`, `3eeee55f04` and `4c332e6a20` also change the
 body odometry path, which no flight has run (no odometry on SFD-O4).
 Splitting the odometry lines out would let the flow parts go in.
+
+## 2026-11-10: a customer quad on `7b00f3b5` (tier 1, 1b)
+
+One IMU, ARK Flow with its AFBR range finder (15 m) on DroneCAN, no GPS,
+`EK3_RNG_USE_HGT` 10 (range finder height below 1.5 m), `EK3_OPTIONS` 92.
+
+- Handed back to baro at an AGL KF height of 1.50-1.54 m (1.57 m climbing
+  at 2.35 m/s, 1.44 m after a 3.3 m/s velocity reset); took over at
+  0.97-1.03 m. Height steps 0.05-0.15 m; 0.43 m in a fast climb, and
+  0.24-0.43 m at the take-overs after drops. No climb-rate transient over
+  0.05 m/s at any switch. On range finder height the EKF was within
+  0.09-0.10 m rms of the tilt-corrected range, the AGL KF within
+  0.04-0.05 m.
+- Replay of log16 (1245450/44, exact) with `EK3_RNG_USE_HGT` -1: takeoff
+  height 0.92 m below the range (max 1.17 m), against 0.004 m as flown.
+- log20 (1245450/47) 125.54 s, a crash landing: the range went out of
+  range low on range finder height with `touchdown_expected` clear, so the
+  height fell back to a baro in ground effect and dropped 5.39 m (Replay
+  -5.64 m; with `EK3_RNG_USE_HGT` -1, -0.49 m). VALT throttle rose 0.16 ->
+  0.52-0.55 for 0.2 s before the disarm; the vehicle was already tumbling
+  (9.4 g).
+- log20 97-103 s, hand-held at 47-52 deg: the range finder stayed the
+  height source while too tilted to fuse, so no height was fused for 5 s
+  (height timeout 102.26 s, vertical flags invalid until 103.26 s).

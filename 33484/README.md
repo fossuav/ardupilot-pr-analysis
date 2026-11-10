@@ -1334,3 +1334,80 @@ has now acted four times on this airframe: clearly worse once (03) and
 slightly worse once (02), both with the vehicle on the ground. SFD-O4
 log73 is identical without it (2026-11-06 above). It stays on top of the
 PR, unsquashed, and needs a fix or removal; not attempted here.
+
+## 2026-11-10: resets to a sensor that stopped tracking, on a customer quad (tier 1)
+
+A customer quad on the beta `7b00f3b5`: one IMU (so one EKF core), ARK
+Flow and its range finder on DroneCAN, compass yaw, no GPS,
+`EK3_FLOW_QMIN` 0, `EK3_OPTIONS` 92 (the resets are quiet). Twelve lockout
+resets over five flights (`XKF7.FVC`): eight wrong, two right, two
+unclear.
+
+- log22 (1245450/49), LOITER at 1.4 m with the sticks centred: the flow
+  and the EKF agreed at 2.2-2.6 m/s until 152.01 s. At 152.11 s the
+  flow-implied speed fell to 0.2-0.5 m/s in one 0.1 s step, at quality
+  87-93, with the pitch unchanged at -7 deg, and the EKF kept 2.6-2.8 m/s
+  from the IMU. Five resets (FVC 2 -> 7 at 152.55, 153.15, 153.75, 154.35
+  and 154.91 s) each set the velocity to 0.1-0.9 m/s. After each the
+  position controller pitched 43-55 deg (TAE 11.6-13.5 m/s^2) and the IMU
+  rebuilt 1.5-2.6 m/s within about 0.4 s. "flow vel resets paused 5s"
+  came after the fifth, and the pilot disarmed in the air at 155.7 s.
+  Quality was no guide: 113 of 141 rotating samples on this flight did not
+  track. Also log22 101.79 s: (3.95, -1.59) -> (0.0, -0.1) against about 4
+  m/s from the IMU, with the flow agreeing again from 102.35 s.
+- log20 (1245450/47) 124.14 s: one all-zero frame at quality 129, after
+  2 s of flow over the 4.2 rad/s input cap: 2.48 -> 0.08 m/s while the
+  flow read 2.5 m/s.
+- log15 (1245450/43) 270.76 s: one extreme sample from a 5 Hz FLOWHOLD
+  oscillation, 0.8 s after a yaw reset: 0.1 -> 2.96 m/s, the error
+  growing to 5.3 m/s and taking about 5 s to bleed off.
+- Right: log22 103.67 s (undid the 101.79 s reset: to (0.80, 3.18)
+  against the IMU's (0.24, 3.22)) and log20 115.34 s (a 1.9 m/s error left
+  by carrying the vehicle). Unclear: log18 242.44 s (+1.2 m/s towards a
+  flow that over-read against the IMU) and log16 285.11 s (at touchdown,
+  harmless).
+
+The failure the Q25v1 showed with a frozen (0, 0) output on 2026-10-08,
+now on a sensor that reports good quality, so `EK3_FLOW_QMIN` would not
+have caught it. Only log20 replays: logs 15 and 22 lost messages or had
+holes before arming. From the source, not measured:
+`ResetVelocityToFlow()` does not record the step for
+`getLastVelNorthEastReset()`, and AC_PosControl compensates only position
+resets, so each step lands in the velocity error.
+
+### 2026-11-10: no fix survives the Replay set (tier 1b)
+
+Replayed on the beta's code against logs A, B and C, SFD-O4 logs 7, 65
+and 73, the T25's 02, 03, 04 and ft3, and the customer's logs 16 and 20.
+The Q25v1's log 3 was not on this machine. Logs 15 and 22 do not replay,
+so they were judged from the flown data, on a calibrated sign convention
+(rough). On today's code logs 7 and 65 take no resets (three each as
+flown): later fixes hold those off.
+
+| Candidate | What separated | Why it failed |
+|---|---|---|
+| "Who moved": the flow's share of the disagreement since the axis last passed | good 0.1-0.68, bad 0.88-1.11 | real motion a non-tracking sensor misses moves the EKF too: log22's 101.79 s reset reads 0.02 and the burst's follow-ups -0.48 to 0.19 |
+| Innovation jump at the onset, in sigmas | good up to 14.8, bad 16.45 | no separation |
+| Defer while the gap grows faster than `EK3_ACC_BIAS_LIM` (capped at the 5 s timeout) | removes log20 124.10 and, by the flown estimates, log22 152.55 and log15 | worse on the phantom logs: time with the EKF over 3 m/s off the flow 1.0 -> 1.6 s (A), 1.5 -> 8.0 s (C) |
+| The same plus a flow-noise allowance | keeps log20 115.30 | still worse on A (1.0 -> 5.4 s) and C (1.5 -> 4.5 s) |
+
+After a refusal the axis dead-reckons on the IMU: right on log22 (Loiter
+would brake), wrong for a phantom, which is why any deferral needs the
+5 s cap and still loses on A and C.
+
+Found on the way, not built:
+- log20 124.094 s was a null frame: the flow and the sensor's own gyro
+  exactly 0.0 at quality 129, during an ARK Flow node dropout. Its
+  neighbours read 6.5-6.9 rad/s, over the EKF's fixed 4.2 rad/s input
+  cap, so only the corrupt frame reached the EKF. Refusing a reset (or
+  dropping the frame in the DroneCAN driver) when every rate is exactly
+  zero is certain for that case.
+- During log22's leans the raw flow did not respond to about 6 rad/s of
+  pitch: a rotation-tracking health check would catch the burst's
+  follow-up resets, not the first, which came at a steady attitude.
+- `EK3_FLOW_QMIN` cannot separate on this sensor: quality 86-106 while
+  tracking, 77-97 while not.
+- What turned each reset into a 43-55 deg lean is the position controller
+  not absorbing a velocity reset. Recording the step in `velResetNE` with
+  no consumer would be unused code; the follow-up is AC_PosControl taking
+  velocity resets, outside this PR.
