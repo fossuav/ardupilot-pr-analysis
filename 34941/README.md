@@ -540,3 +540,7 @@ this PR's hold, never worse than one of the two.
   of flight" finding refuted (the withheld time was already uncounted the
   instant before), the test rewritten twice on its findings, AP-Review's
   minor on uncapped tilt credit still open.
+
+Pushed 2026-11-10: `pr-ekf3-flow-tilt-timeout` `76bdb6617a` ->
+`1f53fe0477` (fast-forward), as `9609f96a0d` (AP_NavEKF3) and `1f53fe0477`
+(autotest; the four `amend!` commits folded in, tree unchanged).
