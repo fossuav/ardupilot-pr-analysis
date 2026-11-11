@@ -1589,3 +1589,56 @@ Evidence:
 - Not covered by a test: a repeated sample that disagrees restarting the
   run. Not exercised: NMEA and BLPing backends, two downward range
   finders.
+
+## 2026-11-11 (later): the range finder's own reading time instead (`fix1111/33484-rdt5`, 4 commits on `799fb45623`)
+
+The repeat-and-timer design above is superseded. The range finder backends
+already record when each reading arrives (`last_reading_ms`, set on
+receipt by MAVLink, MSP, Lua and DroneCAN and by the serial and CAN bases
+on a parsed reading), and the earlier objection to passing it through the
+DAL was wrong: Replay copies the shorter of the logged and compiled record
+and zero-fills the rest (master since `9610cb59b7`, the 4.7 beta's
+MSG_CREATE too). Following the EKF3 playbook's rule against growing a DAL
+struct, it goes in a new message beside RRNI, RRNJ, appended so no other
+DAL message moves.
+
+- `a657016f05` AP_DAL: RRNJ (LU, I), written when it changes and at log
+  start; `have_reading_time(instance)`, true in flight and in Replay once
+  the log gives that sensor's RRNJ. Per sensor, after Codex noted a global
+  flag would trust a sensor whose RRNJ never came.
+- `74c4f4802b` Replay: the RRNJ handler.
+- `daaca832c4` AP_NavEKF3: each stored sample keeps its reading time; a
+  median whose reading one of the sensor's last two samples was is
+  repeated (a reading stays in the median's window for three samples, so
+  comparing with the previous sample alone let A, B, A count A twice,
+  Codex). A repeated sample that agrees does not count; any disagreement
+  restarts the run. No timer, so a steady range confirms at its reading
+  rate: the outage leg's reset comes 0.6 s after its restart, not 3-5 s.
+- `b135aa93fd` autotest: one DISTANCE_SENSOR, not resent. Resending it is
+  new readings with the same value, which rightly count, so the 3.5 s
+  resend of the timer version failed against this design.
+
+Evidence:
+
+- The leg fails without the EKF commit; the lockout test and Copter.Replay
+  pass.
+- Replay of the leg's log (LOG_REPLAY on for one run) matches the flight
+  from arming on; with the RRNJ handler disabled it departs at 37.54 s,
+  just after the held reading restarted the AGL KF. The pre-arm window
+  mismatches as before.
+- The two fleet logs that reach a restart confirmation have no RRNJ and
+  replay through the SFD beta bit-identical on every core, messages
+  included.
+- Quick review: gates clean; the last Codex cold read APPROVE, no
+  findings. Its minor that the test never replays a log is left: a Replay
+  case would need the full flow, outage and lockout setup, whose SITL logs
+  mismatch before arming for reasons older than this PR.
+- Copter.Replay failed three times locally with "Did not get
+  GLOBAL_POSITION_INT" in its GPS case, on this branch, the #34630 restack
+  and #34630's pushed head alike, each time while a Codex review ran on
+  the machine; it passes with nothing else running, and CI's copter shards
+  pass on #34630.
+- A backend that stamps every update (analog, PWM, SITL, Benewake TFS20L)
+  makes every sample new, as before. A backend that never stamps one would
+  make every sample a repeat and defer recovery after an outage; none
+  does.
