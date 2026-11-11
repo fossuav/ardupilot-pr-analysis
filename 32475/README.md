@@ -807,3 +807,68 @@ GPS), `THROW_TYPE` 1 (drop), `THROW_NEXTMODE` 29 (VALT), logs 18, 20 and
 - Medium confidence, not followed up: with `THROW_YAW_TYPE` 1 the yaw
   target looked far from the EKF track (256 against 10-14 deg on log22,
   251 against 295-314 deg on log18).
+
+## 2026-11-11: THROW_ALT_DCSND 0 hands a toss back where it stops (`fix1111/32475-dcsnd0d`, 2 commits on `e730ee0cd6`)
+
+A customer's flow quad, three hand tosses with THROW_TYPE 1 and
+THROW_ALT_DCSND 0 into VALT: each was released on its way up, uprighted
+at 3.2-3.8 m after the top of its climb, and flown back down at up to
+3.9 m/s to the release point, which is where the toss's low-g window
+began (the hand), before the hand-over: 1.7-3.4 m of descent, ending
+0.13-0.47 m above the ground on two of them.
+
+- `f4fcfb44ba` Copter: with 0, the HgtStabilise target is the higher of
+  the release point and the height uprighting ends at, and when the stage
+  ends (normally the vertical speed arrested) the target moves to the
+  higher of the release point and the height reached, so PosHold and a
+  next mode that keeps the vertical target (ALT_HOLD, LOITER) hold it. A
+  vehicle uprighted below the release point still climbs back to it.
+  DCSND above 0 takes neither branch. The parameter text says so.
+- `3f8d1623ee` autotest: ThrowZeroDescentStopsAboveRelease, a 0.5 s
+  SIM_SHOVE_Z -30 toss with MOT_SPOOL_TIME 1.0 so it is uprighted after
+  its top, as a tumbling hand toss is. Handed over 1.5 m below the 5.9 m
+  top and held within 0.06-0.09 m for 5 s in ALT_HOLD; with the release
+  point as the target it is handed over 2.9 m below the top, and without
+  the second change ALT_HOLD climbs back past 0.5 m.
+
+Tried and dropped: the position controller's stopping point as the
+target (its P-gain term put it about 2 m below a 3.5 m/s fall; handed
+over 2.6 m below the top), and a v^2/2g term for a vehicle still
+climbing (Codex: the controller already carries the upward velocity into
+the target, so it counted the climb twice). A second leg for a drop
+caught below the release point was dropped too: a drop hands over once
+its vertical speed is arrested, so the hand-over height cannot show the
+climb back.
+
+All 21 throw tests pass on the PR branch and all 22 on a beta copy
+(`fix1111/32475-dcsnd0d-beta`, `01f474c138`, `9d2cdae5a1` on `413d62782b`).
+Quick review: gate clean, two Codex reads; the first found the double
+count and the climb back after the hand-over (both fixed), the second
+only wording, now corrected. The bot's last review (COMMENT at
+`e730ee0cd6`) lists THROW_ALT_DCSND's meaning as a maintainer call: this
+makes 0 behave as upstream's 0 does for a vehicle above the release
+point (target the height uprighting ends at), with the release point as
+a floor.
+
+EKF height and vertical velocity, which both targets and the hand-over
+rest on. Against the tilt-corrected range finder on the three tosses:
+the EKF height was 1.8 m low in the hand on one (0.1 m on another), so
+its release point, the old target, sat 1.8 m too low, which is why that
+toss was taken to 0.47 m; it was 0.1-1.3 m low just after uprighting and
+0.4-0.7 m low when the vertical speed was judged arrested, and the EKF
+then read about 0.5 m/s of descent against 0.6-0.9 m/s. Earlier records
+put velD errors after a clipped impact or tumble at 1-6 m/s for 6-16 s
+on flow vehicles with no velZ source, a velD gate firing 1.2 m short of
+its target, and spool-up baro spikes of 6-10 m; throw mode turns off the
+takeoff baro compensation (`baro_ground_effect.cpp`), so those spikes
+reach the EKF at full weight. Both new targets are MAX(release point,
+EKF height), never below the old target, so for any EKF error the
+vehicle is held no lower than before. What changes is the direction: an
+error in the height read after uprighting is held and comes out as a
+climb or sink of that size as the EKF corrects, where the old target
+turned the same error into a descent towards the ground. The velD gate
+is unchanged but is reached 1-3 s sooner, so the pilot takes over while
+those errors are larger. THROW_ALT_DCSND's description is rewritten
+around 0 and given a range of 0-20 m.
+
+Pushed 2026-11-11: `pr-throw-mode-improvements` `e730ee0cd6..3f8d1623ee` (fast-forward). Description updated the same day: the new test in its table, and a paragraph on what 0 means and the EKF height errors.
