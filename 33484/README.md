@@ -1411,3 +1411,98 @@ Found on the way, not built:
   not absorbing a velocity reset. Recording the step in `velResetNE` with
   no consumer would be unused code; the follow-up is AC_PosControl taking
   velocity resets, outside this PR.
+
+## 2026-11-10: resets on a fresh but wrong range, Q25v1 indoors (tier 1, from the source)
+
+The Q25v1 on the beta `7b00f3b5`, two indoor VALT flights (2818322/188,
+replays exactly), its range finder compromised (operator report): out of
+range low (0 m) for 98% of flight 1 at 1-4 m up, Good for only 41% of
+flight 2, with Good readings of 0.019 m while flying. `EK3_FLOW_QMIN` 60.
+Nine lockout resets in the air, none reaching the control (VALT):
+
+- Seven scaled the flow by a near-zero AGL KF height (0.05-0.23 m from the
+  0 m and 0.019 m readings): the velocity went to 0.1-0.6 m/s, once
+  4.99 -> 0.12 m/s at -12 deg pitch (592.74 s).
+- One took 15.28 m/s (507.74 s). The range came back at 507.49 s (6.31 m
+  after 20 s at 0), and the AGL KF went from 0.050 m invalid to 6.492 m
+  valid in the same 0.1 s log frame as the reset. One flow sample gave
+  15.28 m/s where its neighbours implied 2.5-8 m/s; the EKF was back to
+  about 7 m/s within 1 s.
+- One took 2.50 m/s from 6.84 (615.74 s), also as the range came back
+  (4.88 m); unclear.
+
+This is the "fresh range can still be the wrong range" hypothesis above,
+now flown. Why the AGL KF did not filter it, from the source:
+
+- After 5 s without a range fusion the AGL KF re-initialises straight to
+  the next range sample and is valid at once. `rangeCurrent` counts that
+  sample as fresh, and `rangeSettled` compares the AGL KF height with the
+  same sample, so they agree by construction: the first range after an
+  outage passes every range gate.
+- The AGL KF filters the height, not the flow. The reset converts one flow
+  sample to a velocity, as in the Q25v1's 2026-10-08 flyaways.
+- A sensor returning 0 or 2 cm in flight is believed: a Good 0.019 m is
+  fused, and out of range low holds the AGL KF on its floor (#34457's
+  known limit).
+
+Also on these flights: the quality latch fired at 582.13 s (quality 57)
+and released in the air 2.4 s later. And the Q25 on its second board
+outdoors (2818322/51, replays exactly) took one reset in Loiter, right:
+entered at about 5 m/s, 1 m up, where `EK3_FLOW_MAX` 2.5 caps the
+measurable speed, the reset took 2.18 m/s and the flow agreed after it.
+Not fixed.
+
+## 2026-11-11: a restart of the AGL KF confirmed before a reset uses it (tier 1b, tier 2)
+
+The Q25v1's 15.28 m/s reset (above) came in the same 0.1 s log frame as
+the AGL KF's restart on the first range after a 20 s outage: after 5 s
+without a range fusion the AGL KF restarts from the next sample and is
+valid at once, and `rangeCurrent` and `rangeSettled` then compare it with
+that same sample. Four ways to give the reset more than a single sample,
+prototyped on the beta's code and replayed over 15 logs (logs A, B and C,
+SFD-O4 logs 7, 65 and 73 on the flow lane, the Q25's 02, 03, 04, ft3, the
+basement flight and the outdoor one on the second board, the Q25v1's
+mission flight, and the customer quad's logs 16 and 20):
+
+| Variant | Logs changed | Outcome |
+|---|---|---|
+| A: confirm an AGL KF restart by 3 range samples in a row within 3 sigma of its innovation, before a reset may use it | 1 of 15 | the 15.28 m/s reset refused; a later reset on that log 0.3 s later (3.0 against 2.2 m/s). The other 14 identical, XKF1 speed, PD and VD |
+| The same, but withholding `aglKf.valid` until confirmed | 6 of 15 | every consumer waits: on the Q25's ft3 the height moved by up to 8.0 m, the speed by 11.4 m/s, and 4 of its 10 in-flight resets went |
+| B: reset to the median of the last 5 flow samples (at least 3 within 250 ms) | 9 of 15 | log B's 4.5, 2.9 and 2.1 m/s outlier resets became 0.0-0.3 m/s (peak 7.8 -> 5.7 m/s), but log A's peak 4.2 -> 5.1 m/s and ft3's time over 1 m/s of mismatch +8 s; the 3-sample minimum refused the customer quad's null frame and also a right Loiter reset on the Q25's second board |
+| B with an agreement check (most samples within 3 sigma of the median) | 9 of 15 | adds only refusals at touchdowns, where the samples disagree by 1.3-2.2 m/s (lever arm and vertical velocity), and the Q25's ground run in 02 gets worse (over 3 m/s 0.9 -> 2.4 s) |
+
+A was taken. None of them catches readings that are wrong but consistent:
+the customer quad's stuck sensor, the Q25v1's 2 cm ranges, the 2026-10-08
+frozen (0, 0) output.
+
+The fix, `AGLKF_RESTART_CONFIRM_SAMPLES` 3 (three medians in a row span
+five raw readings, so no single reading can confirm a restart) and
+`aglKfRestartConfirmSigma` 3. A sample that does not agree, or one the
+AGL KF's own gate rejects, starts the run again; the recovery is deferred
+meanwhile ("flow recovery deferred, range restarted"). The AGL KF and its
+other consumers are unchanged. The clean beta build replays identically
+to the prototype on all 15 logs.
+
+SITL: a new leg of `EK3_FlowAxisLockoutRecovery` holds the range out of
+range past the 5 s timeout, starts the lockout after it (one held
+through the outage ends of itself once the flow scales by the main
+filter's height: 31.6 -> 39.4 s in the first attempt), and brings the
+range back with it pending. With the fix the deferral comes first and
+the whole test passes; with `AGLKF_RESTART_CONFIRM_SAMPLES` 0 the reset is
+taken on the restart sample and the leg fails. Same on the PR branch and
+the beta; the PR branch builds copter, plane and Replay, and copter with
+`EK3_FEATURE_OPTFLOW_AGL_KF` 0.
+
+Pushed to the PR 2026-11-11 as `e424f24f58` (AP_NavEKF3) and
+`799fb45623` (autotest) on `913c4da2cf`; beta copy `fix1111/33484-beta`
+`1749e00d3f` and `0f467e0b73`, for the next topup. #34630 stacks on
+this PR and needs restacking.
+
+Quick review (mechanical gate clean, one Codex cold read): no defects in
+the EKF change. Its one point, that the test shows the reset waits for a
+confirmation but not that it waits for three samples, is left: the leg
+checks the failure (a reset on the restart sample), and pinning the count
+would tie the test to a tuning constant. The 3 sigma constant's comment
+now gives its reason (inside the AGL KF's own 5 sigma gate, so a sample it
+fuses but is pulled by does not confirm it; a right sample misses 0.3% of
+the time), folded into the AP_NavEKF3 commit on both branches.

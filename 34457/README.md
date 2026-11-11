@@ -1065,3 +1065,16 @@ first commit. Left for the merge squash.
 
 Two commit messages no longer name the airframes ("34 flights of one
 quad", "23 flights of another quad").
+
+## 2026-11-10: the floor hold's known limit, flown (tier 1)
+
+The Q25v1 on the beta `7b00f3b5` indoors (2818322/188), its range finder
+compromised: out of range low, reading 0 m, for 98% of a VALT flight at
+1-4 m up. The coast stop held the AGL KF velocity at 0 while the sensor
+read too low, and at 40.74 s the floor hold snapped the height from 0.36
+to 0.05 m in the air: the limit the hold's comment states, "a range finder
+that reads Good on the ground and then reports too low from liftoff while
+in range (one returning zero on a lost return) pins the height to the
+floor until the 5 s timeout". It went invalid at 41.3 s. Nothing reached
+the control (VALT, baro height), but lockout resets (#33484) then scaled
+the flow by the floor height and took the velocity to near zero.
