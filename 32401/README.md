@@ -203,4 +203,4 @@ where Replay's eight cases, EKFBootstrapReset, EKFBootstrapResetStaticYaw
 and PendingArmOnSwitch pass. Logs recorded before this cannot be fixed:
 they hold no event, so their replays stay valid only up to the reset.
 
-Pushed 2026-11-11: `pr-copter-pending-arm` `026ae77fc2..9e187a7e03` (fast-forward). Description not yet updated.
+Pushed 2026-11-11: `pr-copter-pending-arm` `026ae77fc2..9e187a7e03` (fast-forward). Description updated the same day with a paragraph on the replay event.
