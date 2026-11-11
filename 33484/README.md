@@ -1506,3 +1506,25 @@ would tie the test to a tuning constant. The 3 sigma constant's comment
 now gives its reason (inside the AGL KF's own 5 sigma gate, so a sample it
 fuses but is pulled by does not confirm it; a right sample misses 0.3% of
 the time), folded into the AP_NavEKF3 commit on both branches.
+
+## 2026-11-11: on the SFD beta as refresh14 topup2, and a fleet replay
+
+The restart confirmation is on the beta (`c3c24b9c7f`, test
+`cb143684fa`). Replay of every replayable log from one tester's fleet,
+284 of them from 4.6.3 to the beta `7b00f3b5`, through the beta before and
+after it: two differ. The Q25v1's 15.3 m/s reset is refused. An older
+quad on an earlier SFD 4.7.2 build, AGL KF on, defers two resets by 0.3 s
+on the ground before takeoff, after its range had been out 5 s; both
+builds then reset to about 0, but one more ground reset at 0.05 m follows
+and makes the burst five within 20 s, so the pauses run 20 s and 40 s
+where they ran 5 s and 10 s. The core that flew then spends 38.0 s
+instead of 24.7 s over 1 m/s of flow mismatch, the other 19.5 s instead
+of 34.7 s; it flew VALT, so nothing reached the control. The confirmation
+made no wrong call there: ground resets at the floor count towards the
+burst pause, which is this PR's pause, not the new check.
+
+Found on the way: Replay does not follow a bootstrap reset.
+`NavEKF3::InitialiseFilterBootstrap()` (#32202) logs no DAL event, so an
+EKF_RESET switch or a pending arm's reset re-initialises the cores in
+flight but not in Replay, which carries on from the state the reset
+discarded; 23 of the 284 logs have one. Upstream master has the same gap.
