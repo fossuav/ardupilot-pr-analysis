@@ -397,3 +397,14 @@ more "flow recovery deferred, range stale" (log87 at 290.9 s, at the
 touchdown; log88 at 101.1 and 133.0 s), none followed by a reset, and
 XKF7.FVC 0 on both cores through 96 s and 163 s of ACRO with the flow
 lane primary.
+
+## 2026-11-11: restacked on #33484's AGL KF restart confirmation
+
+#33484 gained two commits (a lockout reset waits for range samples to
+confirm a restarted AGL KF, and its test) and its base moved to a newer
+master, where `SIM_FLOW_OFS` had landed through #34533. The 29 commits of
+this PR were cherry-picked onto `799fb45623` cleanly, every patch the same
+(one with new context lines only). Copter, plane, rover and Replay build;
+`EK3_FlowAxisLockoutRecovery` (with the new "range restarted" leg),
+`OSDEKFLanes` and `OSDEKFLanesDCMFallback` pass. Pushed as `e4ae3e3f39`
+over `11985e483f`.

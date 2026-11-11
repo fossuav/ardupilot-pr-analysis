@@ -1495,8 +1495,8 @@ the beta; the PR branch builds copter, plane and Replay, and copter with
 
 Pushed to the PR 2026-11-11 as `e424f24f58` (AP_NavEKF3) and
 `799fb45623` (autotest) on `913c4da2cf`; beta copy `fix1111/33484-beta`
-`1749e00d3f` and `0f467e0b73`, for the next topup. #34630 stacks on
-this PR and needs restacking.
+`1749e00d3f` and `0f467e0b73`, for the next topup. #34630, which stacks
+on this PR, restacked and pushed the same day as `e4ae3e3f39`.
 
 Quick review (mechanical gate clean, one Codex cold read): no defects in
 the EKF change. Its one point, that the test shows the reset waits for a
