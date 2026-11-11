@@ -178,9 +178,37 @@ checked).
 Not raised: the PR's own test passes with the AGL KF on, and the one
 difference, after touchdown, belongs with the landing change.
 
+## 2026-11-11: FLOW_ALT_MIN, and #35105 as the landing follow-up
+
+Head moved to `9c25e44f45` (six commits, rebased). After discussion
+with andyp1per and stephendade, `FLOW_HGT_MIN` was renamed
+`FLOW_ALT_MIN` (`OpticalFlowFocusHeight` became `OpticalFlowFocusAlt`).
+AP-Review at that head (COMMENT, 07:44Z) found no logic change, and
+re-raised the post-landing failsafe our test shows. rmackay9 answered
+at 08:32Z: the failsafe in Loiter is known, messy but safe, and is to
+be fixed by #35105. The EU dev call (07:30Z comment) agreed to merge
+once the AI review accepts it and andyp1per approves. Our
+`flow-hgt-min-on-ground` change was not taken.
+
+SITL at `9c25e44f45`, our landing test ported to the rename (tier 2,
+the full table is in `../35105/`). The base reproduces the failsafe:
+in LOITER with `FLOW_ALT_MIN` 0.3, "stopped aiding" at +3.45 s after
+LAND_COMPLETE and LAND at +4.43/+4.44 s. Both ALT_HOLD legs stop aiding
+at +2.73 to +2.77 s. With #35105 stacked, every leg keeps aiding to
+disarm and walks 0.04-0.06 m. A LOITER landing with the range finder
+out of range low on the ground still fails on both builds, at +4.4 s,
+from the `gndOffsetValid` timeout rather than from this PR's gate.
+
+The ALT_HOLD drift numbers in the tables above are the test's own
+end-minus-start figure. That figure ends just after disarm, so on a
+build that stops aiding it misses the 0.75-0.78 m position step at the
+aiding restart (`../35105/`, measured 2026-11-11). The numbers are left
+as taken.
+
 ## Open
 
-- rmackay9's answer.
+- rmackay9's answer: given 2026-11-11 08:32Z (above); the landing fix
+  is #35105.
 - The landing change's test should run its legs with the AGL KF on as
   well as off, and once with #34457 to show the walk removed.
 - No Replay against this head. log67 (`../REPLAY_LOGS.md`) is the flight

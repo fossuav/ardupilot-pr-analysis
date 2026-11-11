@@ -110,6 +110,15 @@ reliable: the land detector stayed set through a whole tester C's copter flight
 of throttle-up whatever the land detector says, so in flight both must be
 wrong at once and only in that window.
 
+Superseded 2026-11-11: the tester C flight is unconfirmed. It rests on a
+missing NOT_LANDED event, the log is no longer on the analysis machine,
+and `../32972/` reads the same flight's takeoff window, which closed
+3.0 s after arm, as `land_complete` clearing at arm. A scan of nine
+other logs from the same tester (44 arms) found NOT_LANDED on every arm
+that flew (`../35105/`). The two-flag test stands on the other cases:
+the land detector also reads landed through THROW's wait and after a
+mid-air disarm and re-arm.
+
 Codex also said refreshing the fusion time stamp suppresses the
 re-initialisation at the next takeoff. Measured by Replay at this head
 against `7505d332d9` (core 100/101 decoded by hand), flow lane AGL height

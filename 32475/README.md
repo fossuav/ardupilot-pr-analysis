@@ -35,6 +35,18 @@ both from a carrier aircraft (MatekH743 quad, not committed):
 - log18: never armed (a battery pre-arm blocked it; see #32401), dropped
   with motors off, 9 s to impact.
 
+### Superseded 2026-11-11 by log32's own ARM and EV records
+
+"A false LAND_COMPLETE disarmed it in the air" is wrong. Re-read from
+the log, all three disarms are `ARM` Method 2 (AUXSWITCH, the pilot's
+arm switch), at 506.25, 529.55 and 544.15 s. LAND_COMPLETE (EV 18)
+appears only at the same timestamp as each disarm, after EV 11: a
+disarmed copter is marked landed. LDET.Count stayed 0 through all
+three attempts. The private analysis repo's note on the flight says
+the same. The land detector did not disarm it; the three false throw
+triggers are unaffected. The bullet above is left as written because it
+is what this README has said since the PR was opened.
+
 The rest of the PR is what it took to make the drop path work from
 inverted, spinning and tumbling releases, and to hand off cleanly.
 

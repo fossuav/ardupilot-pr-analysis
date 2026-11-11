@@ -69,6 +69,15 @@ REQUEST CHANGES on `8d4ffc52a8`. Changes, as `fixup!`/`amend!` commits on
   alone would have disabled the position failsafe for such a flight. The
   hold now also needs the motors not at `THROTTLE_UNLIMITED`, which no
   copter can fly without.
+
+  Superseded 2026-11-11: the F3 case is unconfirmed. It rests on a
+  missing NOT_LANDED event, the log is no longer on the analysis
+  machine, and `../32972/` reads the same flight's takeoff window, which
+  closed 3.0 s after arm, as `land_complete` clearing at arm. A scan of
+  nine other logs from the same tester (44 arms) found NOT_LANDED on
+  every arm that flew (`../35105/`). The spool-state term stands without
+  it: `land_complete` also reads landed through THROW's wait and after
+  a mid-air disarm and re-arm.
 - A failsafe declared in the air cleared about 1 s after landing, with
   "EKF Failsafe Cleared" on the ground and still no position. The change
   now holds the count while landed instead of treating the position as not

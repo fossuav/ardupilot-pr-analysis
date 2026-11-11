@@ -1940,6 +1940,14 @@ Open: a copter whose land detector reads landed in flight (mid-air disarm and
 re-arm, the tester C's F3 case) and is below the floor would fuse zero. Sensors that
 report quality 0 at the ground store no sample, so get no benefit (safe).
 
+Superseded 2026-11-11, for the F3 case here and in "What 'landed' means"
+above: it is unconfirmed. It rests on a missing NOT_LANDED event, the
+log is no longer on the analysis machine, and `../32972/` reads the same
+flight's takeoff window, which closed 3.0 s after arm, as `land_complete`
+clearing at arm. A scan of nine other logs from the same tester (44 arms)
+found NOT_LANDED on every arm that flew (`../35105/`). The mid-air
+disarm and re-arm case and THROW's wait still stand.
+
 Pushed 2026-10-03: 34be757539 -> e36aab7b08 (fast-forward; RangeFinder and DAL before the EKF commit; every commit builds).
 Reply posted 2026-10-03: https://github.com/ArduPilot/ardupilot/pull/34292#issuecomment-5973856808
 

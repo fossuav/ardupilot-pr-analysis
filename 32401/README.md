@@ -167,3 +167,38 @@ using GPS at 32.65 s, and the switch up at 33.10 s armed at once (ARM
 method 2). Not covered: the 3 s retry cadence and its buzzer (the arm was
 pending for 1.1 s), the EKF reset at `ARMING_PEND_TIM`, the cancel by a
 GCS disarm, and a pending arm that completes by itself.
+
+## 2026-11-11: the bootstrap reset made replayable (`fix1111/32401-replay`, 4 commits on `026ae77fc2`, not pushed)
+
+`NavEKF3::InitialiseFilterBootstrap()` (#32202) re-initialised every core
+without a word in the log, so Replay of a log with a pending arm's reset
+or an EKF_RESET switch carried on from the state the reset discarded. In
+a replay of 284 logs from one tester's fleet, 23 had a reset; a quad
+whose EKF had reached 15 m/s and a 33 deg disagreement with DCM on the
+ground was reset by a pending arm and flew normally, and its replay never
+reset and reached 70 m/s.
+
+- `9987a21af2` AP_DAL: `Event::bootstrapReset = 18`. 18 because #32471
+  and #32473 log 16 and 17, and SFD beta logs carry them. Replay does not
+  build until the next commit, as with the source set events
+  (`8430fc1002`, `8f2f770e93`).
+- `37f509c10d` Replay: the EKF3 handler calls `InitialiseFilterBootstrap()`;
+  EKF2 ignores the event.
+- `bc379a5850` AP_NavEKF3: the frontend logs the event before resetting.
+  Only the AHRS's `reset_configured_backend()` calls it; the filter's own
+  forced reset and `InitialiseFilter()` use the per-core reset, which
+  replays by itself.
+- `9e187a7e03` autotest: a BootstrapReset case in `test.Copter.Replay`
+  (EKF_RESET switch while disarmed, then fly). With the logging line
+  removed it fails with 143130 mismatched fields and the other six cases
+  pass; with it all seven pass. EKFBootstrapReset and PendingArmOnSwitch
+  pass.
+
+Quick review: mechanical gate clean, one Codex cold read with nothing
+wrong (the event is written after the frame's RFRF, so Replay resets at
+the same update boundary; `log_event3()` is compiled out in Replay, so
+no recursion). The bot's last review (ACCEPT at `026ae77fc2`) predates
+these. The same four commits are on the SFD beta as refresh14 topup3,
+where Replay's eight cases, EKFBootstrapReset, EKFBootstrapResetStaticYaw
+and PendingArmOnSwitch pass. Logs recorded before this cannot be fixed:
+they hold no event, so their replays stay valid only up to the reset.
