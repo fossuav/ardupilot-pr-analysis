@@ -168,7 +168,7 @@ method 2). Not covered: the 3 s retry cadence and its buzzer (the arm was
 pending for 1.1 s), the EKF reset at `ARMING_PEND_TIM`, the cancel by a
 GCS disarm, and a pending arm that completes by itself.
 
-## 2026-11-11: the bootstrap reset made replayable (`fix1111/32401-replay`, 4 commits on `026ae77fc2`, not pushed)
+## 2026-11-11: the bootstrap reset made replayable (`fix1111/32401-replay`, 4 commits on `026ae77fc2`)
 
 `NavEKF3::InitialiseFilterBootstrap()` (#32202) re-initialised every core
 without a word in the log, so Replay of a log with a pending arm's reset
@@ -202,3 +202,5 @@ these. The same four commits are on the SFD beta as refresh14 topup3,
 where Replay's eight cases, EKFBootstrapReset, EKFBootstrapResetStaticYaw
 and PendingArmOnSwitch pass. Logs recorded before this cannot be fixed:
 they hold no event, so their replays stay valid only up to the reset.
+
+Pushed 2026-11-11: `pr-copter-pending-arm` `026ae77fc2..9e187a7e03` (fast-forward). Description not yet updated.
