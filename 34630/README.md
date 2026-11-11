@@ -408,3 +408,10 @@ this PR were cherry-picked onto `799fb45623` cleanly, every patch the same
 `EK3_FlowAxisLockoutRecovery` (with the new "range restarted" leg),
 `OSDEKFLanes` and `OSDEKFLanesDCMFallback` pass. Pushed as `e4ae3e3f39`
 over `11985e483f`.
+
+## 2026-11-11: restacked on #33484's held-reading fix (`r1111/34630-final` at `f6eb845036`)
+
+AP-Review (COMMENT at `e4ae3e3f39`) raised #33484's held-reading should-
+fix here too. The 29 commits are cherry-picked onto #33484's `a4c83f9c93`,
+and the tree is the old #34630 plus #33484's two new commits exactly.
+EK3_FlowAxisLockoutRecovery and OSDEKFLanes pass. The push is forced.

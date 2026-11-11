@@ -1528,3 +1528,64 @@ Found on the way: Replay does not follow a bootstrap reset.
 EKF_RESET switch or a pending arm's reset re-initialises the cores in
 flight but not in Replay, which carries on from the state the reset
 discarded; 23 of the 284 logs have one. Upstream master has the same gap.
+
+## 2026-11-11: copies of one held range reading no longer confirm a restart (`fix1111/33484-final`, 2 commits on `799fb45623`)
+
+AP-Review (COMMENT at `799fb45623`) found that the restart confirmation
+counts the EKF's range polls, not readings. Confirmed: readRangeFinder()
+stores sensor->distance() at every ~52 ms poll while the status is Good,
+and the MAVLink, DroneCAN, MSP and Lua backends report a reading as Good
+for 500 ms (serial 200 ms, BLPing 1 s, NMEA 3 s). In SITL one
+DISTANCE_SENSOR after an outage restarted the AGL KF and a reset followed
+320 ms later, inside the hold. Both test vehicles' range finders hold for
+500 ms (SFD-O4 DroneCAN, Q25 MAVLink).
+
+The bot's first suggestion, the backend's reading time through the DAL,
+changes the RRNI log format, so no earlier log would replay; not taken.
+The rounds:
+
+1. Count a sample only when its range differs from its sensor's last
+   counted one. SITL's analog range finder reads one quantised value at a
+   steady hover, so the outage leg's restart never confirmed before its
+   lockout ended by itself: a repeated value now counts after 1.5 s, half
+   NMEA's 3 s (chosen over 1 s and 0.6 s; a steady range confirms in about
+   4.5 s).
+2. Codex cold read: the range compared had been corrected in place for the
+   sensor's position offset, which moves with attitude, so with a
+   horizontal RNGFNDx_POS a held reading's copies count. The comparison
+   moved to readRangeFinder(), before the correction, as a flag in the
+   range sample (it fits in the padding); the test's MAVLink range finder
+   sits 10 cm forward.
+3. A per-poll comparison (did this poll read what the last did) flags a
+   stale median as new: polls A, A, B give median A on a new poll, which
+   with NMEA's hold lets one reading confirm (Codex). The final compares
+   each sample's median with its sensor's previous median. A median that
+   stays put while new readings arrive counts as a repeat, which only
+   delays.
+4. Codex cold read: a repeated sample that disagreed was ignored instead
+   of restarting the run. Any disagreement now restarts it, and every
+   restart of the run (the restart, an outlier, a disagreement) also
+   restarts each sensor's spacing (StartAglKfConfirmRun()).
+5. Codex: the leg covered only a 500 ms hold, so a 1 s guard would pass
+   it. It now resends the one reading for 3.5 s.
+
+Evidence:
+
+- The leg fails on `799fb45623` (reset 320 ms after the reading), on the
+  round 1 version with the 10 cm offset, and with the guard at 1 s; it
+  passes at 1.5 s, the copies lasting 3.48 s after the restart.
+- EK3_FlowAxisLockoutRecovery passes; the outage leg's reset now comes 3
+  to 5 s after its restart, from the steady analog reading. On the beta
+  the 16 AGL KF and flow tests pass too.
+- Replay through the SFD beta of the two fleet logs that reach a restart
+  confirmation, a Q25v1 flight and an older quad's: the flown cores'
+  output is bit-identical. On the older quad's log Replay's extra IMU0
+  core takes its first reset 80 ms later, then drifts apart.
+- The new leg's log, with LOG_REPLAY on for one run, replays exactly from
+  arming on. Before arming (3.5-15.7 s) it mismatches, and so does a log
+  from this test that never reaches the new code: a setup artifact.
+- Quick review: mechanical gate clean; the last Codex cold read APPROVE
+  with no findings.
+- Not covered by a test: a repeated sample that disagrees restarting the
+  run. Not exercised: NMEA and BLPing backends, two downward range
+  finders.

@@ -204,3 +204,15 @@ and PendingArmOnSwitch pass. Logs recorded before this cannot be fixed:
 they hold no event, so their replays stay valid only up to the reset.
 
 Pushed 2026-11-11: `pr-copter-pending-arm` `026ae77fc2..9e187a7e03` (fast-forward). Description updated the same day with a paragraph on the replay event.
+
+## 2026-11-11: AP-Review's two minors at `9e187a7e03` (`fix1111/32401-minors`, 2 commits)
+
+- `c3e6f4f16f`: AP_DAL.h lists events 16 and 17 as reserved for #32471, in
+  the style of the removed entries above them. #32471 adds
+  set/unsetInhibitAccelBiasLearning there and the SFD beta's logs carry
+  them. The Codex audit called it PARTIAL for naming neither #32473 nor
+  beta builds; left, as #32473 stacks on #32471 and adds no event, and the
+  commit message says why 18 was taken.
+- `9a088df07f`: the four pending arm messages use GCS_SEND_TEXT().
+- Copter and Replay build, the mechanical gate is clean and the Codex cold
+  read APPROVE. On the beta as topup6, the message change only.

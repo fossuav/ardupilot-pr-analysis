@@ -872,3 +872,13 @@ those errors are larger. THROW_ALT_DCSND's description is rewritten
 around 0 and given a range of 0-20 m.
 
 Pushed 2026-11-11: `pr-throw-mode-improvements` `e730ee0cd6..3f8d1623ee` (fast-forward). Description updated the same day: the new test in its table, and a paragraph on what 0 means and the EKF height errors.
+
+## 2026-11-11: a compiled-out THROW_NEXTMODE holds a position (`fix1111/32475-nextmode`, 1 commit on `3f8d1623ee`)
+
+The 2026-11-07 minor, raised again at `3f8d1623ee`, made as proposed:
+nextmode_requires_position() returns true when nextmode() is nullptr
+(`9a0a72406d`). SITL compiles every mode, so no test reaches it (a Codex
+minor, left); ThrowNextModeAcro, ThrowUpwardNoPositionNextMode,
+ThrowStayHoldsRestoredPosition and ThrowZeroDescentStopsAboveRelease pass.
+On the beta as topup6, whose nextmode() lists VALT, so THROW_NEXTMODE 29
+is unchanged. The maintainer call on THROW_ALT_DCSND above 0 stays open.
