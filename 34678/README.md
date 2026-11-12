@@ -194,3 +194,9 @@ upright, with no internal error and a re-arm without a reboot.
 ## 2026-11-04: peterbarker proposes #35001 instead
 
 At the dev call peterbarker pointed at #35001, which only removes the INTERNAL_ERROR, as the simpler fix (comment on land_detector.cpp:73). The comparison (scratch report, not committed): #35001 covers the reported case; this PR additionally keeps a copter being righted landed, which also stops crash_check() disarming one stuck on its back after 2 s. Decision (Andy, 2026-11-04): leave this PR open, as rmackay9 objects to #35001. No reply posted.
+
+## 2026-11-11: split, the inverted case merged as #35039
+
+rmackay9 opened #35039 on 2026-11-06 as a cut-down version of this PR: the land detector ignores the throttle output while the throttle demand is at its lower limit, with its own armed-inverted test (ArmedInvertedTakeoff) and a SITL roll script. peterbarker merged it on 2026-11-09. This PR was reworked on 2026-11-11 (`d4be1a090c`) to the part #35039 does not cover: with the rate thread the land detector gives the flight mode one loop to see a take-off before it calls it missed. StabilizeInvertedLanded went with the split, so the `context_set_speedup()` adaptation above no longer applies.
+
+The SFD 4.7 build carries #35039 and then this PR from refresh15 (promoted 2026-11-12). Together they give the same land detector test as the combined commit the beta carried before; the only difference is the layout of the condition (inspection). The ground check on the SFD flight card is unchanged.

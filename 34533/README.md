@@ -54,3 +54,7 @@ Tools/autotest/autotest.py --no-configure test.Copter.OpticalFlow
 
 - `pr-sitl-flow-ofs` - the PR branch (two commits).
 - Author: @andyp1per.
+
+## 2026-11-09: merged
+
+peterbarker merged it on 2026-11-09 (`35016a8c0e`). #33484 and #34630 were rebased onto master afterwards and dropped their copies of the two commits; #34292 still carries its own. The SFD 4.7 build therefore carries this PR from its PR list, ahead of #33484, from refresh15 (promoted 2026-11-12) until 4.7 has it.
