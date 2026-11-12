@@ -200,3 +200,16 @@ At the dev call peterbarker pointed at #35001, which only removes the INTERNAL_E
 rmackay9 opened #35039 on 2026-11-06 as a cut-down version of this PR: the land detector ignores the throttle output while the throttle demand is at its lower limit, with its own armed-inverted test (ArmedInvertedTakeoff) and a SITL roll script. peterbarker merged it on 2026-11-09. This PR was reworked on 2026-11-11 (`d4be1a090c`) to the part #35039 does not cover: with the rate thread the land detector gives the flight mode one loop to see a take-off before it calls it missed. StabilizeInvertedLanded went with the split, so the `context_set_speedup()` adaptation above no longer applies.
 
 The SFD 4.7 build carries #35039 and then this PR from refresh15 (promoted 2026-11-12). Together they give the same land detector test as the combined commit the beta carried before; the only difference is the layout of the condition (inspection). The ground check on the SFD flight card is unchanged.
+
+## 2026-11-12: refresh15's first take-off, from the ground in ACRO (tier 1)
+
+SFD-O4 log90 (3408138/711) on refresh15 (`c42bd1fb`, code `3e1a71309a`),
+which carries #35039 and then this PR's `d4be1a090c`: armed in ACRO at
+293.2 s with the rate thread at 1973 Hz, NOT_LANDED at 296.6 s, no
+internal error (PM.InE 0 throughout), disarmed at 412.1 s after a Loiter
+landing. An ACRO or STABILIZE take-off is the case the extra loop is for,
+since those modes clear the landed flag themselves, but the failure is a
+race, so one clean take-off says little. log89 (3408138/707), on the
+beta's earlier land detector version, also took off in ACRO at 474.2 s
+without one. The refresh15 flight card asks for a note of any "PreArm:
+Internal errors" after every take-off instead of a ground check.

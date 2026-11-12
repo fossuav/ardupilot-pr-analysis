@@ -2372,3 +2372,22 @@ never came back. They stay on top. Folding them into the rule is Andy's
 call, since they have only ever flown together with it. The rest stays
 as on 2026-10-31: no restarted log, no in-flight accel bias reset, and
 bit 2 never set.
+
+## 2026-11-12: SFD-O4 logs 89-90 (tier 1)
+
+ACC_ZBIAS_LEARN 9 (learn and save, not applied), TCAL on both IMUs.
+
+- log89 (3408138/707, `56d1905e`), armed about 5 min after power-up:
+  flight 1, the first of the boot (74 s in the air, Loiter), saved IMU0
+  0.0882 -> 0.0255 and IMU1 0.0750 -> 0.0214 with no message. XKF2.AZ on
+  core 0 read -0.07 at arming and -0.03 in the hover. Flight 2 printed
+  "Hover Z-bias not saved: not first flight".
+- log90 (3408138/711, refresh15 `c42bd1fb`), the first flight of its
+  boot, took off in ACRO and had only 19 s of Loiter before landing:
+  "Hover Z-bias not learned: no steady hover", values unchanged.
+- The temperature effect of 2026-11-06 again, now on the ground: log89's
+  IMU read 6 degC at power-up, 25 degC on the ground before flight 1,
+  13-17 degC in flight 1, 20 degC before flight 2 and 8 degC in acro. The
+  EKF's Z accel bias on the ground read -0.07 before flight 1 and -0.11
+  before flight 2, a difference larger than the delta saved. Still a
+  correlation on one airframe, not a proven cause.

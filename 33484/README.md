@@ -1642,3 +1642,21 @@ Evidence:
   makes every sample new, as before. A backend that never stamps one would
   make every sample a repeat and defer recovery after an outage; none
   does.
+
+## 2026-11-12: SFD-O4 logs 89-90, outdoors on topup6 and refresh15 (tier 1)
+
+log89 (3408138/707) on `56d1905e` (topup6's code) and log90
+(3408138/711) on refresh15 `c42bd1fb`. The flow lane is core 1 beside a
+GPS lane (`EK3_SRC_OPTIONS` 8), `EK3_FLOW_QMIN` 40. Both replay to float
+rounding through their own builds, RRNJ included.
+
+- Two lockout resets, both on core 1 at a log89 touchdown as the range
+  went out of range low (368.8 and 700.6 s), each moving the velocity
+  about 0.1 m/s; the first was on the primary lane, landing on flow. None
+  in the air over 64 s of Loiter on the flow lane (to 6.4 m/s) and 252 s
+  of ACRO across the two logs.
+- "Flow recovery deferred, range stale" six times: two at log89
+  touchdowns, one in its acro and three in log90's acro. No "range
+  restarted" or "range step", so neither topup2's confirmation nor
+  topup6's held-reading rule was reached.
+- No quality latch (XKF7.FVU 0 on both logs).

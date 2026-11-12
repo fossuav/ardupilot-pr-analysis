@@ -530,3 +530,12 @@ description's sentence now says ESC.Err carries what each driver reports.
 
 Pushed 2026-11-07: `pr-motortest-error-rate` `0f9555fb6f..c922349b3c`
 (fast-forward). Description updated.
+
+## 2026-11-12: SFD-O4 logs 89-90 (tier 1)
+
+ESC.Err read 84-92% on every output from 1.9 s after power-up, at 0 rpm
+while disarmed, falling below 1% by 6.8 s, on log89 (3408138/707,
+`56d1905e`) and log90 (3408138/711, refresh15 `c42bd1fb`) alike: the ESCs
+starting up (mechanism not checked). By the first arm it had settled
+(log89 read 0.05% at 292.9 s). Armed, at most 0.33% (log89, ESC instance
+3) and 0.27% (log90). The card's motor test is still owed.

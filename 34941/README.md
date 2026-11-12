@@ -544,3 +544,18 @@ this PR's hold, never worse than one of the two.
 Pushed 2026-11-10: `pr-ekf3-flow-tilt-timeout` `76bdb6617a` ->
 `1f53fe0477` (fast-forward), as `9609f96a0d` (AP_NavEKF3) and `1f53fe0477`
 (autotest; the four `amend!` commits folded in, tree unchanged).
+
+## 2026-11-12: the timeout for a vehicle that is not flying, flown on SFD-O4 log89 (tier 1)
+
+log89 (3408138/707) on `56d1905e`, which carries `9609f96a0d` as SFD
+topup1. The vehicle was handled disarmed at 45-96 deg of tilt from 158 to
+217 s, past the flow tilt limit, so its flow was withheld. Core 1 (flow,
+`EK3_SRC_OPTIONS` 8) timed out and restarted relative aiding five times
+("stopped aiding" at 163.16, 168.17, 176.63, 185.27 and 194.69 s), stayed
+within 0.8 m/s of the GPS lane meanwhile, and read 0.05 m/s once set
+down. Replay through the flown build matches. With the fix removed the
+withheld time would have been credited while disarmed and no timeout
+reached, as on log20 above (derived from the source and the SITL test,
+not replayed here). This is the carry the fix was written for, and both
+halves of the PR have now flown: the hold in the air (logs 84, 87, 88)
+and the timeout on the ground here.

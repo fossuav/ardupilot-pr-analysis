@@ -1940,3 +1940,16 @@ high 251.8-265.0 s, the range 15.7-17.3 m, in LOITER.
   tracked the range within 0.1-0.9 m and aiding held: EKF speed against
   flow x range 0.98 over 24 windows, against 0.99-1.02 in range.
 - When the range came back the terrain offset re-anchored by 0.48 m.
+
+## 2026-11-12: above a 15 m range finder in ACRO, SFD-O4 logs 89-90 (tier 1)
+
+Core 1 is the flow lane beside a GPS lane (`EK3_SRC_OPTIONS` 8), not
+primary in these segments; its velocity is compared with the GPS lane's
+every 0.1 s. log89 (3408138/707, `56d1905e`), 158 s of ACRO to 45 m and
+22.8 m/s, much of it above the range: median 1.6 m/s apart (p95 3.5, max
+4.9), and its height up to 2.75 m below the GPS lane's. In the Loiter
+that followed at 20-30 m, above the range: median 1.1 m/s (p95 4.9, max
+6.0, at 11-13 m/s). log90 (3408138/711, refresh15 `c42bd1fb`), 94 s of
+ACRO to about 28 m, mostly inside the range: median 0.68 m/s (p95 2.4,
+max 3.2). This is the drift the boot message warns of ("rangefinder max
+15m, flow above may drift"), measured; nothing here flew on it.

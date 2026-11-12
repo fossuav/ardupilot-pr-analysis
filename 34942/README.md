@@ -1831,3 +1831,11 @@ onGroundNotMoving false, as its own commit on top (unflown).
   core 0 (the message prints the index plus one; the board has one IMU).
   It was right: the vehicle was being carried, with the height innovation
   0.9-1.5 m over 200.5-202.5 s. The arm at 229.8 s was accepted.
+
+## 2026-11-12: SFD-O4 logs 89-90 (tier 1)
+
+No "height error" refusal, "vertical velocity reset at rest" or "forced
+reset" on log89 (3408138/707, `56d1905e`) or log90 (3408138/711,
+refresh15 `c42bd1fb`). log89 re-armed 77 s after a disarm that followed a
+soft landing (1.5 g peak, 0.5 m/s), without a reboot, and was accepted. A
+re-arm after a hard landing is still owed.

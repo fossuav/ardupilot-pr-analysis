@@ -926,3 +926,15 @@ Nothing folded: its four commits (`f0366a0ab6`, `d6c351a060`,
 `2d51698807`, `c1a80e5209`) each have their old commit's tree, and its
 own diff is identical. Bit 3 and the kept variance flew again on SFD-O4
 logs 84, 87 and 88 (ACC_ZBIAS_LEARN 9, acro).
+
+## 2026-11-12: two ACRO take-offs, SFD-O4 logs 89-90 (tier 1)
+
+ACC_ZBIAS_LEARN 9. log89 (3408138/707, `56d1905e`) took off in ACRO at
+474.2 s and flew 158 s of it to 45 m and 22.8 m/s: XKF2.AZ held at -0.10
+(core 0) and -0.09 (core 1) throughout, then in Loiter on GPS settled at
+-0.01 and +0.01 within 4 s, with no runaway. log90 (3408138/711,
+refresh15 `c42bd1fb`) took off in ACRO at 296.6 s and flew 94 s of it:
+held at -0.06 and -0.05, then -0.01 and 0.00 within 8 s of leaving acro.
+Taking off in ACRO the held value is the ground-learned bias without the
+motors-on offset, as the parameter description says: here 0.05-0.10
+m/s/s short of where the EKF settled after acro.
