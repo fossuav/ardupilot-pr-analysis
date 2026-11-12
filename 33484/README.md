@@ -1698,3 +1698,44 @@ topup1's change on that vehicle. XKF7.FVC went 0 to 6 on core 0 and 0 to
 7 on core 1: a reset 0.55-2.5 s after the switch on throws 2-5, none
 after throws 1 and 6, one at each landing. "Flow recovery deferred, range
 step" after throws 2 and 5, "range stale" once at a landing.
+
+## 2026-11-12: logs 15-16 on topup1, the init at aiding start, and the dead reckoned fall back (tier 1, 1b)
+
+log15 (3408138/78) and log16 (3408138/81), the throw quad on topup1's
+code (`4da1f0c1`), nine tosses onto the flow set. Both replay to float
+rounding through topup1's Replay.
+
+- The velocity init ran on every throw whose EKF started flow aiding
+  from none (XKF7.FVC +1 each): 3.6-7.1 m/s out at the switch, 0.6-2.0
+  m/s within 0.1-0.7 s; 1 s after the switch 0.19-1.68 m/s against
+  1.71-6.82 in refresh15's Replay (log15 throws 2-6), 0.91 against 5.40
+  (log16 throw 1).
+- It did not run on log15's first throw. Armed 11.5 s before the throw
+  after a GPS flight, the EKF was still in absolute aiding, dead
+  reckoning, with velTimeout set from 6.4 s after arming (XKF4.TS bit
+  1); when the flow first fused it fell back to relative aiding keeping
+  that velocity, 2-6 m/s out. log16's first throw came 14.5 s after
+  arming, 0.2 s after the EKF stopped aiding, so its init ran.
+- The cause was the dead reckoning, not the init. Held still in the hand
+  after arming on THROW_SRC_INI's set, which has nothing horizontal, the
+  EKF's velocity was over 1 m/s out 4-7 s after arming and 5-9 m/s out by
+  12-13 s on both first throws (GPS under 0.25 m/s); on log16's the 15 s
+  timeout fell at the release, zeroing an 11 m/s velocity and stepping
+  the height about 5 m up and back. A first fix, the init on the fall
+  back from dead reckoning with a wait for yaw under 0.75 rad/s, cleaned
+  up after it and was reverted within topup2. What topup2 keeps: a
+  source set with nothing to measure the horizontal position or velocity
+  ends absolute or relative aiding at once, unless air data dead
+  reckoning is in use, so every throw starts from no aiding and the init
+  runs as on the other eight. Replay against topup1: 352 of 355 fleet
+  logs unchanged; logs 13-14 within 0.1 m/s at their throws; log15's
+  first throw has no position until the flow starts, then under 1 m/s
+  from 2.17 s after the switch against 4.17. EK3_NoHorizontalSourceStopsAiding:
+  "stopped aiding" within 2 s of the switch, 15 s without the change.
+- The init interacts with the range finder height switch. On log15's
+  throw 3 the init set the true 5.8 m/s, `EK3_RNG_USE_SPD` 4 then
+  dropped the range finder, and the height reset to a baro 3 m high
+  (+2.9 m). refresh15's Replay switched later, towards the range finder,
+  on the same throw. Replay with the gate at 10 m/s, or the range finder
+  as the flow set's height source, has no jump.
+

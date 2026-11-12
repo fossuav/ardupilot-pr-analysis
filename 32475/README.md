@@ -962,3 +962,46 @@ on this log). Replays to float rounding through refresh15's Replay.
   log13 by the same measure 0.55-2.63 s. This measure does not reproduce
   the flight card's 0.55-4.34 s for log13, so compare topup1's flights
   against these two rows rather than that figure.
+
+## 2026-11-12: logs 15-16 on topup1, into VALT and flow Loiter, and the flow check's fail-open (tier 1, 1b)
+
+log15 (3408138/78): six tosses into VALT; log16 (3408138/81): three into
+LOITER (`THROW_NEXTMODE` 5), the first throws onto a position mode on
+this quad. topup1's code (`4da1f0c1`), log14's settings with
+`EK3_RNG_USE_SPD` 4. Both replay to float rounding through topup1's
+Replay.
+
+- The flow check held all three LOITER hand-overs until the flow agreed:
+  "flow settling" then "Loiter waiting for position", "lost position"
+  then "position regained", "flow settling" then "position regained";
+  hand-over 2.39, 1.66 and 1.63 s after detection, 0.51, 0.43 and 0.83
+  m/s off GPS. LOITER carried on 3.5, 2.8 and 1.5 m by GPS and then held
+  within 0.6-0.7 m with the sticks centred.
+- The settle wait: no sink after the hand-over on nine of ten throws
+  (0.73 m on one); hand-overs 1.45-1.72 s after detection into VALT. The
+  sink moved before the hand-over: at each LOITER hand-over the throw's
+  height target was 0.65-1.0 m above the vehicle, which had sunk 0.5-0.8
+  m by the range finder in the last second, and LOITER then climbed
+  1.3-2.1 m. Open.
+- log15's first throw struck the ground. Armed 11.5 s before the throw
+  after a GPS flight, the EKF was still in absolute aiding, dead
+  reckoning, and reported a relative position. The flow had not fused,
+  so the check had no innovations and passed: "good position" 0.55 s
+  after the switch to THROW_SRC_SET, 1.08 s before the first flow
+  fusion. The throw's position hold braked a 5.7 m/s toss at 22 deg of
+  roll on a velocity 2.3 m/s out; 0.2 s later the IMU read 11-14 g. The
+  vertical estimate was also wrong (the EKF at 1.5 m and level, GPS 1.5
+  m below the release point and falling, the range finder in No Data).
+- Fixed on the SFD beta as topup2. The EKF now stops aiding at once on
+  THROW_SRC_INI's set (see 33484), so no throw has a dead reckoned
+  position to pass. The check also fails closed (`6af11a5edb`): on a
+  vehicle with a flow sensor, a set that does not use GPS for position
+  needs flow innovations the EKF reports, and restarts the average when
+  they lapse; the test is the set's GPS use (`ahrs.using_gps_for_pos()`),
+  not the position flags. That covers flow aiding that starts and then
+  loses the flow, which the EKF keeps for 5 s.
+  ThrowTossFlowLostHoldsPosition turns the flow off as relative aiding
+  starts: the throw waits and hands over 0.12 m/s out once the flow is
+  back; with the change removed it regains a position on the stale
+  flow.
+
