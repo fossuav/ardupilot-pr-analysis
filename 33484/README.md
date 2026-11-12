@@ -1660,3 +1660,41 @@ rounding through their own builds, RRNJ included.
   restarted" or "range step", so neither topup2's confirmation nor
   topup6's held-reading rule was reached.
 - No quality latch (XKF7.FVU 0 on both logs).
+
+## 2026-11-12: five hand tosses into VALT, the lockout resets that set the velocity (tier 1)
+
+log13 (3408138/71), SFD refresh15 (`66fe7b62`), a TBS_LUCID_H7 quad
+thrown five times with THROW_SRC_INI 3 (no aiding while waiting) and
+THROW_SRC_SET 2 (flow). Each switch to flow started relative aiding at
+about zero horizontal velocity while the toss carried 3-6 m/s, so one
+axis locked out. Six resets per core (XKF7.FVC 0 -> 6), one after each
+throw and one at a landing, took the velocity error against GPS from
+3.5-6.2 m/s to under 0.8 m/s, 0.5-2.8 s after the switch. On throws 2-4
+"flow recovery deferred, range step" held the reset back 1-2 s: the AGL
+KF was still 1.1 m below the range finder after the tumble (throw 4),
+having had no-data and long-range samples while the vehicle spun. Not
+A/B'd. No "range restarted".
+
+## 2026-11-12: SFD-O4 log94 on topup1, and the throw quad's log14 (tier 1, 1b)
+
+log94 (3408138/718), build `bcdd627e` (topup1's code, `bf7a3947f8`).
+topup1's velocity set at an in-flight start of flow aiding did not run:
+core 1 entered relative aiding on the ground at 2.2 s and stayed in it to
+the end (XKF4.AID). XKF7.FVC's one step (core 1, 0 to 1 at 208.0 s) is a
+lockout reset at touchdown as the range went out of range low, moving the
+velocity about 0.1 m/s, as on log89. "Flow recovery deferred, range
+stale" four times in 145 s of ACRO to 24 m and 22.4 m/s, three with the
+range reading 10-11 m and one at 15.3 m, no reset. topup1's Replay
+reproduces the flight to float rounding (position 7.6 um, velocity 1e-6
+m/s; aiding, status and FVC identical) and refresh15's gives
+bit-identical EKF output. The flow lane ran a median 1.40 m/s off the GPS
+lane in acro (p95 3.8, max 6.4) at a median 14.2 m/s, against log90's
+0.68 (2.4, 3.2) at up to 17.9 m/s; with identical Replays that is the
+flight, not topup1.
+
+log14 (3408138/74), the throw quad on refresh15 with log13's settings
+plus `EK3_SRC3_YAW` 1 and `EK3_RNG_USE_HGT` 24, is the baseline for
+topup1's change on that vehicle. XKF7.FVC went 0 to 6 on core 0 and 0 to
+7 on core 1: a reset 0.55-2.5 s after the switch on throws 2-5, none
+after throws 1 and 6, one at each landing. "Flow recovery deferred, range
+step" after throws 2 and 5, "range stale" once at a landing.

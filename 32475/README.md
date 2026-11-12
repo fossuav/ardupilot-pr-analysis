@@ -882,3 +882,83 @@ minor, left); ThrowNextModeAcro, ThrowUpwardNoPositionNextMode,
 ThrowStayHoldsRestoredPosition and ThrowZeroDescentStopsAboveRelease pass.
 On the beta as topup6, whose nextmode() lists VALT, so THROW_NEXTMODE 29
 is unchanged. The maintainer call on THROW_ALT_DCSND above 0 stays open.
+
+## 2026-11-12: five hand tosses into VALT on a TBS_LUCID_H7 quad (tier 1, 1b)
+
+log13 (3408138/71), SFD refresh15 (`66fe7b62`): two IMUs, ARK Flow MR and
+its 15 m range finder on DroneCAN, GPS, compass. THROW_TYPE 1,
+THROW_ALT_DCSND 0, THROW_NEXTMODE 29 (VALT), THROW_SRC_INI 3 (a set with
+no horizontal or yaw source), THROW_SRC_SET 2 (flow), THROW_YAW_TYPE 1.
+Five upward tosses, the last a lob off a raised platform that fell about
+1.5 m below the hand. GPS is logged but not used by the flow set, so it
+is the reference. Replays to float rounding; no internal error.
+
+- Detected 0.245-0.250 s after release at +1.6 to +3.6 m/s vertical; no
+  false trigger in 10-18 s of carrying before each.
+- Upright from 22-129 deg in 0.29-0.65 s; motors at most 1384.
+- Yaw within 1-3 deg of the target on all five; the target within about
+  5-35 deg of the GPS course after release.
+- THROW_ALT_DCSND 0 took both branches: throws 1-4 stopped where
+  uprighting ended, above the release point; the lob climbed back to its
+  release point.
+- After the hand-over at the top of the arc the vehicle sank 0.6-1.3 m by
+  GPS on throws 2-4. The throw's throttle there was 0.034-0.065 against a
+  0.078 hover, from stopping the climb, and the EKF (baro height, no
+  vertical velocity source) saw about 1 m/s less of the fall than GPS
+  (throw 4: -0.9 against -1.9 m/s). ThrowZeroDescentStopsAboveRelease held
+  within 0.1 m in SITL ALT_HOLD; this is the first flight against it, and
+  the EKF's vertical estimate is part of the difference.
+- Throw 1: with no yaw source in THROW_SRC_INI's set and the vehicle armed
+  while carried, the EKF reset its yaw to GPS velocity during the wind-up
+  and was 176 deg off (241 against 65 deg DCM, 63 deg compass). The target
+  had been taken before it and stayed right, but the compass reset at the
+  switch to THROW_SRC_SET then had the vehicle spin about 180 deg onto it,
+  and the hand-over came 1.96 s after detection against 0.85-1.30 s. The
+  target is an absolute heading that nothing adjusts for an EKF yaw reset
+  (derived from the source, not measured).
+- The flow set started at about zero horizontal velocity (constant
+  position on set 3) while the toss carried 3-6 m/s, and stayed 3.5-6.2
+  m/s wrong until a #33484 lockout reset 0.5-2.8 s later. VALT has no
+  horizontal control; a position next mode would have handed over within
+  0.2 s of the switch, as position_ok() is true as soon as relative
+  aiding starts.
+- Throw 2's hand-over at 1.2 m was followed by a descent to the ground
+  (range finder under 5 cm for 0.4 s): the baro read 2-3 m high after the
+  throw and VALT held the EKF height. Throw 1's baro fell 4.5 m in a
+  second in PosHold and the vehicle was climbed about 5 m. Airframe baro,
+  not this PR; Replay with the flow set's height on the range finder
+  (EK3_SRC2_POSZ 2) tracks both.
+
+Proposed, not done, for a throw into a flow position mode: hand over only
+once the vertical speed has stayed arrested for a settle time rather than
+at its first zero; rotate the yaw target by any EKF yaw reset; switch to
+THROW_SRC_SET once upright, so the flow set converges while the throw
+still holds height; and gate a position next mode on the flow being fused
+on both axes rather than on position_ok().
+
+## 2026-11-12: log14, the same quad with compass yaw while waiting (tier 1, 1b)
+
+log14 (3408138/74), the same quad on refresh15's code (not topup1), with
+log13's settings plus `EK3_SRC3_YAW` 1 (the compass on THROW_SRC_INI's
+set) and `EK3_RNG_USE_HGT` 24. Six upward tosses into VALT, handed over
+0.7-1.3 s after detection (release-to-detection latency not measured
+on this log). Replays to float rounding through refresh15's Replay.
+
+- No "yaw aligned to GPS velocity". EKF yaw against DCM at the switch to
+  THROW_SRC_SET: -12, +11, -3, -6, -2 and +12 deg. Measured the same way,
+  log13's five were -178, +2, +77, -59 and -5: throws 3 and 4 had throw
+  1's fault on a smaller scale, and after the switch the vehicle turned
+  74 and 53 deg (commanded 151 and 126 deg/s), as well as throw 1's 30
+  deg at 207 deg/s, in the first 3 s. On log14 no heading moved more than
+  12 deg in the 3 s after the switch. With a compass in the waiting set
+  there is no reset at the switch for the yaw target to follow; the
+  topup1 change still matters for a waiting set with no yaw source
+  (inferred from the two logs, not replayed).
+- Sink after the hand-over, by GPS over 3 s: 0, 1.17, 1.74, 0.75, 0 and 0
+  m (log13 up to 1.27 m). The settings do not touch it; topup1's settle
+  wait is for this.
+- EKF horizontal velocity within 1 m/s of GPS (and staying so for 0.5 s)
+  after the switch: 0.26-2.51 s across both cores, peaks 1.4-7.0 m/s;
+  log13 by the same measure 0.55-2.63 s. This measure does not reproduce
+  the flight card's 0.55-4.34 s for log13, so compare topup1's flights
+  against these two rows rather than that figure.
