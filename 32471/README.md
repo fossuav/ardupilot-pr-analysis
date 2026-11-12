@@ -2391,3 +2391,23 @@ ACC_ZBIAS_LEARN 9 (learn and save, not applied), TCAL on both IMUs.
   EKF's Z accel bias on the ground read -0.07 before flight 1 and -0.11
   before flight 2, a difference larger than the delta saved. Still a
   correlation on one airframe, not a proven cause.
+
+## 2026-11-12: two first flights saved on a new quad, a hover and a fast flight (tier 1)
+
+log9 (3408138/62) and log10 (3408138/64), SFD refresh15 (`66fe7b62`), a
+new TBS_LUCID_H7 quad on 6S hovering at 0.0775 throttle.
+
+- log9, `ACC_ZBIAS_LEARN` 11, a 58 s Loiter with about 35 s of steady
+  hover at 1.5 m: saved IMU0 0.0735, IMU1 -0.0560, no message. The EKF
+  agrees: XKF2.AZ moved +0.06 to +0.07 (core 0) and -0.05 to -0.07 (core
+  1) between arming and the hover, and held there for 30 s.
+- log10, `ACC_ZBIAS_LEARN` 9 (bit 1 cleared, bit 0 still set), the first
+  flight of its boot: 116 s of fore-aft and strafe legs to 14.9 m/s.
+  Saved again, 0.0834 and -0.0226; core 1's AZ wandered between -0.06 and
+  -0.11 through the flight. IMU0 moved 0.010 and IMU1 0.033.
+
+The learner samples only level moments with little climb, and the save
+rule asks for a first flight but not for any amount of hover, so a fast
+first flight replaced a hover's calibration. Observation only; a minimum
+hover time before a save is one shape, not measured. The operator
+restored log9's values and set bit 1 without bit 0 (10).

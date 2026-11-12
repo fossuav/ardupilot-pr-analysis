@@ -213,3 +213,11 @@ race, so one clean take-off says little. log89 (3408138/707), on the
 beta's earlier land detector version, also took off in ACRO at 474.2 s
 without one. The refresh15 flight card asks for a note of any "PreArm:
 Internal errors" after every take-off instead of a ground check.
+
+## 2026-11-12: a second ACRO take-off, SFD-O4 log94 (tier 1)
+
+SFD-O4 log94 (3408138/718) on topup1 (`bcdd627e`, code `bf7a3947f8`),
+whose land detector is refresh15's: armed in ACRO at 44.2 s with the rate
+thread at 1974 Hz, NOT_LANDED at 46.0 s, no internal error (PM.InE 0
+throughout), Loiter landing at 208.9 s. Two clean ACRO take-offs on this
+PR's code now (log90, log94); it is still a race.

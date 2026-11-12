@@ -216,3 +216,40 @@ Pushed 2026-11-11: `pr-copter-pending-arm` `026ae77fc2..9e187a7e03` (fast-forwar
 - `9a088df07f`: the four pending arm messages use GCS_SEND_TEXT().
 - Copter and Replay build, the mechanical gate is clean and the Codex cold
   read APPROVE. On the beta as topup6, the message change only.
+
+## 2026-11-12: two bootstrap resets while a quad was handled (tier 1)
+
+log11 (3408138/67), SFD refresh15 (`66fe7b62`), a TBS_LUCID_H7 quad,
+`ARMING_PEND_TIM` 5, `ARMING_OPTIONS` 9 (bit 3 pending arm; bit 0 hides
+the 30 s pre-arm text). The operator held it at -82 to -87 deg pitch to
+arm in ACRO.
+
+- Switch up at 26.8 s: "Arm: Camera not ready" and "In OSD menu" (the
+  RunCam), "Arm pending". The pre-arm failures printed at 30.1, 33.4 and
+  36.4 s: the 3 s cadence holds.
+- 32.4 s, 5.6 s after the request: "Arm pending: EKF bootstrap reset".
+  Which AHRS check failed is not in the log; the 30.1 s report lists only
+  the camera. Both cores restarted at -87 deg pitch, tilt alignment took
+  8.4 and 11.0 s, and "EKF attitude is bad" failed meanwhile.
+- 36.8 s switch down, "Arm pending cancelled". 40.2 s switch up: "Arm: EKF
+  attitude is bad", "Arm pending". 43.2 s "PreArm: AHRS: EKF3[1] height
+  error 1.1m"; core 0's on-ground height filter, rebuilt from XKF3.IPD,
+  was over 1.0 m from 31.3 to 44.5 s.
+- 45.2 s, 5.0 s after the second request: a second bootstrap reset, on an
+  AHRS failure the first reset had made. The "fire once" guard lasts one
+  request: `_pending_arm_start_ms` is set again by every switch-on
+  (`AP_Arming_Copter.cpp`, derived from the source), so each re-flip
+  while the filter is still realigning can reset it again. Tilt
+  alignment completed at 47.1 s.
+- The later refusals were not the EKF: "Gyros inconsistent" at 55.3 s, a
+  second after a 5 rad/s rotation, and "Leaning" at 58.3 s (#32391).
+
+log14 (3408138/74), the same quad: a pending arm on "Rangefinder 1: No
+Data" at 338.6 s printed again at 341.6 and 344.9 s and was cancelled by
+the switch at 346.1 s with no reset, as the failing check was not the
+AHRS one. With bit 0 set the operator saw only the LED double-flashing
+yellow between arm attempts.
+
+Open, not measured: whether the reset should wait for the vehicle to be
+still, or fire at most once until the filter has realigned. A vehicle
+being picked up and turned fails AHRS checks without a failed filter.

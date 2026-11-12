@@ -938,3 +938,11 @@ held at -0.06 and -0.05, then -0.01 and 0.00 within 8 s of leaving acro.
 Taking off in ACRO the held value is the ground-learned bias without the
 motors-on offset, as the parameter description says: here 0.05-0.10
 m/s/s short of where the EKF settled after acro.
+
+## 2026-11-12: SFD-O4 log94 (tier 1)
+
+log94 (3408138/718) on topup1 (`bcdd627e`), `ACC_ZBIAS_LEARN` 10 (bits 1
+and 3, applying log89's saved 0.025 / 0.020): the Z accel bias read
+-0.10 / -0.09 at arming, stayed at -0.10 and -0.09 to -0.08 through 145 s
+of ACRO to 22.4 m/s, and read -0.08 / -0.07 at the end of the Loiter. No
+clip.

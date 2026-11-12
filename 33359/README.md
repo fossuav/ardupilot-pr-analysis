@@ -1154,3 +1154,29 @@ One IMU, ARK Flow with its AFBR range finder (15 m) on DroneCAN, no GPS,
 - log20 97-103 s, hand-held at 47-52 deg: the range finder stayed the
   height source while too tilted to fuse, so no height was fused for 5 s
   (height timeout 102.26 s, vertical flags invalid until 103.26 s).
+
+## 2026-11-12: the speed gate in VALT after a throw (tier 1, 1b)
+
+log14 (3408138/74), SFD refresh15 (`66fe7b62`), a TBS_LUCID_H7 throw quad
+with the flow set's height on baro, `EK3_RNG_USE_HGT` 24 (switch in below
+2.52 m on the AGL KF height, out above 3.6 m) and `EK3_RNG_USE_SPD` 2
+(in below 1 m/s, out above 2). VALT holds no position, and after throws
+2-4 the vehicle drifted at 2.7-2.9 m/s by GPS, the EKF agreeing, so the
+speed gate held the height on the baro with the AGL KF height under 2.52
+m for 78-95% of throws 2 and 3. Where both gates held, the EKF followed
+the range finder (throw 6: 7 of 8 one-second windows).
+
+Replay with `EK3_RNG_USE_SPD` 4 (in below 3 m/s, out above 4): EKF height
+minus tilt-corrected range over each whole VALT segment, std (peak to
+peak) in m, flown / Replayed at 4:
+
+| Throw | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| flown (2) | 0.57 (2.89) | 0.51 (2.21) | 0.31 (1.69) | 0.86 (2.97) | 0.27 (0.89) | 0.04 (0.16) |
+| Replay at 4 | 0.57 (2.94) | 0.27 (1.09) | 0.18 (0.80) | 0.80 (2.78) | 0.29 (0.88) | 0.09 (0.28) |
+
+Halved on throws 2 and 3, unchanged on 1 and 4, which flew above the
+switch-in height; refresh15's Replay at 2 reproduces the flown rows.
+Replay cannot show what VALT then flies. Over a flat field; over uneven
+ground at those speeds the range height moves with the terrain, which is
+the reason for the gate.
