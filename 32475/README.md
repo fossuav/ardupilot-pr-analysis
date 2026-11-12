@@ -1018,3 +1018,73 @@ wait. Clearing the flag on entering `Throw_Detecting`
 (`ahrs.set_vehicle_landed(false)`) restored the alignments in
 AP-Review's SITL. If #35105 merges, this branch needs that line unless
 #35105 takes it. See `../35105/README.md`.
+
+## 2026-11-12: topup1 and topup2 ported to the PR, with two review rounds, pushed `fc0fa3d4db`
+
+Branch `fix1112/32475-g`, 22 commits on the PR head `9a0a72406d`, a
+fast-forward. From the SFD beta's topup1 and topup2: the yaw target
+follows an EKF yaw reset (`800f7108c3`), the switch to THROW_SRC_SET
+once upright (`fcc1ca9b72`), the THROW_ALT_DCSND 0 settle wait
+(`45f74c3fa7`), the flow agreement check (`e5450885f3`) and its
+fail-closed form (`194fc6d1ab`), each followed by its test.
+
+Adapted for master:
+- the reset is detected from `ahrs.get_yaw_reset_count()`, as master
+  reports no reset angle;
+- `ahrs.has_status()` is `configured_backend_has_status()`;
+- the beta's `using_gps_for_pos()` is SFD-only; a new AHRS accessor
+  passes on the backends' existing `configured_to_use_gps_for_pos_XY`;
+- `ThrowTossFlowLostHoldsPosition` needs the EKF to stop aiding on an
+  empty set, which master does not; `ThrowTossWithoutFlowHoldsNoPosition`
+  turns the flow off before the toss instead, the master case the fail
+  closed check is for.
+
+Review round 1 (six Claude reviewers and a Codex cold read): two
+must-fix, both text (the parameter docs still described the hand-over
+switch; THROW_FLOW_NIS_TC_S cited #33484's lockout window, absent from
+master). Fixes on top, all unflown:
+- the flow check applies where the active set takes its horizontal
+  velocity from the flow and its position from no GPS (new EKF3 and
+  AHRS accessors), not on any non-GPS set, which held ExtNav, beacon,
+  wheel encoder and EKF2 sets with a flow sensor fitted until "staying
+  in throw";
+- the flow average runs through the throw and starts again on any
+  change of source set, not at every completion (0.8-1.1 s of level
+  hold on every flow throw before);
+- a hold the flow stops agreeing with is released, at the EKF's flow
+  gate level (THROW_FLOW_NIS_GATE, 18), so it does not toggle at 3.7;
+- the settle run starts at the arrest and the wait ends 3 s after it
+  began (THROW_DROP_ARREST_MAX_MS), not 3 s into PosHold;
+- the drop's release height follows EKF height resets;
+- the completion set comes in once actually upright, not on
+  uprighting's timeout;
+- a target taken from the entry velocity, a GPS course, is not turned
+  by a yaw reset (round 2).
+
+THROW_FLOW_NIS_AGREES 3.7 re-derived (derived from the source, not
+measured): the average is an exponential one spanning about ten
+independent samples of 10 Hz flow, so a filter that agrees stays under
+3.7 98.8% of the time (99.9% at 20 Hz), not the 95% of a 5-sample
+boxcar the comment gave.
+
+SITL at the final tree (26 throw tests pass), each new or changed test
+shown to fail without its change:
+
+| test | with | without |
+|---|---|---|
+| ThrowYawFollowsEKFYawReset | turned 2.4 deg | 88.2 deg |
+| ThrowZeroDescentSettlesBeforeHandover (now read from the log) | handed over 0.87 s into the arrest, VelZ up to 0.12-0.13 m/s | 0.37 s in, 3.11 m/s |
+| ThrowHeightSourceSwitchNoClimb (GPS 15 m below the baro) | climbed 0.00 m | 4.16 m |
+| ThrowTossWithoutFlowHoldsNoPosition | held, handed over 0.03-0.06 m/s out | "good position" with no flow, LOITER within 3 s |
+| ThrowTossIntoFlowLoiter | "flow settling", 0.17-0.22 m/s out | "good position" at once (velocity alone does not discriminate) |
+
+Untested, derived from the source only: the gate on the set's flow
+velocity, the average restart on a source set change, the release on a
+flow lapse, the upright gating and the entry velocity change.
+
+Known limit, in the fail closed commit's message: a completion set with
+no horizontal source at all is left to the EKF, which on master can
+report a dead reckoned position on it for up to 15 s; #35146, which
+stops aiding on such a set at once, covers it.
+
+Not posted to the PR, by decision: no comments on #32475.

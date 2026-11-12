@@ -645,3 +645,19 @@ flags). Carried by the SFD beta from topup29 (2026-10-21); unflown there
 as of 2026-10-23. The SFD-O4 log54 touchdown failsafe of 2026-10-22 is a
 different mechanism (the position went before land complete, through
 the EKF's ground offset); that is #34851.
+
+## 2026-11-12: the shared horizontal source helper, pushed `ba31a35a3f`
+
+Branch `fix1112/32514-b`, two commits on `236dd1f359`, a fast-forward:
+`AP_NavEKF: say whether a core's source set has a horizontal source`
+adds `AP_NavEKF_Source::haveHorizPosVelSource()`, and
+`has_horiz_pos_vel_source()` now asks it for the primary core. No change
+in behaviour; `EKFSourceSetFailsafe` and `EKFSource` pass.
+
+The helper commit is the same patch (patch-id `680cf4c4679f`) as the
+first commit of #35146, which stops EKF3 aiding at once on a set with
+no horizontal source, from the SFD beta's topup2, so whichever merges
+first, the other drops it. Its comment was reworded in that PR's review:
+it counts a velocity source the set names, not one it fuses (GPS
+velocity with POSXY not GPS, flow with EK3_FLOW_USE not 1 still count).
+Quick review: no findings from the cold read or the Codex pass.

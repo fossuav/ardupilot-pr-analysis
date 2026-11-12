@@ -1739,3 +1739,31 @@ rounding through topup1's Replay.
   on the same throw. Replay with the gate at 10 m/s, or the range finder
   as the flow set's height source, has no jump.
 
+
+## 2026-11-12: topup1 and topup2's EKF changes leave this branch for #35146 and #35147
+
+Neither change goes onto #33484, by decision.
+
+- The flow velocity set at an in-flight start of relative aiding
+  (`68c62facbf`, `dc7b9c66f2`) becomes #35147, stacked on #34630,
+  branch `pr-ekf3-flow-vel-aiding-start` (`fd2a96d8f8`, ten commits),
+  as it uses #33484's recovery and #34630's quiet option. The refactor
+  was rewritten for master's two-state AGL KF, behaviour-neutral by
+  inspection; `59f27f252d`'s unused split was dropped. Three review
+  rounds added five unflown fixes on top: the set's sample is not fused
+  again, a pending set is dropped once ordinary fusion passes both axes
+  (judged by age, as the start time is the previous update's), a stale
+  restart request is dropped, the requested restart is waited for, and
+  no set is made from the zero flow before takeoff. SITL:
+  `EK3_FlowVelocityAtAidingStart` 0.11-0.22 m/s out at 0.3 s with the
+  AGL KF option, 3.5-3.6 m/s without; its late set and ground legs fail
+  without their changes (the ground leg 2 of 2).
+- The stop of aiding on a source set with no horizontal source
+  (`75a0d0e5a2`, `7f7108a9ef`) becomes #35146, a standalone PR on master,
+  branch `pr-ekf3-no-horiz-source` (`f7dc1426d7`). Review found that it
+  stopped planes dead reckoning on synthetic airspeed and QuadPlanes
+  through an assist; absolute aiding now carries on while the wind
+  states are estimated or air data was fused in the last 7 s. SITL:
+  the copter stops at the switch from absolute and relative aiding
+  (master 14.97 s and 4.96 s); a plane with ARSPD_USE 0 keeps dead
+  reckoning (stopped 20 ms after the switch without the exemption).
