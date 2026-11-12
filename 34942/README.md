@@ -1839,3 +1839,16 @@ reset" on log89 (3408138/707, `56d1905e`) or log90 (3408138/711,
 refresh15 `c42bd1fb`). log89 re-armed 77 s after a disarm that followed a
 soft landing (1.5 g peak, 0.5 m/s), without a reboot, and was accepted. A
 re-arm after a hard landing is still owed.
+
+## 2026-11-12: if #35105 merges (tier 3, derived from the source, not measured)
+
+#35105 (rmackay9, head `3993abc2e6`) makes `onGround` true on an armed
+Copter its land detector calls landed. `onGroundHgtError()` says
+"onGround only means disarmed"; with this PR's working filter
+(`9d75f6fd6f`) it would then run while armed: from arming to
+NOT_LANDED, after landing, through a THROW wait and after an in-air
+re-arm. In AID_NONE, or in an aided mode without an agreeing measured
+vertical velocity, it fails `healthy()`, which allows an armed lane
+switch. Testing `!motorsArmed` in it keeps its meaning. Master's filter
+moves only on height timeouts, so #35105 alone does not show this. See
+`../35105/README.md`, "`3993abc2e6` against the SFD stack".

@@ -1005,3 +1005,16 @@ Replay.
   back; with the change removed it regains a position on the stale
   flow.
 
+
+## 2026-11-12: #35105 and the THROW wait (tier 3, and AP-Review's SITL)
+
+#35105 (rmackay9, head `3993abc2e6`) treats an armed Copter with
+`land_complete` set as on the ground, which covers the whole THROW wait
+(carrier drops up to 152.8 s at 31 m in the 2026-11-11 scan in
+`../35105/`). AP-Review measured ThrowDoubleDrop at that head with no
+in-flight yaw or field alignment, against two per flight on master.
+From the source, the compass is also fused past its gate through the
+wait. Clearing the flag on entering `Throw_Detecting`
+(`ahrs.set_vehicle_landed(false)`) restored the alignments in
+AP-Review's SITL. If #35105 merges, this branch needs that line unless
+#35105 takes it. See `../35105/README.md`.

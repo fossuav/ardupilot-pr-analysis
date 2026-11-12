@@ -610,3 +610,13 @@ Built copter, plane, sub, `replay` (sitl --debug --disable-scripting) and
 
 Pushed to rishabsingh3003 5e0c45cf62 -> 158e8386a3 (fast-forward from
 r1030/32232).
+
+## 2026-11-12: with #35105 (tier 3, derived from the source, not measured)
+
+Under #35105 (rmackay9, head `3993abc2e6`) an armed Copter its land
+detector calls landed is `onGround`, so `movedSinceArming` clears at
+LAND_COMPLETE and the out-of-range-low substitution is live again after
+touchdown. That should keep `gndOffsetValid` through the landing #35105
+alone fails (range finder out of range low on the ground, LAND at
++4.4 s in SITL on 2026-11-11). It also stays live through a whole THROW
+wait. Not run; the leg is open in `../35105/README.md`.

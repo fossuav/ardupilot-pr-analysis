@@ -13,6 +13,30 @@ that PR's post-landing EKF failsafe. Read `../35077/README.md` and
 `vehicle_class == COPTER && time_flying_ms == 0`, on 2026-09-30 and
 withdrew it on 2026-10-03 (its "What 'landed' means took three tries").
 
+### Head superseded 2026-11-12: `3993abc2e6`, a logged flag
+
+The head is now `3993abc2e6`, eight commits on master `546cf152a8`.
+The first three are #35128 (rmackay9): the EKF keeps a copy of the
+learned body field while it is valid and `getMagOffsets()` hands that
+out, so learned compass offsets survive landing until disarm saves
+them. The other five replace the build-type gate with a flag the
+vehicle sets:
+
+- `AP_AHRS::set_vehicle_landed()`, called from Copter's
+  `set_land_complete()` beside `set_likely_flying()`. Only Copter and
+  Heli set it.
+- AP_DAL logs it as bit 0 of a new `Flags2` byte appended to RFRN;
+  EKF3 reads `dal.get_vehicle_landed()`.
+- `detectFlight()`, non fly-forward branch: `motorsArmed &&
+  !dal.get_vehicle_landed()` sets `onGround = false`, anything else
+  `onGround = true`, `inFlight = false`. No class or build-type test.
+- `c8de8fefeb` is the EKF commit, `3993abc2e6` the autotest.
+
+On Copter the flag changes exactly when `land_complete` does, as
+`time_flying_ms` did, so the windows under "What it changes" stand.
+Every number below was taken on `06f1cf36d2` (SITL with its two
+commits on #35077 `9c25e44f45`) and has not been re-run at this head.
+
 ## What it changes
 
 `detectFlight()`, non fly-forward branch: under
@@ -27,6 +51,10 @@ also run:
 - through THROW's whole armed wait, as `land_complete` stays set until
   the throw is detected (`mode_throw.cpp` `set_land_complete(false)`);
 - after a mid-air disarm and re-arm, until throttle clears the flag.
+
+Superseded 2026-11-12 by `3993abc2e6`: the gate above is now the logged
+`vehicle_landed` flag (see "Head superseded" above). The four windows
+are unchanged.
 
 ## SITL, 2026-11-11 (tier 2)
 
@@ -151,6 +179,17 @@ those entries.
      `NavEKF3::UpdateFilter()` then allows an armed lane switch on
      `!core[primary].healthy()`, and `AP_AHRS::healthy()` reports
      false. Not tested.
+   - **Superseded 2026-11-12 for master (tier 3).** On master the
+     filter does not move on an accepted sample: `dtBaro` is taken from
+     `lastHgtPassTime_ms`, which the same sample has just set, and a
+     rejected sample never reaches the filter. It moves only on a
+     height timeout or bad IMU data, as AP-Review said at `3993abc2e6`.
+     So point 4 of comment 6799001716 does not hold on master; the
+     correction is not posted. It holds on a branch whose filter works:
+     #34942's `9d75f6fd6f` times the filter from its own last update and
+     counts rejected samples up to the gate, and the SFD beta carries
+     it. The text above is left in place because it describes that
+     build.
 3. **Replay.** AP-Review measured Rover and QuadPlane Replay diverging.
    A logged class test alone would still break Blimp logs: Blimp calls
    `set_vehicle_class(COPTER)` and never calls `set_likely_flying()`, so
@@ -160,6 +199,11 @@ those entries.
    `APM_BUILD_TYPE(APM_BUILD_Replay)` is correct for every vehicle, as
    #34292 does for its Rover exclusion. A new logged flag needs a new
    byte or message, since RFRN's flag byte has all 8 bits allocated.
+   - **Superseded 2026-11-12 by `3993abc2e6`.** The new head logs a
+     flag only Copter and Heli set, in the new byte this finding says a
+     flag needs, and AP-Review measured the Rover and QuadPlane logs
+     replaying with 0 errors. A log recorded before the change has no
+     `Flags2`; master replays it as 0 (not landed) since `9610cb59b7`.
 4. **THROW.** Not raised on the PR.
    - **Compass.** While armed and waiting, `inFlight` is forced false,
      and `fuseEulerYaw()` rejects a failed sample only `if (inFlight)`.
@@ -180,6 +224,9 @@ those entries.
    - **Scan observation, not explained:** on log34 the in-flight yaw
      alignment message came 30 ms after arming on the carrier. Replay
      owed.
+   - **2026-11-12:** AP-Review raised it at `3993abc2e6`, with SITL:
+     ThrowDoubleDrop logs no in-flight yaw or field alignment, against
+     two per flight on master. See "Reviews and posts".
 5. **Our open PRs that read these flags.**
    - #34942: `onGroundHgtError()` rests on "onGround only means
      disarmed". Under #35105 it acts while armed and landed, in aided
@@ -198,6 +245,83 @@ those entries.
      LAND_COMPLETE: 60 ms before (log54), 0.78 s before (log58 Replay)
      and 0.7 s before (log47). #35105 acts only after LAND_COMPLETE.
 
+## `3993abc2e6` against the SFD stack, 2026-11-12 (tier 3)
+
+Derived from the source at `3993abc2e6` and at SFD beta head
+`c42bd1fb40`, not measured. It adds to finding 5.
+
+The design is the one the EKF3 playbook asks for: a generic signal the
+vehicle opts into, logged through the DAL, with no vehicle-class test.
+#34292 had no such signal and withdrew its class test. The signal
+carries no new information, though: on Copter it is `land_complete`,
+and it is wrong where that is wrong, in a THROW wait and after a re-arm
+in the air. What it adds is a flag separate from `land_complete`, which
+Copter can make truer case by case without touching the land detector.
+
+- **#32232 may close the out-of-range-low landing.** Its substitution
+  (a sensor reading out of range low, with no other Good, taken as
+  `rngOnGnd` while `!movedSinceArming`) comes back at LAND_COMPLETE,
+  which should keep `gndOffsetValid` after touchdown, where #35105
+  alone loses it at +3.55-3.60 s. Not run.
+- **#34942's height check runs armed.** Its working filter is what
+  makes finding 2 real on the beta: from arming to NOT_LANDED (median
+  2.3 s, max 24.1 s in the scan), after landing, through a THROW wait
+  and after an in-air re-arm. In AID_NONE, or in an aided mode without
+  an agreeing measured vertical velocity, it fails `healthy()` and
+  allows an armed lane switch; with `SRC_PER_CORE` that changes the
+  sources flown on. Testing `!motorsArmed` in `onGroundHgtError()`
+  keeps the meaning its comment states.
+- **#32475:** finding 4, now measured by AP-Review. Its fix, clearing
+  the flag when THROW enters `Throw_Detecting`, is one line in Copter.
+- **#32471:** on hardware every accel bias axis is inhibited from
+  arming to NOT_LANDED (`onGround && !onGroundNotMoving`), which may
+  help the Z bias learned on the ground while armed (SFD-O4 log63). In
+  SITL, which has no motor vibration, the copter fuses zero velocity
+  armed on the ground, so the VRF tests may move.
+- **`EK3_MAG_CAL` 7 (#34057):** the in-flight yaw and field reset is
+  redone at each takeoff. Ground learning after a landing was already
+  on before.
+- **#33478:** its AGL KF velD fusion is gated on `inFlight`, so it now
+  stops at LAND_COMPLETE instead of at disarm.
+- **#34941 and #32972** read `get_time_flying_ms()` directly and do not
+  change on Copter.
+
+### A mid-air disarm and re-arm
+
+Disarm forces `land_complete`, and once re-armed only throttle above
+the non-takeoff level clears it, so `vehicle_landed` stays set while
+the copter falls. Master sets `onGround = false` on the first EKF cycle
+after arming. Through that window the compass is fused past its gate,
+and the in-flight yaw and field reset is held off with its flags
+cleared each cycle. #32972's SITL (`../32972/README.md` and its
+2026-09-04 review response) measured how long it lasts: re-arms in
+Stabilize at zero throttle and in ALT_HOLD with the stick at 1450, 1500
+and 1550 all stayed landed and fell at 15-17 m/s, one of them for about
+9 s.
+
+#32768 already covers the case for its arm-time height datum reset:
+`ap.disarmed_in_air` is set by a disarm with `land_complete` clear, or
+by a watchdog reset while armed, and only the disarmed land detector
+clears it, once the airframe has stopped accelerating and descending.
+With it, Copter can report landed only while `disarmed_in_air` is
+clear. `set_land_complete()` returns early when nothing changes, so the
+flag also has to be set where the land detector clears
+`disarmed_in_air`. Posted as comment 6828417700.
+
+### Carrying it on the beta
+
+`git merge-tree --merge-base 546cf152a8` of the PR head onto
+`c42bd1fb40`: the EKF3 files merge cleanly; `AP_AHRS.h`, `AP_DAL.cpp`,
+`AP_DAL.h`, `AP_Arming.cpp` and `arducopter.py` conflict. The beta's
+RFRN already uses its spare bit for #32471's `hover_z_bias_enabled`.
+
+`Flags2` grows RFRN by a byte. `9610cb59b7` ("Replay: cope with logged
+messages of a different length") is on master but not on 4.7 or the
+beta; without it, Replay of an SFD log recorded before the change reads
+that byte from past the record (the EKF3 playbook's "Never grow an
+existing DAL struct"). Carrying #35105 needs `9610cb59b7`, the THROW
+line, the `disarmed_in_air` change and the #34942 gate with it.
+
 ## Reviews and posts
 
 - **AP-Review at `285e3a8063`, 2026-11-11 06:04Z: REQUEST CHANGES.**
@@ -212,6 +336,20 @@ those entries.
   landing and the unreachable substitution, the stillness-gated paths,
   Replay and Blimp, and spool-up `healthy()`. THROW (finding 4) was left
   out by decision.
+- **AP-Review at `3993abc2e6`, 2026-11-12 08:05Z: COMMENT.** Replay now
+  uses the logged flag; the Rover and QuadPlane logs replay with 0
+  errors. Should fix: THROW, where `land_complete` stays set through
+  the carry, so ThrowDoubleDrop logs no in-flight yaw or field
+  alignment (two per flight on master). Clearing the flag on entering
+  `Throw_Detecting` restored them in its SITL, with ThrowDoubleDrop,
+  ThrowMode and EK3YawAlignEachTakeoff passing. Minor: the PR text's
+  range finder bullet, and spool-up `healthy()` (finding 2's
+  supersession).
+- **Posted 2026-11-12 15:49Z,
+  [comment 6828417700](https://github.com/ArduPilot/ardupilot/pull/35105#issuecomment-6828417700).**
+  The mid-air re-arm case, with #32768's `disarmed_in_air` as the way
+  to cover it and the early return in `set_land_complete()`. The
+  correction to point 4 of 6799001716 was not included.
 
 ## Open
 
@@ -229,3 +367,16 @@ those entries.
   #32232 stacked.
 - **#34942 and the other readers above** need re-checking if #35105
   merges first.
+- 2026-11-12:
+  - The correction to point 4 of comment 6799001716 (finding 2's
+    supersession). Not posted.
+  - **Replay at this head shows master on old logs.** The THROW logs
+    above carry no `Flags2`, so through `c8de8fefeb` they replay as
+    not landed (derived from the source). The THROW Replay needs
+    `bfea00cc4a`, which gates on the logged `time_flying_ms`, or a
+    temporary Replay change that sets the flag from RFRH on Copter
+    logs.
+  - **SITL on the beta** with #35105, `9610cb59b7` and the three
+    companion changes: the out-of-range-low landing (expected to pass
+    with #32232), ThrowDoubleDrop's alignments, an in-air re-arm leg,
+    and spool-up `healthy()` in AID_NONE.
