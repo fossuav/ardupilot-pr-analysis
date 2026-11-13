@@ -10,6 +10,12 @@ Branch `pr-avoid-flow-ceiling-backup`, head `88277a54a7`, base master
 2026-10-06 as a fast-forward of `9a09ef5238`; see "The short-reach band" at
 the end.
 
+### Head superseded 2026-11-13: GitHub head `d9116efc7c`
+
+Restacked on #33585's `7b5453dd35`, with the flow height limit lifted
+under range finder height too; see "2026-11-13" at the end. Earlier
+heads above are left as written.
+
 ## Status (one line)
 
 `adjust_velocity_z()` backed the vehicle down from the EKF optical-flow ceiling
@@ -662,3 +668,57 @@ Beta `7b00f3b5`, flow-only (no GPS), 15 m range finder: log16
 (1245450/44) spent 86.6 s above master's 9.5 m flow height cap (0.7 x 15 -
 1), peak 17.3 m, in LOITER throughout, with aiding held (see #33585's
 record, same date, for the height above the range finder).
+
+## 2026-11-13: restacked, the limit under range finder height, pushed `d9116efc7c`
+
+#35014 (`547d40894c`) and #33585 (`7b5453dd35`) were reworked and pushed
+on 2026-11-13 (their records). This PR's three commits restacked onto
+#33585's new head with no conflicts, all `=` in the range-diff:
+`8f4def62f8` `dc6a629fc8`, `9bfae9b6d9` `0e3a44849a`, `c2ac997b2f`
+`545caa41e9`.
+
+On the restack FlowCeilingBacksDownIntoRange failed. It shrank the range
+finder to 20 m at 25 m with range finder height, on the premise that the
+EKF cannot navigate above the range there; #33585 now carries flow
+navigation on above the range with range finder height too, so its
+fallback engaged and relative position was never lost. The limit's
+exclusion of range finder height was then a gap: with avoidance on,
+AC_Avoid stopped a range finder height vehicle at the limit, below its
+reach, so #33585's fallback could not be reached.
+
+Two commits on top, unflown:
+
+- `a0b75ff45c` AP_NavEKF3: lift the flow height limit under range finder
+  height too. Raised and lifted as under any other height source, with a
+  range height that passed its innovation check (`lastHgtPassTime_ms`)
+  standing in for the terrain estimator's fusion, which range finder
+  height skips. With EK3_RNG_USE_HGT's range height (active, not the
+  configured source) the limit stays, as neither measures the ground.
+- `d9116efc7c` autotest: FlowCeilingClimbsOutOnRangeHeight, and three
+  tests retargeted that relied on range finder height keeping the limit:
+  FlowCeilingBacksDownIntoRange to a 2 m range finder, too short for the
+  fallback; EK3_OptflowAboveRangefinder's terrain-data leg loses the
+  range finder at 3 m, short of the raise; EK3_FlowHeightLimitAfterRange-
+  Fallback has the climb carry on past the limit.
+
+Measured, tier 2, SITL at `d9116efc7c`: 12 flow, range height and datum
+tests pass, MaxAltFenceAvoid, MinAltFenceAvoid, OpticalFlowLimits and
+FlowCeilingShortRangeFinder among them (back at 0.5 m; climbs to 15.2 m;
+the fallback test to 76.5 m). Fix removed: with the lift kept off range
+finder height the climb is held at 4.7 m and the fallback test stops at
+13.1 m; with no limit published FlowCeilingBacksDownIntoRange never gets
+relative position back; with #35014's terrain state subtraction reverted
+the fallback test stops at 7.2 m; with terrain data lifting the limit
+without bit 2 the terrain-data leg climbs to 12.2 m.
+
+Quick review, one Codex cold read. Rejected: that the terrain-data leg
+could pass with no limit published, as flow navigation would leave
+relative aiding once the range finder is lost. With no limit published
+in that leg (the terrain-lifting mutation) the climb reaches 12.2 m and
+the leg fails. Gate and check_branch_conventions.py clean.
+
+Pushed 2026-11-13, force `c2ac997b2f...d9116efc7c`. Description updated
+the same day: the cap lifted under any height source, the range finder
+included, five commits, the two flow ceiling tests' new numbers, and the
+three retargeted tests. Still open: AP-Review's band item, waiting on a
+maintainer.
