@@ -25,6 +25,13 @@ carry was split onto its own branch and the anchored height moved into
 FuseOptFlow(), local only; see "2026-11-04: rmackay9's dev call review"
 at the end.
 
+### Head superseded 2026-11-13: GitHub head `833e3b3276`
+
+Force-pushed 2026-11-13 from `1cf2ecd440`: two EKF commits on top for
+range finder height, review fixes folded into earlier commits, and test
+work; see "2026-11-13: range finder height" at the end. Numbers above
+keep the heads they were taken on.
+
 ## Status (one line)
 
 `EK3_OPTIONS` bit 5 (`OptflowAssumeFlatGnd`) holds `horiz_pos_rel` above the
@@ -540,6 +547,13 @@ was explicitly guarded against one expression away. Guarded now.
 for. Round three listed this as "documented nowhere"; it is now in the `@Description`.
 Making the latch cover that case is a design change with no measurement behind it and
 is not in this round.
+
+*Superseded 2026-11-13: the latch now covers it. A step whose range height
+passed its innovation check counts as measuring the ground, and the range
+finder does not take the height back while flat ground is engaged; Replay
+of a customer flight and SITL behind it are in "2026-11-13: range finder
+height" at the end. The paragraph is left as written because it is what
+was true at that round's head.*
 
 **The speedup fix from round six was wrong, and measurement is what said so.**
 Round six slowed the simulation to 10x for the open-loop climb, on the theory that
@@ -1953,3 +1967,110 @@ that followed at 20-30 m, above the range: median 1.1 m/s (p95 4.9, max
 ACRO to about 28 m, mostly inside the range: median 0.68 m/s (p95 2.4,
 max 3.2). This is the drift the boot message warns of ("rangefinder max
 15m, flow above may drift"), measured; nothing here flew on it.
+
+## 2026-11-13: range finder height (`EK3_SRCn_POSZ` 2), reviewed and pushed as `833e3b3276`
+
+Range finder height was a hole. With `EK3_SRCn_POSZ` 2 the terrain
+estimator is skipped, so `gndOffsetMeasured` never latched and the
+fallback never engaged (the round-seven note above left it out of that
+round). Replay of the customer quad's log16 (1245450/44, see 2026-11-10)
+with `EK3_SRC1_POSZ` overridden to 2, on the `1cf2ecd440` code (tier
+1b): relative position dropped at 246.8 s on the climb above the 15 m
+range finder. As flown, with baro height, the flight never reaches it.
+
+Two commits on top, reworked after a full `/pr-review`:
+
+- `2c094ce5b1` hold range finder height off while flow holds the ground.
+  With range finder height the range finder took the height back on its
+  first fresh reading and reset the height to it, so a return from
+  something passed over above the range moved the height onto it. While
+  flat ground is engaged the height stays on baro; the fallback ends
+  after 2 s of fused range and the range finder takes the height then.
+- `8155747547` let flat ground engage under range finder height. A step
+  whose range height passed its innovation check (`rangeDataToFuse`,
+  the range finder both active and configured, `lastHgtPassTime_ms ==
+  imuSampleTime_ms`) counts as measuring the ground: it latches
+  `gndOffsetMeasured` and sets `gndKnownNE` and `lastGoodRngMeas`.
+  `gndHgtValidTime_ms` is not touched.
+
+The first version of the second commit (`e68e4bd4d8`, never pushed) set
+`gndHgtValidTime_ms` and `lastGoodRngMeas` in `EstimateTerrainOffset()`'s
+skip branch. The review found that it held `gndOffsetValid` (and with it
+`EKF_POS_VERT_AGL`, `getHAGL()` and flow relative position) for 5 s
+after the fallback to baro, overlapping #34851; counted samples the
+height gate had rejected; and made anchor creation depend on a timing
+window. Replay showed the first (tier 1b): at touchdown in log16 with
+POSZ 2 it kept relative position until 284-286 s, where `1cf2ecd440`
+and the rework drop it by 280 s (2 s samples). The rework never
+anchors from range height.
+
+The hold changed what `EK3_OptflowAnchorToRangeHeight` covers. Under
+flow navigation the terrain estimator now measures the ground, ending
+the anchor, before the range finder takes the height, so the hand-over
+in `selectHeightForFusion()` was no longer reached: with it removed the
+test still passed at -0.3 m. The -8.8 m of 2026-11-04 (`af48119e41`) is
+from before the hold. A second flight in a source set without flow
+reaches it again. In that flight the XKF5 HAGL check alone does not see
+the hand-over missing (worst -0.7 m), because HAGL stays consistent
+while the vehicle flies down; the height-step and holding-height checks
+added with it do.
+
+Measured, tier 2, SITL, on the code pushed as `833e3b3276` unless a
+head is named; "fix removed" is a mutation of that code:
+
+| test, leg | with the fix | fix removed |
+|---|---|---|
+| AboveRangefinderRangeHeight, climb out of an 8 m range | relative position held | lost at about 8 m, EKF failsafe (at `1cf2ecd440`) |
+| same, 1 s return of 2.5-3.5 m at 20 m, XKF1 against SIM | height moved 0.04 m, 15-16 readings in band | hold removed: -18.7 m. First `e68e4bd4d8` without the hold: 9.4 m, on relative_alt in an earlier version of the test |
+| same, back in range at 5 m, 5 m baro drift | vehicle stayed at 5.37-5.38 m, baro +0.64-0.66 hPa | fallback never ending: followed the baro to 6.91 m |
+| same, range lost at 5 m | refused (flags 39) | last good reading check removed: held |
+| same, climb out | held | last reading not recorded under range height: lost |
+| AnchorToRangeHeight, flow (SRC2, LOITER) | HAGL -0.2 to -0.3 m, height -0.2 m, baro +0.67 hPa | hand-over removed: -0.3 m, passes |
+| same, no flow (SRC3, ALT_HOLD) | HAGL -0.6 m, height -0.5 m, held 3.4-3.5 m, baro +0.63 hPa | hand-over removed: height stepped -8.7 m (ground rose 8.0 m), flew into the ground |
+| AboveRangefinder, range lost after a climb out, descent to 2.4-3.0 m | refused | height limit removed: held |
+| same, brief return held 1.65 s, 1.7-1.95 s window | not taken as the ground; 1.9 s on the first attempt, 3 runs | end timed on the clock: taken as the ground at 1.7 and 1.9 s |
+
+The descent leg replaced one at 2.5 m that the last good reading check
+refused on its own, so it could not fail with the height limit removed.
+The 1.6 s case's old 1.6-2.0 s window sat on both thresholds; 1.7-1.95 s
+with five attempts is what replaced it. Each of fourteen flow, terrain
+and range finder tests, `EK3_RNG_USE_HGT` among them, passed on the
+pushed C++ with its pushed test code.
+
+Replay of log16 at the rework (tier 1b): as flown, every record is
+byte-identical to `1cf2ecd440`. With POSZ 2, relative position held
+248-258 s above the range where `1cf2ecd440` dropped it, and dropped at
+touchdown at 280 s as `1cf2ecd440` does.
+
+Also in this push: "landing" corrected to "disarm" in two comments and
+in the core commit's message (EKF3 `onGround` is `!motorsArmed` on both
+`detectFlight()` branches); `updateFlatGroundAssumed()` described above
+its definition; the four copies of the EKF flag read, three of the
+terrain tile wait and two of the rising-ground traverse made methods.
+
+Rejected: the quick review's cold read said `SelectFlowFusion()`'s
+magnetometer deferral could miss the range height bookkeeping in a step
+`SelectVelPosFusion()` had fused. Both are called unconditionally in the
+same `runUpdates` block and defer on the same test
+(`magFusePerformed && dtIMUavg < 0.005f` and their own flag), so they
+defer together; the terrain estimator's existing range fusion relies on
+the same.
+
+Pushed 2026-11-13, force `1cf2ecd440...833e3b3276`. Rewritten, old to
+new: `7ab5467649` `dbd53233b4` (message only), `23a783c47f`
+`8010498c5b` (the two legs above, message), `b968e0ff2e`
+`4c88fcf711`, `2f02cfd690` `c80a3845da`, `8bb9b58062` `405349e057`
+(comments), `143a175526` `0a3bcda601`, `1cd6570c02` `8fd57cc9ee`,
+`1cf2ecd440` `fe50276196`; new
+`2c094ce5b1`, `8155747547`, `55e7a8551d`, `047ac1a7fa`, `833e3b3276`.
+#35014's five commits are unchanged. The PR description was updated the
+same day: range finder height in the summary and a detail paragraph, and
+the Replay line.
+
+Flight status: the two EKF commits are unflown; the SFD beta carries
+this PR at `1cf2ecd440`. Not run: range finder height with terrain data,
+the feature-off builds since the rework, any board but SITL.
+
+Open: peterbarker's review of 2026-11-11 (six comments, answers drafted,
+none posted; three need code: the `optflow_enabled()` rename, the
+`20.0f` constant, the one-shot warning); #35014's four review items.
