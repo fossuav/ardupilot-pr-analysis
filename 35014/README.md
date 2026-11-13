@@ -217,3 +217,14 @@ Pushed 2026-11-05 as a fast-forward, `c75fc5a173..fb335374dd` on
 test). Reply posted:
 https://github.com/ArduPilot/ardupilot/pull/35014#issuecomment-6654939868
 (the fix, and the minor left as a disclosed limit).
+
+## 2026-11-13: the carry flew (tier 1b)
+
+Replay of the throw quad's seven logs 13-19 with the terrain carry
+(`a8a836c318`) removed differs on all of them, by up to 19.5 m on log16,
+and as flown is mostly better. The external nav height source fix
+(`c5b65443f5`) did not run (no external nav), and the flow limit fix
+(`0b2bbcffb8`) could not act, as its only consumer, AC_Avoid's vertical
+limit, was off (`AVOID_ENABLE` 0); without it the flow ceiling would
+have come within 2.9 m on logs 14, 15 and 19, against 5.9 m with it.
+Nothing folded; a rewrite would mean restacking #33585 and #34380.

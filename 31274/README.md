@@ -539,3 +539,10 @@ while disarmed, falling below 1% by 6.8 s, on log89 (3408138/707,
 starting up (mechanism not checked). By the first arm it had settled
 (log89 read 0.05% at 292.9 s). Armed, at most 0.33% (log89, ESC instance
 3) and 0.27% (log90). The card's motor test is still owed.
+
+## 2026-11-13: the ESC.Err doc folded
+
+The ESC.Err field description (`c922349b3c`) folded into the DShot
+percentage doc: 14 commits to 13, `ef790efa0b`, tree unchanged. The
+stale latch stays on top: no serial ESC telemetry, and no log near the
+71.6 min wrap.

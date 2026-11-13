@@ -253,3 +253,14 @@ yellow between arm attempts.
 Open, not measured: whether the reset should wait for the vehicle to be
 still, or fire at most once until the filter has realigned. A vehicle
 being picked up and turned fails AHRS checks without a failed filter.
+
+## 2026-11-13: a pending arm that completed itself, folds held for review (tier 1)
+
+The base flew again: on the throw quad's log19 a pending arm completed
+by itself, a case these notes listed as not yet covered, and on log14
+one was cancelled by the switch. log14 sat pending 7.5 s against
+`ARMING_PEND_TIM` 5, failing on the range finder, with no EKF bootstrap
+reset (`7b203714eb`); both logs printed one "Arm:" line and no
+"PreArm:" copy (`026ae77fc2`). The flights support folding those two
+and a comment into the base, a doc into its AP_Arming commit and a
+comment into the Replay event commit; left, as the PR is under review.

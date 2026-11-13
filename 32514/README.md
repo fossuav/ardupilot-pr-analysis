@@ -661,3 +661,15 @@ first, the other drops it. Its comment was reworded in that PR's review:
 it counts a velocity source the set names, not one it fuses (GPS
 velocity with POSXY not GPS, flow with EK3_FLOW_USE not 1 still count).
 Quick review: no findings from the cold read or the Codex pass.
+
+## 2026-11-13: AP-Review at `ba31a35a3f`, and the flight audit
+
+AP-Review: COMMENT, no blockers. Its notes, none acted on: the query
+re-reads the source set without the AHRS semaphore (a Lua race that
+needs Linux or a raised thread priority); `ba31a35a3f` could fold into
+`54b73efdd2`; the description names has_horiz_pos_vel_source(), where
+the AHRS method is configured_to_use_horizontal_position_or_velocity_source().
+The audit of the 11-12 and 11-13 flights: no EKF failsafe came, so the
+spool-down hold (`a18542c8fb`) did not run; the helper shared with
+#35146 stays as it is, and the fold above is optional, both commits
+unflown.

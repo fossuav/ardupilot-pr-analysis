@@ -1329,3 +1329,10 @@ while the GPS altitude was still falling from 114.4 m; it read 112.3 m by
 arming. The altitude above sea level is as the GPS had it at arming; only
 the height above the origin (`CTUN.Alt`, `XKF1.PD`) starts away from zero.
 Recorded, not acted on.
+
+## 2026-11-13: arm datum steps on the throw quad (tier 1, reported only)
+
+The arm-time reset fired on all 34 arms of the 11-12 and 11-13 flights
+with no refusal. The steps were -1.79 to +2.32 m on SFD-O4 and -4.07 to
++3.42 m on the throw quad, whose two cores stepped differently by up to
+5.3 m (log14, 295.6 s). Nothing changed: the PR is under review.

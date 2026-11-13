@@ -559,3 +559,12 @@ reached, as on log20 above (derived from the source and the SITL test,
 not replayed here). This is the carry the fix was written for, and both
 halves of the PR have now flown: the hold in the air (logs 84, 87, 88)
 and the timeout on the ground here.
+
+## 2026-11-13: the not-flying timeout flown again, folded (tier 1b)
+
+Replay with it removed loses all five timeouts on SFD-O4 log89 (handled
+disarmed at 45-96 deg) and one per core on the throw quad's log16
+(disarmed after landing); as flown is better: log89 p95 0.73 against
+0.84 m/s, log16 1.31/1.19 against 1.70/1.83 m/s. Folded into the tilt
+timeout, and its test into the tilt test: 4 commits to 2, `77c66ce184`,
+tree unchanged.

@@ -1088,3 +1088,48 @@ report a dead reckoned position on it for up to 15 s; #35146, which
 stops aiding on such a set at once, covers it.
 
 Not posted to the PR, by decision: no comments on #32475.
+
+## 2026-11-13: the flow-lost position requirement flew into an RTL, the LAND fix, the fold (tiers 1, 2)
+
+AP-Review's blocker at `fc0fa3d4db`: a drop whose hold holds level
+because the flow stopped agreeing lost its position requirement with
+the controller flag, so once relative aiding stopped the EKF failsafe
+only reported and the vehicle held level with no horizontal control.
+The requirement now holds from the first time the hold has held a
+position (`77dfbb8635`); ThrowDropFlowLostFailsafe lands on the EKF
+failsafe with it and gets only "EKF Failsafe" without it, on master and
+on the beta (tier 2). From the port's review, the hold counts only while
+throw runs, as set_mode() asks before init(); no SITL setup reaches that,
+as a disarmed copter keeps a predicted relative position.
+
+Flown on the beta's refresh16 topup1, the throw quad's log19 third throw
+(tier 1): the hold sank to the ground on the baro height with the range
+finder out of the height fusion; on the ground the flow stopped ("Throw
+flow lost, holding level"), drag fusion made the EKF report dead
+reckoning, and the dead-reckoning failsafe (`FS_DR_ENABLE` 2) switched
+THROW to RTL at once, which climbed to 20 m. Without the change no
+failsafe reaches the level hold. Kept: the hold now takes the failsafes
+a Loiter would; the vehicle's card sets `FS_DR_ENABLE` 0.
+
+AP-Review's should-fix: with `THROW_NEXTMODE` LAND the hand-over did
+not wait for the flow, and LAND's init takes a position whenever
+position_ok() is true, so it landed under position control on the
+velocity the throw had rejected. A hand-over to LAND before the flow
+agrees now tells LAND to land level (`3276864e54`).
+ThrowTossIntoLandWithoutFlow: 244 velocity PID records in LAND without
+the change, none with it (tier 2). ThrowTossWithoutFlowHoldsNoPosition
+failed 5 of 9 runs on AP-Review's machine (none of 6 here, old or new):
+the flow now comes back as the hand-over starts its 5 s wait
+(`3e45c3b2f5`). All 28 throw tests pass on master.
+
+The squash audit of the 11-12 and 11-13 flights folded (each pair
+flown and analysed): the hand-over guard into "hold a position that
+comes back", and its check into "cover the throw mode fixes"; the
+fresh-flow check, the flow-lost level hold and the flow-lost position
+requirement into "throw waits for the flow to agree", its three AHRS and
+EKF accessor commits moved ahead unchanged and the tests into its test;
+the two test fixes for the switch once upright into one. The running
+throw guard is its own commit again, as nothing showed it acting. 62
+commits to 55, `fe3213222c`, tree unchanged. The zero-descent hold into
+the hand-over where it stops (both flown) is left optional; 21 unflown
+commits stay on top. Nothing is posted on the PR.

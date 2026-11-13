@@ -1852,3 +1852,14 @@ vertical velocity, it fails `healthy()`, which allows an armed lane
 switch. Testing `!motorsArmed` in it keeps its meaning. Master's filter
 moves only on height timeouts, so #35105 alone does not show this. See
 `../35105/README.md`, "`3993abc2e6` against the SFD stack".
+
+## 2026-11-13: the static yaw store flew on log13 (tier 1b)
+
+The static yaw stored within 5 s of a yaw fusion (`c620168731`) flew on
+the throw quad's log13, the only log of the 11-12 and 11-13 flights with
+no yaw source on set 3: waiting on set 3 the yaw converged on DCM, and
+without it was held 0.28-0.39 deg off; velocity against GPS unchanged.
+Its target (`eac9b68800`) conflicts, through `42bd695cbb`, so folding it
+means merging it into its neighbour (17 commits to 15), left as Andy's
+call. The 2 m clip (`9b6a08bc8e`) did not run: no height sample was
+rejected while disarmed (XKF4.SH at most 0.31).

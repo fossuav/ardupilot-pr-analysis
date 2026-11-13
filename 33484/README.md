@@ -1767,3 +1767,22 @@ Neither change goes onto #33484, by decision.
   the copter stops at the switch from absolute and relative aiding
   (master 14.97 s and 4.96 s); a plane with ARSPD_USE 0 keeps dead
   reckoning (stopped 20 ms after the switch without the exemption).
+
+## 2026-11-13: the restart confirmation flew, the other-axis gate again (tier 1b)
+
+The AGL KF restart confirmation (`e424f24f58`) printed "flow recovery
+deferred, range restarted" on the throw quad's logs 15, 16 and 17, and
+acted silently on 18 and 19, where it held #35147's set at aiding
+start. Over nine throws it held the first step 0.16-0.48 s, and over the
+next 2 s the step was closer to GPS on 9 core-throws, further on 3 and
+the same on 4. On log18 it held the set 0.28 s with both cores 8-9 m/s
+out, and the set then taken was worse (1.29 against 1.14 m/s on core 0,
+0.58 against 0.31 on core 1): part of that flight's slow core 0.
+
+The other-axis gate (`e43b52a0e3`) acted on logs 13 and 14, neutral to
+slightly worse (peaks 3.6 against 2.2 m/s, 0.93 against 0.30): six
+actions on two airframes now, none shown better. `daaca832c4` flew on
+logs 15-16, two cases better, two worse, one the same. Nothing folded:
+the confirmation stays its own commit until the gate is settled, and a
+test comment (`913c4da2cf` into `8dabcc9dfc`) waits for the next
+restack, as it would move #34630 and #35147.
