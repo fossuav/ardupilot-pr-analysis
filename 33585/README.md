@@ -38,6 +38,11 @@ Force-pushed again the same day from `833e3b3276`: peterbarker's
 rename folded in, and the flow drift warning moved to arming under
 11 m; see "2026-11-13 (later)" at the end.
 
+### Head superseded 2026-11-13 (night): GitHub head `7b5453dd35`
+
+Restacked on #35014's review fixes, its own commits unchanged; see
+"2026-11-13 (night)" at the end.
+
 ## Status (one line)
 
 `EK3_OPTIONS` bit 5 (`OptflowAssumeFlatGnd`) holds `horiz_pos_rel` above the
@@ -2154,3 +2159,15 @@ five commits and `18dd1828f8` are unchanged.
 
 Open: #35014's four review items, and DevCallEU on #35014. The two
 range finder height commits and the warning commit are unflown.
+
+## 2026-11-13 (night): restacked on #35014's review fixes, `7b5453dd35`
+
+#35014 was reordered and two of its tests strengthened (its record,
+2026-11-13 later). This branch was rebased onto it with no conflicts:
+all 17 of its own commits are patch-identical (`git range-diff`), and
+its tree is the previous head's plus exactly #35014's test changes. It
+builds, and EK3_TerrainStateFollowsDatumReset (0.50 m at the range
+finder return) and EK3_FlowHeightLimitAfterRangeFallback (6.05 m step,
+13.1 m) pass on it. Pushed 2026-11-13, force
+`e6600ca1f1...7b5453dd35`. #34380 still sits on `1cf2ecd440` and needs
+restacking onto this head.

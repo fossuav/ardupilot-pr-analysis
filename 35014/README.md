@@ -23,6 +23,11 @@ Superseded 2026-11-04 (later) by `r1104/33585-carry2` after the
 pre-submission /pr-review; see "Review fixes" below. The paragraph above
 names the branch the review read.
 
+### Head superseded 2026-11-13: GitHub head `547d40894c`
+
+Reordered with the flow height limit fix first, two tests strengthened
+and four messages reworded; see "2026-11-13 (later)" at the end.
+
 ## What it fixes
 
 The terrain state is a down position in the vehicle's vertical datum, so
@@ -228,3 +233,60 @@ and as flown is mostly better. The external nav height source fix
 limit, was off (`AVOID_ENABLE` 0); without it the flow ceiling would
 have come within 2.9 m on logs 14, 15 and 19, against 5.9 m with it.
 Nothing folded; a rewrite would mean restacking #33585 and #34380.
+
+## 2026-11-13 (later): the review's four items, pushed as `547d40894c`
+
+The full /pr-review of #33585 on 2026-11-13 read these five commits too:
+no must-fix, four should-fix, all answered.
+
+1. The series did not bisect: from the carry to its test, a range finder
+   to baro to range finder episode with range finder height and flow
+   moved the flow ceiling, which `0b2bbcffb8` fixed three commits later.
+   That commit now comes first (`b5602b39ca`), its message reworded: on
+   master alone it moves the limit by the ground clearance at start
+   (tier 3). It builds on its own.
+2. ARCH-1: after a fall back and return under range finder height the
+   height keeps the baro's datum, and what reads the altitude above home
+   or origin carries the part of the baro step the baro offset filter had
+   not absorbed: the fence's ALT_MAX in those frames, AUTO and GUIDED
+   relative-altitude targets, RTL_ALT, the altitude a GCS shows. The
+   carry commit's message and the description now name them. Derived
+   from the source, not measured.
+3. The range finder exclusion in ResetPositionD() had no test. A second
+   leg of EK3_TerrainStateFollowsDatumReset points a 20 m range finder
+   away, lets the baro drift 5 m low while it is the height source, gives
+   the range finder back and checks height above ground against SIM
+   truth at the reset sample. Tier 2: 0.50 m off at a -5.39 m reset;
+   with the exclusion removed, 4.87 m off. A first version (3 m drift,
+   worst error over the next 3 s) could not tell them apart, 0.52 m
+   against 0.86 m: without the exclusion, range height fusion pulls
+   height above ground back within about 0.4 s (XKF5 trace, -0.86 m at
+   the reset with the vehicle still climbing, near 0 by 0.4 s later). So
+   the exclusion prevents a brief step, not the lasting error the review
+   derived ("until range height fusion or the 5-10 s timeout reset").
+4. EK3_FlowHeightLimitAfterRangeFallback never showed a datum reset had
+   happened. It now requires the terrain state to step by 3 m or more at
+   the fall back (5.56-6.05 m); with the baro step removed, the climb
+   still stopped at 13.1 m, and the test now fails there.
+
+Notes taken, as text: "with or without a flow sensor" is qualified to
+builds with optical flow support; the two-hop gap is no longer "within
+5 s" but any time while the range finder is still lost (#33585's range
+height latch closes it, derived); the switch to AID_NONE writes
+position.z from the take-off height directly (Control.cpp), neither
+carried nor reported, as on master. Not acted on:
+EK3_TerrainStateFollowsDatumReset catches a revert of the reset-before-
+prevHgtSource order only about 4 runs in 5; the "ground measured in
+flight" comment also latches a range fusion in the 5 s before arming.
+
+Quick review: one Codex cold read of the changes and the five messages,
+no findings. Gate and check_branch_conventions.py clean.
+
+Pushed 2026-11-13, force `fb335374dd...547d40894c`. Old to new:
+`0b2bbcffb8` `b5602b39ca` (moved first, message), `a8a836c318`
+`4c34439be1` (message), `c5b65443f5` `0dda0e1fba`, `c75fc5a173`
+`46d5287139` (the leg, message), `fb335374dd` `547d40894c` (the check,
+message). No C++ changed; the flown carry commit's message did. The
+description was updated the same day. #33585 is restacked on it
+(`7b5453dd35`); #34380 still sits on #33585's 2026-11-05 head
+`1cf2ecd440` and needs restacking.
