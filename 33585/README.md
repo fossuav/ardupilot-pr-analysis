@@ -32,6 +32,12 @@ range finder height, review fixes folded into earlier commits, and test
 work; see "2026-11-13: range finder height" at the end. Numbers above
 keep the heads they were taken on.
 
+### Head superseded 2026-11-13 (later): GitHub head `e6600ca1f1`
+
+Force-pushed again the same day from `833e3b3276`: peterbarker's
+rename folded in, and the flow drift warning moved to arming under
+11 m; see "2026-11-13 (later)" at the end.
+
 ## Status (one line)
 
 `EK3_OPTIONS` bit 5 (`OptflowAssumeFlatGnd`) holds `horiz_pos_rel` above the
@@ -2074,3 +2080,77 @@ the feature-off builds since the rework, any board but SITL.
 Open: peterbarker's review of 2026-11-11 (six comments, answers drafted,
 none posted; three need code: the `optflow_enabled()` rename, the
 `20.0f` constant, the one-shot warning); #35014's four review items.
+
+## 2026-11-13 (later): peterbarker's review answered, pushed as `e6600ca1f1`
+
+peterbarker's six comments of 2026-11-11 answered, three of them in
+code, as replies on each inline comment:
+https://github.com/ArduPilot/ardupilot/pull/33585#discussion_r4569252565
+and the five after it.
+
+- The rename he suggested, `optflow_enabled()` to
+  `optflow_enabled_on_any_source()`, folded into the commits that added
+  the function and its three callers (`a0166ebf95`, `197b465ba7`,
+  `8b7b156247`), each built on its own. No behaviour change.
+- The flow drift warning, as its own commit `08d9ca53a2` on top, since
+  the boot warning has flown (the message is in SFD-O4 log89, see
+  2026-11-12):
+  - once each time the motors arm, rather than once 5 s into boot. The
+    trigger is the soft-armed flag, so a motor test counts too; a range
+    finder that appears late warns once it is there.
+  - under 11 m rather than 20 m. The 6 m SRTM figure behind 20 m had no
+    good source; the record's tier-1 figure, the database's error
+    changing by 3.4 m (p90) between points 50-100 m apart (2026-10-01,
+    SFD-O4 logs 5-17), is 30% of 11 m, and 30% remains a judgement.
+    Vehicles with 11-20 m range finders, the 15 m ones among them, no
+    longer warn.
+  - not under 2.86 m, where there is no fallback, unless bit 2 is set
+    with terrain support compiled in. The 2.86 m test is shared with
+    the fallback as `rngMaxAllowsFlatGround()`.
+  - Left as it is: with bit 2 set, terrain support compiled in and
+    `TERRAIN_ENABLE` 0, a range finder under 2.86 m still warns; the EKF
+    cannot see that terrain is disabled.
+
+Measured, tier 2, SITL, on the code pushed as `e6600ca1f1`:
+`EK3_OptflowAboveRangefinder` passes, with the 8 m warning at all 19
+armings and never at 2 m or 11 m. Fix removed: decided while disarmed,
+it fails "went out before arming"; once per boot, no warning at the
+second arming; without the 2.86 m test, it warns at 2 m; with a 12 m
+threshold, it warns at 11 m. Copter builds with each of
+`EK3_FEATURE_OPTFLOW_FUSION`, `AP_RANGEFINDER_ENABLED` and
+`EK3_FEATURE_OPTFLOW_SRTM` off (full rebuilds, the define confirmed in
+`hwdef.h`), the last again after the bit 2 term changed. That closes
+"the feature-off builds since the rework" in the entry above.
+
+Review. A quick review before the push found four things in the first
+version, which checked only on the disarmed-to-armed step: a late
+DroneCAN range finder got no warning all flight; "at each arming"
+overstated the soft-armed trigger; the 11 m test leg configured 15 m;
+no second arming was tested. All fixed. The re-review's audit closed
+them and peterbarker's "why 30%" point; its cold read found the bit 2
+term warning with terrain support compiled out, fixed. Rejected: "the
+amend! commits have invalid subsystem prefixes"; they were squashed
+before the push.
+
+The replies: the RTER record needs no timestamp, as the EKF stamps
+terrain data on arrival and Replay feeds it back at the same point in
+the frame sequence, at most 70 B/s and only with `LOG_REPLAY`; the
+rename, the "relative error" comment, the one-shot and the 20 m point
+each name the commit. On the label: #35014 was split out of this PR
+after DevCallEU went on here and should carry it instead. peterbarker
+took the label off this PR on 2026-11-11; #35014 does not have it yet.
+
+The PR description's paragraph on the warning was updated the same day.
+
+Pushed 2026-11-13, force `833e3b3276...e6600ca1f1`. Rewritten, old to
+new: `4beeb51492` `a0166ebf95` (renamed, message), `dbd53233b4`
+`197b465ba7` (callers), `8010498c5b` `34f9074f8b`, `4c88fcf711`
+`d7735909bf`, `c80a3845da` `8b7b156247` (caller), `405349e057`
+`53d1ade829`, `0a3bcda601` `21f9076020`, `8fd57cc9ee` `7232aa09b0`,
+`fe50276196` `8069fd83d7`, `2c094ce5b1` `f211e98080`, `8155747547`
+`08b25c9121`, `55e7a8551d` `11087b5a94`, `047ac1a7fa` `b74d83b790`,
+`833e3b3276` `bb475612b5`; new `08d9ca53a2`, `e6600ca1f1`. #35014's
+five commits and `18dd1828f8` are unchanged.
+
+Open: #35014's four review items, and DevCallEU on #35014. The two
+range finder height commits and the warning commit are unflown.
