@@ -819,3 +819,15 @@ intended), the stack note CLOSED.
 
 The description's band paragraph names baro height only; a line for
 range finder height is drafted.
+
+Pushed 2026-11-14, force `18d69e5ccf...da37165080`. GitHub then showed
+it conflicting with master: master's `c0a06ca560` adds
+FenceTypeChangeTakesEffect where this PR's flow ceiling tests go (the old
+head conflicts the same way). The stack, #35014 and #33585 included, was
+replayed onto master `74f0f83f08` as `2b1e09671f`: one additive hunk,
+both sides kept, the branch's patch otherwise identical. There,
+FlowCeilingShortRangeFinder (the band numbers unchanged),
+FlowCeilingBacksDownIntoRange, FlowCeilingClimbsOutOnRangeHeight,
+OpticalFlowLimits, EK3_OptflowAboveRangefinder,
+EK3_OptflowAboveRangefinderRangeHeight and FenceTypeChangeTakesEffect
+pass (tier 2). Not pushed yet.

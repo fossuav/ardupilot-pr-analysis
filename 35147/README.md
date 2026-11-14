@@ -192,3 +192,5 @@ Stack: `1024d0cf57`, `0f98f70cc6`, `f92e8ec2c2`, `787713cfbd`,
 `e15033f866`, `7b5a06b33f`, `021bfa1b95`. `/pr-review --quick`: gate
 clean, Codex cold read of `021bfa1b95` found nothing, audit CLOSED on
 both minors.
+
+Pushed 2026-11-14, force `24e0e6970f...021bfa1b95`; mergeable.

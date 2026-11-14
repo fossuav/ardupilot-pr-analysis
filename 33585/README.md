@@ -2268,3 +2268,5 @@ leg in band at the first takeoff); with the hold reverted the range
 height test fails as above. `/pr-review --quick`: gate clean (notes
 only), Codex audit CLOSED on both minors, the cold read's one finding
 answered as above. Unflown (test only).
+
+Pushed 2026-11-14, fast-forward `9709e5fd42..2a676c10d3`.
