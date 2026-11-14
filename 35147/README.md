@@ -153,3 +153,42 @@ same set at the same sample (the rework moves other records by at most
 - One noisy flow sample can make the set (2026-11-14, 3.9 m/s from a
   hover); a check against a second sample, or against the IMU, is not
   written.
+
+## 2026-11-14 (later): AP-Review at `24e0e6970f`; the set's restart request ends with its wait, the core message reworded
+
+AP-Review round 5 (COMMENT, 11:58). New minor: the 5 s expiry of the set
+at aiding start was checked only in InitVelocityFromFlow(), which runs
+after UpdateAglKf(), so a restart asked for in the last range interval
+before the deadline was still taken from the next new reading after the
+set had given up: the AGL KF velocity zeroed and the lockout recovery's
+resets held off for the restart's three confirming readings. Confirmed
+from the source (tier 3).
+
+`021bfa1b95` AP_NavEKF3: end the flow velocity set's wait ahead of the
+AGL KF update. The expiry moves to SelectFlowFusion(), ahead of
+UpdateAglKf(), gated on `flowVelInitPending`; `aglKfRestartRequested` is
+set only while the set is pending and is cleared whenever it ends.
+Unflown.
+
+- Replay (tier 1b) of the throw quad's logs 13-19 through this PR's head
+  and the fix: identical but for 8-32 bytes a log, every one of them in
+  a timing field of one message that differs as much between two Replays
+  of log17 through the same build (14 bytes, the same records). Flow
+  velocity resets ran on the replayed cores in six of the seven (1-6 a
+  core); log15 has none, as without #35146 its throws do not start
+  relative aiding from none. The drop of the request never acted on
+  these flights, as before.
+- SITL (tier 2): EK3_FlowVelocityAtAidingStart passes. The case itself,
+  a restart asked for within one range interval of the deadline, is not
+  produced in SITL; derived from the source, as the drop was.
+
+The round's other minor, the core commit's message: its Replay
+paragraph was taken on a build (`dc7b9c66f2`) that did not yet keep the
+set's sample out of fusion, while the six flown throws (topup1,
+`59643f9f5b`) ran with it. `0f98f70cc6` (was `d3a6ba9c34`) now says which
+ran which; tree unchanged, the other commits `=` in range-diff.
+
+Stack: `1024d0cf57`, `0f98f70cc6`, `f92e8ec2c2`, `787713cfbd`,
+`e15033f866`, `7b5a06b33f`, `021bfa1b95`. `/pr-review --quick`: gate
+clean, Codex cold read of `021bfa1b95` found nothing, audit CLOSED on
+both minors.

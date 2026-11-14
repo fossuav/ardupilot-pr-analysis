@@ -2225,3 +2225,46 @@ engages on the terrain estimator's or range height's ground, not on
 `gndOffsetValid`). Whichever of this PR and #34851 merges second takes it.
 
 Reply posted 2026-11-14: https://github.com/ArduPilot/ardupilot/pull/33585#issuecomment-6876422231
+
+## 2026-11-14 (later): AP-Review at `9709e5fd42`; the two test minors, `2a676c10d3`
+
+AP-Review round 19 (COMMENT, 11:59): the EK3_RNG_USE_HGT hold and the
+retries confirmed, two new test-reliability minors. Two commits on top,
+test only:
+
+- `8027730822` autotest: fly a short range finder takeoff again when it
+  misses the band. EK3_OptflowAboveRangefinder's short range finder leg
+  needs the takeoff to settle with the range finder at 2.0-2.75 m and
+  checked that once (the bot saw a miss 1 run in 11). The takeoff is
+  flown again, up to three times, as the other band legs do, and the
+  helper only it used is gone.
+- `2a676c10d3` autotest: fail the switch check only on an innovation that
+  stood still. The landing leg of EK3_OptflowAboveRangefinderRangeHeight
+  now fails on fewer than 2 distinct XKF5.RI values over the return's
+  last 0.6 s, against 3.
+
+What the innovation does (tier 2, SITL, three runs at the head and one
+with `4eb6efe39e`'s hold reverted, from the onboard logs): at the head RI
+changes about every 0.1 s through the return but pauses for up to 0.40 s,
+and one run left 2 values in the window, which the limit of 3 would have
+failed (the bot's runs gave 5, 6, 3, 6, 5). With the hold reverted RI
+changes once, 1.30 s before the return's end, and stands still from
+there: 1 value, and the leg fails "the range finder took the height on a
+brief return in a landing" at the limit of 2.
+
+A Codex cold read pointed out that a limit of 2 lets a switch late in the
+window through. It does, and so did 3: as RI pauses for up to 0.4 s with
+no switch, no window on it can tell a switch in the return's last 0.4 s
+or so from a pause. Over 0.6 s with a limit of 2, a switch made before
+about the last 0.5 s is seen. The comment over the check now says that;
+it had claimed a switch anywhere in the window was seen. The EKF logs
+nothing that names its active height source, so RI is the only signal
+the test has. The first version of the commit (`f89b78ca7e`, not pushed)
+differed only in that comment.
+
+Tests (tier 2): EK3_OptflowAboveRangefinderRangeHeight 4 of 4 and
+EK3_OptflowAboveRangefinder 1 of 1 at the head (the short range finder
+leg in band at the first takeoff); with the hold reverted the range
+height test fails as above. `/pr-review --quick`: gate clean (notes
+only), Codex audit CLOSED on both minors, the cold read's one finding
+answered as above. Unflown (test only).

@@ -783,3 +783,39 @@ gate clean, Codex audit CLOSED on blocker 1 and OPEN on the band. Pushed
 2026-11-14, force `d9116efc7c...18d69e5ccf`. Unflown.
 
 Reply posted 2026-11-14: https://github.com/ArduPilot/ardupilot/pull/34380#issuecomment-6876422082. Description updated the same day: the stack line names #34851's two commits, and a paragraph under Description gives the range finder height case and the fallback engagement.
+
+## 2026-11-14 (later): AP-Review at `18d69e5ccf`; the band pinned under range finder height, restacked on #33585's `2a676c10d3`
+
+AP-Review round 19 (REQUEST CHANGES, 12:16): blocker 1 at full stick
+under range finder height confirmed fixed. Its blocker is now the
+short-reach band, raised under range finder height as well with the
+stick centred, and the range finder height leg flew only full stick.
+
+Reproduced (tier 2, SITL, FlowCeilingShortRangeFinder with a fifth leg):
+centred past a 27.5 m reach under range finder height, held 28.2-28.4 m
+and relative position lost at 28.2 m; under baro height in the same run,
+held 28.2-28.4 m and lost at 28.3 m. The same band by the same mechanism:
+the raise lapses 0.5 s after the return goes, nothing brings the vehicle
+back into reach with no climb demand, and the fallback needs 28 m.
+`da37165080` adds the leg, asserting the hold and the loss as the baro
+leg does, so a change that brings the vehicle back into reach has to
+update both. The other legs in that run: 25 m reach lost at 27.1 m;
+27.5 m at full stick kept relative position, highest 28.4 m on baro and
+28.5 m on range finder height. The band still waits on a maintainer
+(issuecomment-6039251667).
+
+Restacked on #33585's `2a676c10d3` (its record): the ten commits `=` in
+range-diff, the tree the previous head's plus #33585's two test commits
+and the new leg. Commits: `86044e6fa1`, `fe2e4dda3c`, `d86877c611`,
+`06e0c1f42e`, `2ec01d9234`, `8907b4f835` and `e0a924f3f8` (#34851),
+`0dfccf17a6`, `cc00ed64e5`, `da37165080`. C++ unchanged since
+`18d69e5ccf`. Tests at the head (tier 2): FlowCeilingShortRangeFinder
+(five legs, on the same C++ one restack earlier),
+EK3_OptflowAboveRangefinderRangeHeight and EK3_OptflowAboveRangefinder
+pass. `/pr-review --quick`: gate clean (notes only), Codex cold read of
+the new leg found nothing; audit: the band OPEN (deferred), the test gap
+PARTIAL as the leg pins the loss rather than requiring recovery (as
+intended), the stack note CLOSED.
+
+The description's band paragraph names baro height only; a line for
+range finder height is drafted.
