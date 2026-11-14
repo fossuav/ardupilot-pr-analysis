@@ -3,4 +3,6 @@ data/comments.jsonl.empty
 data/chunks/
 data/extract/
 data/principles_compact.txt
+data/principles_new.txt
+data/assign.json
 __pycache__/
