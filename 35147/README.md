@@ -194,3 +194,5 @@ clean, Codex cold read of `021bfa1b95` found nothing, audit CLOSED on
 both minors.
 
 Pushed 2026-11-14, force `24e0e6970f...021bfa1b95`; mergeable.
+
+Reply posted 2026-11-14: https://github.com/ArduPilot/ardupilot/pull/35147#issuecomment-6879718945

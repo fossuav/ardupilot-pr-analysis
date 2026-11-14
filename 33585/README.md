@@ -2275,3 +2275,5 @@ Rebased onto master `74f0f83f08` with #34380's stack (its record):
 the 22 commits `=` in range-diff; `8027730822` is now `f43e842819` and
 `2a676c10d3` is `a0b981f17e`. Pushed 2026-11-14, force
 `2a676c10d3...a0b981f17e`; mergeable.
+
+Reply posted 2026-11-14: https://github.com/ArduPilot/ardupilot/pull/33585#issuecomment-6879718428

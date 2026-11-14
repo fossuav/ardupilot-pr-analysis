@@ -835,3 +835,5 @@ pass (tier 2). Not pushed yet.
 Pushed 2026-11-14 with #35014 and #33585 (their records), force
 `da37165080...2b1e09671f`; the leg `da37165080` is now `2b1e09671f`. All
 four of #35014, #33585, #34380 and #35147 mergeable after.
+
+Reply posted 2026-11-14: https://github.com/ArduPilot/ardupilot/pull/34380#issuecomment-6879718705. Description updated the same day: the band holds under range finder height too, FlowCeilingShortRangeFinder pins it under both height sources, and ten commits after #33585's head.
