@@ -13,9 +13,9 @@ SmallFastDrone branches go in that repository's
 
 ## Where it stands
 
-Confirmed into `aap`'s playbooks (1.7.70): 26 architectural rules, 12
-style rules and 6 logging and GCS rules, each with a page under
-`aap/rules/`. Nothing is waiting in `RULES_PROPOSED.md`.
+Confirmed into `aap`'s playbooks (1.7.71): 26 architectural rules, 12
+style rules, 6 logging and GCS rules and 4 replay rules, each with a page
+under `aap/rules/`. Nothing is waiting in `RULES_PROPOSED.md`.
 
 | rule | from |
 |---|---|
@@ -47,6 +47,7 @@ style rules and 6 logging and GCS rules, each with a page under
 | ARCH-25 A feed-forward term models the vehicle, not a setting that shapes the command | #33318, 2026-11-06; lthall's review of it makes the same point; confirmed 2026-11-14 |
 | ARCH-26 An estimate fused into another filter is not an independent measurement | #33478's AGL KF velocity fusion, 2026-11-06; confirmed 2026-11-14, in the EKF3 playbook |
 | STYLE-1 to STYLE-12, in the root playbook's Code Style | mined: every style theme, 2026-11-14, without examples |
+| REPLAY-1 to REPLAY-4, in the EKF3 playbook's DAL and Replay section | from the user, with rmackay9's #35077 and #35105 (replay messages grown at the end, with explicit padding) and tridge's RISJ ask on #32399 (mined principle 980), 2026-11-14 |
 | LOG-1 to LOG-6, in the root playbook's Logging and GCS Messages | mined: every logging_gcs theme (log_field_design, gcs_text_volume, libraries_own_their_logging, log_bandwidth_cost, log_timestamp_semantics, informative_user_errors), 2026-11-14, without examples |
 
 Rejected drafts and the reasons are kept in `RULES_PROPOSED.md`: the first
@@ -89,7 +90,7 @@ Themes no rule has used yet, from `data/ranked.txt`, with their PR counts:
    repetition counts more than new weight. `data/chunks/` is not kept, so
    `chunk_comments.py` without `--since` rebuilds them.
 
-Parameter rules fit none of the ARCH, STYLE and LOG prefixes well; the
+Parameter rules fit none of the ARCH, STYLE, LOG and REPLAY prefixes well; the
 user decides which they take before they are drafted.
 
 ## Method, and how to re-run it
