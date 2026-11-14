@@ -214,3 +214,11 @@ as taken.
 - No Replay against this head. log67 (`../REPLAY_LOGS.md`) is the flight
   that exposed the near-ground floor; its disarm path does not replay
   (#34292's row).
+
+## 2026-11-14: the ROFH padding is now REPLAY-1
+
+`aap` 1.7.71 confirms this PR's way of carrying the value as REPLAY-1:
+extend the message the data travels with, with explicit `unused` bytes
+for alignment, rather than adding a message as #34292's ROFM did. #35105's
+`Flags2` byte on RFRN is the same rule, and its leaving RFRN's two retired
+bits alone is REPLAY-2.

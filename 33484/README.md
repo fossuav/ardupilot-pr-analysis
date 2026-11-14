@@ -1786,3 +1786,19 @@ logs 15-16, two cases better, two worse, one the same. Nothing folded:
 the confirmation stays its own commit until the gate is settled, and a
 test comment (`913c4da2cf` into `8dabcc9dfc`) waits for the next
 restack, as it would move #34630 and #35147.
+
+## 2026-11-14: REPLAY-1 and RRNJ (not acted on)
+
+`aap` 1.7.71 confirms REPLAY-1: new replay data extends the message it
+travels with, with explicit `unused` bytes for alignment, now that Replay
+copies only what a record carries and zero-fills the rest (master
+`9610cb59b7`, SFD `c0f7f576e7`). It reverses the EKF3 playbook rule RRNJ
+followed (2026-11-11 above), and the earlier objection that growing RRNI
+means "no earlier log would replay" no longer holds on either line. Under
+it the reading time is one `unused` byte and a `uint32_t` at the end of
+RRNI (offsets 19 and 20, format `ffffBBBBI`), written with the distance it
+belongs to, and an older log replays it as 0, so `have_reading_time()`
+would key on a non-zero time rather than on an RRNJ having arrived. Beta
+logs from topup6 on carry RRNJ; a Replay built after such a change would
+ignore it and count every sample, as a Replay from before topup6 does now.
+Whether to rework it before review is undecided.

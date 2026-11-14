@@ -2649,3 +2649,14 @@ floor. In SITL its landing left armed stops aiding and fails the EKF to
 LAND 5.8 s after touchdown; this PR's `on_ground()` zero, ported onto it,
 keeps aiding. Results, the ported branch and the two comments posted are
 in `../35077/README.md`.
+
+## 2026-11-14: ROFM against REPLAY-1
+
+`aap` 1.7.71's REPLAY-1 takes #35077's way: the value rides at the end of
+ROFH after three explicit `unused` bytes. That fixes the 44-against-47
+size mismatch that made this PR add ROFM, and Replay's short-record copy
+(master `9610cb59b7`) keeps older logs replaying. ROFM also needed
+`rofm_resend`, because it is written from the flow callback outside
+`start_frame()`'s forced write at log start; a field in ROFH, written with
+every sample, needs neither. If #35077 replaces this PR the question goes
+with it.

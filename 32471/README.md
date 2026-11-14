@@ -2411,3 +2411,13 @@ rule asks for a first flight but not for any amount of hover, so a fast
 first flight replaced a hover's calibration. Observation only; a minimum
 hover time before a save is one shape, not measured. The operator
 restored log9's values and set bit 1 without bit 0 (10).
+
+## 2026-11-14: RISK against the REPLAY rules
+
+`aap` 1.7.71's REPLAY-1 has new replay data extend the message it travels
+with, and REPLAY-4 (tridge's RISJ ask on #32399) gives data that changes
+rarely a message of its own. The VRF bias changes only when it is saved on
+disarm, set by parameter or recalibrated, so RISK conforms to REPLAY-4,
+and being written from `start_frame()` it reaches every log. The padding
+trap that stopped it going into RISI (above) is what REPLAY-1's explicit
+`unused` bytes now answer, but REPLAY-4 keeps it separate anyway.

@@ -71,6 +71,22 @@ limit in #33585), ARCH-25 (lthall on #33318) and STYLE-2.
 
 ## What is next
 
+Parked by the user on 2026-11-14, after REPLAY-1 to REPLAY-4. To pick it
+up again, start from the parameter batch below; it needs the user's call
+on a prefix first. Other loose ends:
+
+- The SFD branch's RRNJ (#33484) predates REPLAY-1 and would become a field
+  at the end of RRNI; the user has not decided whether to rework it before
+  review (`../33484/README.md`, 2026-11-14). ROFM goes with #34292 if
+  #35077 replaces it, and RISK conforms (REPLAY-4).
+- The session's commit hook only accepts `[A-Za-z0-9_]` before the colon,
+  so this directory's commits since 2026-11-14 say `rules_mining:` where
+  the earlier ones say `rules-mining:`. Allowing a hyphen in `aap`'s
+  `pre_bash_check.py` would let the old prefix through.
+- AP-Review's comments are excluded by design and now outnumber human
+  review on these PRs about four to one; mining them would measure the
+  bot's rules, not the maintainers'.
+
 Themes no rule has used yet, from `data/ranked.txt`, with their PR counts:
 
 1. **Parameters**, partly covered: dont_modify_user_params (7),
@@ -161,7 +177,7 @@ ARCH-10, plus the 2026-11-14 increment (ids 1000-1025, one new theme).
 - Only this author's PRs are covered, so the counts say what maintainers
   told this author, not what they tell everyone.
 
-## Other open threads (recorded elsewhere)
+## Other open threads (recorded elsewhere, as of 2026-10-14)
 
 - Review policy: a full `/pr-review` before a PR opens or before the first
   push to an unreviewed PR, `/pr-review --quick` for pushes that answer
