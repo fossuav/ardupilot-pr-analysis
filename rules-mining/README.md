@@ -13,9 +13,9 @@ SmallFastDrone branches go in that repository's
 
 ## Where it stands
 
-Confirmed into `aap`'s playbooks (1.7.69): 26 architectural rules, each
-with a page under `aap/rules/`, and 12 style rules. Nothing is waiting in
-`RULES_PROPOSED.md`.
+Confirmed into `aap`'s playbooks (1.7.70): 26 architectural rules, 12
+style rules and 6 logging and GCS rules, each with a page under
+`aap/rules/`. Nothing is waiting in `RULES_PROPOSED.md`.
 
 | rule | from |
 |---|---|
@@ -47,6 +47,7 @@ with a page under `aap/rules/`, and 12 style rules. Nothing is waiting in
 | ARCH-25 A feed-forward term models the vehicle, not a setting that shapes the command | #33318, 2026-11-06; lthall's review of it makes the same point; confirmed 2026-11-14 |
 | ARCH-26 An estimate fused into another filter is not an independent measurement | #33478's AGL KF velocity fusion, 2026-11-06; confirmed 2026-11-14, in the EKF3 playbook |
 | STYLE-1 to STYLE-12, in the root playbook's Code Style | mined: every style theme, 2026-11-14, without examples |
+| LOG-1 to LOG-6, in the root playbook's Logging and GCS Messages | mined: every logging_gcs theme (log_field_design, gcs_text_volume, libraries_own_their_logging, log_bandwidth_cost, log_timestamp_semantics, informative_user_errors), 2026-11-14, without examples |
 
 Rejected drafts and the reasons are kept in `RULES_PROPOSED.md`: the first
 drafts of ARCH-1 and SFD-1 were too specific (the user: a rule must make
@@ -71,29 +72,25 @@ limit in #33585), ARCH-25 (lthall on #33318) and STYLE-2.
 
 Themes no rule has used yet, from `data/ranked.txt`, with their PR counts:
 
-1. **Logging and GCS**, almost nothing in the playbooks: log_field_design
-   (13), gcs_text_volume (11), libraries_own_their_logging (6),
-   informative_user_errors (5), log_bandwidth_cost (4),
-   log_timestamp_semantics (3).
-2. **Parameters**, partly covered: dont_modify_user_params (7),
+1. **Parameters**, partly covered: dont_modify_user_params (7),
    default_value_changes (6), options_bitmask_parameters (6),
    dont_change_param_meaning (4), param_conversion_needed (4), param_naming
    (4). param_doc_metadata_complete (10) is the playbook's Parameter
    Documentation already.
-3. **Architecture**: explicit_state_machines (9) and vehicle_modes_hooks
+2. **Architecture**: explicit_state_machines (9) and vehicle_modes_hooks
    (7) are uncovered. hwdef_conventions (18) and
    hwdef_hal_changes_test_all_boards (6) belong to the hwdef playbook,
    scripting_api_design (5) to the AP_Scripting one.
-4. **Testing and process**, mostly in the playbooks already. The gaps are
+3. **Testing and process**, mostly in the playbooks already. The gaps are
    test_on_real_hardware (17), test_on_all_affected_vehicles (8),
    release_and_backport_hygiene (11) and the new vehicle_lead_approval (2).
-5. **Tier C backlog.** 786 longer comments from reviewers outside the top
+4. **Tier C backlog.** 786 longer comments from reviewers outside the top
    four were chunked on 2026-10-14 but never extracted; they add
    repetition counts more than new weight. `data/chunks/` is not kept, so
    `chunk_comments.py` without `--since` rebuilds them.
 
-Logging and parameter rules fit neither the ARCH nor the STYLE prefix
-well; the user decides which they take before they are drafted.
+Parameter rules fit none of the ARCH, STYLE and LOG prefixes well; the
+user decides which they take before they are drafted.
 
 ## Method, and how to re-run it
 
