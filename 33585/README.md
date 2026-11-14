@@ -2270,3 +2270,8 @@ only), Codex audit CLOSED on both minors, the cold read's one finding
 answered as above. Unflown (test only).
 
 Pushed 2026-11-14, fast-forward `9709e5fd42..2a676c10d3`.
+
+Rebased onto master `74f0f83f08` with #34380's stack (its record):
+the 22 commits `=` in range-diff; `8027730822` is now `f43e842819` and
+`2a676c10d3` is `a0b981f17e`. Pushed 2026-11-14, force
+`2a676c10d3...a0b981f17e`; mergeable.

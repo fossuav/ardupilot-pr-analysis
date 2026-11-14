@@ -290,3 +290,11 @@ message). No C++ changed; the flown carry commit's message did. The
 description was updated the same day. #33585 is restacked on it
 (`7b5453dd35`); #34380 still sits on #33585's 2026-11-05 head
 `1cf2ecd440` and needs restacking.
+
+## 2026-11-14 (later): rebased onto master with #34380's stack, `bd3e5c1442`
+
+#34380 conflicted with master (`c0a06ca560`, a test added where its
+flow ceiling tests go), so the stack under it was replayed onto master
+`74f0f83f08` too, keeping the three PRs on one base. This PR's five
+commits `=` in range-diff. Pushed 2026-11-14, force
+`547d40894c...bd3e5c1442`; mergeable.

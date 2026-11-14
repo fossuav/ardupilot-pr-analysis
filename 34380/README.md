@@ -831,3 +831,7 @@ FlowCeilingBacksDownIntoRange, FlowCeilingClimbsOutOnRangeHeight,
 OpticalFlowLimits, EK3_OptflowAboveRangefinder,
 EK3_OptflowAboveRangefinderRangeHeight and FenceTypeChangeTakesEffect
 pass (tier 2). Not pushed yet.
+
+Pushed 2026-11-14 with #35014 and #33585 (their records), force
+`da37165080...2b1e09671f`; the leg `da37165080` is now `2b1e09671f`. All
+four of #35014, #33585, #34380 and #35147 mergeable after.
