@@ -251,3 +251,5 @@ A Codex cold read on #34380 raised two points on this PR's test:
 - The comment "on each lane XKF5 logged" over-states it: XKF5 is written
   for the primary core only (`Log_Write_XKF5()` returns otherwise). A
   comment fix for this PR, open.
+
+Comment posted 2026-11-14 on the interaction with #33585 and the in-flight leg: https://github.com/ArduPilot/ardupilot/pull/34851#issuecomment-6876422523

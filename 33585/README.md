@@ -2223,3 +2223,5 @@ after a climb out (a return 2 s after the range was lost moved the height
 7.3 m). #34380 carries #34851 and the fix (`02ea1b667c`: the fallback
 engages on the terrain estimator's or range height's ground, not on
 `gndOffsetValid`). Whichever of this PR and #34851 merges second takes it.
+
+Reply posted 2026-11-14: https://github.com/ArduPilot/ardupilot/pull/33585#issuecomment-6876422231

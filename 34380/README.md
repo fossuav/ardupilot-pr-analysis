@@ -781,3 +781,5 @@ EK3_OptflowAnchorToRangeHeight and Replay pass, and the 21-test set
 earlier on the same C++; copter and plane build. `/pr-review --quick`:
 gate clean, Codex audit CLOSED on blocker 1 and OPEN on the band. Pushed
 2026-11-14, force `d9116efc7c...18d69e5ccf`. Unflown.
+
+Reply posted 2026-11-14: https://github.com/ArduPilot/ardupilot/pull/34380#issuecomment-6876422082. Description updated the same day: the stack line names #34851's two commits, and a paragraph under Description gives the range finder height case and the fallback engagement.

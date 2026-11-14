@@ -582,3 +582,5 @@ arming 4.90-4.91 s before the timeout against the 1 s the leg requires
 updated: `77c66ce184...d59e9cb00d`, pushed 2026-11-14. The EKF commit is
 unchanged. The two minors (flying gate applied on read, uncapped tilt
 credit) need no change.
+
+Reply posted 2026-11-14: https://github.com/ArduPilot/ardupilot/pull/34941#issuecomment-6876422361
