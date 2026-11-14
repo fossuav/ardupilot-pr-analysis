@@ -128,6 +128,21 @@ not-fused-again change; that change flew on the throw quad's logs 17-19
 could say which flights ran which part. The range freshness and the PX4Flow
 bus-thread latch stay noted for #34630.
 
+## 2026-11-14: a set from one noisy sample in flight (tier 1, 1b)
+
+A flow-only quad with a MAVLink flow sensor, flying VALT on the 11-12 SFD
+beta (topup1's init, the forerunner of this PR), latched its flow out on
+quality and released it in the air. After the second release relative
+aiding restarted and the set took one sample: 0.15 to 3.92 m/s, while
+the vehicle hovered level at 1.9 m and the raw flow read 0.41, 1.15,
+-0.83 and 0.19 rad/s on successive samples at a reported quality of
+84-89. The lockout recovery put the velocity back 0.6 s later (4.28 to
+0.28 m/s). VALT needs no position, so nothing reached the control; in
+Loiter it would have been 0.6 s of braking against a phantom 3.9 m/s.
+Replay through refresh16 topup2, which carries this PR's head, makes the
+same set at the same sample (the rework moves other records by at most
+0.07 m/s), so the PR's tests of the sample and the range let it through.
+
 ## Open
 
 - The restart wait's drop of its request on a timeout, and the zero-flow
@@ -135,3 +150,6 @@ bus-thread latch stay noted for #34630.
 - Only the start from no aiding is covered: an EKF still dead reckoning
   in absolute aiding when the flow set is chosen stays there; #35146
   ends that at the switch.
+- One noisy flow sample can make the set (2026-11-14, 3.9 m/s from a
+  hover); a check against a second sample, or against the IMU, is not
+  written.
