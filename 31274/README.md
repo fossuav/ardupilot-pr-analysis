@@ -546,3 +546,13 @@ The ESC.Err field description (`c922349b3c`) folded into the DShot
 percentage doc: 14 commits to 13, `ef790efa0b`, tree unchanged. The
 stale latch stays on top: no serial ESC telemetry, and no log near the
 71.6 min wrap.
+
+## 2026-11-14: rebased onto master for CI, pushed `292563f1f8`
+
+master's `73ca41da8a` (skip timeout checks for ESC slots without valid
+data) conflicted with the stale DShot error percentage latch in
+`AP_ESC_Telem::update()`. Resolved to master's guarded RPM timeout, with
+the latch guarded the same way (`error_rate_pct_valid &&`), which changes
+nothing it does: clearing a flag that is already clear is a no-op. Copter
+and plane build; MotorTestErrorRate passes (tier 2). The latch is still
+unflown. Pushed 2026-11-14, force `ef790efa0b...292563f1f8`; mergeable.

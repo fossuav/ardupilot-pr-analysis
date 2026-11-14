@@ -722,3 +722,62 @@ the same day: the cap lifted under any height source, the range finder
 included, five commits, the two flow ceiling tests' new numbers, and the
 three retargeted tests. Still open: AP-Review's band item, waiting on a
 maintainer.
+
+## 2026-11-14: AP-Review at `d9116efc7c`; #34851 carried, restacked, pushed `18d69e5ccf`
+
+AP-Review round 18 (REQUEST CHANGES, 2026-11-13 23:57).
+
+Blocker 1, range finder height with a short reach: reproduced (tier 2,
+SITL at `d9116efc7c`, FlowCeilingShortRangeFinder with a range finder
+height leg, 27.5 m reach on RNGFND1_MAX 40, full stick): relative position
+lost at 28.1 m. Under range finder height the ground offset went invalid
+the moment the source dropped to baro, where under baro height it stays 5 s
+after the last terrain update, long enough for AC_Avoid to back the
+vehicle into reach. The bot's suggested stamp of `gndHgtValidTime_ms` was
+#34851's first version and was rejected there (it drives the terrain
+estimator's re-anchor and the switch hysteresis, and stamped before the
+height gate), so this PR now carries #34851's two commits (`b81a468c4c`,
+`2071732ebb`). With them the leg keeps relative position, 4 of 4 runs
+(28.4-28.5 m).
+
+#34851 on top of #33585 opened a gap: the 5 s hold delayed #33585's
+flat-ground fallback, the only thing that keeps range finder height from
+taking a return from something passed over, so after a climb out under
+range finder height a return 4 s after the range was lost moved the EKF
+height 7.4 m and ALT_HOLD flew the vehicle down 3.5 m (probe, tier 2);
+without #34851, 0.05 m. `02ea1b667c` engages the fallback on the terrain
+estimator's or range height's ground rather than `gndOffsetValid`, and
+recomputes the hold in the undone-return restore: 0.09 m. The new leg in
+EK3_OptflowAboveRangefinderRangeHeight sends the return from a message
+hook 1.5 s after the vehicle passes the range (it landed 1.9-2.1 s after
+the last good reading): 0.08-0.09 m with the change, 7.3 m with
+`02ea1b667c`'s engagement reverted.
+
+#34851's in-flight leg shrinks RNGFND1_MAX to 5 m under a vehicle at
+10 m; on #33585 that reads as a climb out and the fallback held relative
+position past 7 s. Its copy here shrinks to 2 m, under the 2.86 m below
+which there is no fallback (`18d69e5ccf`). Two cold-read points on that
+test belong to #34851 (its record).
+
+Replay of the customer quad's log16 (tier 1b) through `d9116efc7c` and the
+new code, as flown and with EK3_SRC1_POSZ 2: all 5730 XKF1 records
+byte-identical in both. With range finder height forced the replayed core
+holds relative position at touchdown to 289.7 s against 285.4 s, #34851's
+hold as designed; as flown no difference.
+
+Blocker 2, the short-reach band under baro height: unchanged, waiting on a
+maintainer (issuecomment-6039251667).
+
+Restacked on #33585's `9709e5fd42` (its 2026-11-14 record). Commits:
+`e1a49b3d1a`, `b77ba72422`, `1a259397f1`, `b47b95ae4b`, `765a238e68` (the
+five before, `=` in range-diff), then `b81a468c4c`, `2071732ebb`
+(#34851), `02ea1b667c`, `18d69e5ccf`. Tests at the final tree, tier 2:
+EK3_OptflowAboveRangefinderRangeHeight, FlowCeilingShortRangeFinder,
+EK3_RngHgtFlowLandingKeepsPosition, EK3_OptflowAboveRangefinder,
+FlowCeilingClimbsOutOnRangeHeight, FlowCeilingBacksDownIntoRange,
+OpticalFlowLimits, EK3_RNG_USE_HGT, EK3_FlowHeightLimitAfterRangeFallback,
+EK3_OptflowAnchorToRangeHeight and Replay pass, and the 21-test set
+(those plus the fence, terrain and range finder tests) passed one restack
+earlier on the same C++; copter and plane build. `/pr-review --quick`:
+gate clean, Codex audit CLOSED on blocker 1 and OPEN on the band. Pushed
+2026-11-14, force `d9116efc7c...18d69e5ccf`. Unflown.

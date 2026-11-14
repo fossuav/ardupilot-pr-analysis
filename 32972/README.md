@@ -765,3 +765,11 @@ Beta topup11 `52ec3c77` carries the gate with this PR's armed term
 ground: the flow core started relative aiding at 5.2 s and kept it, and
 the other core ran without aiding from boot, so no AID_NONE entry and no
 height reset. `13fe97b7ea` stays unflown.
+
+## 2026-11-14: rebased onto master for CI, pushed `02a102ad36`
+
+On #32768's rebase (its record); this PR's six commits cherry-picked onto
+it with no conflict. Copter and plane build; BaroGroundEffectAtTakeoff,
+BaroGroundEffectResetSuppression, EK3TouchdownHeightNotSnapped,
+BaroDriftClearedAtArm and the QuadPlane datum test pass (tier 2). Pushed
+2026-11-14, force `5bf36c15d4...02a102ad36`; mergeable.

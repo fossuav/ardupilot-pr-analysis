@@ -416,3 +416,16 @@ should-fix here too. The 29 commits are cherry-picked onto #33484's
 `b135aa93fd`, and the tree is the old #34630 plus #33484's four new
 commits (the RRNJ reading time) exactly. EK3_FlowAxisLockoutRecovery,
 OSDEKFLanes and Copter.Replay pass. The push is forced.
+
+## 2026-11-14: rebased onto master for CI, pushed `533725d5e3`
+
+master's `26d668865e` (avoid including AP_InertialSensor.h in the AHRS
+headers) moved `AP_AHRS::get_accel()` into AP_AHRS.cpp beside
+`get_ekf_lane_status()`, so the PR conflicted with master and CI skipped
+every workflow (AP-Review's should-fix on #35147). Replayed onto master
+`98f6b8395a` by cherry-pick with both functions kept; `git range-diff`
+shows only context changes, in the two AP_AHRS commits and the OSD test
+registration. #33484's commits carried here moved with it, unchanged.
+Copter builds; OSDEKFLanes and EK3_FlowAxisLockoutRecovery pass (tier
+2). Pushed 2026-11-14, force `1ec664a625...533725d5e3`; mergeable again.
+#33484's own branch is unchanged and was already mergeable.

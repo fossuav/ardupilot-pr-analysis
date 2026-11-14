@@ -268,3 +268,14 @@ The flash figures above understate the cost. MatekF405 includes `minimize_fpv_os
 Also changed in this round: the AP_OpticalFlow include moved inside the guard, build_options.py depends on `OSD,EKF3`. Branch `sq/34543-1102e` (supersedes `-1102d`): 829f7d11b0 (guard), 77d364508b (descriptions, 766 characters each before), 871498e4aa (Tools). Refresh12 `r1102b/osd-r12d`: 4e14875bcf, 60b39abed7, a07a07d370, e41f3b74a8; there the items cost 1196 bytes on JHEM_JHEF405 (764 on MatekF405).
 
 Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `03bd5ed7d4` -> `871498e4aa` (refresh12 `df341758a7` locks it). Reply: https://github.com/ArduPilot/ardupilot/pull/34543#issuecomment-6580088723. Description updated.
+
+## 2026-11-14: rebased onto master for CI, pushed `04a38ebd1b`
+
+master's `26d668865e` (avoid including AP_InertialSensor.h in the AHRS
+headers) moved `AP_AHRS::get_accel()` into AP_AHRS.cpp beside
+`get_ekf_lane_status()`, so the PR conflicted with master and CI skipped
+every workflow (AP-Review's should-fix on #35147). Replayed onto master
+`98f6b8395a` by cherry-pick with both functions kept; `git range-diff`
+shows only context changes, in the two AP_AHRS commits and the OSD test
+registration. Copter builds and OSDEKFLanes passes (tier 2).
+Pushed 2026-11-14, force `871498e4aa...04a38ebd1b`; mergeable again.

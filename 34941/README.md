@@ -568,3 +568,17 @@ disarmed at 45-96 deg) and one per core on the throw quad's log16
 0.84 m/s, log16 1.31/1.19 against 1.70/1.83 m/s. Folded into the tilt
 timeout, and its test into the tilt test: 4 commits to 2, `77c66ce184`,
 tree unchanged.
+
+## 2026-11-14: AP-Review at `77c66ce184`; the armed subtest at speedup 2, pushed `d59e9cb00d`
+
+AP-Review (COMMENT): should-fix, the armed subtest of
+OpticalFlowTiltTimeoutNotFlying races the boot-time flow timeout on a slow
+host (2 of 2 failures on its box, passes on CI). The subtest now sets the
+mode and zero throttle before relative aiding starts, so only the arm sits
+between the start and the 5 s timeout, and runs at SIM_SPEEDUP 2
+(`context_set_speedup`, restored by the test's context). 3 of 3 runs pass,
+arming 4.90-4.91 s before the timeout against the 1 s the leg requires
+(tier 2). Folded into the test commit (a test change only), message
+updated: `77c66ce184...d59e9cb00d`, pushed 2026-11-14. The EKF commit is
+unchanged. The two minors (flying gate applied on read, uncapped tilt
+credit) need no change.

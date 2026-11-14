@@ -113,6 +113,21 @@ recorded zero flow, the two restart commits squashed), `1ad3f411a7`
 folded the sample not fused again into the set at aiding start, both
 flown: 7 commits to 6, `fc67118e73`, tree unchanged.
 
+## 2026-11-14: AP-Review at `fc67118e73`; rebased onto #34630's rebase, pushed `24e0e6970f`
+
+AP-Review (COMMENT): should-fix, the merge conflict with master that
+stopped CI. #34630 was rebased onto master (its record) and this PR's six
+commits cherry-picked onto it, all `=` in the range-diff. Copter builds;
+EK3_FlowVelocityAtAidingStart passes (tier 2). Pushed 2026-11-14, force
+`fc67118e73...24e0e6970f`; mergeable.
+
+Minor, left: the core commit's message credits the Replay and the six
+thrown flights to a commit that since the 11-13 squash also holds the
+not-fused-again change; that change flew on the throw quad's logs 17-19
+(the squash audit), so the commit has flown as a whole, but the message
+could say which flights ran which part. The range freshness and the PX4Flow
+bus-thread latch stay noted for #34630.
+
 ## Open
 
 - The restart wait's drop of its request on a timeout, and the zero-flow

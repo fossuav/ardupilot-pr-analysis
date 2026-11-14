@@ -224,3 +224,30 @@ reply pointing there, or a restack on #35014, would answer it.
 Reply posted 2026-11-05:
 https://github.com/ArduPilot/ardupilot/pull/34851#issuecomment-6655654927
 (the carry is #35014's, including on leaving range finder height).
+
+## 2026-11-14: carried by #34380; what it does on top of #33585
+
+#34380 carries this PR's two commits (`b81a468c4c`, `2071732ebb`), as its
+range finder height lift needs the 5 s hold (#34380's record). On #33585's
+head two things change, both handled in #34380:
+
+- #33585's flat-ground fallback engaged once `gndOffsetValid` dropped, so
+  the hold delayed it, and with it #33585's hold on range finder height,
+  by up to 5 s after a climb out: a return from something passed over in
+  that time reset the height onto it (7.4 m in SITL). #34380's
+  `02ea1b667c` engages the fallback on the terrain estimator's or range
+  height's ground instead. Whichever of this PR and #33585 merges second
+  needs it.
+- The in-flight leg of EK3_RngHgtFlowLandingKeepsPosition shrinks
+  RNGFND1_MAX to 5 m under a vehicle at 10 m, which on #33585 reads as a
+  climb out, so the fallback held relative position past 7 s. #34380's copy
+  shrinks it to 2 m, under the 2.86 m below which #33585 has no fallback.
+
+A Codex cold read on #34380 raised two points on this PR's test:
+
+- That RI and TOfs standing still do not prove range finder height was
+  active. Refuted by this record's own mutation (EK3_RNG_USE_HGT -1: RI
+  took 7 values and TOfs 6 over the descent, and the trace check failed).
+- The comment "on each lane XKF5 logged" over-states it: XKF5 is written
+  for the primary core only (`Log_Write_XKF5()` returns otherwise). A
+  comment fix for this PR, open.

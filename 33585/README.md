@@ -2171,3 +2171,55 @@ finder return) and EK3_FlowHeightLimitAfterRangeFallback (6.05 m step,
 13.1 m) pass on it. Pushed 2026-11-13, force
 `e6600ca1f1...7b5453dd35`. #34380 still sits on `1cf2ecd440` and needs
 restacking onto this head.
+
+## 2026-11-14: AP-Review at `7b5453dd35`; the EK3_RNG_USE_HGT hold and the retries, pushed `9709e5fd42`
+
+AP-Review (COMMENT, 2026-11-14 01:59). Three commits on top, unflown,
+fast-forward `7b5453dd35..9709e5fd42`:
+
+- `4eb6efe39e` AP_NavEKF3: hold EK3_RNG_USE_HGT off while flow holds the
+  ground. The should-fix: the automatic switch to range finder height now
+  waits for the flat-ground fallback to end, as the configured range
+  finder height does since `c8b579277e`.
+- `f8dbff27e9` the leg, in EK3_OptflowAboveRangefinderRangeHeight: baro
+  height, EK3_RNG_USE_HGT 70, LAND above an 8 m range finder, a 1 s return
+  reading 1.9-2.5 m. The brief-return leg's measurement became a helper
+  both use.
+- `9709e5fd42` the minor: a wait_altitude() timeout in the three retry
+  loops (EK3_OptflowAboveRangefinder twice, the range height test once) now
+  counts as a missed attempt instead of leaving the retries.
+
+What the switch does without the hold (tier 2, SITL, read from the log):
+it is taken, but it does not step the height. Under baro height the
+terrain estimator fuses the first return first, and as its ground is 5 s
+stale it resets the terrain state onto the object, so the range height
+formed against it agrees with the EKF height at the switch. XKF5.RI then
+freezes, as only the terrain estimator writes it. In SITL the scaled range
+reading follows the vehicle down at an eighth of its rate, so the range
+height then lags truth (1.08-1.16 m by the end of the return); over a
+fixed object the height would follow the object's top instead, until the
+reading changes again. So the leg checks the switch itself: the number of
+distinct XKF5.RI values over the return's last 0.6 s. With the hold, 5-6
+in three runs (height moved 0.22-0.29 m); without it, 1, and the leg fails
+"the range finder took the height on a brief return in a landing". A first
+version of the check counted values over the whole return; a Codex cold
+read pointed out a switch part way through would pass it, so it reads the
+end of the return, and a 0.4 s window (4 values against a threshold of 3)
+was widened to 0.6 s for margin.
+
+Tests at `9709e5fd42`, tier 2: EK3_OptflowAboveRangefinderRangeHeight,
+EK3_OptflowAboveRangefinder, EK3_RNG_USE_HGT,
+BaroGroundEffectRangefinderSwitch, EK3_OptflowAnchorToRangeHeight,
+EK3_OptflowAnchoredTerrain, EK3_FlowHeightLimitAfterRangeFallback and
+EK3_TerrainStateFollowsDatumReset pass; copter and plane build.
+`/pr-review --quick`: gate clean (notes only), Codex audit CLOSED on both
+findings, cold read's one finding fixed as above. Pushed 2026-11-14.
+
+Interaction with #34851, found while answering #34380's round (that
+record): #34851 keeps `gndOffsetValid` 5 s after range finder height
+ends, and this PR's fallback waited for `gndOffsetValid` to drop before
+engaging, so with both the hold on range finder height started 5 s late
+after a climb out (a return 2 s after the range was lost moved the height
+7.3 m). #34380 carries #34851 and the fix (`02ea1b667c`: the fallback
+engages on the terrain estimator's or range height's ground, not on
+`gndOffsetValid`). Whichever of this PR and #34851 merges second takes it.

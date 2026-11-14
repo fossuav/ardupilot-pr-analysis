@@ -1336,3 +1336,14 @@ The arm-time reset fired on all 34 arms of the 11-12 and 11-13 flights
 with no refusal. The steps were -1.79 to +2.32 m on SFD-O4 and -4.07 to
 +3.42 m on the throw quad, whose two cores stepped differently by up to
 5.3 m (log14, 295.6 s). Nothing changed: the PR is under review.
+
+## 2026-11-14: rebased onto master for CI, pushed `d2dd52eb3d`
+
+A pure rebase, as on 10-29 and 11-03 (the hands-off rule allows those),
+with #32972 which carries these commits: master's
+NavControllerOutputAltError registration collided with this PR's test
+list. Both kept; `git range-diff` shows two test commits changed in
+context only. Copter, plane and heli build; the PR's nine Copter tests and
+the QuadPlane AmslAltPreservedAfterUpdateHomeAtDifferentElevation pass
+(tier 2). Pushed 2026-11-14, force `a56d2f49cd...d2dd52eb3d`; mergeable.
+No code changed.
