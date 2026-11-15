@@ -2829,3 +2829,43 @@ change as its topup3"): on 2026-11-15 the guard moved off the shipping
 beta to a trial branch, `SmallFastDrone-4.7.2-beta-34292-step`, so the
 beta a client flies stays as it is. The PR branch is unchanged and not
 pushed.
+
+### 2026-11-15 (night): the vehicle's landed state instead of the step check, on the SFD trial branch
+
+On the trial branch (`SmallFastDrone-4.7.2-beta-34292-step`, `a2411d8ef7`)
+the step check is reverted and the zero also needs
+`dal.get_time_flying_ms() == 0`. On Copter that is `land_complete`, the
+signal #35105 logs as `vehicle_landed`; the RFRH field is used so that
+existing logs replay it. ANDed with the range rule, it can only take a
+zero away, and every false floor in flight goes, whatever its steps; so
+does the round-3 limit, a surface stepped onto and landed on.
+
+The entry above dropped this gate on the count of zeros it blocks. The
+windows say otherwise. After a touchdown they run a median 1.1 s (90th
+percentile 2.2 s, 283 windows), at spool-up 0.3 s (1.2 s), and the
+longest, 6-15 s, are the second quad's false floors (2818322/188),
+which it should block. Within those windows the flow is held off, as
+in flight.
+
+Against this beta (Replay `f5e626fa`, gate `d19fdac5`), 376 logs: 150
+change. Their time with the flow-aided velocity more than 1 m/s from
+GPS: 10,789.8 s without, 10,783.5 s with. Where the land detector never
+completes, the gate holds the flow off where the zero was fused, and
+aiding drops for 4-8 s on the ground in five logs: two 4-inch quads
+sitting at low throttle on a 0.00-0.13 m range (8 s and 5 s), a third
+hovering on and off the floor every 10 s, and a 2.5-inch quad's VALT
+touch-and-go and long low hover. Eight logs of the 2.5-inch quad lose
+aiding drops they had.
+
+SITL on the beta: OpticalFlowFocusHeight, FlowFocusHoldAfterLanding and
+FlowFocusHoldReleasesWithDeadRangeFinder pass. The hover leg fuses no
+flow (0.21 m/s off the simulator; 43 zeros without the gate); the
+landing legs fuse 37, 50 and 45 zeros to disarm, drift 0.04-0.06 m
+against 0.01-0.02 m without. On the banister logs it blocks /239's 29
+rail zeros.
+
+So it trades the heuristic and its holes for the land detector's lag:
+the zero comes when the vehicle says it has landed, and where that is
+late or never, the floor behaves as it did before this PR's zero. Under
+flight test on the trial branch. The PR branch still carries the step
+check and is not pushed.
