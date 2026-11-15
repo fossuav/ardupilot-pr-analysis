@@ -2660,3 +2660,89 @@ size mismatch that made this PR add ROFM, and Replay's short-record copy
 `start_frame()`'s forced write at log start; a field in ROFH, written with
 every sample, needs neither. If #35077 replaces this PR the question goes
 with it.
+
+## 2026-11-15: the resting zero fused in flight, from range finders reading the floor at height (tier 1, 1b)
+
+The first real flight on record to fuse the resting zero in the air. One
+IMU, flow and range finder on DroneCAN, SFD beta `b81f2132` carrying this
+PR, `FLOW_HGT_MIN` 0.15, `RNGFND1_GNDCLR` 0.10, Loiter indoors. log21
+(1245450/34):
+
+- 357.05-360.70 s: the range finder read 0.00-0.13 m, out of range low
+  and Good interleaved, while the vehicle hovered at about 1.6 m (thrust,
+  baro and accelerometers normal). It went from 1.64 m to 0.00 m in one
+  50 ms sample, with no vertical motion. Every reading passes
+  `on_ground()`.
+- From 357.80 s the resting branch fused zero flow until 360.7 s. Replay
+  through the flown build against the same build with the branch
+  disabled: identical to 357.6 s, apart at 357.80 s. In the flight's own
+  log `XKF5.FIY` stayed at -84 to -171 on every sample at 357.95-359.2 s,
+  the EKF's forward velocity over its height, with `NI` 1-44, so it was
+  accepted.
+- The flight's EKF held 0.1-0.3 m/s. Without the zero the same EKF,
+  coasting on its IMU, reaches 1.28 m/s by 360.6 s. There is no GPS, so
+  neither is truth. 0.4 s later the vehicle struck something on its left
+  side; that the unseen drift led there is a hypothesis.
+
+The fleet sweep below found two more, both armed, land detector not
+landed, at hover throttle: log13 (1245450/60) at 44.67 s since boot, 1.26
+m to 0.08 m in VALT; and a second quad's log (2818322/188) whose range
+finder read Good 0.019 m while flying at 1-4 m, in six spans over
+482-620 s.
+
+Earlier work on the resting zero looked at it on the floor in real logs,
+and in flight only in SITL, through the learned rest reading.
+
+### Prototype fix: a range step down is not a landing (`fix/34292-floor-step`, not pushed)
+
+`3379f178f1` on this PR's head `3dcdfb487b`, with its test `e44362285a`.
+A landing comes down to the floor, so consecutive range samples differ by
+a descent the filter also sees. On each fused range sample: if it is more
+than 0.5 m below the last one, beyond the filter's descent between them,
+latch; clear when a flow step finds the carried range at or above the
+floor; the vehicle is only resting with the latch clear. Below the floor
+with the latch set, the flow is held off as in flight, not fused as zero.
+A climb the filter saw is not counted. One bool, no parameter, no DAL
+change.
+
+Replay, flown build (`f0f91b86`) against the same with the fix applied
+(`aafd61f6`): the 369 replayable logs in the local fleet cache and the 7
+customer logs, 376 in all:
+
+- 373 replay identically. 153 of the 376 fuse the resting zero while
+  armed on the base build (27,816 fusions); the 150 among the unchanged
+  hold 27,130 of them, landings and floor spool-ups.
+- The three that change are the three false floors above. An
+  instrumented copy shows the latch blocking the zero only in those
+  spans: log21 357.93-360.73 s, log13 44.73-45.05 s, the second quad's six
+  spans. log21 replays exactly as with the branch disabled.
+
+SITL, `OpticalFlowFocusHeight` with a new subtest: hovering at 2 m in
+ALT_HOLD with roll held, the range finder reads 0 m for 4 s. Base: 43
+zero fusions, EKF velocity 1.55 m/s off the simulator's. Fix: 0 fusions,
+0.19 m/s. The landing subtests still fuse the zero after touchdown (46
+and 53 fusions, drift 0.01-0.04 m). `FlowFocusHoldAfterLanding` and
+`FlowFocusHoldReleasesWithDeadRangeFinder` pass.
+
+Two wrong versions came before it, both caught by the fleet sweep:
+
+- The first moved the floor's `minHeight` out of the flow branch. On the
+  PR head `ofDataDelayed` is a stack local, filled only when a flow
+  sample is recalled, so this read garbage: SIGFPE in 227 of 376
+  replays.
+- The second carried the previous range by the filter's height change
+  both ways. The filter's height moving 0.5-4.9 m between range samples
+  that barely changed, on the ground and in vertical runaways, set the
+  latch and blocked the resting zero in 6 more logs. Counting only descent
+  removed all six.
+
+Limits, derived from the rule, not measured:
+
+- A step of 0.5 m or less, or a surface rising slowly under the sensor
+  (a hand raised under a hover), still reads as a landing.
+- Landing on something entered by a step below the floor, or a filter
+  that under-reads its descent by more than 0.5 m across a range
+  dropout, gets no resting zero, so aiding times out 5 s after
+  touchdown, as before this PR.
+- While the latch holds the flow off in flight, aiding times out after 5
+  s, which is the designed behaviour below the floor in flight.

@@ -1287,3 +1287,34 @@ bit 4 off in Replay it climbed instead, 0.81 m above the range by the end
 (a false climb of 0.3-0.95 m/s). Right on balance; the switch-on overshot
 by about 0.47 m. That it went through the velocity-position covariance
 built up in the gap is a hypothesis.
+
+## 2026-11-15: stairs, where fusing the AGL rate as vertical velocity cost 1.2-2.1 m (tier 1, 1b)
+
+Two more quads of the 2026-11-10 entry's type (one IMU, flow and range
+finder on DroneCAN), SFD beta `b81f2132`, `EK3_OPTIONS` 94, so the velD
+fusion (bit 4 on that branch) is on.
+
+- log21 (1245450/34): Loiter, surface tracking following a staircase
+  down about 4.8 m at 250-310 s, range steady at 1.1-1.5 m. In the
+  flight's log the velD fusion ran on every sample over 252-284 s
+  (`XKFA.VFuse` 1.00) with `VAgl` -0.10 to +0.13 m/s, while the baro fell
+  at about 0.15 m/s. Replay with `EK3_OPTIONS` 78 (fusion off): baro minus
+  EKF height stays at 0.45-0.58 m, the baro's hover offset, throughout.
+  As flown it reached -1.65 m at 284 s, 2.1 m from where the fusion off
+  held it, and caught up by about 304 s. The climb after it and a 4 m
+  edge crossing at 334 s replay the same within 0.07 m.
+- log18 (1245450/222): VALT up a staircase. Replayed with range height
+  off (`EK3_RNG_USE_HGT` -1), the fusion leaves the height 1.2-1.5 m below
+  the baro for about 12 s after a 1.6 m stair-top step (range 1.93 to
+  0.35 m); with it off the height stays within 0.1-0.4 m of the baro.
+
+The fusion takes the AGL rate as the vehicle's vertical velocity, which
+assumes the ground under it does not move. Following stairs the AGL rate
+stays near zero while the vehicle descends, as log21's `VAgl` shows, and
+the step hold catches only a single jump of more than 0.15 m.
+
+Against the 2026-11-10 entry, where the fusion measured better over a
+flat floor (climb-rate error 0.0-0.08 m/s on against 0.1-0.3 off): it
+suits flat floors, and terrain that changes under a vehicle following it
+is outside its assumption. Open: whether the fusion can see that the
+terrain is changing, without a vehicle flag.
