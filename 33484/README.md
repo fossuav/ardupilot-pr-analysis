@@ -1802,3 +1802,56 @@ would key on a non-zero time rather than on an RRNJ having arrived. Beta
 logs from topup6 on carry RRNJ; a Replay built after such a change would
 ignore it and count every sample, as a Replay from before topup6 does now.
 Whether to rework it before review is undecided.
+
+## 2026-11-15: a forward-axis lockout that left the EKF's pitch 13 deg wrong (tier 1, 1b)
+
+The customer quad of 2026-11-10 (one IMU, ARK Flow on DroneCAN, compass
+yaw, no GPS), now on the beta `b81f2132`, log ddp3-d2 (1245450/144), in
+VALT at 1-4 m. Replayed on the flown build as a comparison: it leaves
+the flight at the moment that matters, so it is not a reproduction.
+
+- At 560.5 s the forward axis locked out (`XKF5.FIY` -2000 to -23000
+  until 592 s) while the lateral one kept passing (`FIX` mostly within a
+  few hundred), so the shared `prevFlowFuseTime_ms` stayed fresh and the
+  `tiltDriftTimeMax_ms` fallback never fired, as "The conclusion and
+  why" describes. The resets were in their back-off: 10 s from a burst
+  at 557.89 s, then 20 s from one at 571.27 s.
+- New here: the unaided axis dead-reckoned on a pitch error, not on
+  accel bias. Both the flight's EKF and the replayed one learned a pitch
+  gyro bias (`XKF1.GY`) rising from 0.18 to 0.33 deg/s while flow was
+  rejected on and off at 540-558 s. The flight's kept 0.34-0.42 deg/s to
+  the end; the replayed one, which took flow back at 561 s, came down to
+  0.10. The flight's pitch drifted 12.8 deg. At rest after landing the
+  accelerometers read pitch 0.2 deg, the flight's EKF -13.2 and the
+  replayed one -2.0, and the flight's own check said "PreArm: AHRS: DCM
+  Roll/Pitch inconsistent 10 deg". Roll, on the axis still fusing,
+  stayed right: 6.3 against the accelerometers' 6.0 deg.
+- The velocity followed the tilt: north 2 m/s at 560 s, 6 at 565 s, 30
+  at 585 s (1.66 m/s/s, g sin 9.6 deg), while the flow measured 0.0-0.6
+  m/s forward. The burst at 571.27 s set the velocity right (2.62
+  against the replay's 2.67 m/s north) and it ran off again at once. A
+  velocity reset does not touch the tilt, so with the tilt wrong a reset
+  buys under a second: like a wrong height (above), a wrong tilt is a
+  case this recovery cannot fix. "Stopped aiding" at 588.6 s reset the
+  velocity again; what triggered it was not checked.
+- What it did to the flight: the pilot switched to Loiter at 566.56 s.
+  Loiter took its target from the phantom velocity (`PSCN.TVN` 5.3-5.9
+  m/s), asked for up to 17.6 m/s/s and pitched +21 to -43 deg in 2 s,
+  this PR's original symptom. Back in VALT at 568.81 s the pilot held
+  about 12 deg of forward stick to the landing against the EKF's tilt.
+- The other-axis gate did not act: the lateral axis was passing, so the
+  resets it allows were taken. This flight says nothing about that open
+  question.
+- No A/B. The log starts mid-session (417.4 s) and the replayed core,
+  within 0.1 m/s and 0.5 deg of the flight's to 559.5 s, passed flow at
+  560.0 s with a test ratio of 0.95 where the flight's failed at 2.08.
+  The flown build, the beta `638a36cf40` and refresh17 `5cf17b05de`
+  replay it identically (within 0.01 m/s), all down the replay's path,
+  so none shows how a change would handle the flight's.
+- The fallback's blindness to a single-axis lockout is derived from the
+  flown source (`AP_NavEKF3_OptFlowFusion.cpp:859`,
+  `AP_NavEKF3_Control.cpp:416` at `b81f2132`), not measured. The quad's
+  front-motor vibration clips its accelerometer about 2700 times a
+  minute; whether that pushed the flow to the gate is not measured. Not
+  attempted: a tilt-drift fallback per axis, or a recovery that also
+  constrains tilt.
