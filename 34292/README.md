@@ -2869,3 +2869,33 @@ the zero comes when the vehicle says it has landed, and where that is
 late or never, the floor behaves as it did before this PR's zero. Under
 flight test on the trial branch. The PR branch still carries the step
 check and is not pushed.
+
+### 2026-11-15 (late): the landed-state gate on the PR branch, quick review
+
+`fix/34292-landed-v2`: `a11e396498` (the gate, the same line as the trial
+branch's) and `51a76219df` (the hover and landing legs, step wording
+removed) on `3dcdfb487b`, a fast-forward. SITL in the PR worktree with
+its own harness: OpticalFlowFocusHeight (hover leg 0 fusions, 0.21 m/s;
+landing legs 42, 45 and 45 zero fusions, drift 0.02-0.04 m),
+FlowFocusHoldAfterLanding and FlowFocusHoldReleasesWithDeadRangeFinder
+pass; Copter, Rover and Replay build. Mechanical gate clean; the bot's
+current review (ACCEPT at `3dcdfb487b`) has nothing open the commits
+touch.
+
+One Codex cold read, REQUEST CHANGES, three findings:
+
+- Must-fix, disputed: a GPS-denied Plane without airspeed reads not
+  flying in flight, so a false floor still fuses zero. That is the PR
+  head's behaviour, which the gate cannot add to; the commit names it.
+- Should-fix, noted: `get_time_flying_ms()` reads 0 for the first
+  millisecond after the flag sets. One frame at the takeoff edge, with
+  the vehicle still on the floor.
+- Should-fix, taken: on Sub the flag is the armed state, so an armed Sub
+  resting on the bottom below the floor now gets no zero and its aiding
+  times out. The first copy of the commit said "as before the floor",
+  which was wrong; the message now says what happens, and the
+  description draft carries it. Whether Sub should keep the range rule
+  alone is open.
+
+Also on refresh17 as topup1 (`6a8352ace0`, SFD record), which replays
+identically to the trial branch on all 376 logs.
