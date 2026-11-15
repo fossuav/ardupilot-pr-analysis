@@ -2772,3 +2772,60 @@ Limits, derived from the rule, not measured:
   `FlowFocusHoldReleasesWithDeadRangeFinder` pass. Branch
   `fix/34292-floor-step` head `333c8ecf31` (five `amend!` commits to
   fold), not pushed; the SFD beta carries the same change as its topup3.
+
+### 2026-11-15 (evening): the obvious alternative measured, and a hole in the guard from two new flights
+
+For consideration; nothing here is decided.
+
+A gate on the vehicle's own flying state, tried as the simpler design:
+the zero only while `dal.get_time_flying_ms() == 0`, which the DAL
+already carries and this PR's withheld-time count already reads. One
+condition, no state, no parameter, no vehicle-class test, and ANDed with
+the range rule it cannot add a zero. Replay of the same 376 logs against
+the flown build (`f0f91b86`, gate build `29287fd2`): 150 change. An
+instrumented copy counts 10,924 resting-zero fusions blocked, all armed,
+8,371 of them more than 10 s into a flight (146 logs): the vehicle on
+the floor after touchdown, before its land detector says so. The rest
+are at spool-up, where 2026-11-03 found the zero correcting handling
+biases. Time with the flow lane more than 1 m/s from GPS over the 150
+logs: 10,719.6 s base, 10,809.7 s gated. A minimum flying time cannot
+keep the post-touchdown zeros, which come late in a flight. Dropped: it
+costs the ground hold this PR exists for, where the guard changes 3 logs.
+
+Two more real flights, hovering over a banister rail (the indoor quads
+1245450/239 and 1245450/45, `b81f2132`):
+
+- 239: the range read Good 0.05-0.15 m at 1.6 m for 2.5 s. The resting
+  zero fused 29 times at 860.29-862.81 s, and the flight's velocity went
+  from 0.5 m/s to zero while the pilot held a roll. The guard latches on
+  a fused 1.305 to 0.080 m (the filter moved 0.001 m) and holds off all
+  28 samples below the floor; there its Replay matches the build with
+  the branch disabled. This log's Replay starts cold at arming with a
+  compass in use and its yaw is off, so only the A/B difference is used.
+- 45: the rail came in as a fused 1.211 to 0.382 m, which latched, and
+  the latch cleared 37 ms later, because 0.38 m is above the 0.15 m
+  floor. The 0.38 to 0.25 m and out-of-range-low samples after it fall
+  less than 0.5 m each. The range then read NoData for 7 s, which is
+  not `on_ground()`, so no build fused the zero (flown, guard and
+  disabled Replays identical). Had it read Good under 0.15 m, as on
+  1245450/34 and /239, the guard build would have fused it. Instrumented
+  with the guard's first version, whose set and clear conditions the
+  final one keeps (by inspection).
+
+So the clear on a range above the floor lets an object that enters the
+beam in two steps through: a hole found in real data, beyond the limits
+listed above.
+
+Candidate, not built or tested: drop that clear and let the owed descent
+alone clear the latch. A range that rises again subtracts from what is
+owed, so the object leaving clears it, and a vehicle coming down to a
+stuck reading still releases it. On /45 every fused sample after the
+latch falls, so the owed descent only grows and the zero stays off. It
+needs the fleet sweep and both SITL legs again, and a check that range
+noise above the floor cannot hold the latch through a landing.
+
+Correction to the status line above ("the SFD beta carries the same
+change as its topup3"): on 2026-11-15 the guard moved off the shipping
+beta to a trial branch, `SmallFastDrone-4.7.2-beta-34292-step`, so the
+beta a client flies stays as it is. The PR branch is unchanged and not
+pushed.
