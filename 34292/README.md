@@ -2746,3 +2746,29 @@ Limits, derived from the rule, not measured:
   touchdown, as before this PR.
 - While the latch holds the flow off in flight, aiding times out after 5
   s, which is the designed behaviour below the floor in flight.
+
+### 2026-11-15 (later): quick review of the guard, three Codex cold reads
+
+- Round 1 found the latch never released on a landing: a false floor
+  that lasts to touchdown kept the zero off on the ground, and aiding
+  timed out, the failure this PR fixed. Confirmed in SITL: a new leg
+  (floor read from a hover, then landed on) fused 0 times and timed out
+  on the first version. The guard now keeps the descent still owed
+  (step less 0.5 m), which the vehicle's net descent works off; the leg
+  then fuses the zero 47-71 times to disarm.
+- Round 2 found successive steps not summed (the larger was kept); now
+  every further fall of the range adds to what is owed. It also asked
+  for the hover leg to assert no fusions, now done (base fuses 43).
+- Disputed, both rounds: two downward range finders compared across
+  sensors. This PR's carry and rest reading already share sensors (the
+  bot's open note); no fleet log has two.
+- Round 3, disputed and left to the author: a surface stepped onto below
+  the floor and landed on is held off, as every landing below the floor
+  was before the zero. Range and filter state cannot tell it from a
+  stuck range finder; fusing the zero there brings back log21's case.
+- The release changed nothing in the fleet: 376 of 376 identical to the
+  first version, so the three changed logs and 373 identical stand. SITL
+  `OpticalFlowFocusHeight`, `FlowFocusHoldAfterLanding` and
+  `FlowFocusHoldReleasesWithDeadRangeFinder` pass. Branch
+  `fix/34292-floor-step` head `333c8ecf31` (four `amend!` commits to
+  fold), not pushed; the SFD beta carries the same change as its topup3.
