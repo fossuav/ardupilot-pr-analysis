@@ -2899,3 +2899,18 @@ One Codex cold read, REQUEST CHANGES, three findings:
 
 Also on refresh17 as topup1 (`6a8352ace0`, SFD record), which replays
 identically to the trial branch on all 376 logs.
+
+### Correction 2026-11-15: "more than 1 m/s from GPS" was not against GPS
+
+The figure quoted in the two 2026-11-15 gate entries above ("time with
+the flow lane more than 1 m/s from GPS", 10,719.6 s and 10,809.7 s on
+the flown build, 10,789.8 s and 10,783.5 s on the beta) is
+replay_fleet's `flow_time_over()`: the XKF5 flow innovation times
+`HAGL`, the speed by which the flow and the EKF's own velocity
+disagree. It needs no GPS and is not checked against one; TD25's
+Mission 1, which has no GPS, reports 673 s of it. The numbers stand as
+a measure of flow-to-state consistency, not of velocity error. The PR
+commit `a11e396498` and the SFD trial branch's `a2411d8ef7` and
+`1c98bbd0da` carry the same wrong description, and `a11e396498` also
+calls all four false-floor flights indoor, where Mission 1's location
+is not known. The posted PR description makes neither claim.
