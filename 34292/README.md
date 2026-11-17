@@ -2914,3 +2914,53 @@ commit `a11e396498` and the SFD trial branch's `a2411d8ef7` and
 `1c98bbd0da` carry the same wrong description, and `a11e396498` also
 calls all four false-floor flights indoor, where Mission 1's location
 is not known. The posted PR description makes neither claim.
+
+## 2026-11-17: the resting zero's flying gate, flown (tier 1 and 1b)
+
+`a11e396498` (the resting zero also needs `dal.get_time_flying_ms() ==
+0`) flew on the SFD beta's refresh17 topup1 (`6a8352ace0`, where it is
+`703438f743`), on tester A's Q25 on a new board, q25-0021-red01
+(2818322/48): VALT indoors, `FLOW_HGT_MIN` 0.08, `RNGFND1_GNDCLR` 0.02,
+one lane, no GPS.
+
+Twice, 74.1-81.9 s and 89.2-96.4 s, it skimmed the floor with the range
+finder at 0.02-0.07 m. The throttle was 0.30-0.37 against a 0.375 hover
+and the attitude followed stick demands within 0.5 deg out to 13.6 deg,
+so it was flying and moving, not resting. The land detector never set
+`land_complete` (the motors never reached their lower limit), so
+`get_time_flying_ms()` counted throughout and the gate withheld the zero:
+the samples under the floor were discarded. Under 0.10 m the flow did not
+measure the motion (slope 0.19, corr 0.25 against the IMU's 0.5 s
+velocity changes of 0.32 m/s rms, `flow_imu_check.py --min-range 0.02`),
+though its quality there was 75-104.
+
+Replay (`--force-ekf3`) of the flown tree, against the same tree with
+`AP_NavEKF3_OptFlowFusion.cpp` as it was before the gate (refresh17
+`d3d1be75e2`):
+
+| | With the gate (flown) | Without |
+|---|---|---|
+| Relative position valid | 77.99-82.89 s, 96.29-97.59 s | 76.19-87.49 s, 91.29-97.69 s |
+| Peak horizontal speed while valid and skimming | 2.09 m/s | 3.19 m/s |
+
+The flown build replays exactly (XKF1 and XKF5, all 1616 rows). Without
+the gate the range rule alone fuses zero flow while the vehicle moves,
+aiding starts on those zeros, and the position stays valid on the floor
+through 91.3-94.7 s. Neither speed can be checked there: no GPS, and the
+flow is not measuring. The two runs also part at the liftoff, where the
+range read 0.06 m for 0.3 s after the flag set, but only in the unaided
+drift that follows.
+
+This is the flight evidence the commit lacked: the changed path ran
+(`get_time_flying_ms()` counting while the range finder read the floor)
+and the A/B differs there. The commit's other limit, the flow held off
+while the land detector lags a touchdown, was not exercised: the flight
+ended with a disarm in the air at 1.3 m.
+
+Left open: with the gate, relative aiding restarted at 77.99 s on a
+sample at the floor's edge (range 0.06-0.11 m) and then ran 4.9 s with
+nearly every sample discarded under the floor. That is the IMU alone,
+reported speed up to 2.09 m/s, with a valid position until the quality
+latch at 82.80 s. Samples the floor discards do not count toward #34941's
+withheld-flow time, so only the ordinary flow timeout bounds such a
+stretch.
