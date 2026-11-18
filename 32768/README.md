@@ -1386,5 +1386,5 @@ Local `rb-32768-master-v2`: the 32 commits on `edd2107456`, then
 `f6f06af2f7` (Copter, rewording only against `ccac2fa148`: "not reported
 landed", since EKF3 holds a disarmed vehicle on the ground whatever it is
 told, and the clear explained as Copter's takeoff event) and `41320d3b89`
-(autotest). `rb-32768-master` is kept at `9768fe6ed5`. The 32 replayed
-commits have not each been built.
+(autotest). `rb-32768-master` is kept at `9768fe6ed5`. All 34 commits
+build Copter and Plane on SITL, each in turn.
