@@ -1347,3 +1347,25 @@ context only. Copter, plane and heli build; the PR's nine Copter tests and
 the QuadPlane AmslAltPreservedAfterUpdateHomeAtDifferentElevation pass
 (tier 2). Pushed 2026-11-14, force `a56d2f49cd...d2dd52eb3d`; mergeable.
 No code changed.
+
+## 2026-11-18: on master with #35105, and the landed flag gated (tier 2)
+
+#35105 merged (Copter tells AHRS `vehicle_landed` from `set_land_complete()`,
+and EKF3 is on the ground while armed and landed). The 32 commits pick onto
+master `edd2107456` with no conflict (local `rb-32768-master`). Two commits
+on top: `ea265362eb` reports landed to AHRS only while `disarmed_in_air` is
+clear, and again when the land detector clears it; `6920b1481e` makes
+HeightDatumKeptOnMidairRearm log the replay records and check, for the
+second after the re-arm, that Copter still reads landed (RFRH TF 0) while
+RFRN `vehicle_landed` stays clear.
+
+SITL: all ten of the PR's tests pass (nine Copter, the QuadPlane AMSL one).
+Without `ea265362eb`, HeightDatumKeptOnMidairRearm fails: "the EKF was told
+the vehicle had landed while it fell".
+
+Why it matters (34292's record, 2026-11-18): on master, a flow-only copter
+re-armed while falling has its vertical velocity zeroed and its height put
+at the ground clearance by the arm-time datum reset (no home is ever set),
+and the landed zero flow then pins its horizontal velocity. This PR's
+`disarmed_in_air` refusal is the fix for the reset; the gate keeps #35105's
+flag off for the fall. Not measured together with the flow probe yet.

@@ -3007,3 +3007,28 @@ during the disarmed fall, so a range check against it would not have
 held off the zero; a fixed clearance, or a reference learned only while
 still, would (the range read 6-21 m). Probe test and runner in the
 session scratch (`probe_rearm2.py.txt`, `rearm_ab.sh`, `rearm_trace.py`).
+
+## 2026-11-18 (later): re-scoped as a range check on the landed zero (tier 2)
+
+Local `rb-34292-v3`, two commits on master `edd2107456`: `eb6935b195`
+(AP_NavEKF3: while armed, the pre-takeoff zero below 0.5 m is withheld,
+and the flow with it, where the downward range finder reads the vehicle
+off the ground: OutOfRangeHigh, or Good and more than 0.05 m above
+`MAX(rngAtRestOnGnd, rngOnGnd)`; `rngAtRestOnGnd` learned only while
+`onGroundNotMoving`) and `b8fd007ec9` (OpticalFlowLandedZeroNeedsGround).
+The earlier `FuseOptFlow()` resting zero and `rb35077-34292e` are dropped.
+
+| leg | this branch | master's EKF | rngOnGnd only | learned while moving |
+|---|---|---|---|---|
+| in-air re-arm, EKF height 0.10 m, range 7-20 m | 0.23-0.26 m/s off at 1.06-1.08 | 1.11 off at 1.04 | (not reached) | 1.17 off at 1.09 |
+| LOITER landing, 0.19 m on the ground | aiding kept to disarm | kept | stopped aiding, LAND at 6.4 s | kept |
+| ALT_HOLD, out of range low, bad flow | kept, walk 0.02-0.09 m | kept, 0.01-0.02 m | kept | kept, 0.02-0.07 m |
+
+A leg that stepped the range finder up on the ground while landed was
+dropped: in SITL a landed copter is still, so the reference re-learns the
+stepped reading, which is right for a vehicle that is on the ground. On
+hardware the stillness test fails with the props spinning (35105's
+record, finding 1), so the pre-arm reading stands while armed. The
+re-arm leg logs, rather than requires, that the zero path was reached, so
+it still checks the velocity on a build carrying #32768, where the datum
+is kept and EKF3's height is never at the clearance.
