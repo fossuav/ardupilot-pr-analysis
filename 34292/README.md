@@ -3088,3 +3088,23 @@ PR lands second. OpticalFlowFocusAlt and Replay pass; Copter and Replay
 build with AP_RANGEFINDER_ENABLED 0 and EK3_FEATURE_OPTFLOW_FUSION 0.
 Probe and runners in the session scratch (`probe_tall.py.txt`,
 `ab_tall.sh`, `ab_v7.sh`).
+
+Then `rb-34292-v8` (`476772e023`, `125dbb6637`): Codex found the check
+read only `rangeDataDelayed.sensor_idx`, set after three fresh Good
+samples, so a downward range finder that had never read Good behind a
+forward-facing instance 0 was never consulted. The check now walks every
+downward instance: off the ground when at least one has a reading and
+each that does reads off the ground; Good below the threshold or out of
+range low on any of them keeps the vehicle on the ground. That also
+closes the two-range-finder note: one faulty instance reading above
+range on the ground no longer takes the zeros alone. Not tested with two
+range finders. v8 run: change passes all legs, re-arm 0.40 off at 1.03;
+0.5 m absolute stopped aiding on the tall leg; no OutOfRangeHigh 1.72
+off at 1.27.
+
+Codex also raised flow withheld from the main filter still reaching
+EstimateTerrainOffset() when range arrives (EK3_FLOW_USE 2, GPS in use,
+5 m/s or more). Left: it arrives there as the real flow, which against
+GPS velocity measures the true height; master gives the estimator the
+zero in that state, and passes it a stale sample whenever range comes
+without flow.
