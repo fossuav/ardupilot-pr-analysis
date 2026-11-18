@@ -1369,3 +1369,22 @@ at the ground clearance by the arm-time datum reset (no home is ever set),
 and the landed zero flow then pins its horizontal velocity. This PR's
 `disarmed_in_air` refusal is the fix for the reset; the gate keeps #35105's
 flag off for the fall. Not measured together with the flow probe yet.
+
+## 2026-11-18 (evening): the landed report cleared on a climb-away (tier 2)
+
+Review of `ea265362eb`: a re-armed copter that climbs away and lands armed
+was never reported landed, because `disarmed_in_air` was cleared only by
+the disarmed land detector. `set_land_complete(false)` now clears it too:
+that is Copter's own takeoff event (throttle raised with the motors at
+full spool), after which the armed land detector decides when the vehicle
+lands. HeightDatumKeptOnMidairRearm checks both: for 1 s after the re-arm
+RFRH TF 0 with RFRN landed 0, and RFRN landed 1 at the final
+LAND_COMPLETE (EV 18) + 0.3 s. Mutants without the gate and without the
+clear each fail it; all ten tests pass with both.
+
+Local `rb-32768-master-v2`: the 32 commits on `edd2107456`, then
+`f6f06af2f7` (Copter, rewording only against `ccac2fa148`: "not reported
+landed", since EKF3 holds a disarmed vehicle on the ground whatever it is
+told, and the clear explained as Copter's takeoff event) and `41320d3b89`
+(autotest). `rb-32768-master` is kept at `9768fe6ed5`. The 32 replayed
+commits have not each been built.

@@ -3032,3 +3032,58 @@ record, finding 1), so the pre-arm reading stands while armed. The
 re-arm leg logs, rather than requires, that the zero path was reached, so
 it still checks the velocity on a build carrying #32768, where the datum
 is kept and EKF3's height is never at the clearance.
+
+## 2026-11-18 (evening): a range check on both zeros, from the clearance (tier 2)
+
+Local `rb-34292-v7`, two commits on master `321896137f`: `aa01d84a19`
+(AP_NavEKF3) and `c10bc15ba0` (OpticalFlowLandedZeroNeedsGround).
+`rb-34292-v3` and `rb-34292-v4` are kept as backups.
+
+What the review of v3 found, and what replaced it:
+
+- The learned reference was wrong. `rngAtRestOnGnd` was learned while
+  `onGroundNotMoving`, and that passes at terminal velocity in SITL (the
+  specific force is about 1 g once drag balances weight), so the reference
+  learned the in-air reading and the zero returned about 2 s into the fall.
+  Proposed as ARCH-28 in aap's RULES_PROPOSED.md: an IMU stillness test
+  cannot see constant velocity. The reference is gone.
+- With the flow withheld, master's zero-velocity injections (PosVelFusion,
+  AID_NONE and the aided "no recent velocity aiding" path, both gated on
+  `onGroundNotMoving`) pulled the velocity once the IMU read still: 0.70
+  m/s off at 1.05 m/s. Both now take the same range check while armed.
+- Out of range high counts as off the ground, and the re-arm leg now
+  covers it: RNGFND1_MAX lowered to 10 m before the disarm, re-armed
+  straight after without waiting for a heartbeat, so about 1.2 s of the
+  fall reads Stat 3.
+- A tall mount with the clearance at the default lost aiding on the
+  ground. Probe: SIM_SONAR_OFFSET 0.6, RNGFND1_GNDCLR 0.10, no home, armed
+  idle in ALT_HOLD. The arm's datum reset puts HAGL at 0.10, and the range
+  pulls it back to 0.5 m at 6.8 s (0.16, 0.27, 0.35, 0.41, 0.46 at 0.5 s
+  steps). With a fixed 0.5 m the flow was withheld throughout and aiding
+  stopped at 5.1 s; master kept it. The check is now `rngOnGnd +
+  ON_GROUND_HGT_MAX_M`, measured from the clearance, which also keeps the
+  armed zero velocity for a tall mount with its clearance set.
+
+| leg | v7 | master's EKF | 0.5 m absolute | no OutOfRangeHigh |
+|---|---|---|---|---|
+| LOITER landing, 0.19 m on the ground | aiding kept | kept | kept | kept |
+| ALT_HOLD, out of range low, bad flow | kept, walk 0.01-0.02 m | 0.01 m | 0.01 m | 0.02 m |
+| armed, no home, 0.55 m on the ground | kept | kept | stopped aiding | kept |
+| re-arm, above range at first, fall to 2 m | 0.35 off at 1.37 | 1.91 off at 1.26 | (not reached) | 1.35 off at 1.13 |
+
+Earlier runs of the re-arm leg: in range throughout (RNGFND1_MAX 60),
+v5 read 0.31-0.33 off at 1.06-1.10, master 1.12 at 1.05, no zero-velocity
+guard 0.70 at 1.05, no zero-flow guard 1.25 at 1.09 (that run also left
+the zero region, EKF height to 3.79 m). With the first above-range setup
+the re-arm came about 1 s after the disarm and the window held only 8-9
+samples, too few to judge; with OutOfRangeHigh the change read 0.45 off
+at 1.20 and master 1.28 at 1.08. The GNDCLR+0.05 variant failed the
+LOITER landing at 6.4 s (v3) and 6.2 s (v4).
+
+The landing leg now traces the zero region while landed (XKF4 SS bit 10
+clear, XKF5 HAGL under 0.5). The re-arm leg requires it, so on a build
+carrying #32768 it raises "proves nothing" and needs rework by whichever
+PR lands second. OpticalFlowFocusAlt and Replay pass; Copter and Replay
+build with AP_RANGEFINDER_ENABLED 0 and EK3_FEATURE_OPTFLOW_FUSION 0.
+Probe and runners in the session scratch (`probe_tall.py.txt`,
+`ab_tall.sh`, `ab_v7.sh`).
