@@ -773,3 +773,20 @@ it with no conflict. Copter and plane build; BaroGroundEffectAtTakeoff,
 BaroGroundEffectResetSuppression, EK3TouchdownHeightNotSnapped,
 BaroDriftClearedAtArm and the QuadPlane datum test pass (tier 2). Pushed
 2026-11-14, force `5bf36c15d4...02a102ad36`; mergeable.
+
+## 2026-11-18: rebased onto #32768 on master with #35105 (tier 2)
+
+#32768 was replayed onto master `edd2107456` (with #35105) and gained two
+commits, ending at `41320d3b89` (../32768/README.md, 2026-11-18). The six
+PR commits pick onto it with no conflict and `git range-diff` shows every
+patch unchanged. Three commit bodies carried squashed commits' subjects
+(the gate's commit-squashed-subjects); they are rewritten as prose, and
+the third commit's subject now names both tests it adds. Tree identical
+to the tested replay (`pr-baro-gnd-effect-tested`, `e47683c355`).
+
+Local `pr-baro-gnd-effect` at `060e79f7b0`. Each commit builds Copter and
+Plane. On the head, all three of this PR's tests and all ten of #32768's
+pass (BaroGroundEffectAtTakeoff, BaroGroundEffectResetSuppression,
+EK3TouchdownHeightNotSnapped; nine Copter and the QuadPlane AMSL test).
+#35105's record has this PR reading `get_time_flying_ms()`, which #35105
+does not change on Copter; nothing here contradicts that.
