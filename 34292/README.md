@@ -3053,8 +3053,9 @@ What the review of v3 found, and what replaced it:
   m/s off at 1.05 m/s. Both now take the same range check while armed.
 - Out of range high counts as off the ground, and the re-arm leg now
   covers it: RNGFND1_MAX lowered to 10 m before the disarm, re-armed
-  straight after without waiting for a heartbeat, so about 1.2 s of the
-  fall reads Stat 3.
+  straight after without waiting for a heartbeat (0.20 s apart), so the
+  first 1.7 s of the 2.3 s from the re-arm to 2 m reads Stat 3 (measured
+  on the no-OutOfRangeHigh mutant's run, the same setup).
 - A tall mount with the clearance at the default lost aiding on the
   ground. Probe: SIM_SONAR_OFFSET 0.6, RNGFND1_GNDCLR 0.10, no home, armed
   idle in ALT_HOLD. The arm's datum reset puts HAGL at 0.10, and the range
