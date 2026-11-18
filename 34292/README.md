@@ -2964,3 +2964,46 @@ reported speed up to 2.09 m/s, with a valid position until the quality
 latch at 82.80 s. Samples the floor discards do not count toward #34941's
 withheld-flow time, so only the ordinary flow timeout bounds such a
 stretch.
+
+## 2026-11-18: #35105 merged, and an in-air re-arm (tier 2)
+
+#35105 merged at 07:50Z (`0ef3fa0534`). A landed Copter is now on the
+ground in EKF3 while armed, `takeOffDetected` clears, and the existing
+pre-takeoff zero (height under 0.5 m) applies after a landing.
+
+The follow-up on #35077 (local `rb35077-34292e`: the resting zero in
+`FuseOptFlow()`, judged by the range finder against
+`MAX(rngAtStartOfFlight, rngOnGnd)` + 0.05 m and the not-flying flag)
+picked onto master `edd2107456` changes nothing on Copter: every leg of
+its `OpticalFlowFocusAltLanding` matches master's EKF. LOITER landings
+kept aiding to disarm (10.2-10.6 s after land_complete), with 0.19 m on
+the ground too; bad flow walked 0.01-0.02 m; landed with the range finder
+stepped to 0.19 m, both kept aiding (master's zero has no range
+condition). On `ad3f9dd6c3`, before #35105, master's EKF failed the
+LOITER leg at 4.6 s after land_complete, and each of the follow-up's two
+conditions had a leg that failed without it.
+
+In-air re-arm, flow-only SITL, FLOW_ALT_MIN 0.3: from a 25 m hover
+drifting at about 1 m/s, force disarm, re-arm at once, 1.5 s armed in
+the air, then recover. Same on `ad3f9dd6c3` and `edd2107456`:
+
+| | STABILIZE, zero throttle | ALT_HOLD, stick 1500 |
+|---|---|---|
+| re-armed at (range) | 17.5 m / 10.6 m | 20.9 m / 16.1 m |
+| vD at the re-arm (EKF / true) | 0.01 / 10.5 m/s, 0.01 / 13.4 m/s | 1.45 / 7.7, 2.15 / 11.1 m/s |
+| HAGL one sample later | 0.10 m at 14.0 m and at 6.4 m | 0.10 m at 20.9 m and at 16.1 m |
+| vE pulled by zero flow | -0.91 to -0.02 in 0.6 s (true -0.93) | -0.66 to -0.01 (true -0.87) |
+| after impact | EKF climbing 10-13 m/s for over 3 s | climbing 6-9 m/s |
+
+The re-arm resets the height datum (vertical velocity zeroed, terrain
+put at the ground clearance) because the EKF was on the ground while
+disarmed; `takeOffDetected` was cleared then, so the snapped height
+brings the pre-takeoff zero. Neither comes from #35105. What #35105 adds
+on master: the copter stays on the ground in EKF3 for the whole
+re-armed fall (RFRN landed set, `get_time_flying_ms()` 0), and after
+impact the stillness test passes on the ground (XKFM OGNM 1) while the
+EKF still reports a 13 m/s climb. `rngAtStartOfFlight` is re-latched
+during the disarmed fall, so a range check against it would not have
+held off the zero; a fixed clearance, or a reference learned only while
+still, would (the range read 6-21 m). Probe test and runner in the
+session scratch (`probe_rearm2.py.txt`, `rearm_ab.sh`, `rearm_trace.py`).
