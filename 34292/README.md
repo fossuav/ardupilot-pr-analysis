@@ -3019,3 +3019,29 @@ On the SFD beta: it still carries the 27-commit FLOW_HGT_MIN version
 plus refresh17 topup1. The next refresh takes the two commits on top of
 #35077 and #35105 (SFD `prs.txt`, 2026-11-18), which changes the fleet's
 floor behaviour and needs flying before promotion.
+
+## 2026-11-19: OpticalFlowLandedZeroNeedsGround on the SFD stack (4.7.3 refresh1)
+
+With #32768 in the stack the no-home leg's arm keeps the height datum
+(EKF height 0.54-0.55 m in the first 5 s), so the leg's precondition
+fails and it proves nothing. Run past it, the in-air re-arm leg reads
+0.64 m/s off at 1.09 m/s (0.40 at 1.03 on this PR's head). The
+#32768 x #34292 interaction recorded at the 11-18 push; whichever
+merges second reworks the legs.
+
+Measured the same day, the test with its raises turned into progress
+lines, three runs each on 4.7.3-beta1 (#32768, neither this head nor
+#35105) and on beta2 (both): the no-home leg's EKF height is 0.54-0.55
+m on both, and in the in-air leg it stays at 4.4-32 m through every
+fall, so no ground zero applies on either. The worst velocity error
+is 0.24-0.50 m/s on beta1 and 0.30-0.64 m/s on beta2 at 0.8-1.1 m/s:
+the flow navigation's own error after a re-arm, crossing the leg's
+half-speed bound by chance. The first leg (LOITER landing left armed)
+reaches the zero only with #35105, and passes there. The released
+SmallFastDrone 4.7.2 (old head of this PR, #32768, no #35105), run the
+same way three times, behaves as beta1: no-home EKF height 0.54-0.55 m,
+in-air EKF height 5.2-31.8 m, worst velocity error 0.23-0.45 m/s at
+0.95-1.15 m/s, first leg short of the zero. The test arrived with the
+re-scope (`3f8f6f29c1`, 11-18), the day after the release was cut, so
+no earlier SFD branch ran it. The beta skips the two datum legs with an
+early return (`d2d638cf21`); the first two legs run and pass.

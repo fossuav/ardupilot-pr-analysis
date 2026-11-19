@@ -958,3 +958,29 @@ AP-Review's only ask was the description's stacking sentence, which named
 the pre-squash SHAs. Already fixed: it now reads "the first twelve commits
 here, ending at e6d636fab3, are that PR; b47647db89 and a869b2ac57 are
 this one" (posted after the review was taken).
+
+## 2026-11-19: on the SFD stack with #35105 (4.7.3 refresh1)
+
+Two findings, neither on master alone.
+
+- rerere dropped this PR's write of `rngOutOfRangeLowTime_ms` in
+  `readRangeFinder()`: on earlier SFD branches #34292's old head wrote
+  the same line, and the recorded resolution kept that copy. With
+  #34292 re-scoped the write was gone and the floor hold never engaged
+  (OpticalFlowAGLKfNoCoastAfterTouchdown 1.16 m, NoCoastBelowMin 0.60
+  m). Restored as an SFD fixup.
+- Since #35105 an armed Copter that has landed is on the ground in
+  EKF3, which resets #32232's `movedSinceArming`; #32232's
+  `readRangeFinder()` then stores the on-ground range for a range
+  finder below its minimum. Those assumed samples keep the coast stop
+  and the floor hold from starting, and fused at the range finder's
+  noise they do not hold the height: the touchdown test coasted 1.15 m
+  (0.28 m with #35105's line taken out). Timing the hold from the last
+  real reading fixed the test and broke Replay (a throw's p95 velocity
+  error against GPS 1.01 to 22.46 m/s: the clock is already stale at a
+  liftoff from below the minimum). Kept instead: hold the AGL KF on the
+  floor while the vehicle reports itself landed and the range is at or
+  below the floor (SFD `1bbe577f7f`). Old logs, without the landed
+  flag, replay unchanged; 40 flow and AGL KF tests pass. Master has
+  neither #32232's assumed range nor the AGL KF, so this PR needs it
+  only if #32232 merges first.
