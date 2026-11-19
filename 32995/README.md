@@ -2,6 +2,11 @@
 
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 
+**2026-11-18:** PR head `9f1dcc9985`, 76 commits on master
+`321896137f`. "Status (one line)" is the
+current state; the paragraphs directly below describe the branch as it
+was in early October.
+
 **2026-10-02:** the flight build failed - continuous reboots (PIO UART lock
 deadlock) and GPS dropouts (UART RX DMA count after an abort). Both fixed,
 squashed into the PR and measured; see "2026-10-02" below and
@@ -266,6 +271,39 @@ commits used to make.
   that reads drag in a turn.
 
 ## Status (one line)
+
+2026-11-19, last: the registry repair folded into the commits that
+introduced each stale entry, and a Scratch Y overflow before the core1
+hot-path commit fixed, so every commit builds RP2350 again. PR head
+`0bfe6d9e02`, 78 commits, mergeable, tree identical to `18cd947273`.
+
+Earlier the same day: ESC passthrough bench-tested by Andy on RPI_UAVFC
+with AM32 ESCs (esc-configurator read, wrote settings and flashed), and
+moved into the STM32-neutral block with the registry repair. Pushed by
+Andy's grant over `9f1dcc9985` as PR head `18cd947273`, 78 commits,
+mergeable; the description's feature table now lists BLHeli passthrough
+as Yes, AM32 tested.
+
+Earlier:
+
+2026-11-19: ESC passthrough added on top, local tip `e7c026ed54`, 78
+commits, unpushed: `c3133097d0` and `e7c026ed54`, reworked the same
+day to read replies with the STM32 path's decoder and release the line
+as Betaflight does. Builds pass, STM32 output unchanged but for three
+`__AP_LINE__` values; not run on hardware.
+
+Earlier:
+
+2026-11-18: PR head `9f1dcc9985`, 76 commits on master `321896137f`,
+pushed by Andy's grant the same day over `6a9e836fb0`. The rebase
+failed the RAMFUNC2 check on five functions master removed; a new
+script repaired the registries, and all three boards build with every
+placed function in SRAM (`086a624f07`..`9f1dcc9985` on top of the 72).
+Unprofiled, not run on a board. AP-Review round 35's two minors (the
+`dshot_send_command` marker, the bootloaders after the repin) are still
+open, and the pin is the blocker as before.
+
+Earlier:
 
 2026-11-07, later: Auto flown on the same build. Port clean, every
 waypoint reached; RTL's landing came in fast from the quad's vertical
@@ -1111,6 +1149,467 @@ rest is not:
   (issuecomment-5671163072). Andy's hardware test of the change set is
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
+
+## 2026-11-19: ESC passthrough on the PIO DShot outputs
+
+AP_BLHeli's passthrough (ESC configuration and flashing over the signal
+wire, one-wire 19200 baud) had no RP2350 implementation: the HAL's
+`serial_*()` calls fell back to the AP_HAL stubs, though AP_BLHeli itself
+was already built in (39 symbols in the RPI_UAVFC ELF). Three commits on
+`9f1dcc9985`, local, unpushed, at Andy's choice added to #32995 rather
+than a stacked branch, and rewritten from Ben La Monica's
+`benlamonica/pr/rp2350-esc-passthrough-alpha2` (`7770a03624`, on alpha2
+`f0f78b48ec`) with credit rather than cherry-picked:
+
+| commit | what |
+|---|---|
+| `358584a8a9` | AP_HAL: EdgeSerial and its 13 host tests, Ben's code, astyle-formatted; Ben is the author |
+| `9704086a2d` | AP_HAL_ChibiOS: the RP2350 implementation, `RCOutput_pico` pause and resume, the STM32 blocks excluded in place, DEVELOPMENT.md; Co-authored-by Ben |
+| `f5d840282c` | hwdef: on for RPI_UAVFC and Laurel by dropping their explicit `HAL_SERIAL_ESC_COMM_ENABLED 0`; READMEs |
+
+Prior art. Ben's version read and flashed four Bluejay 0.19 ESCs through
+esc-configurator on an RP2354A board (his commit message, not checked
+here). Betaflight's PICO platform (`142ed9ad2`, surveyed 2026-11-19)
+stops the DShot state machine, gives the pin to SIO and runs the generic
+4-way bit-bang against `micros()` with no interrupts masked; that works
+there because it is single core with nothing else running during
+passthrough, and it releases the line at the start of the last stop bit.
+
+Measured and rejected, or rejected from the source:
+
+| alternative | argument for | why not |
+|---|---|---|
+| Ben's `chSysLock()` around each byte | exact bit timing, hardware-tested | holds the SMP kernel spinlock about 520 us a byte, so core1's kernel operations wait on every byte; core0-local BASEPRI masking gives the same timing without it |
+| Betaflight's unmasked bit-bang | simplest, merged upstream | ArduPilot runs other threads on core0 that would preempt a bit; an edge late by half a bit corrupts the byte |
+| the PIO UART `uart_tx` program on PIO2 | no CPU timing at all | it holds the stop bit to its end, and Bluejay can answer from its middle, so the two would drive the wire against each other for up to half a bit |
+| `in_soft_serial()` as the core1 gate, as on STM32 | reuses the existing mechanism | adds a load and branch to `dshot_send_groups()` and `dshot_send()`, which run from Scratch Y with 8 bytes free; Ben's channel-mask test already gates `write_frame()` and `read_telemetry()` |
+| Ben's new `AP_RP2350_ESC_PASSTHROUGH_ENABLED` | separate from the STM32 code | `HAL_SERIAL_ESC_COMM_ENABLED` already means this, defaults to 1, and the RP2350 hwdefs only had it at 0 |
+
+Changes from Ben's version besides those: release, the early-start check
+and the end of the last byte happen inside one masked window, so a
+preemption cannot delay the release; the 2 KB edge buffer is allocated per
+session and an overflow ends the read (Ben's ring could overwrite
+silently); barriers between the interrupt and the reader; the existing
+`GPIO::_attach_interrupt()` instead of PAL calls; resume flushes the FIFOs
+again for a frame core1 queued during the pause; counters in a global for
+SWD rather than a new line in `RCOutput::timer_info()`, which would have
+moved STM32 `__LINE__` values. Kept as Ben measured them: the 1 s settle
+refusal, the line driven high at idle, release at mid stop bit.
+
+Checked 2026-11-19 at `f5d840282c` (tree as built):
+
+- RPI_UAVFC, Laurel, Pico2 copter build with no warnings; the placement
+  check passes on RPI_UAVFC and Laurel; Pico2 keeps passthrough off.
+- MatekH743 copter `--consistent-builds` `f1db94851b64` with and without
+  the RCOutput.h/.cpp edits.
+- RPI_UAVFC with passthrough off and on: 1173 of 1181 functions in SRAM
+  or in RCOutput are instruction-identical with addresses masked, the other
+  eight being the new ones; `.data`, `.ram4_init` and `.ram5_init` the same
+  size (0x19620, 0xdd8, 0xed8).
+- `test_edge_serial` 13 of 13 on SITL.
+
+Known gaps, derived from the source and not measured: `SERVO_BLH_TEST`
+retries at once and so fails within the 1 s settle on a first attempt; a
+fast PIO UART such as CRSF can overrun its FIFO while bytes are sent; no
+BLHeli_32 or AM32 ESC has been tried. Owed: a bench session on RPI_UAVFC
+with its ESCs, through esc-configurator. Ben's AP_BLHeli fix
+(`7ab6e3c5fd`, ack on a failed set-address) is generic and wants its own
+upstream PR.
+
+### Superseded 2026-11-19 by the rework at `c3133097d0`
+
+Andy was not convinced by a new decoder, and on review it was not needed:
+ArduPilot already has an edge-timed soft-serial reader, the STM32 path's
+`serial_bit_irq()`, `serial_byte_timeout()` and `serial_read_byte()`, used
+in the field with BLHeli_S, Bluejay, AM32 and BLHeli_32. The three commits
+above (`358584a8a9`, `9704086a2d`, `f5d840282c`) were reset away, unpushed,
+by Andy's grant, and replaced by:
+
+| commit | what |
+|---|---|
+| `c3133097d0` | AP_HAL_ChibiOS: the STM32 reader built for RP2350 too; RP2350 setup, transmit, release, end; `RCOutput_pico` pause and resume; DEVELOPMENT.md. Co-authored-by Ben for the pause |
+| `e7c026ed54` | hwdef: on for RPI_UAVFC and Laurel; READMEs say untested |
+
+What changed from the version above: no EdgeSerial; the line is released
+at the start of the last stop bit and left to the pad's pull-up, as
+Betaflight does, rather than driven to its middle; `serial_bit_irq()` is
+attached before the last byte and the edges that byte latches are cleared
+in `IO_BANK0` INTR at release, inside its masked window (a latched edge
+reaching the reader first would read as a 0x00 byte); no settle refusal.
+Kept: Ben's pause and resume, core0-local masking per byte, the driven idle
+line between commands. The numbers above belong to the replaced commits and
+are left as measured.
+
+Checked 2026-11-19 on the tree committed as `e7c026ed54`:
+
+- RPI_UAVFC, Laurel, Pico2 copter build with no warnings; the placement
+  check passes on RPI_UAVFC and Laurel.
+- MatekH743 copter `--consistent-builds` `f1db94851b64` with and without the
+  RCOutput.h/.cpp edits, disassembly identical. That option fixes
+  `__AP_LINE__` at 17, so it cannot see line shifts: in a normal build the
+  three `WITH_SEMAPHORE()` calls after the serial block (2833, 3011, 3107 at
+  `9f1dcc9985`) record lines six higher, and nothing else changes.
+- RPI_UAVFC passthrough off against on: 1173 of 1186 functions in SRAM or
+  in RCOutput instruction-identical with addresses masked, the other
+  thirteen the passthrough functions and the shared reader; `.data`,
+  `.ram4_init`, `.ram5_init` the same size.
+
+Added to the rejected table's argument, not measured: EdgeSerial (for: it
+handles a reply begun before release and resynchronises on every edge, and
+was host-tested; against: a second decoder beside a field-proven one, and
+the early-start case does not arise when the line is released at the start
+of the stop bit). The 1 s settle (for: Ben measured Bluejay answering after
+0.37 s and up to 2.7 s when written to early; against: neither Betaflight
+nor the STM32 path waits, and the configurator retries). Open, for the
+bench: Ben's commit says a pull-up loses to an ESC input with a pull-down,
+which Betaflight's release-to-pull-up would contradict in the field.
+
+### Bench test, attribution and the reorder, 2026-11-19
+
+Andy flashed the `e7c026ed54` build to the bench RPI_UAVFC. The first
+upload stopped at 78%: over SWD the app area matched the `.bin` up to
+offset `0x10EA00` and was erased from `0x10EB00`, its first words
+unwritten, so the bootloader stayed in its loop (`SCRATCH[5]`
+`0xB001101F`) and the board looked dead. Re-run from Windows Python on a
+free COM15 it programmed and verified, and the app sent heartbeats. What
+interrupted the first upload is not known; Mission Planner and a Python
+process were running.
+
+Andy then ran esc-configurator through it on AM32 ESCs: read, wrote
+settings and flashed firmware, all working (reported by Andy, no log).
+That settles the open pull-up question for AM32 at least: releasing to the
+pad's pull-up at the start of the stop bit works there. BLHeli_S, Bluejay
+and BLHeli_32 are untried.
+
+Betaflight attribution: a one-line thanks in the file header ("With
+thanks to Betaflight, whose 4-way interface and RP2350 port the transmit
+side follows"), in the style of AP_BLHeli.h, and "As in Betaflight" in
+the commit message. A first version naming `suart_putc_()`,
+`BL_SendBuf()` and `dshotReleaseMotorIO()` was too detailed for Andy.
+
+Reordered at Andy's request (`rebase` grant, revoked after), from
+`eafb004cb4`: the registry repair (`822ddda06f`..`de9740a4e3`), passthrough
+`c8ee3fa271` and its hwdef `836a00eadc`, then the six STM32-changing
+commits (`4924d92d2c`..`f693390096`). Backup
+`backup/pre-passthrough-reorder-20261119` at `e7c026ed54`. Tree identical
+to the pre-reorder tip; `range-diff` shows the ten moved commits unchanged,
+messages included. Per-commit builds in a scratch worktree:
+
+- MatekH743 `--consistent-builds` `29c14509aeab` at `eafb004cb4` and at
+  every moved commit through `836a00eadc`, then changing with each
+  STM32-changing commit to `f1db94851b64` at the tip, as before.
+- RPI_UAVFC copter fails at `eafb004cb4` (stale registry, as since the
+  rebase) and builds with no warnings at every commit from `822ddda06f` to
+  the tip, so the six STM32-changing commits now build on RP2350 too.
+
+Owed: fold the registry repair back into the commits that introduced the
+removed entries, so commits 1-66 build RP2350 again.
+
+The shortened thanks was folded into the passthrough commit by Andy's
+own grant (my run of `grant_push.py` was refused by the session's
+permission check): comments and message only, tree identical, the rest
+unchanged by `range-diff`. Renumbered: passthrough `ed999253e3`, hwdef
+`80d903433b`, the six STM32-changing commits `20ec3fa10c`..`18cd947273`;
+the registry repair keeps `822ddda06f`..`de9740a4e3`. Tip `18cd947273`.
+
+Pushed 2026-11-19 with `--force-with-lease` pinned to `9f1dcc9985` (+12/-10);
+GitHub reports head `18cd947273`, 78 commits, mergeable; grant revoked
+after. Not reviewed by `/pr-review` at this head. The description's
+`| BLHeli passthrough | No | |` row became a Yes row beside the DShot
+rows, AM32 read, configured and flashed on RPI_UAVFC; nothing else in
+it changed (diffed against the read before the edit).
+
+## 2026-11-19: the registry repair folded in
+
+At Andy's request ("do the fold"). The repair commit `822ddda06f` is gone;
+each change it made is in the commit that introduced the line it fixes,
+made by rewriting every commit's tree from its own (git plumbing, no
+rebase), so the final tree is byte-identical to `18cd947273`:
+
+- the EKF3 getters, `update_throttle_gain_boost` and Scratch Y's
+  `AC_PID::get_ff` in the registry's first commit (was `094c0ef17c`);
+- the `lib_a-memcmp.o` pick, and "newlib's memcmp" in the message, in the
+  core0 hot-path commit;
+- the Picolibc archive-pick note in DEVELOPMENT.md where the archive-pick
+  bullet was written (was `9051b2f0c6`);
+- "replaces the newlib versions" in the registry with the commit that
+  rewrote the matching DEVELOPMENT.md paragraph for Picolibc (was `cbbbaf13ed`).
+
+The sweep then found a second break the tip never showed: every commit
+before the core1 hot-path commit overflowed Scratch Y by 56 B on RPI_UAVFC
+and Laurel (Pico2 fitted). The Scratch Y registry is unchanged from its
+first commit to the tip; the overflow is veneers. Scratch Y is out of a
+branch's reach of flash, so each flash callee costs a 16 B veneer in the
+bank: nine before the core1 commit, five after it, as that commit moves
+the callees into SRAM. `rp2350_ramfunc2_update.py --build`, run at the last
+failing commit, moved `HarmonicNotchFilter<Vector3<float>>::apply` (94 B)
+to main SRAM. It is folded in from the registry's first commit through the
+core1 commit, and a new commit after that one returns it ("return
+HarmonicNotchFilter::apply to RP2350 Scratch Y"), so the core1 commit's
+patch and every tree from the new commit on are unchanged.
+
+Per-commit RP2350 copter builds in a scratch worktree, no warnings: Pico2
+from the commit that adds it, Laurel from its own, RPI_UAVFC at every
+commit from `hwdef: add RPI_UAVFC`, all three at the commit before the
+core1 one. Scratch Y on RPI_UAVFC 4056 B with nine veneers before the core1
+commit, 3992 B with five at it, 4088 of 4096 at the return. Later trees are
+those the earlier sweeps built. STM32 output cannot change: only
+`chibios.py`'s RP2350 path reads the registries, and the fold touches only
+them and DEVELOPMENT.md. `range-diff` against `18cd947273`: the registry's
+first commit, the core0 hot-path commit, the DEVELOPMENT.md commit and the
+repair-script docs commit change as above, the core1 commit only in
+context lines, the new commit added, the repair dropped, 62 identical.
+
+Pushed with Andy's `reset,push` grant (`--force-with-lease` pinned to
+`18cd947273`), revoked after: PR head `0bfe6d9e02`, 78 commits, mergeable.
+Not reviewed by `/pr-review` at this head.
+
+The worktree setup used on 11-19 for the passthrough sweep had written
+the main checkout's submodule URLs (shared `.git/config`) to its own
+`modules/` paths, which would have stopped `git submodule update` fetching
+anything new there. Restored to the `.gitmodules` URLs; the fold sweep
+passed local URLs only as `-c` overrides and left the config untouched.
+
+## 2026-11-18: rebased onto master, and the build it breaks
+
+Andy ran `git pull --rebase upstream master` at 14:59 UTC, moving the
+series from `aea9a1b5d4` to `321896137f`, 154 upstream commits on. Local
+tip `b957211b71`, 72 commits, not pushed. `git range-diff` against
+`6a9e836fb0` shows all 72 commits unchanged, messages included, so the
+rebase met no conflict and lost no `#` line this time. The ChibiOS pin
+is unchanged at `39ed91cb626f`.
+
+It does not build. RPI_UAVFC copter at `b957211b71` (built 2026-11-18 in
+this checkout) stops at the strict RAMFUNC2 check, "5 registry entries
+matched no symbol", all from master removing the functions:
+
+| registry entry | removed upstream by |
+|---|---|
+| `NavEKF3::getEulerAngles`, `NavEKF3_core::getEulerAngles` | `dae5cea337` "AP_NavEKF3: remove getEulerAngles; derive logged eulers from quaternion" |
+| `NavEKF3::getRotationBodyToNED`, `NavEKF3_core::getRotationBodyToNED` | `28b9bae3c8` "AP_NavEKF3: derive getQuaternionBodyToNED directly from the quaternion" |
+| `AC_AttitudeControl_Multi::update_throttle_gain_boost` | `b02ee1b10f` "AC_AttitudeControl: apply throttle-gain boost once per loop" (Andy's) |
+
+All five lines blame to `094c0ef17c` "AP_HAL_ChibiOS: add the shared
+RP2350 support files". Laurel copter runs the same strict check and
+should fail the same way; not built. Whatever replaces those functions
+on the hot path is not yet placed, so the core0 profile wants a look
+before the entries are simply deleted.
+
+Also arriving with the rebase, read from the log and not yet exercised
+on the board:
+
+- Picolibc for libc, with the toolchain's newlib libm kept (`8747cddda9`,
+  `cd99148514`, `c3bb9d8b1b`, 2026-11-17). The registry's libm picks
+  (`lib_a-ef_atan2.o` and the rest) should be unaffected. The libc pick
+  `(archive)|lib_a-memcmp.o` names a newlib libc member that may no
+  longer be linked, which a linker-script pick would skip in silence.
+  The build failed before the link, so this is open.
+  `rp2350_memfunctions.S`'s `memcpy`/`memset` replacements need the same
+  check.
+- `edd2107456` "AP_HAL_ChibiOS: charge bdshot receive failures to the
+  sampled ESC", which meets the port's `bdshot_count_reply()` counting.
+- `8fa1a51051` (heap-backed ring buffer construction guarded),
+  `33d04a44f1` (AP_HAL includes), `db16079ac9` (INS instance-count
+  macros moved).
+
+### The registries repaired by script
+
+At Andy's request the repair was written as a tool rather than done by
+hand, so the next rebase is one command:
+`Tools/scripts/rp2350_ramfunc2_update.py --board <board> --build`
+(`1c61a954e5`). It needs only git, waf and the cross
+binutils. For an entry that matches nothing it finds the commit that
+removed the function (`git log -S` on the entry's source file, the
+registries excluded, since they name it too), and places what that
+commit added in the same class or file plus the callers that took over
+its code, up to the bytes the old entry held. A dead toolchain archive
+pick goes to the build's own object. On a scratch-bank overflow it moves
+the smallest entry that covers it to main SRAM and links again. Once the
+build links it checks that every registered function, and every
+`.ramtext` function, is in SRAM. Each change is marked `ramfunc2-update:`
+in the registry for the profiling pass still owed.
+
+What it did at `b957211b71`:
+
+| out | B | in | B |
+|---|---|---|---|
+| `AC_AttitudeControl_Multi::update_throttle_gain_boost` | 140 | `get_throttle_pd_boost`, `rate_controller_target_reset` (new in `b02ee1b10f`) | 52 + 52 |
+| `NavEKF3::getRotationBodyToNED`, `NavEKF3_core::getRotationBodyToNED` | 20 + 56 | `NavEKF3::getQuaternionBodyToNED` (its caller, which took the code) | 62 |
+| `NavEKF3::getEulerAngles`, `NavEKF3_core::getEulerAngles` | 20 + 44 | nothing: the one caller left, `Log_Write_XKF1`, is 424 B | 0 |
+| `(archive)|lib_a-memcmp.o` (toolchain newlib, no longer linked) | 32 | Picolibc's `memcmp` | 32 |
+| `AC_PID::get_ff`, out of Scratch Y | 14 | the same, into RAMFUNC2 | 14 |
+
+The last row is the second failure the rebase hid behind the first: once
+the names matched, Scratch Y overflowed by 8 B. The script added nothing
+there; upstream growth in functions already in the bank did, about 16 B
+in all, since the bank was at 4088 of 4096 B on 2026-10-23 with
+`get_ff` in it and is at 4088 without it now. Which function grew is not
+measured. Scratch X is at 3832 of 4096 B. The section sizes alone
+account for only 4020 B of Scratch Y; the rest is alignment and the
+long-branch veneers the linker adds, which is why the script takes the
+overflow from the linker rather than estimating it.
+
+The Picolibc question from above is settled at this head, from the ELF:
+`memcpy` and `memset` are the port's `.ramtext` copies at `0x20000f40`
+and `0x20000fdc`, although Picolibc defines both too; only link order
+picks the port's, and the script's check would report the other.
+`memcmp` is at `0x20015f08`, in SRAM. The `edd2107456` bidirectional
+DShot change compiled in without moving anything out of SRAM.
+
+Checked: RPI_UAVFC, Laurel and Pico2 copter build and pass the
+placement check. The check was shown to fail on a function known to be
+in flash (`NavEKF3_core::FuseVelPosNED`), and a second run on the
+repaired tree changes nothing. Its first version flagged `Vector84` on
+Laurel and Pico2, where the PIO OSD is not built and the name is
+ChibiOS's zero-size weak default label in `vectors.S`; weak labels with
+no size are now skipped. Not done: any profile of the new placements,
+and no board has run this build. The same change adds a pointer to the
+script in the "matched no symbol" and scratch-bank overflow messages,
+and documents it in `rp2350/DEVELOPMENT.md`.
+
+Committed 2026-11-18 on `b957211b71`, registry repair first so that
+every new commit builds (the rebased head alone does not):
+
+| commit | what |
+|---|---|
+| `086a624f07` | AP_HAL_ChibiOS: the registry changes above, and the Picolibc archive-pick note in DEVELOPMENT.md |
+| `1c61a954e5` | Tools: `rp2350_ramfunc2_update.py` |
+| `a0a545728b` | AP_HAL_ChibiOS: the script named in the failure messages, DEVELOPMENT.md on the script and on memcpy/memset under Picolibc |
+| `9f1dcc9985` | AP_HAL_ChibiOS: the stale RPI_UAVFC image item out of DEVELOPMENT.md |
+
+The first is a placement change nothing has profiled or flown, so it
+stays a commit of its own on top rather than going into the flown
+commits by blame. Prefixes checked against `allowed_subsystems.py`;
+`check_branch_conventions.py` itself was not run, as the push hook
+blocks it even with `amend` granted (its source also contains `git
+rebase -i`, so it wants `rebase` too). Its rules were applied to the
+four new commits by hand instead: no merges or fixups, subjects within
+the limit, well-formed prefixes, no submodule or board ID change, no
+RST markup, every file ending in a newline. The 72 rebased commits are
+patch-identical to those CI checked at `6a9e836fb0`.
+
+Pushed 2026-11-18 with `--force-with-lease` pinned to `6a9e836fb0`;
+GitHub reports head `9f1dcc9985`, 76 commits, mergeable. The grant was
+revoked after the push.
+
+The RPI_UAVFC README image, still listed as open under 2026-10-01 and
+in `rp2350/DEVELOPMENT.md`'s known issues, has been closed since
+`1b8b7e68cf` (pushed 2026-10-25): its README references
+`RPI_UAVFC_Top.jpg` and `RPI_UAVFC_Bottom.jpg`, which `be00cf53c3`
+(2026-10-23) did not have. CI's `validate_board_list` passes at
+`6a9e836fb0`. The DEVELOPMENT.md line is removed by `9f1dcc9985`; by
+blame it belongs in `094c0ef17c`, and being documentation it may go
+into that flown commit at the next squash.
+
+## 2026-11-08 to 2026-11-11: AP-Review rounds 32 to 35, and master's UART line lock
+
+Reconstructed on 2026-11-18 from the PR thread and `git range-diff`; the
+round was not recorded here when it happened. Four heads:
+
+| head | what changed | review |
+|---|---|---|
+| `1fcec947c5` (2026-11-07), 71 commits on `2f3644c90e` | the 200 MHz series flown in logs 8 and 9 | round 32, 2026-11-07 13:45 |
+| `9dcfb68204` | documentation only: the RPI_UAVFC README and DEVELOPMENT.md flight notes from logs 8 and 9 | round 33, 2026-11-10 |
+| `20c605405c` (2026-11-11) | rebased onto master `aea9a1b5d4`, 322 commits on | round 34, 2026-11-11 16:27 |
+| `6a9e836fb0` (2026-11-11) | one new commit and two amended | round 35, 2026-11-11 19:51 |
+
+Round 32 (report 32): REQUEST CHANGES. Besides the pin, now `39ed91cb626f`
+(ChibiOS#113's head), a merge conflict with master's AnalogIn refactor
+(`e15fae8738`, `4eb8b67684`) had skipped CI, so nothing at
+`1fcec947c5` went through it. Minors: the committed bootloaders no
+longer match the source, since the new `memcmp`/Vector40/Vector68
+placements also apply to bootloader builds; a PIOUART numbering check;
+the AI line.
+
+Round 33 (report 33), at `9dcfb68204`: the conflict now also hit
+`AP_HAL/board/chibios.h`, where master dropped `#define HAL_BOARD_NAME
+"ChibiOS"`, and after a rebase PIORXDriver would not compile, as master's
+`828560a87b` made `set_options()`, `set_stop_bits()` and
+`configure_parity()` non-virtual wrappers over backend methods. Should
+fix: `-DHAL_BOARD_NAME=\"$(HAL_BOARD_NAME)\"` in
+`chibios_board_rp2350.mk` would pass an empty string, master no longer
+setting the variable, giving an empty USB product string ("-BL" in the
+bootloader). The fast-erase GET_CRC trade-off listed again, no change
+asked.
+
+The rebase to `20c605405c` changed commits 2, 6, 9, 12, 15 and 26
+(`range-diff` between `1fcec947c5` and `6a9e836fb0`):
+
+- 2 and 26: `HAL_BOARD_NAME` left to master, in `chibios.h` and the
+  RP2350 board makefile.
+- 15: the RP2350 temperature pin under master's `#ifdef HAL_ANALOG_PINS`;
+  `Util.cpp` takes master's rename to `HAL_SHORT_BOARD_NAME`.
+- 9 and 12: PIORXDriver and the SIO path override `_set_options()`,
+  `_set_stop_bits()` and `_configure_parity()`. PIORXDriver's own
+  `_stop_bits` is gone in favour of the base class's, which master's
+  `a1a575d7f0`/`e9aee4cd4a` added. `sio_lcr_h()` and
+  `sio_apply_framing()` take the parity and stop bits as arguments,
+  because the base class records the parity only once the backend has
+  applied it.
+
+Round 34 (report 34), at `20c605405c`: the three rebase items confirmed
+fixed. Should fix: the new SIO branches change parity and stop bits
+without `_line_config_sem`, which master (`0aa8ee5a88`, 2026-11-03)
+declares and takes only under `HAL_USE_SERIAL`, so the race master fixed
+for STM32 UARTs stays open on RP2350. Minor: the rebase dropped the line
+of commit 15's message that began `#ifndef default equal to master's
+value`: a conflicted rebase drops message lines that start with `#`.
+CI failures at `20c605405c` were runner DNS failures in apt (Andy,
+issuecomment-6803970372).
+
+`6a9e836fb0`:
+
+- New, 72: "AP_HAL_ChibiOS: lock RP2350 UART line setting changes".
+  `_line_config_sem` is declared for `HAL_USE_SIO` too and taken in the
+  SIO branches of `_configure_parity()`, `_set_stop_bits()` and
+  `_set_options()`. `sio_apply_framing()` takes `_write_mutex` inside it
+  and nothing holds `_write_mutex` while changing line settings, so the
+  two are always taken in the same order (derived from the source). The
+  message claims the only STM32 change is the line number two later
+  `WITH_SEMAPHORE()` calls record; the 2026-11-11 session noted MatekH743
+  moving 2060 to 2062 and 2159 to 2163. A bench method was worked out the
+  same day - a Lua script on a `SERIALn_PROTOCOL` 28 port stepping
+  `configure_parity()`/`set_stop_bits()` while OpenOCD samples UART0
+  `LCR_H` (`0x4007002c`) without halting - but no result is recorded
+  here, and the race itself was not exercised.
+- Amended, 6 (`f0797eaf8f`): `chibios_hwdef.py` errors when
+  `SERIAL_ORDER` lists PIOUARTs out of order or with a gap, the rule
+  DEVELOPMENT.md documented.
+- Amended, 15 (`6599145a54`): the message reworded so no line starts
+  with `#`.
+- Replaced at `9dcfb68204`, 66: "note the Pico 2 has run the 200 MHz
+  flash settings" became "record the 200 MHz flights and the Pico 2's
+  bench run"; 59's message and 63's README now say the 200 MHz settings
+  flew on 2026-11-07. Documentation only.
+
+Status comment issuecomment-6803970372 (2026-11-11 18:27) answered round
+34. Round 35 (report 35, issuecomment-6805756935): REQUEST CHANGES on
+the pin alone, the lock, the numbering check and the message confirmed.
+`check-merge-commits` now fails at "Check branch conventions" because 1
+(`e8bdbce44d`) and 56 (`9b8f9f69aa`), the two ChibiOS bumps, reference
+commits not on ChibiOS master. Minors, unanswered:
+
+- `rp2350_ramfunc2_registry.txt:363`'s `dshot_send_command` entry has no
+  DShot marker, so an RPI_UAVFC or Laurel copter build with
+  `HAL_DSHOT_ENABLED 0` fails the strict check. `[needs
+  HAL_DSHOT_ENABLED]`, as `restart_sm` carries, would answer it. Still
+  unmarked at `b957211b71`.
+- The committed bootloaders, to regenerate after the repin.
+- The AI line, declined.
+
+CI at `6a9e836fb0` (`/pr-checks`, 2026-11-18): 118 checks, 106 pass, 12
+fail.
+
+| failed | cause |
+|---|---|
+| `check-merge-commits` | the ChibiOS pin, as round 35 says |
+| 9 autotest and size jobs (plane 1a, 1b, quadplane 1c, rover, copter 1b, 1c, MatekH743-bdshot, disco) | `Failed to CreateArtifact`, the artifact upload; no test failure found in their logs |
+| copter tests2b | GPSGlitchLoiter: "Did not get good COMMAND_ACK within 10.000000s". Not compared with master |
+| copter tests2c | no failure marker in the log; not opened |
+| copter tests2d | job log not downloadable |
+
+Review state on GitHub: CHANGES_REQUESTED, from the earlier human reviews.
+ChibiOS#113 is open at `39ed91cb62`, last updated 2026-11-07, no review.
 
 ## 2026-11-07, later: an Auto mission
 
