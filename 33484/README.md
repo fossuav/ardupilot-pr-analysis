@@ -1855,3 +1855,130 @@ the flight at the moment that matters, so it is not a reproduction.
   minute; whether that pushed the flow to the gate is not measured. Not
   attempted: a tilt-drift fallback per axis, or a recovery that also
   constrains tilt.
+
+## 2026-11-18: rebased onto master with #35077, pushed `6f0dd1ecfc`
+
+#35077 (FLOW_ALT_MIN) merged 2026-11-15 and this PR's recovery commit
+sits beside its lines. Rebased onto master `ad3f9dd6c3` (2026-11-17,
+carries #35077, not #35105), force-pushed `b135aa93fd...6f0dd1ecfc`,
+2026-11-18 09:40Z, with #34630, #35147 and #34941. `git range-diff`: 12
+of 14 commits identical; the recovery commit (`66e500f3cc`) and its test
+(`0308a831bb`) changed in context only - #35077's `altMin` field beside
+`quality` in `of_elements`, its `flowRngBelowAltMin` return beside this
+PR's latch check in `readyToUseOptFlow()`, and the test list around
+master's new `OpticalFlowFocusAlt`. No code of this PR changed.
+
+AP-Review round 17 at `6f0dd1ecfc`, COMMENT, two minors, both still open
+from earlier rounds: a constant-distance AGL KF restart is never
+confirmed at a long fusion horizon (count at fusion time by reading
+time), and the quality-latch fields shared with the PX4Flow bus thread
+(no change asked here; #34783 moves PX4Flow to the main loop).
+
+New on #34630's round at the same rebase, and it lands in this PR's
+code: after a dip below FLOW_ALT_MIN both axes' `flowFuseTimeAxis_ms`
+are stale, so the first sample that fails one axis resets the velocity
+at once, without the 500 ms persistence, just as the sensor regains
+focus. The bot's fix: refresh both timers while `flowRngBelowAltMin`
+holds; it says the lockout and focus-altitude tests still pass with it.
+Not examined here yet. It is an interaction with #35077 that neither PR
+had alone.
+
+Triage: Tools/SFD `PR_STATUS.md`, 2026-11-19.
+
+## 2026-11-19: the FLOW_ALT_MIN dip fixed, local `sq/33484-1119` (`8316113fbb`), pushed 2026-11-19
+
+Two commits on `6f0dd1ecfc`:
+
+- `01c06ee980` AP_NavEKF3: while `flowRngBelowAltMin` holds, both
+  `flowFuseTimeAxis_ms` are set to now, so a lockout after the dip is
+  judged from the samples taken after it.
+- `8316113fbb` autotest: a new leg of EK3_FlowAxisLockoutRecovery raises
+  FLOW_ALT_MIN to 10 m over a 3 m hover for 1.5 s, with `SIM_FLOW_OFS_X`
+  1.0 put on during it, then sets it back to 0; from PARM and XKF7.FVC
+  it checks the dip lasted at least 1 s, no reset came during it, and
+  the reset after the return came 0.4-1.0 s after it.
+
+SITL (tier 2), the leg alone in a temporary copy of the test, binaries
+md5-checked:
+
+| | reset after the return above FLOW_ALT_MIN |
+|---|---|
+| without `01c06ee980` | 0.10, 0.11, 0.12 s (3 of 3 fail) |
+| with it | 0.50, 0.51, 0.57 s (3 of 3 pass) |
+
+The whole test with the leg: 0.53-0.62 s over six runs at this head and
+at #35147's, all pass; OpticalFlowFocusAlt, OpticalFlow and
+OpticalFlowLimits pass. Inert while FLOW_ALT_MIN is 0 and on logs
+recorded before FLOW_ALT_MIN existed, so no Replay was run (derived
+from the source).
+
+`/pr-review --quick`: gate clean (notes: subject length, now 63 chars).
+Codex cold read, first round: the leg did not check the dip's length or
+bound the delay above (both taken). Audit of the bot's finding: CLOSED.
+
+Open, for a decision, found by the cold read and confirmed in the source
+(not measured): the same stale-timer reset follows any gap in which
+neither axis is tested. `writeOptFlowMeas()` drops samples with quality
+0 or a rate over 4.2 rad/s before fusion, so a dropout of more than
+500 ms, at any height, followed by a sample that passes one axis and
+fails the other, resets at once. The flow tilt gate's gaps are the same
+shape, and its resets were the 2026-09-09 misfires. A gap-length rule
+(restart both timers after any gap with no tested sample) would cover
+all three, but changes reset timing the flights measured, so it needs a
+Replay sweep first.
+
+Seen while A/B-ing, not caused by this change: the repeated-lockouts
+subtest failed "no XKF1 either side of the reset" twice in two runs on
+the without-fix build, a reset falling within 50 ms of the disarm that
+ends the log; it passed in every other run. FLOW_ALT_MIN is 0 there, so
+the fix cannot reach it. A race in the subtest.
+
+## 2026-11-19 (later): a Replay sweep of the stale-timer family (tier 1b)
+
+The question left open above: should any gap in which neither flow axis
+is tested (a dropout, the tilt check, the focus floor) restart the axis
+timers, as the FLOW_ALT_MIN fix does for the floor? Two prototypes on
+the SFD beta (4.7.3-beta1, `a0df5b5760`), each against the beta itself,
+over the 423 cached replayable logs (`--force-ekf3`):
+
+- General rule: on the first sample tested after more than 250 ms with
+  none, both timers restart. Covers all three gaps.
+- Floor only: the timers restart while the beta's FLOW_HGT_MIN floor
+  holds the flow off in flight, the beta's analogue of `01c06ee980`.
+
+| | general rule | floor only |
+|---|---|---|
+| logs identical | 363 | 385 |
+| changed, messages only | 38 | 22 |
+| changed, state | 22 | 16 |
+| flow more than 1 m/s from the state, over the changed logs | 9323.7 s, 9324.0 s | 4781.9 s, 4795.6 s |
+
+The largest moves, general rule: a customer quad's two flights +8.3 and
++8.9 s of flow away from the state (one of them the forward-axis lockout
+flight above), a 2.5-inch quad's flight -18.5 s, a 4-inch quad's flight
++4.3 s on one core and -10.9 s on the other. Floor only: the same 2.5-inch
+flight -13.5 s, the 4-inch quad's flights +1.8/+7.6 s and +6.7/+5.4 s;
+neither customer flight moves, so those came from dropout and tilt gaps.
+
+Against GPS, where a log has it (three changed logs under the general
+rule, one under the floor rule), nothing measurable: velocity error p95
+10.84 to 10.94 m/s on one flow lane, 0.78 to 0.76 m/s on another, the
+third identical.
+
+The flow-to-state measure leans towards earlier resets by construction,
+since a reset makes the state agree with the flow, so it cannot say
+whether holding a reset back is right; only the GPS logs can, and they
+show nothing either way.
+
+Not adopted: the general rule changes 22 flown flights' estimates for
+no measured gain. The FLOW_ALT_MIN fix stays as pushed: its floor
+analogue moves 16 flights, none measurably against GPS, and it keeps the
+500 ms persistence the lockout is defined by. Prototype diffs and runs
+are not kept here (real-flight output).
+
+## 2026-11-19 (later): restacked onto master with #35105, pushed `8ed697cba1`
+
+With #35147's restack (that record): cherry-picked onto master
+`321896137f`, every commit `=` in `git range-diff`; force-pushed
+`8316113fbb...8ed697cba1`. The stack's tests pass at #35147's head and at #33484's
+own (tier 2). Nothing of this PR changed.

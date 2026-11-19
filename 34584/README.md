@@ -148,3 +148,15 @@ AP-Review round 2 (COMMENT at `474a5f073b`): only the description, which said tw
 ## 2026-11-06: reply posted
 
 https://github.com/ArduPilot/ardupilot/pull/34584#issuecomment-6684179787
+
+## 2026-11-17: merged
+
+Rebased 2026-11-08 (`7db1d282d5`) and, once #34583 merged and rmackay9
+asked, again onto master on 2026-11-17 (`c7195c4a17`, `1fa4193dbf`,
+`e35809e6c0`, patch-identical to `02aae0ba53`). AP-Review round 5 at
+`e35809e6c0`, COMMENT, only optional items: a test for the ATSC angle P
+logging fix (ThrottleGainBoostRateThread checks only the maxima, so bad
+landed rows pass; check AngPScX equals PDScX over a settled landed phase
+with ATC_LAND_R_MULT 0.5 and boost off), and the unlocked modifier
+handoff. Merged by andyp1per 2026-11-17 22:25Z (`40d06e22e5`) with both open. The
+angle P logging test would now be a follow-up PR on master.

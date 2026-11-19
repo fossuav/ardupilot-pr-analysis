@@ -946,3 +946,14 @@ and 3, applying log89's saved 0.025 / 0.020): the Z accel bias read
 -0.10 / -0.09 at arming, stayed at -0.10 and -0.09 to -0.08 through 145 s
 of ACRO to 22.4 m/s, and read -0.08 / -0.07 at the end of the Loiter. No
 clip.
+
+## 2026-11-19: restacked on #32471's rebase onto master (local `sq/32473-1119`, `ec8adac0eb`, pushed 2026-11-19)
+
+Its four commits cherry-picked onto #32471's `be3fc44afe`, all `=`. The
+acro tests and the rest of #32471's pass at this head (see that record).
+
+## 2026-11-19 (later): restacked on #32471's Flags2 move (local `sq/32473-1119b`, `73bd8c79e7`, pushed 2026-11-19)
+
+Four commits `=` on `ca52de2e10`. VibrationRectificationBiasLearning,
+HoverBiasSavedFirstFlightAfterRest, AccelBiasLearningInhibitedInAcro,
+AccelBiasAcroExitVelocityError and Copter.Replay pass.

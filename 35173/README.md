@@ -141,3 +141,20 @@ printf 'define HAL_NAVEKF2_AVAILABLE 1\n' > ekf2.hwdef
 ./waf configure --board MatekF405 --consistent-builds --extra-hwdef=ekf2.hwdef
 ./waf copter
 ```
+
+## 2026-11-15: merged
+
+peterbarker measured the obvious alternative before merging: removing
+the three O2 pragmas so the EKF builds at the board's `-Os`. Copter flash
+against master: this PR -776 to -1708 bytes, no pragma -6128 to -12204.
+DWT cycles per call, CovariancePrediction: Pixhawk6C (H743) master
+32826, this PR 28212 (-14.1%), no pragma 29073; OmnibusF4 25530, 25006
+(-2.1%), 26326 (+3.1%). GSF update and the F4's whole UpdateFilter()
+order the same way. Renode instruction counts agree. His conclusion:
+merge as it stands; dropping the pragma is a separate flash-for-cycles
+decision for small boards. AP-Review ACCEPT at `fde5fe5a87`; merged by
+peterbarker 2026-11-15 05:52Z (`20e9c6f5b7`).
+
+Posted 2026-11-15: the cause landed in 4.7.0 with `46e081aea1`
+("ardupilotwaf: add -fno-math-errno to ChibiOS boards", January 2025);
+4.6 did not have it, so it is a 4.7 performance regression.

@@ -149,3 +149,11 @@ in-controller probe), and the throttle mix (not logged anywhere).
 https://github.com/ArduPilot/ardupilot/pull/34583#issuecomment-6684180895
 
 Description updated (the ATSC bullet points to #34584, 474a5f073b).
+
+## 2026-11-16: merged
+
+Rebased 2026-11-08 (`c447c6ef86`, `aa00ef6f79`, `b23058ae09`); AP-Review
+ACCEPT at `b23058ae09`. rmackay9 proposed merging on the 11-10 dev call,
+then held it for lthall to look more thoroughly. Merged by rmackay9
+2026-11-16 23:18Z (`d366ca6f42`). In the SFD stack it is in the merged
+section of prs.txt until 4.7 carries it.

@@ -7,6 +7,13 @@ source and measured worse are in the "Measured and rejected" tables under
 round 3 (2026-09-17) and the round of 2026-09-29 at the end. Read both
 before touching the gate.
 
+2026-11-18: PR head `3f8f6f29c1`, two commits on master `321896137f`,
+retitled "AP_NavEKF3: hold ground zeros off while the range finder reads
+airborne". It replaces the whole branch described below: FLOW_HGT_MIN
+went upstream as #35077's FLOW_ALT_MIN and the landed zero as #35105, and
+what is left is a range finder check on both ground zeros. See "2026-11-18"
+at the end. Everything above that section describes earlier heads.
+
 2026-10-13: PR head `9e086e9d5d`, 20 commits on `1f1251a67e`, pushed
 2026-10-13. The fix round for its AP-Review (two test-only fixups) is on
 the local branch `fix4/pr-flow-hgt-min`, not pushed; see the last
@@ -2914,3 +2921,101 @@ commit `a11e396498` and the SFD trial branch's `a2411d8ef7` and
 `1c98bbd0da` carry the same wrong description, and `a11e396498` also
 calls all four false-floor flights indoor, where Mission 1's location
 is not known. The posted PR description makes neither claim.
+
+## 2026-11-15: the landed-state gate pushed, and AP-Review asks for a rebase
+
+`fix/34292-landed-v2` (`a11e396498`, `51a76219df`, above) went to the PR
+as a fast-forward, `3dcdfb487b..51a76219df`. AP-Review round 17 at
+`51a76219df`, REQUEST CHANGES:
+
+- Blocking: the branch conflicted with master in 14 files once #35077
+  merged (2026-11-15, peterbarker). FLOW_ALT_MIN already took
+  AP_GROUPINFO index 8 and master logs the floor in `ROFH.altMin`, not a
+  ROFM. Rebase what master lacks onto FLOW_ALT_MIN, or close the PR.
+- Should-fix: the descriptions did not mention the not-flying condition
+  (a flying Copter now discards rather than fuses the zero; an armed Sub
+  on the bottom discards, as Sub's flying flag is the arm state).
+- Minor, carried from earlier rounds: a landing reading more than 0.05 m
+  above both references, one rest reading and clearance shared by two
+  range finders, `rofm_resend` not serialised.
+
+Not answered on the PR; the 2026-11-18 re-scope below replaced the code
+it was about.
+
+## 2026-11-18: re-scoped onto #35077 and #35105, two commits, pushed `3f8f6f29c1`
+
+#35077 (FLOW_ALT_MIN, the in-flight discard below the focus altitude)
+merged 2026-11-15 and #35105 (a landed Copter is on the ground in EKF3,
+so it gets the zero velocity and the flow zero while armed and landed)
+merged 2026-11-18. Between them master has the parameter, its DAL value
+and the landed zero this PR existed for. The branch was rewritten on
+master `321896137f`, which carries both, as two commits, and force-pushed
+`51a76219df...3f8f6f29c1` at 14:51Z:
+
+- `059a36a8ee` AP_NavEKF3: while armed, the flow zero (with the flow
+  itself) and the stationary zero velocity are withheld where the
+  downward range finders read the vehicle at least 0.5 m above
+  RNGFNDx_GNDCLR, tilt corrected, or above their range. Any one reading
+  lower keeps the vehicle on the ground. `readyToUseOptFlow()` refuses
+  withheld flow, as it refuses flow below FLOW_ALT_MIN. No downward
+  range finder, one reading out of range low or nothing, or disarmed:
+  unchanged.
+- `3f8f6f29c1` autotest `OpticalFlowLandedZeroNeedsGround`, four legs:
+  a LOITER landing reading 0.2 m keeps aiding to DISARM_DELAY; an
+  ALT_HOLD landing out of range low with bad flow does not walk; armed
+  with no home reading 0.55 m on the ground keeps aiding; re-armed in
+  the air as it falls, the velocity is not pulled to zero. The first
+  three pass on master; the last fails there.
+
+Gone from the PR with the rewrite: FLOW_HGT_MIN and its index (master's
+FLOW_ALT_MIN), ROFM and `rofm_resend`, the learned rest reading and
+`on_ground()`, the dropout hold, the default floor at GNDCLR+0.05,
+SIM_FLOW_OFS (#34533, merged), the step guard and the landed-state gate.
+The sections above stay as the record of what each measured.
+
+Why the range finder (PR description, inspection): after an in-air
+re-arm Copter reads landed for the whole fall, so #35105 puts it on the
+ground; with no home set, the height datum reset Copter already does at
+arming on master (`AP_Arming_Copter.cpp`) puts EKF3's height at the
+clearance, so the flow zero below 0.5 m applies, and in
+SITL the IMU stillness test passes at terminal velocity, so the zero
+velocity follows. The range finder is the independent signal. 0.5 m is
+the height the flow zero already uses, measured from the clearance so a
+tall vehicle on the ground keeps the zeros.
+
+SITL, from the PR description at `3f8f6f29c1` (tier 2; not re-run for
+this record):
+
+| Scenario | 3f8f6f29c1 | comparison |
+|---|---|---|
+| Re-armed in the air, range above range at first, fall to 2 m, EKF3 height 0.10 m | worst velocity error 0.35-0.40 m/s | master 1.91 m/s; above range not counted 1.35-1.72 m/s |
+| Re-armed in the air, range in range throughout | 0.31-0.33 m/s | master 1.12 m/s; no zero-velocity guard 0.70; no zero-flow guard 1.25 |
+| Armed, no home, 0.55 m on the ground, GNDCLR 0.10 | aiding kept | 0.5 m taken absolutely: aiding stopped 5 s after arming |
+| LOITER landing reading 0.19 m, GNDCLR 0.10 | aiding kept to DISARM_DELAY | threshold at GNDCLR+0.05: EKF failsafe LAND, disarmed 6.2-6.4 s after landing |
+| ALT_HOLD landing out of range low, 2 rad/s bad flow | walk 0.00-0.07 m | out of range low counted as airborne: aiding stopped, walk 0.87 m |
+
+Limits, as the description states them: a driver reporting a lost return
+as above range takes both zeros from an armed vehicle on the ground; a
+range finder reading more than 0.5 m above a default clearance loses the
+zeros armed on the ground (set GNDCLR to what it reads there); after
+such a re-arm the flow is still fused against the false height once
+takeoff is detected, which #32768's datum keep fixes. With #32768 the
+re-arm leg no longer reaches the zero, so whichever merges second
+reworks it. Not flown.
+
+AP-Review round 18 at `3f8f6f29c1`, ACCEPT: it re-ran the new test
+(passes here, fails on the base EKF at the re-arm leg). One minor: each
+sensor is compared against the first Good sensor's GNDCLR, so with two
+range finders of different clearances the guard fires only once the
+lower is also 0.5 m above the shared value; it only delays the guard,
+and "no change needed unless you want it in the Limits list". Not
+answered on the PR. GitHub's review decision is still CHANGES_REQUESTED,
+from peterbarker (2026-09-04) and tridge (2026-09-09) on the original
+FLOW_HGT_MIN design.
+
+Replay: none at this head (see `../REPLAY_LOGS.md`).
+
+On the SFD beta: it still carries the 27-commit FLOW_HGT_MIN version
+plus refresh17 topup1. The next refresh takes the two commits on top of
+#35077 and #35105 (SFD `prs.txt`, 2026-11-18), which changes the fleet's
+floor behaviour and needs flying before promotion.

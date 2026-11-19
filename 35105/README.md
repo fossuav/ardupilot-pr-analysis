@@ -380,3 +380,61 @@ line, the `disarmed_in_air` change and the #34942 gate with it.
     companion changes: the out-of-range-low landing (expected to pass
     with #32232), ThrowDoubleDrop's alignments, an in-air re-arm leg,
     and spool-up `healthy()` in AID_NONE.
+
+## 2026-11-15 to 2026-11-18: reworked, reviewed and merged
+
+- 2026-11-15, peterbarker pointed at the TODO in the method this PR
+  changes ("this logic should be moved out of the EKF and into the
+  flight vehicle code") and the discussions on #28389 and #2074.
+- 2026-11-16, rmackay9 pushed `ebdff68dcf` and answered the 11-12 round.
+  THROW: declined. Calling `ahrs.set_vehicle_landed(false)` from THROW
+  would bypass Copter's `land_complete` and let the vehicle and EKF
+  disagree; the in-flight yaw alignment waiting until the throw is
+  detected "could actually be preferable" (a metal watch near the
+  compass during the carry). The behaviour change is now in the PR
+  description. In-air re-arm: also in the description; "Copter has never
+  guaranteed that in-air re-arms are possible", and the XY accel bias
+  effect is the least of the worries there.
+- 2026-11-17, tridge pushed the final head `d09477970a`, five commits:
+  AP_AHRS vehicle landed flag; AP_DAL `Flags2` on RFRN (logs without it
+  replay as not landed); Copter tells AHRS; EKF3 treats a landed Copter
+  as on the ground even when armed; autotest EK3YawAlignEachTakeoff.
+  AP-Review ACCEPT at that head.
+- 2026-11-18 07:50Z, merged by peterbarker (`0ef3fa0534`) after the dev
+  call: "landed" is agreed to be too coarse, like takeoff and touchdown
+  expected, and should move into AP_Vehicle with `#if` guards when a
+  second vehicle uses it.
+- 2026-11-18 11:16Z, posted after the merge: in-air re-arm on a switch is
+  common on small copters and essential to them, so supporting it is
+  right even if it widens what Copter promised.
+
+Where the companion changes listed under "Carrying it on the beta"
+stand on 2026-11-19:
+
+- The `disarmed_in_air` change: done on #32768 as `f6f06af2f7`, with a
+  test (`41320d3b89`), pushed 2026-11-18 (that record).
+- THROW: rmackay9 declined the AHRS call in THROW. The SFD plan
+  (REFRESH_NOTES, "clear the landed flag when THROW enters
+  Throw_Detecting") is the same call and meets the same objection; on
+  master the alignment simply waits for the throw. #32475 is unchanged
+  since 2026-11-13. Open for Andy.
+- The #34942 gate (`!motorsArmed` in `onGroundHgtError()`): not done;
+  #34942 is unchanged since 2026-11-07.
+- `9610cb59b7` (#34491) is in the SFD prs.txt ahead of this PR.
+
+The open items above that this merge does not settle: the THROW-window
+Replay, the out-of-range-low leg with #32232, and the beta SITL run;
+the correction to point 4 of comment 6799001716 was never posted and is
+now moot.
+
+### 2026-11-19: the companion changes
+
+- #32768: done (`f6f06af2f7`, pushed 11-18) and extended locally: the
+  rest check that ends a mid-air disarm now runs while armed too.
+- THROW: Andy's call (2026-11-19) is that SFD carries it, inside an open
+  PR of ours, #32475, not as a fixup. Done there locally, not as the
+  `set_vehicle_landed(false)` call rmackay9 declined but as a mode hook,
+  `Mode::is_carried()`, read in one `Copter::update_vehicle_landed()`,
+  so land_complete is untouched and only the report differs while THROW
+  waits. See `../32475/README.md`.
+- #34942: still owed.

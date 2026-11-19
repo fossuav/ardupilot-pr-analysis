@@ -82,3 +82,27 @@ before the rate check.
 
 Pushed 2026-11-07: `pr-esc-logging` `af27953c1b...c15a37c45d` (force,
 rebase). GitHub reads it as mergeable.
+
+## 2026-11-19: the log buffer should-fix answered, local `sq/30841-1119` (`8ea1891fc6`), pushed 2026-11-19
+
+One test-only commit on `c15a37c45d`: ESCTelemLogRate sets
+`LOG_FILE_BUFSIZE` 32767 and reboots, as the Replay tests do, reads the
+log once it holds the final `ESC_TLM_LOG_RATE` change (polled every 2 s,
+30 s limit) rather than after a fixed wait, and asserts no dropped blocks
+before judging the rates. The log is written in order, so once the final
+change is in it every ESC row before it is too.
+
+SITL (tier 2), 6 runs across two versions of the commit, all pass:
+10.0, 50.0-50.1 and 0.0 Hz per ESC over 10.6-10.8 s windows, no dropped
+blocks. The bot's failure was 2 of 2 on its slow host; it was not
+reproduced here, so the fix is not shown failing without it.
+
+`/pr-review --quick`: gate clean. First Codex cold read: a fixed 6 s wait
+did not guarantee the buffer was written (taken: the poll above) and
+32767 is outside the parameter's documented 4-200 KiB range (not
+changed: master's Replay and ReplayShortMessage use the same value).
+Second cold read of the reworked commit: no findings. Audit: the drain
+CLOSED; the buffer PARTIAL only because the log is parsed before the
+dropped-block check, which still fails the test before any rate is
+judged. The optional minor (read `log_rate_hz` once) is not in this
+round.

@@ -1863,3 +1863,44 @@ Its target (`eac9b68800`) conflicts, through `42bd695cbb`, so folding it
 means merging it into its neighbour (17 commits to 15), left as Andy's
 call. The 2 m clip (`9b6a08bc8e`) did not run: no height sample was
 rejected while disarmed (XKF4.SH at most 0.31).
+
+## 2026-11-19: the on-ground height check kept to a disarmed vehicle, rebased onto master with #35105 (local `sq/34942-1119`, `84c0266f92`, pushed 2026-11-19)
+
+#35105 (merged 2026-11-18) makes a landed, armed Copter on the ground in
+EKF3, so `onGroundHgtError()`, which assumed onGround means disarmed,
+began failing `healthy()` with the motors running: after a landing,
+through a THROW wait, after an in-air re-arm. An unhealthy primary is
+one of the frontend's three reasons to switch lanes (the error score and
+a better core are the others, and are master's).
+
+Rebased onto master `321896137f` by cherry-pick: 17 commits, 15 `=`,
+two test commits changed in context only. Then:
+
+- `1090e8f050` AP_NavEKF3: `onGroundHgtError()` returns false while
+  `motorsArmed`. On master the check this PR revives has hardly fired
+  since 4.1 (its filter moved only after a height timeout), so the gate
+  keeps the working check to the disarmed vehicle it applied to before
+  the landed report.
+- `84c0266f92` autotest: EK3HardLandingRearm's new last leg arms on flow
+  in STABILIZE at zero throttle with `DISARM_DELAY` 0, applies the same
+  5 m baro step as the leg before it, and requires the EKF healthy for
+  10 s.
+
+SITL (tier 2), md5-checked builds:
+
+| | armed leg |
+|---|---|
+| without the gate | EKF unhealthy 0.2 s after the step (height ratio up to 0.91) |
+| with it | healthy for 10 s, 2 of 2; the disarmed legs still refuse arming 1.4-1.6 s after the step |
+
+EKFBootstrapResetStaticYaw, EKFResetGyroBias, StaticYawKeepsCompassYaw,
+StaticYawLearnsBiasAwaitingGPSYaw, EK3_ZeroVelFusionNotUsedWithGPS and
+#35105's EK3YawAlignEachTakeoff pass at this head.
+
+`/pr-review --quick`: gate clean (one subject length note, fixed).
+Audit of the finding from #35105's record: CLOSED. Codex cold read: the
+first commit message claimed the gate prevents the lane switch, where
+it removes only the unhealthy-primary route (message corrected); the
+test checks health, not the lane, which is what the commits now claim.
+Description edits (the two "onGround means disarmed" statements, and
+the armed leg) posted 2026-11-19.

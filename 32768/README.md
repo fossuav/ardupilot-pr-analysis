@@ -1347,3 +1347,92 @@ context only. Copter, plane and heli build; the PR's nine Copter tests and
 the QuadPlane AmslAltPreservedAfterUpdateHomeAtDifferentElevation pass
 (tier 2). Pushed 2026-11-14, force `a56d2f49cd...d2dd52eb3d`; mergeable.
 No code changed.
+
+## 2026-11-18: #35105's landed flag held off an in-air re-arm, two commits, pushed `41320d3b89`
+
+#35105 merged 2026-11-18 (`0ef3fa0534`): Copter now tells AHRS when it
+has landed, and EKF3 treats a landed, armed Copter as on the ground. A
+disarm forces `land_complete`, and after a re-arm in the air only
+throttle clears it, so the falling vehicle was reported landed and EKF3
+held it on the ground for the whole fall. The first code change on this
+PR since the 2026-10-06 hands-off, made for #35105:
+
+- `f6f06af2f7` Copter (`land_detector.cpp`): report landed to AHRS only
+  while `disarmed_in_air` is clear, and report it again once the land
+  detector clears that flag at rest, since `set_land_complete()` does
+  nothing when `land_complete` is unchanged. `disarmed_in_air` also
+  clears when `land_complete` clears, so a re-armed vehicle that climbs
+  away and lands armed is reported landed.
+- `41320d3b89` autotest: HeightDatumKeptOnMidairRearm logs the replay
+  records and checks that in the second after the re-arm Copter still
+  reads landed but the flag the EKF is given stays clear, and that the
+  landing after the climb back reaches the EKF 0.3 s after LAND_COMPLETE.
+  Per the commit message, the first check fails without the
+  `disarmed_in_air` gate and the second without the clear (tier 2, not
+  re-run for this record).
+
+Rebased onto master `edd2107456`, which carries #35105; the other 32
+commits are patch-identical (`git range-diff`). Force-pushed
+`d2dd52eb3d...41320d3b89`, 2026-11-18 14:51Z. #32972 took the same two
+commits.
+
+AP-Review round 10 at `41320d3b89`, COMMENT, nothing blocking:
+
+- Should-fix, still open: the per-core datum reset keeps only the
+  primary core's result (deferred under the hands-off).
+- Should-fix, new: HeightDatumKeptOnMidairRearm now sets LOG_REPLAY with
+  LOG_DISARMED on the default log buffer, and SITL can panic with
+  "Failed to log replay block" (2 of 47 runs on the bot's box). Add
+  `LOG_FILE_BUFSIZE` 32767 as ReplayShortMessage does.
+- Minor, new: a copter re-armed in the air that falls to rest at zero
+  throttle is not reported landed to EKF3 until it disarms, because the
+  rest check that clears `disarmed_in_air` runs only while disarmed;
+  the 10 s auto-disarm bounds it.
+- Minor, still open and documented: field elevation recalibrating the
+  baro after the bit-2 refusal; the unlocked read of `state.location`.
+- CI: `sitltest-plane-tests1b` red at this head, cause not public.
+
+Triage of the round: Tools/SFD `PR_STATUS.md`, 2026-11-19.
+
+## 2026-11-19: round 10 answered, local `sq/32768-1119` (`9a2e86c914`), pushed 2026-11-19
+
+Andy lifted the hands-off for this round. Three commits on `41320d3b89`:
+
+- `1e336558d4` autotest: HeightDatumKeptOnMidairRearm sets
+  `LOG_FILE_BUFSIZE` 32767, as the Replay tests do (round 10's
+  should-fix; the "Failed to log replay block" panic was not reproduced
+  here, so this is the bot's 2 of 47 taken as given).
+- `8c34890763` Copter: the land detector's rest check that ends a
+  mid-air disarm now runs whenever the disarm is on record and the
+  vehicle reads landed, armed or not (round 10's minor). It moved out of
+  the disarmed branch to after the land detector's if/else chain, gated
+  on `disarmed_in_air && land_complete`; land_complete is clear in
+  flight and clearing it ends the disarm, so it cannot run in flight.
+  Limit, derived from the source: a vehicle falling at terminal velocity
+  reads near 1 g, so only the EKF's vertical velocity keeps the check
+  off it, as for the armed land detector.
+- `9a2e86c914` autotest `MidairRearmLandedAtRest`: disarm at 30 m,
+  re-arm while falling, zero throttle, `DISARM_DELAY` 0; from RFRN
+  `Flags2` timed by XKF1, the landed flag must reach the EKF after
+  "SIM Hit ground", within 3 s, and not before.
+
+SITL (tier 2), worktree build of each side, binaries md5-checked:
+
+| | MidairRearmLandedAtRest |
+|---|---|
+| without `8c34890763` | fails 2 of 2: never reported landed while armed |
+| with it | passes 3 of 3: landed reported 2.1 s after hitting the ground |
+
+The PR's ten Copter tests and the QuadPlane
+AmslAltPreservedAfterUpdateHomeAtDifferentElevation all pass at
+`9a2e86c914` (one run each); copter and plane build.
+
+`/pr-review --quick`: gate clean; Codex cold read of the three commits:
+no findings; audit of round 10's two items: both CLOSED. The per-core
+datum reset should-fix stays deferred. Description draft (test count,
+the rest check while armed) not posted.
+
+#32972 restacked on it, see that record. At the SFD refresh this meets
+#32475's `update_vehicle_landed()`: one formula, `ap.land_complete &&
+!ap.disarmed_in_air && !flightmode->is_carried()`, with this PR's two
+direct `set_vehicle_landed()` calls routed through it.

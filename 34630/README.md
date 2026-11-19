@@ -429,3 +429,32 @@ registration. #33484's commits carried here moved with it, unchanged.
 Copter builds; OSDEKFLanes and EK3_FlowAxisLockoutRecovery pass (tier
 2). Pushed 2026-11-14, force `1ec664a625...533725d5e3`; mergeable again.
 #33484's own branch is unchanged and was already mergeable.
+
+## 2026-11-18: rebased onto master with #35077, pushed `d1b0dab77a`
+
+With #33484 (its record): master `ad3f9dd6c3`, force-pushed
+`533725d5e3...d1b0dab77a`, 2026-11-18 09:40Z. `git range-diff`: 41 of
+43 identical, the two changed being #33484's recovery commit and test,
+in context only (#35077's lines). No code of this PR changed.
+
+AP-Review round 15 at `d1b0dab77a`, COMMENT, nothing blocking. It
+checked the option-off builds (`EK3_FEATURE_OPTFLOW_AGL_KF`,
+`AP_RANGEFINDER_ENABLED`) link. One new minor, in #33484's code (see
+that record): after a dip below FLOW_ALT_MIN the stale axis timers let
+the first one-axis failure reset the velocity without the 500 ms
+persistence. Still open: the range freshness check (minor), the reset
+covariance and the flow latch threading (notes).
+
+## 2026-11-19: restacked on #33484's FLOW_ALT_MIN fix, local `sq/34630-1119` (`f7be321b60`), pushed 2026-11-19
+
+The 29 commits of its own cherry-picked onto #33484's `8316113fbb` with
+no conflict, all `=` in `git range-diff`, same patch-id as `d1b0dab77a`'s.
+Round 15's new minor is #33484's and fixed there. OSDEKFLanes and Rover
+OSDEKFLanesDCMFallback pass at #35147's head, which carries this.
+
+## 2026-11-19 (later): restacked onto master with #35105, pushed `746f2908cb`
+
+With #35147's restack (that record): cherry-picked onto master
+`321896137f`, every commit `=` in `git range-diff`; force-pushed
+`f7be321b60...746f2908cb`. The stack's tests pass at #35147's head and at #33484's
+own (tier 2). Nothing of this PR changed.

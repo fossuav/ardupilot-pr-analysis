@@ -584,3 +584,16 @@ unchanged. The two minors (flying gate applied on read, uncapped tilt
 credit) need no change.
 
 Reply posted 2026-11-14: https://github.com/ArduPilot/ardupilot/pull/34941#issuecomment-6876422361
+
+## 2026-11-18: rebased onto master, pushed `08c0b2ef0b`
+
+Master `ad3f9dd6c3`, force-pushed `d59e9cb00d...08c0b2ef0b`, 2026-11-18
+09:40Z. Both commits changed in context only: master renamed
+`prevBodyVelFuseTime_ms` to `bodyOdm.prevFuseTime_ms` beside this PR's
+timeout line, and the test registration sits among master's new
+OpticalFlowFocusAlt and BodyFrameOdomDelay.
+
+AP-Review round 7 at `08c0b2ef0b`, ACCEPT: the added and removed lines
+are unchanged and the new tests pass on its box. The two minors (the
+flying gate applied on read, the uncapped in-flight tilt credit) need
+no change, as before.

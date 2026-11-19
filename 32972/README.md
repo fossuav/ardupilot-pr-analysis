@@ -773,3 +773,37 @@ it with no conflict. Copter and plane build; BaroGroundEffectAtTakeoff,
 BaroGroundEffectResetSuppression, EK3TouchdownHeightNotSnapped,
 BaroDriftClearedAtArm and the QuadPlane datum test pass (tier 2). Pushed
 2026-11-14, force `5bf36c15d4...02a102ad36`; mergeable.
+
+## 2026-11-18: restacked on #32768's #35105 fix, messages folded, pushed `060e79f7b0`
+
+On #32768's `41320d3b89` (its record), so this PR now carries
+`f6f06af2f7` and `41320d3b89` too. This PR's own six commits are
+unchanged in code: the cumulative diff over #32768 has the same patch-id
+before and after (`d2dd52eb3d..02a102ad36` against
+`41320d3b89..060e79f7b0`). Three commit messages were rewritten to fold
+the subjects of squashed-in fixups into their prose (`2e29954273`,
+`799beb2d77`, `ac0ad0c2b0`, the last retitled "add the baro ground
+effect takeoff and reset tests"); the "Flight tested: 1.2 m to 0.1 m"
+line moved to the end of `799beb2d77`. Force-pushed
+`02a102ad36...060e79f7b0`, 2026-11-18 18:23Z.
+
+AP-Review round 16 at `060e79f7b0`, COMMENT, nothing blocking: "your own
+patches are unchanged" and the squashed-in message text is fixed. Open:
+#32768's per-core datum reset (should-fix, in #32768); from #32768's new
+commits, the rest check that runs only while disarmed and the
+LOG_FILE_BUFSIZE for HeightDatumKeptOnMidairRearm (minors); still open
+and fine as follow-ups, the unsynchronised republish when arming from
+Lua or DDS, and the deferred negative-dead-zone mid-air re-arm test, log
+marker and release note. CI still running when it reviewed.
+
+Triage of the round: Tools/SFD `PR_STATUS.md`, 2026-11-19.
+
+## 2026-11-19: restacked on #32768's round-10 fixes, local `sq/32972-1119` (`3b8e67784a`), pushed 2026-11-19
+
+This PR's six commits cherry-picked onto #32768's `9a2e86c914` with no
+conflict, all six `=` in `git range-diff` against `060e79f7b0`. Copter
+and plane build; BaroGroundEffectAtTakeoff,
+BaroGroundEffectResetSuppression, EK3TouchdownHeightNotSnapped, and
+#32768's MidairRearmLandedAtRest and HeightDatumKeptOnMidairRearm pass
+(tier 2, one run each). Round 16's items are #32768's and answered
+there.

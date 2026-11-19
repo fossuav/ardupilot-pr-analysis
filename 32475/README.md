@@ -1133,3 +1133,74 @@ throw guard is its own commit again, as nothing showed it acting. 62
 commits to 55, `fe3213222c`, tree unchanged. The zero-descent hold into
 the hand-over where it stops (both flown) is left optional; 21 unflown
 commits stay on top. Nothing is posted on the PR.
+
+## 2026-11-19: onto master with #35105, and the carry not reported as landed, local `sq/32475-1119` (`be66da2b6a`), pushed 2026-11-19
+
+#35105 (merged 2026-11-18) makes Copter report land_complete to AHRS and
+EKF3 treat a landed, armed Copter as on the ground. Armed in THROW,
+land_complete stays set until the throw is detected, so through the
+carry the EKF fused the compass heading whatever its innovations, fused
+zero velocity when still, and held back the in-flight yaw and field
+alignment until after the throw. On #35105 rmackay9 declined the bot's
+fix, `ahrs.set_vehicle_landed(false)` from THROW, as it lets the
+vehicle's land_complete and the EKF disagree. Andy's call (2026-11-19):
+SFD carries a fix, and it goes into this PR.
+
+Rebased onto master `321896137f` (carries #35105) by cherry-pick: 55
+commits, no conflict, all `=` in `git range-diff`. Then three commits:
+
+- `e1eda292a7` Copter: the report to AHRS moves into
+  `update_vehicle_landed()`, called from `set_land_complete()`; no change
+  in behaviour.
+- `9d776d6c87` Copter: `Mode::is_carried()`, true in THROW while
+  `Throw_Detecting`; `update_vehicle_landed()` reports `land_complete &&
+  !flightmode->is_carried()`, and is called on every mode change and
+  when THROW's carry starts or stops (`is_carried()` compared before and
+  after THROW's state machine). land_complete itself is unchanged. The
+  EKF sees the change one loop after arming or disarming, as THROW runs
+  after the EKF update; at arming the vehicle is where it sat, and
+  disarmed it is on the ground in EKF3 whatever it is told.
+- `be66da2b6a` autotest `ThrowCarryNotLanded`: armed and held in THROW
+  3 s, then STABILIZE; then armed in THROW, disarmed, 2 s in THROW,
+  armed in STABILIZE. From RFRN `Flags2` timed by XKF1: not landed
+  while held, landed again once disarmed in THROW and in STABILIZE.
+
+A first version (`3555e0bfb8`, `2355be80ee`, kept as
+`bak/32475-carry-v1`) set the flag from THROW at entry, exit and disarm.
+The Codex cold read found its hole: after a lost throw THROW waits again
+with land_complete clear, and if the land detector then landed it, that
+landing reached the EKF; and a per-loop re-assert from THROW would still
+leak one frame, as the land detector runs after the mode. The report in
+one place closes it. The lost-throw path could not be provoked into a
+land detector landing in SITL (a hop with `MOT_SPOOL_TIME` 3 gives
+"freefall lost, resetting", but in 4 s on the ground the land detector
+never had motor-low and throttle-mix-min together, and saw a large angle
+request), so that part is covered by construction, not by a test.
+
+SITL (tier 2), each side built and md5-checked:
+
+| build | ThrowCarryNotLanded |
+|---|---|
+| master + `e1eda292a7` (no carry) | fails: the carry reported on the ground |
+| no report when the carry starts or stops | fails: the carry reported on the ground |
+| report only when the carry starts | fails: not reported landed again on a disarm in THROW |
+| no report on a mode change | fails: not reported landed in STABILIZE after THROW |
+| `be66da2b6a` | passes, 2 of 2 (3 of 3 before the disarm window was added) |
+
+All 30 THROW tests and #35105's EK3YawAlignEachTakeoff pass at the
+change (30 of 30, twice: the first version and this one). ThrowDoubleDrop
+logs both cores' "in-flight yaw alignment complete" during each carry,
+two flights, with the change; without it, none, as #35105's bot
+reported.
+
+`/pr-review --quick`: gate clean (notes: subject length, fixed; diff
+size). Cold reads: the first version's lost-throw hole (taken, above);
+the second version's one-loop lag (answered in the commit message), the
+0.2 s start of the test's window (by design, the same loop), and a
+disarm check that sampled only after the mode change had repaired it
+(taken: the 2 s window in THROW, which fails the report-on-start-only
+build). Description section drafted, not posted.
+
+At the SFD refresh, `update_vehicle_landed()` meets #32768's
+`disarmed_in_air` gate: one formula, `ap.land_complete &&
+!ap.disarmed_in_air && !flightmode->is_carried()`.

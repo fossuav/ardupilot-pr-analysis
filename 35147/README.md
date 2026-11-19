@@ -196,3 +196,99 @@ both minors.
 Pushed 2026-11-14, force `24e0e6970f...021bfa1b95`; mergeable.
 
 Reply posted 2026-11-14: https://github.com/ArduPilot/ardupilot/pull/35147#issuecomment-6879718945
+
+## 2026-11-18: rebased onto master with #35077, pushed `b90a80f909`
+
+With #34630 and #33484: master `ad3f9dd6c3`, force-pushed
+`021bfa1b95...b90a80f909`, 2026-11-18 09:40Z. `git range-diff`: 47 of
+50 identical; #33484's two commits and this PR's core commit
+(`0b46657a80`, was `0f98f70cc6`) changed in context only, the core
+commit beside FuseOptFlow()'s `really_fuse = false`. No code changed.
+
+AP-Review rounds 6 (at `021bfa1b95`, 2026-11-14 15:41Z) and 7 (at
+`b90a80f909`, 2026-11-18), COMMENT. Both ask for the same description
+fix and nothing else: the description still says "only the top six
+commits" and lists not fusing the sample again among the unflown fixes,
+where the PR has seven commits and the core commit's message says the
+six flown throws ran with that change. Round 7 checked that the set is
+made only from fused samples, so never below the focus altitude, and
+that the ground leg and master's OpticalFlowFocusAlt pass at this head.
+Minors unchanged: range freshness (fine on #34630) and the PX4Flow
+latch (note).
+
+The description fix was owed since round 6 and is still owed.
+
+## 2026-11-19: restacked, and the description fix drafted, local `sq/35147-1119` (`06299bca20`), pushed 2026-11-19
+
+Its seven commits cherry-picked onto #34630's `f7be321b60`. One stop, in
+`arducopter.py`, where its tests and #33484's new leg both add at the
+end of EK3_FlowAxisLockoutRecovery; both kept. The library patch has the
+same patch-id as `b90a80f909`'s. EK3_FlowVelocityAtAidingStart,
+EK3_FlowAxisLockoutRecovery, OSDEKFLanes, Rover OSDEKFLanesDCMFallback
+and OpticalFlowFocusAlt pass (tier 2).
+
+The description fix rounds 6 and 7 asked for is drafted, not posted:
+seven commits, the sample kept out of fusion flew with the six throws,
+and the three unflown fixes named.
+
+Found while drafting it, derived from the source and not run:
+`8380f829ac` (no set from the zero flow before takeoff) rests on "a
+copter is off the ground in the EKF as soon as it is armed". Since
+#35105 an armed, landed Copter is on the ground in EKF3, and the set is
+armed only `!onGround`, so on master the set is not made on the ground
+anyway on Copter, and EK3_FlowVelocityAtAidingStart's ground leg would
+no longer fail without that commit once this PR is on a master with
+#35105 (its base `ad3f9dd6c3` predates it). The commit still covers
+other vehicles. Not acted on.
+
+## 2026-11-19 (later): the zero-flow commit measured against #35105 (tier 2)
+
+The stack (#33484 16 commits, #34630 29, #35147 7) cherry-picked onto
+master `321896137f`, which carries #35105, with no conflict and every
+commit `=` in `git range-diff`; local test branches, not pushed.
+EK3_FlowVelocityAtAidingStart's last leg ("no set from the zero flow
+before takeoff": flow-only set, armed on the ground in STABILIZE at zero
+throttle, flow brought in so relative aiding starts there), each side
+built and md5-checked, the commit removed by taking `flowSampleZeroed`
+out of `InitVelocityFromFlow()`'s guard:
+
+| base | with `8380f829ac` | without it |
+|---|---|---|
+| `ad3f9dd6c3` (the PR's, no #35105) | passes | fails: both lanes "flow velocity set at aiding start" as aiding starts |
+| `321896137f` (with #35105) | passes | passes: aiding starts on both lanes, no set in 6 s |
+
+On master with #35105 the leg no longer discriminates. Derived from the
+source, not measured separately: the set is armed only `!onGround`, and
+a landed, armed Copter is now on the ground in EKF3. The commit still
+guards a vehicle that is armed, not reported landed and under 0.5 m
+before takeoff: on master, vehicles that do not report landing (derived,
+none run); in the SFD stack also a THROW carry held low (#32475 reports
+it off the ground) and an in-air re-arm reaching the ground (#32768).
+Decision pending: drop the commit and its leg from the PR once it moves
+onto #35105, or keep it with a leg on a path that still reaches it.
+
+### 2026-11-19 (later): the zero-flow commit dropped, the stack restacked onto master with #35105
+
+Andy's decision: drop `8380f829ac` and its test leg. The stack
+cherry-picked onto master `321896137f` (#33484 `8ed697cba1`, #34630 `746f2908cb`)
+and this PR's five other commits on top (`27bb095723`); four `=`, and the
+wait-end commit resolved onto the guard without `flowSampleZeroed`. The
+library difference from the seven-commit restack is exactly that commit
+reversed; the test file loses only its leg. Not flown: none of the
+dropped code had flown.
+
+SITL at `27bb095723` (tier 2): EK3_FlowVelocityAtAidingStart,
+EK3_FlowAxisLockoutRecovery, OSDEKFLanes, Rover OSDEKFLanesDCMFallback,
+OpticalFlowFocusAlt and OpticalFlow pass; at #33484's `8ed697cba1` alone,
+EK3_FlowAxisLockoutRecovery (reset 0.54-0.58 s after the FLOW_ALT_MIN
+return) and OpticalFlowFocusAlt pass.
+
+`/pr-review --quick`: gate clean (diff-size note). Codex audit: nothing
+at the new head refers to what the dropped commits added. Codex cold
+read of the resolved wait-end commit: no test reaches its 5 s expiry
+(already noted at round 6; not addressed here). Description updated for
+five commits and the dropped change, posted with the push.
+
+Pushed 2026-11-19, force: #33484 `8316113fbb...8ed697cba1`, #34630
+`f7be321b60...746f2908cb`, #35147 `06299bca20...27bb095723`; all three
+mergeable. Description posted the same day.

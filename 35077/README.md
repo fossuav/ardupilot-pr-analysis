@@ -222,3 +222,12 @@ extend the message the data travels with, with explicit `unused` bytes
 for alignment, rather than adding a message as #34292's ROFM did. #35105's
 `Flags2` byte on RFRN is the same rule, and its leaving RFRN's two retired
 bits alone is REPLAY-2.
+
+## 2026-11-15: merged
+
+Merged by peterbarker at `9c25e44f45` (`53aa380066`), 2026-11-15 08:29Z,
+as the EU dev call agreed on 2026-11-11. #34292 was re-scoped onto it and
+#35105 on 2026-11-18 (that record); #33484, #34630, #35147 and #34941
+were rebased onto it the same day. In the SFD stack it sits in the
+merged section of prs.txt, with FLOW_ALT_MIN pinned to index 9 (the beta's
+FLOW_HGT_MIN index), so a saved value carries over.

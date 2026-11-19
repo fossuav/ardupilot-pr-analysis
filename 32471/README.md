@@ -2421,3 +2421,80 @@ disarm, set by parameter or recalibrated, so RISK conforms to REPLAY-4,
 and being written from `start_frame()` it reaches every log. The padding
 trap that stopped it going into RISI (above) is what REPLAY-1's explicit
 `unused` bytes now answer, but REPLAY-4 keeps it separate anyway.
+
+## 2026-11-19: rebased onto master with #35105 (local `sq/32471-1119`, `be3fc44afe`, pushed 2026-11-19)
+
+GitHub showed the PR conflicting with master once #35105 merged (its
+`vehicle_landed` in AP_AHRS and RFRN) and with master's removal of
+`getRotationBodyToNED()` (`28b9bae3c8`). Replayed onto master
+`321896137f`: 61 of 65 commits `=`. Three resolved: AP_AHRS and AP_DAL
+keep both `vehicle_landed` and `_hover_z_bias_enabled` with their
+accessors; Outputs.cpp keeps `setAccelBiasZ()` and
+`accelBiasLearningInhibited()` and drops the removed function. One test
+commit lost an `import struct` master already has. #32473 restacked on
+it, its four commits `=`.
+
+SITL at #32473's head (`ec8adac0eb`): VibrationRectificationBiasLearning,
+AccelBiasMovingPlatform, AccelBiasInhibitLoggedAfterLogRestart,
+HoverBiasNotSavedAfterEKFReset, HoverBiasSavedFirstFlightAfterRest,
+AccelBiasLearningInhibitedInAcro, AccelBiasAcroExitVelocityError,
+Copter.Replay and #35105's EK3YawAlignEachTakeoff pass; at #32471's head
+alone, the first, HoverBiasSavedFirstFlightAfterRest and Replay pass.
+
+Open, for a decision: the PR keeps its enable flag in RFRN's flags bit
+1, which REPLAY-2 says stays retired (it was `get_compass_is_null`).
+#35105 added a `Flags2` byte for exactly this. Moving the flag there
+conforms; the cost is that SFD's own beta logs, which carry it in bit 1,
+replay without the correction. Harmless on old upstream logs either way,
+derived from the source: the correction comes from RISK, which they
+lack.
+
+`/pr-review --quick`: gate notes only (three subject lengths). Codex
+cold read of the three resolved commits read them mid-series; its
+points are answered at the head (the flag is set in Copter and read in
+`hoverZBiasApplied()`; the header documents `ACC_VRF_BIAS_Z_LIM`).
+
+### 2026-11-19 (later): what moving the flag would cost (tier 1b)
+
+Of the 423 cached replayable SFD logs, 75 flew with the correction
+applied (RFRN bit 1 set, RISK.VRFBZ up to 0.199 m/s/s), 83 learnt a bias
+without applying it (RISK up to 0.090, bit 1 clear) and 6 log RISK at
+zero; none carries `Flags2`. Replaying the 75 through the beta with the
+flag read as off, as they would replay once it lives in `Flags2`: 63
+change, the largest velocity difference per log median 0.58 m/s (p90
+6.1, max 26.6), position median 2.0 m (p90 32 m; long flow-only flights
+drift further once they differ). Against GPS on 55 cores, the velocity
+error p95 is lower on 24, higher on 18 and the same on 13 (median change
+0.00 m/s): the cost is replay fidelity to those flights, not accuracy.
+Dropping the flag for a RISK that logs the applied correction would
+instead replay the 83 with a correction they never flew with.
+
+### 2026-11-19 (later): flag moved to Flags2 (option B+, local `sq/32471-1119` `ca52de2e10`, pushed 2026-11-19)
+
+Andy chose B+: upstream gets the flag in `Flags2` bit 1 beside #35105's
+landed flag, `Flags` bit 1 goes back to master's `unused` (`8300a48445`,
+`AP_DAL: carry the hover Z-bias flag in RFRN's Flags2`), and the SFD
+reads either bit through a permanent post-merge fixup (REFRESH_NOTES).
+`ca52de2e10` adds a HoverZBias bit to Copter.Replay: it boots with
+ACC_ZBIAS_LEARN 2 and INS_ACCn_VRFB_Z 0.2, hovers in LOITER and lands.
+
+- Copter.Replay passes at `ca52de2e10`. With a Replay that ignores the
+  flag (accessor returns false) every earlier bit passes and HoverZBias
+  fails on XKF3 IVD/IPD: the bit covers the flag.
+- All 423 cached logs through Replay at the pushed head (`be3fc44afe`,
+  flag in `Flags` bit 1), the new head, and the new head with the SFD
+  read: the SFD read replays 423 of 423 identically to the pushed head;
+  the move alone changes 63, all among the 75 that flew with the
+  correction.
+- #32473 restacked (`73bd8c79e7`, four commits `=`):
+  VibrationRectificationBiasLearning, HoverBiasSavedFirstFlightAfterRest,
+  AccelBiasLearningInhibitedInAcro, AccelBiasAcroExitVelocityError and
+  Copter.Replay pass.
+- `/pr-review --quick`: gate notes only (the three subject lengths);
+  Codex cold read of the two commits, no findings.
+
+Description (posted 2026-11-19): the RFRN bullet credits master's `MSG_CREATE` (#34491, the
+PR no longer changes it), a bullet says why Flags2 and not the
+free-looking bit 1, and the tests paragraph names the HoverZBias bit.
+Open: the inhibit stays a DAL event pair "because the RFRN flags byte is
+full", which a reviewer may now answer with Flags2.

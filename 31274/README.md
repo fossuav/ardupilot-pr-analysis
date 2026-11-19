@@ -556,3 +556,30 @@ the latch guarded the same way (`error_rate_pct_valid &&`), which changes
 nothing it does: clearing a flag that is already clear is a no-op. Copter
 and plane build; MotorTestErrorRate passes (tier 2). The latch is still
 unflown. Pushed 2026-11-14, force `ef790efa0b...292563f1f8`; mergeable.
+
+## 2026-11-19: rebased onto master past tridge's bdshot fix (local `sq/31274-1119`, `d51f368fbb`, pushed 2026-11-19)
+
+GitHub showed the PR conflicting with master in `RCOutput_bdshot.cpp`:
+tridge's `edd2107456` (merged 2026-11-17) charges a missed bdshot reply
+to the output just sampled rather than the timer slot, and resets the
+counts for missed replies too, two of `bc63fbc382`'s fixes. Replayed onto
+master `321896137f`: 12 commits `=`, the bdshot commit resolved so the
+file is byte-identical to the PR's own version, then rewritten to keep
+master's lines (`const`, its comment, its operator layout) and change
+only what this PR adds: no error counted after a pulse that sent a
+command, the reset ahead of counting with the window floor, and the
+published rate. The commit message now credits master with the slot and
+reset fixes. Behaviour unchanged from the PR head.
+
+SITL: Copter TakeoffCheck and MotorTestErrorRate pass; MatekH743-bdshot
+copter builds. QuadPlane TakeoffCheck fails intermittently on its
+"spurious takeoff blocked" check (rebased 3 of 8, the PR head 2 of 6,
+plain master 1 of 5 with master's own "ESC RPM out of range" text), so
+it is a master flake, not the rebase.
+
+`/pr-review --quick`: gate clean. Codex cold read of the resolved commit,
+two findings on the PR's design, not the rebase, for triage: a
+BLHeli-serial ESC whose bidirectional DShot never decodes a frame
+publishes no percentage, so the takeoff check skips the error rate; and
+a percentage stale for over 2^32 us reads fresh for 210 ms at the
+`micros()` wrap.
