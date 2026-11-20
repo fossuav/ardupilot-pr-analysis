@@ -272,7 +272,24 @@ commits used to make.
 
 ## Status (one line)
 
-2026-11-19, last: the registry repair folded into the commits that
+2026-11-20, latest: DShot150 and DShot300 on the PIO, as Betaflight does
+it, with Betaflight's end-of-cycle delay fix; the five STM32-neutral
+commits (stack trims, DShot) moved ahead of the six STM32-changing ones.
+PR head `5e97be2505`, 86 commits (see the DShot section).
+
+2026-11-19: PR #34623's static stack analyser run on the RP2350
+build; rate, OSD_c1 and c1_main stacks trimmed (2.7 KB) and pushed as a
+fast-forward: PR head `b166a6c230`, 83 commits (see the stack section).
+
+Before that: Lua scripting trialled on RPI_UAVFC (LED_roll on four
+NeoPixels: ~4% of core0, no main-loop or core1 effect, 36 KB free armed)
+and RP2350 scripting memory resized (50 KB heap, 10 KB stack, 64 KB log
+buffer while scripting is on): 110 KB free armed. The three commits
+were then moved into the STM32-neutral block: PR head `f5ea4699d9`, 81
+commits. A recursing script overflows the scripting stack at either
+size (see below).
+
+Before that: the registry repair folded into the commits that
 introduced each stale entry, and a Scratch Y overflow before the core1
 hot-path commit fixed, so every commit builds RP2350 again. PR head
 `0bfe6d9e02`, 78 commits, mergeable, tree identical to `18cd947273`.
@@ -1318,6 +1335,348 @@ after. Not reviewed by `/pr-review` at this head. The description's
 `| BLHeli passthrough | No | |` row became a Yes row beside the DShot
 rows, AM32 read, configured and flashed on RPI_UAVFC; nothing else in
 it changed (diffed against the read before the edit).
+
+## 2026-11-20: scripting CPU profile, a Lua flight mode at 50 Hz
+
+Andy asked for a scripting performance test at 50 Hz (a flight mode
+calling a bunch of functions) and a proper profile. Scripts and tools are
+in `tools/scripting_profile/`.
+
+Workload `perf_mode.lua`: registers custom mode 101 and runs every 20 ms.
+A run makes about 45 binding calls: mode, arming, AHRS
+roll/pitch/yaw/gyro/velocity/health, INS accel, baro, battery, four RC
+channels, four ESC RPMs, four motor PWMs and three Parameter gets. It
+runs a three-axis angle and an altitude-rate PI controller in Lua, calls
+`set_target_angle_and_climbrate` in GUIDED_NOGPS or the custom mode (the
+climb rate is never positive), writes a 10-float `logger:write` and sends
+a named float at 10 Hz. Five `micros()` points time its sections.
+`perf_mode_cached.lua` is the same script with every binding method
+looked up once into a local (`local ROLL = ahrs.get_roll_rad` ...
+`ROLL(ahrs)`).
+
+Method. The firmware is the PR head `5e97be2505` built with
+`--enable-stats` (a worktree, RPI_UAVFC, OSD_TYPE 6, MOT_PWM_TYPE 6,
+BDMASK 15, no motors fitted). On the SMP port ChibiOS times every thread
+off the 1 MHz TIMER0, and `threads.txt` reports each thread's share of
+its own core since the previous read. `mav.py window` reads the file once
+to zero the counters, records for 32 s and reads it again. Inside that
+window: 50k core0 PCSR samples (2,500/s, no halting), attributed by
+object file from the link map (`attrib.py`), with `categ.py` grouping
+the run-minus-baseline difference; XIP CTR_HIT/CTR_ACC over 3 x 1 s; and
+the script's own section times.
+
+| Condition | Scripting thread | core0 idle | ArduCopter thread | sched load | XIP hit, misses | free |
+|---|---|---|---|---|---|---|
+| A no script, disarmed | 0.2% | 62.1% | 23.7% | 24.2% | 85.8%, 0.83 M/s | 148 KB |
+| B perf_mode, disarmed | 10.4% | 50.8% | 24.2% | 24.2% | 90.8%, 1.09 M/s | 97 KB |
+| E perf_mode_cached, disarmed | 7.8% | 52.8% | 24.1% | 24.4% | 91.2%, 1.02 M/s | 91 KB |
+| D no script, armed GUIDED_NOGPS | 0.3% | 44.5% | 31.1% | 31.7% | 86.9%, 1.15 M/s | 147 KB |
+| C perf_mode, armed GUIDED_NOGPS | 11.6% | 32.7% | 31.2% | 32.0% | 90.2%, 1.39 M/s | 89 KB |
+
+The Scripting thread (priority 2) takes core0's idle time and nothing
+else. The main loop's thread load and the scheduler load do not move,
+and no task slipped. Task overruns in the one 10 s `tasks.txt` window
+went 68 -> 143 (B) and 183 (E) disarmed, and 204 -> 274 armed. They are
+spread over many tasks at a few tens of us over budget, which fits main
+loop code evicted from the XIP cache between iterations. E costs less
+than B but overran more, so these counts are noise-level. XIP accesses
+double while the script runs (5.8 -> 11.9 M/s) and misses rise by 0.24
+to 0.26 M/s. The hit rate goes up because the VM loop hits well.
+
+The script's own timing is wall time, so it includes preemption. Runs
+came every 20.3-20.8 ms (48-49 Hz). B took 2.07 ms on average and 1.47
+ms at best: sensors 1.18, control 0.34, output 0.20, log 0.30 ms. C took
+3.7 ms on average (more preemption armed) but only 0.12 more CPU. E took
+1.40 ms on average and 0.95 ms at best: sensors 0.54, log 0.19 ms. One
+`micros():toint()` costs 20-25 us.
+
+Where B's extra 11.8 points of core0 went (E in brackets, 9.25 points):
+
+| Points | Share | Category |
+|---|---|---|
+| 4.17 (3.32) | 35% | Lua VM and API (luaV_execute, luaD_precall/poscall, index2addr, luaH_getshortstr) |
+| 1.37 (1.37) | 12% (15%) | Lua GC: the full `lua_gc(L, LUA_GCCOLLECT, 0)` after every run, `lua_scripts.cpp:627` |
+| 1.18 (0.07) | 10% | binding method lookup: generated `load_function` linear `strcmp` over the type's method names, every call |
+| 0.72 (0.60) | 6% | binding glue |
+| 0.49 (0.40) | 4% | heap alloc/free (Vector3f and uint32_t userdata) |
+| 0.43 | 4% | AP_Logger for logger:write |
+| 0.37 (0.39) | 3% | `luaG_traceexec`: the SCR_VM_I_COUNT count hook makes `vmfetch` call it on every instruction |
+| rest | | ArduPilot code the bindings call, kernel, and EKF reset-loop noise |
+
+Per call (`perf_bench.lua`, disarmed, best of 9 batches of 40, empty
+closure call 2.6 us subtracted, hot cache; in the real run calls cost
+about three times this):
+
+| Call | us | Call | us |
+|---|---|---|---|
+| Lua arithmetic, 4 ops | 2.2 | baro:get_altitude | 6.0 |
+| math.sin | 3.8 | arming:is_armed | 7.2 |
+| string.format | 28.7 | ahrs:get_roll_rad | 14.4 |
+| millis() | 12.7 | vehicle:get_mode | 14.8 |
+| micros():toint() | 25.2 | ahrs:get_gyro (new Vector3f) | 28.7 |
+| uint32 subtract + toint | 66.5 | ins:get_accel(0) | 21.1 |
+| Parameter:get | 8.2 | Vector3f + Vector3f | 23.5 |
+| param:get(name) | 56.2 | set_target_angle_and_climbrate | 26.0 |
+| rc channel norm_input | 10.4 | logger:write, 4 floats | 128.6 |
+
+Simple getters differ by where the name sits in the `strcmp` list:
+baro's list is short (6 us), ahrs's and vehicle's are long (14-15 us).
+
+What it points at (none of it RP2350-specific except the last):
+- The method lookup is the cheapest win. Scripts can cache methods in
+  locals (-25% here). The generator could do the same for every script
+  on every board by caching a found function in the type's metatable or
+  using a table `__index`, an upstream PR.
+- The per-run full GC is 12-15% of a 50 Hz script's cost. Its comment
+  says it "seems to resolve a memory leak", so replacing it with
+  incremental steps needs the leak understood first. Upstream discussion.
+- The count hook is inherent to SCR_VM_I_COUNT (3-4%).
+- RP2350 only: about 7 KB of the hottest VM code (luaV_execute 4.4 KB,
+  luaD_precall, propagatemark, luaG_traceexec, reallymarkobject ...)
+  holds 5.4 of B's 8.4 Lua-attributable points. Moving it to SRAM would
+  remove its XIP stalls but costs SRAM the scripting heap competes for.
+  Not measured.
+
+Bench restored afterwards: LED_roll.lua back on the SD card, SCR_ENABLE
+0, BRD_IDLE_STATS 0, SCHED_OPTIONS 0, FS_THR_ENABLE 1, TKOFF_RPM_MIN
+1000, DISARM_DELAY 10, OpenOCD detached with C_DEBUGEN cleared, bridge
+stopped. The board still runs the `--enable-stats` build of `5e97be2505`.
+
+Follow-up the same day: Andy asked for the method lookup cache. Branch
+`pr-scripting-index-cache` off upstream/master `c69185e3ed` (worktree in
+the scratchpad, uncommitted; `index_cache.patch` here). Each type's metatable `__index` becomes a
+table that caches what the type's index function returns, with a shared
+metatable whose `__index` calls that function on a miss and stores the
+result. It is filled lazily and set up last, after `__index` and the
+operators, so a failed allocation leaves the type working uncached. A new
+`test_index()` in `scripting_test.lua` passes on master and with the
+cache.
+
+Same bench and script, firmware the only difference (PR head plus the
+patch, `--enable-stats`):
+
+| | old | index cache |
+|---|---|---|
+| Scripting thread | 10.3% | 8.5% |
+| perf_mode_cached (locals) | 7.8% | 8.1% |
+| run best / mean | 1.49 / 2.55 ms | 1.13 / 1.84 ms |
+| name lookup (load_function + strcmp) | 1.20 points | 0.08 |
+| Lua VM and API | 4.17 points | 3.65 |
+| Lua GC | 1.36 points | 1.39 |
+| Lua heap in use | 27,364 B | 28,965 B |
+| vehicle:get_mode / ahrs:get_roll_rad | 14.8 / 14.4 us | 5.3 / 5.2 us |
+| set_target_angle_and_climbrate | 26.0 us | 10.6 us |
+| flash, MatekH743 and RPI_UAVFC copter | | +432 B (+436 B final) |
+
+SITL (upstream master + patch): Rover Scripting's internal test,
+ScriptingLocationBindings, ScriptingSteeringAndThrottle, Copter
+ScriptingFlipMode, ScriptingFlyVelocity and ScriptingAHRSSource pass.
+Rover.Scripting's MAVLink step and Copter.LuaParamLockdown fail here on
+plain master too (`mavlink_msgs.lua:71`, `param-lockdown.lua:220`
+payload_ofs nil): autotest generates the Lua MAVLink module with the
+system pymavlink, older than master expects. Not the change. Upstream
+master needed MAVLink `6d0a097b`, fetched into the worktree from
+ArduPilot/mavlink.
+
+Self-review (/pr-review, full, 2026-11-20): three Claude reviewers (each
+commit, whole diff), Codex cold reads of each commit and the whole diff
+(no correctness defects), Codex verification of every finding. Verdict
+COMMENT: 0 must-fix, 3 should-fix, 2 notes, all fixed and folded in
+(rebase grants from Andy). The test compared cache hits only and a
+first-lookup failure could be masked by later passes, so it now checks
+once, on names nothing else looks up, and adds the singleton pair,
+ap_object and numeric-key cases. The cache comment states that an index
+function's answer must depend on the name alone; the key is a non-const
+`static char` (QURT builds with -fmerge-all-constants); a
+`luaL_checkstring` on the miss path keeps a bad key's error naming
+`__index` (checked in SITL); the messages give before/after CPU, heap
+cost and the first-lookup allocation. Round two: Codex audit closed all
+eight findings; the re-review found CI's Lua language-server check would
+fail on `rc:get_channel()` maybe-nil, fixed with `assert`. A cache that
+stores unknown names fails the new test once and keeps the autotest red.
+Final heads 4cac649b36 (test), 2a61e3d551 (cache); `index_cache.patch`
+here is the format-patch of both. Opened as #35311 (see
+../35311/README.md).
+
+## 2026-11-20: DShot150 and DShot300
+
+Andy asked for regular DShot and DShot300 the way Betaflight does it.
+Betaflight `beba09ad5` ("PICO: dshot enable 150 300", 2026-08-28) runs
+both PIO programs at every rate by the clock divider (bit period / 40 or
+/ 125 cycles), fixes the bidirectional end-of-cycle delay (`jmp !y` with
+y=4 never looped: 0.4 us at DShot600; `jmp y--` gives 2/4/8 us), and
+lowers its PID rate at slow rates. Betaflight offers no DShot1200.
+
+Ported: `RCOutput_pico::init(bidir, bitrate)`, clock = bitrate x 40 or
+125, eRPM samples-per-bit from that clock, built at init before `_bidir`
+is set (the lazy init in read_telemetry removed); RCOutput.cpp accepts
+150/300/600, keeps a config error for 1200 and adds one for DShot
+outputs on different rates (one program and rate per PIO block). ArduPilot
+needs no PID-rate change: `can_send_dshot_pulse()` paces sends at
+`dshot_pulse_time_us + 50`.
+
+Audit of the ArduPilot-only bdshot600 fixes at 300 and 150 (Andy asked
+first): low-half frame, checksum from is_bidir_dshot_enabled(), pads,
+write_frame() handover at pull/past complete with RX flush, stall restart,
+frame_held(), MISSING vs NONE, decode table - none rate dependent, given
+that pacing outlasts a send-and-listen cycle (~2.24 frame times + 30 us
+turnaround): 90/133 us at 600, 150/187 at 300, 269/293 at 150.
+
+Bench (RPI_UAVFC, AM32, no motors), CLKDIV and eRPM counters read over
+SWD (rcoutDriver + 0x140 errors, + 0x180 clean; offsets from the
+stack-analysis worktree's DWARF): bidirectional 600 600.6 kbit/s and 300
+300.1 kbit/s, 0 errors; bidirectional 150 at 150.0 kbit/s got no replies
+(SMs parked at wait 1/wait 0) - ESC firmware answers bidirectional only at
+300/600, as ArduPilot's DShot docs say; plain 300 and 150 at their rates,
+FDEBUG TXSTALL on all four (frames taken), ESC acceptance unobservable
+without motors. After the delay fix the time at PC 28 doubled from 600
+to 300 (0.20% -> 0.40%), and the ELF carries 0x1d9c. A 31% error reading
+straight after boot (plain -> bidirectional switch) was gone in steady
+state; not checked on an older build.
+
+Andy asked for the commits split by STM32 effect. The RP2350 block in
+RCOutput.cpp was rewritten to its original line count (12/12), as
+WITH_SEMAPHORE line numbers otherwise move STM32 objects. Normal (not
+consistent) MatekH743 builds, stripped `objdump -d`, differ from their
+parent only in the version string and hash for all five commits above
+`f5ea4699d9` (stack trims and DShot). Commits `64733b3435` (delay fix),
+`f025ce1432` (rates), `5c8d9a94f7` (README) moved with the stack trims
+(`4b5e27c782`, `423a85aed5`) ahead of the six STM32-changing commits
+(rebase grant, revoked after; backup `backup/pre-dshot-reorder-20261120`).
+Per-commit consistent builds: MatekH743 `29c14509aeab` through the five,
+then `35c6fd2c91fd`, `93fdb36ecc37`, `55e9e86f8f24`, `953d0b73947e`,
+`f1db94851b64` x2; RPI_UAVFC no warnings at all twelve. Force-pushed
+over `b166a6c230` with the lease pinned (+11/-8): head `5e97be2505`, 86
+commits. Not flown; not reviewed by `/pr-review` at this head. The PR
+description's "DShot rates other than 600 | No" became a "DShot150 and
+DShot300 | Yes" row and a "DShot1200 | No" row, read back unchanged
+otherwise.
+The flash-cost section's shared-code paragraph gained the AP_Logger_File
+log-buffer cap (acts only under HAL_LOGGING_FILE_BUFSIZE_SCRIPTING, set
+only by PICO2.py); read back, nothing else changed.
+
+## 2026-11-19: stack sizes from PR #34623's static analyser
+
+Andy asked to try ArduPilot/ardupilot#34623 (tridge's `--stack-analysis`,
+`Tools/scripts/stack_analysis.py`) on the RP2350 build to see whether the
+stacks can be trimmed. The PR merged cleanly onto `f5ea4699d9` in a
+scratch worktree (both on master `321896137f`); RPI_UAVFC copter built
+with `--stack-analysis` (GCC 10.2.1), all 1058 sources with .ci/.su.
+Two local changes to the analyser, posted on #34623 (comment
+7015394618): entry patterns for rate, Scripting, OSD, OSD_c1, led,
+SmartAudio and c1_main, and following linker veneers (`__X_veneer` stubs
+end in `bx ip`; treating them as calls to X took elf-indirect sites from
+709 to 65, estimates up 16-84 B). The fatal config-error loop was cut
+(`--cut AP_BoardConfig::throw_error...`), as it dominated the rate path.
+Runtime use from the board's threads.txt.
+
+With veneers followed (usable = total - 320 B context):
+
+| Thread | usable | bench | static | margin |
+|---|---|---|---|---|
+| ArduCopter | 6848 | 2064 | 6072 | 776 (469 unresolved) |
+| rate | 5024 | 760 | 1576 | 3448 |
+| c1_main | 704 | 104 | 164 | 540 |
+| OSD_c1 | 928 | 144 | 408 | 520 |
+| UART_RX | 672 | 160 | 248 | 424 |
+| FTP | 2464 | 1688 | 2180 | 284 |
+| log_io | 1504 | 400 | 1408 | 96 |
+| monitor / storage | 944 | 224 / 736 | 964 / 956 | -20 / -12 |
+| OTG1, UART1 | 224 | 256 | 432 | -208 |
+| led | 160 | 144 | 312 | -152 |
+| SmartAudio | 672 | 672 | 1012 | -340 |
+| OSD | 1184 | 664 | 1616 | -432 |
+| rcin | 1008 | 368 | 1460 | -452 |
+
+timer, io and the bus threads miss their registered callbacks, so their
+margins are not evidence. The rate path is Turtle arming from
+motors_output into pre-arm send_text; OSD and SmartAudio go over only
+through GCS::send_textv() servicing statustext inline before
+vehicle_initialised() (SmartAudio announces at its first reply, possibly
+during boot); bench SmartAudio has 320 B free of 992.
+
+Trimmed (Andy's choice): rate 5120 -> 3072 (three hwdefs), core1 PSP
+0x400 -> 0x280 (common_rp2350_smp.ld), OSD_c1 1024 -> 768
+(AP_OSD_pico.cpp). All three boards build with no warnings; RPI_UAVFC
+after 60 s armed: rate 736/3296, c1_main 104/640, OSD_c1 144/992, peaks
+as before. Commits `48c7f0f0a5` (hwdef) and `b166a6c230` (AP_OSD),
+STM32-neutral (AP_OSD_pico compiles to an empty object on MatekH743), on
+top; pushed as a fast-forward with Andy's grant. The over-budget threads
+are not acted on; SmartAudio first if they are. Scratch: patched analyser
+and full result in the session scratchpad (`stack_analysis_rp2350.patch`).
+
+## 2026-11-19: scripting on RP2350, measured and resized
+
+Andy asked to assess scripting's impact, starting with a snake script on
+the four-LED NeoPixel; none exists in any tree here, so LED_roll.lua
+(examples) at 4 LEDs and NeoPixel. Bench RPI_UAVFC, firmware `0bfe6d9e02`
+flashed so the ELF matched; OSD_TYPE 0 throughout (the PIO OSD owns PIO1,
+which the NeoPixel needs), SERVO5_FUNCTION 94 in every condition. Core
+load from 60k (core0) and 20k (core1) PCSR samples over SWD without
+halting, attributed by object file from the link map; free memory from
+MEMINFO.freemem32. Bench noise is about +-1.5 points of core0 (the EKF
+forced-reset loop, no GPS/compass).
+
+| Scripting | State | core0 busy | script share | core1 | sched load | free |
+|---|---|---|---|---|---|---|
+| off | disarmed | 35.3% / 36.3% | - | 45.4% | 24.1% | 160 KB |
+| LED_roll | disarmed | 41.2% | 3.9% | 44.7% | 24.8% | 41 KB |
+| on, stopped | disarmed | 36.2% | - | 43.5% | 24.1% | 141 KB |
+| off | armed | 50.8% | - | 49.4% | 26.8% | 154 KB |
+| LED_roll | armed | 53.1% | 3.9% | 46.1% | 26.8% | 36 KB |
+| on, stopped | armed | 50.5% | - | 50.1% | 26.5% | 141 KB |
+
+The script share is 3.3% Lua VM (luaV_execute and the rest, all in XIP
+flash) plus bindings, AP_SerialLED and the script heap. XIP counters
+(CTR_HIT/CTR_ACC cleared over SWD, 12 x 2 s windows, same boot, armed,
+stop/run/stop/run): hit 84.2% -> 87.6%, accesses 6.1 -> 8.9 M/s, misses
+0.97 -> 1.10 M/s (+13%); repeated identically. Per run 1.07 ms median
+wall time (p90 2.6 ms), 12.9 KB Lua memory, 316 B allocated a run.
+Scripting thread priority 2, so it only takes core0's idle time.
+
+Stack: LED_roll peaked at 3.2-3.9 KB of the 17.6 KB scripting stack. A
+probe driving each C-recursion path to LUAI_MAXCCALLS (300 deep) crashed
+the board: CFSR STKOF, PSP at PSPLIM of the `Scripting` thread (named
+from ch0.rlist.current). Per-level cost, one case per boot at depths 10
+and 30: parser 75-225 B, __index 130 B, pcall ~400 B, gsub callback
+~850 B (its luaL_Buffer; overflowed 17 KB at depth 30). So 17 KB
+overflows at ~34 pcall / ~16 gsub levels, 10 KB at ~15 / ~7. Lua's 200
+limit protects neither; STM32 boards have the same 17 KB and no PSPLIM,
+so upstream likely corrupts silently - a Lua stack-space check (script
+error instead of a reboot) is a separate upstream PR, offered, not
+started. tostring/coroutine/sort cases not measured (the gsub crash
+ended the sweep).
+
+Andy's choice: 50 KB heap, 10 KB stack, 64 KB log buffer while scripting
+is enabled and LOG_FILE_BUFSIZE is unset. Commits, pushed as a
+fast-forward with Andy's grant: `37c149557a` AP_Logger hook
+(HAL_LOGGING_FILE_BUFSIZE_SCRIPTING; MatekH743 --consistent-builds
+`f1db94851b64` unchanged), `16f9cc7173` PICO2.py defines, `d815876924`
+DEVELOPMENT.md. Bench with the new build: SCR_HEAP_SIZE reads 51200,
+stack 10464 with 3.0 KB used, scripting costs 47,192 B disarmed (63,560
+expected without the cap, 47,176 with it), 110 KB free armed with
+LED_roll. The user-set LOG_FILE_BUFSIZE path was not run on the board,
+as a stored value cannot be unset over MAVLink. Not reviewed by
+`/pr-review` at this head. All bench parameters restored; LED_roll.lua
+left on the SD card (scripting off).
+
+2026-11-20: the PR description's feature table gained a "Lua scripting
+| Yes" row after Parameter storage: the 50 KB heap, 10 KB stack and
+64 KB log buffer defaults, LED_roll's ~4% of core0 and 110 KB free
+armed, and the pcall/gsub recursion depths that overflow the stack.
+Read back from GitHub; nothing else in it changed.
+
+Moved at Andy's request (rebase grant, revoked after) to follow
+`ebb61de3af` (hwdef: enable ESC passthrough), ahead of the six
+STM32-changing commits: `5f6aa98314` AP_Logger, `644a43ec2d` hwdef,
+`81d4e1b65d` DEVELOPMENT.md, then `d72823312c`..`f5ea4699d9`. Tree
+identical, `range-diff` all `=`. Per-commit builds in a scratch
+worktree: MatekH743 --consistent-builds `29c14509aeab` from `ebb61de3af`
+through `81d4e1b65d`, then `35c6fd2c91fd`, `93fdb36ecc37`,
+`55e9e86f8f24`, `953d0b73947e`, `f1db94851b64`, `f1db94851b64` as
+before; RPI_UAVFC builds with no warnings at all ten. Force-pushed
+with the lease pinned to `d815876924`; backup branch
+`backup/pre-scripting-reorder-20261119`.
 
 ## 2026-11-19: the registry repair folded in
 

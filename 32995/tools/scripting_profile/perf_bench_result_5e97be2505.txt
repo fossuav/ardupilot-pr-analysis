@@ -1,0 +1,32 @@
+# N=40 REPEATS=9, us per call, empty closure subtracted (min 2.58 med 2.75)
+lua arith 4 ops              min    2.15  med    2.63
+math.sin                     min    3.75  med    5.68
+table write+read             min    1.92  med    2.25
+string.format %.2f           min   28.67  med   34.30
+millis()                     min   12.68  med   16.17
+micros():toint()             min   25.22  med   27.00
+uint32 sub :toint()          min   66.50  med   99.32
+arming:is_armed              min    7.23  med   11.02
+vehicle:get_mode             min   14.78  med   17.88
+vehicle:get_likely_flying    min   13.13  med   16.85
+ahrs:get_roll_rad            min   14.43  med   19.20
+ahrs:healthy                 min    8.15  med   12.27
+ahrs:get_gyro (Vector3f)     min   28.65  med   34.38
+ahrs:get_quaternion          min   22.05  med   25.77
+ahrs:get_velocity_NED        min   26.52  med   28.98
+ahrs:get_position            min   18.38  med   21.00
+ins:get_accel(0)             min   21.05  med   26.98
+Vector3f:x()                 min    9.13  med   13.07
+Vector3f()                   min   12.55  med   16.77
+Vector3f + Vector3f          min   23.45  med   27.88
+Location()                   min   13.38  med   17.80
+loc:lat()                    min   12.93  med   16.20
+baro:get_altitude            min    6.00  med    6.88
+battery:voltage(0)           min   10.68  med   14.15
+esc_telem:get_rpm(0)         min    9.07  med   11.50
+SRV:get_output_pwm(33)       min    9.98  med   14.20
+rc_ch:norm_input             min   10.35  med   13.07
+Parameter:get                min    8.18  med   11.23
+param:get(name)              min   56.22  med   94.30
+set_target_angle_climb       min   26.02  med   30.70
+logger:write 4 floats        min  128.57  med  138.93
