@@ -2942,6 +2942,56 @@ as a fast-forward, `3dcdfb487b..51a76219df`. AP-Review round 17 at
 Not answered on the PR; the 2026-11-18 re-scope below replaced the code
 it was about.
 
+## 2026-11-17: the resting zero's flying gate, flown (tier 1 and 1b)
+
+`a11e396498` (the resting zero also needs `dal.get_time_flying_ms() ==
+0`) flew on the SFD beta's refresh17 topup1 (`6a8352ace0`, where it is
+`703438f743`), on tester A's Q25 on a new board, q25-0021-red01
+(2818322/48): VALT indoors, `FLOW_HGT_MIN` 0.08, `RNGFND1_GNDCLR` 0.02,
+one lane, no GPS.
+
+Twice, 74.1-81.9 s and 89.2-96.4 s, it skimmed the floor with the range
+finder at 0.02-0.07 m. The throttle was 0.30-0.37 against a 0.375 hover
+and the attitude followed stick demands within 0.5 deg out to 13.6 deg,
+so it was flying and moving, not resting. The land detector never set
+`land_complete` (the motors never reached their lower limit), so
+`get_time_flying_ms()` counted throughout and the gate withheld the zero:
+the samples under the floor were discarded. Under 0.10 m the flow did not
+measure the motion (slope 0.19, corr 0.25 against the IMU's 0.5 s
+velocity changes of 0.32 m/s rms, `flow_imu_check.py --min-range 0.02`),
+though its quality there was 75-104.
+
+Replay (`--force-ekf3`) of the flown tree, against the same tree with
+`AP_NavEKF3_OptFlowFusion.cpp` as it was before the gate (refresh17
+`d3d1be75e2`):
+
+| | With the gate (flown) | Without |
+|---|---|---|
+| Relative position valid | 77.99-82.89 s, 96.29-97.59 s | 76.19-87.49 s, 91.29-97.69 s |
+| Peak horizontal speed while valid and skimming | 2.09 m/s | 3.19 m/s |
+
+The flown build replays exactly (XKF1 and XKF5, all 1616 rows). Without
+the gate the range rule alone fuses zero flow while the vehicle moves,
+aiding starts on those zeros, and the position stays valid on the floor
+through 91.3-94.7 s. Neither speed can be checked there: no GPS, and the
+flow is not measuring. The two runs also part at the liftoff, where the
+range read 0.06 m for 0.3 s after the flag set, but only in the unaided
+drift that follows.
+
+This is the flight evidence the commit lacked: the changed path ran
+(`get_time_flying_ms()` counting while the range finder read the floor)
+and the A/B differs there. The commit's other limit, the flow held off
+while the land detector lags a touchdown, was not exercised: the flight
+ended with a disarm in the air at 1.3 m.
+
+Left open: with the gate, relative aiding restarted at 77.99 s on a
+sample at the floor's edge (range 0.06-0.11 m) and then ran 4.9 s with
+nearly every sample discarded under the floor. That is the IMU alone,
+reported speed up to 2.09 m/s, with a valid position until the quality
+latch at 82.80 s. Samples the floor discards do not count toward #34941's
+withheld-flow time, so only the ordinary flow timeout bounds such a
+stretch.
+
 ## 2026-11-18: re-scoped onto #35077 and #35105, two commits, pushed `3f8f6f29c1`
 
 #35077 (FLOW_ALT_MIN, the in-flight discard below the focus altitude)
@@ -3019,6 +3069,150 @@ On the SFD beta: it still carries the 27-commit FLOW_HGT_MIN version
 plus refresh17 topup1. The next refresh takes the two commits on top of
 #35077 and #35105 (SFD `prs.txt`, 2026-11-18), which changes the fleet's
 floor behaviour and needs flying before promotion.
+
+## 2026-11-18: #35105 merged, and an in-air re-arm (tier 2)
+
+#35105 merged at 07:50Z (`0ef3fa0534`). A landed Copter is now on the
+ground in EKF3 while armed, `takeOffDetected` clears, and the existing
+pre-takeoff zero (height under 0.5 m) applies after a landing.
+
+The follow-up on #35077 (local `rb35077-34292e`: the resting zero in
+`FuseOptFlow()`, judged by the range finder against
+`MAX(rngAtStartOfFlight, rngOnGnd)` + 0.05 m and the not-flying flag)
+picked onto master `edd2107456` changes nothing on Copter: every leg of
+its `OpticalFlowFocusAltLanding` matches master's EKF. LOITER landings
+kept aiding to disarm (10.2-10.6 s after land_complete), with 0.19 m on
+the ground too; bad flow walked 0.01-0.02 m; landed with the range finder
+stepped to 0.19 m, both kept aiding (master's zero has no range
+condition). On `ad3f9dd6c3`, before #35105, master's EKF failed the
+LOITER leg at 4.6 s after land_complete, and each of the follow-up's two
+conditions had a leg that failed without it.
+
+In-air re-arm, flow-only SITL, FLOW_ALT_MIN 0.3: from a 25 m hover
+drifting at about 1 m/s, force disarm, re-arm at once, 1.5 s armed in
+the air, then recover. Same on `ad3f9dd6c3` and `edd2107456`:
+
+| | STABILIZE, zero throttle | ALT_HOLD, stick 1500 |
+|---|---|---|
+| re-armed at (range) | 17.5 m / 10.6 m | 20.9 m / 16.1 m |
+| vD at the re-arm (EKF / true) | 0.01 / 10.5 m/s, 0.01 / 13.4 m/s | 1.45 / 7.7, 2.15 / 11.1 m/s |
+| HAGL one sample later | 0.10 m at 14.0 m and at 6.4 m | 0.10 m at 20.9 m and at 16.1 m |
+| vE pulled by zero flow | -0.91 to -0.02 in 0.6 s (true -0.93) | -0.66 to -0.01 (true -0.87) |
+| after impact | EKF climbing 10-13 m/s for over 3 s | climbing 6-9 m/s |
+
+The re-arm resets the height datum (vertical velocity zeroed, terrain
+put at the ground clearance) because the EKF was on the ground while
+disarmed; `takeOffDetected` was cleared then, so the snapped height
+brings the pre-takeoff zero. Neither comes from #35105. What #35105 adds
+on master: the copter stays on the ground in EKF3 for the whole
+re-armed fall (RFRN landed set, `get_time_flying_ms()` 0), and after
+impact the stillness test passes on the ground (XKFM OGNM 1) while the
+EKF still reports a 13 m/s climb. `rngAtStartOfFlight` is re-latched
+during the disarmed fall, so a range check against it would not have
+held off the zero; a fixed clearance, or a reference learned only while
+still, would (the range read 6-21 m). Probe test and runner in the
+session scratch (`probe_rearm2.py.txt`, `rearm_ab.sh`, `rearm_trace.py`).
+
+## 2026-11-18 (later): re-scoped as a range check on the landed zero (tier 2)
+
+Local `rb-34292-v3`, two commits on master `edd2107456`: `eb6935b195`
+(AP_NavEKF3: while armed, the pre-takeoff zero below 0.5 m is withheld,
+and the flow with it, where the downward range finder reads the vehicle
+off the ground: OutOfRangeHigh, or Good and more than 0.05 m above
+`MAX(rngAtRestOnGnd, rngOnGnd)`; `rngAtRestOnGnd` learned only while
+`onGroundNotMoving`) and `b8fd007ec9` (OpticalFlowLandedZeroNeedsGround).
+The earlier `FuseOptFlow()` resting zero and `rb35077-34292e` are dropped.
+
+| leg | this branch | master's EKF | rngOnGnd only | learned while moving |
+|---|---|---|---|---|
+| in-air re-arm, EKF height 0.10 m, range 7-20 m | 0.23-0.26 m/s off at 1.06-1.08 | 1.11 off at 1.04 | (not reached) | 1.17 off at 1.09 |
+| LOITER landing, 0.19 m on the ground | aiding kept to disarm | kept | stopped aiding, LAND at 6.4 s | kept |
+| ALT_HOLD, out of range low, bad flow | kept, walk 0.02-0.09 m | kept, 0.01-0.02 m | kept | kept, 0.02-0.07 m |
+
+A leg that stepped the range finder up on the ground while landed was
+dropped: in SITL a landed copter is still, so the reference re-learns the
+stepped reading, which is right for a vehicle that is on the ground. On
+hardware the stillness test fails with the props spinning (35105's
+record, finding 1), so the pre-arm reading stands while armed. The
+re-arm leg logs, rather than requires, that the zero path was reached, so
+it still checks the velocity on a build carrying #32768, where the datum
+is kept and EKF3's height is never at the clearance.
+
+## 2026-11-18 (evening): a range check on both zeros, from the clearance (tier 2)
+
+Local `rb-34292-v7`, two commits on master `321896137f`: `aa01d84a19`
+(AP_NavEKF3) and `c10bc15ba0` (OpticalFlowLandedZeroNeedsGround).
+`rb-34292-v3` and `rb-34292-v4` are kept as backups.
+
+What the review of v3 found, and what replaced it:
+
+- The learned reference was wrong. `rngAtRestOnGnd` was learned while
+  `onGroundNotMoving`, and that passes at terminal velocity in SITL (the
+  specific force is about 1 g once drag balances weight), so the reference
+  learned the in-air reading and the zero returned about 2 s into the fall.
+  Proposed as ARCH-28 in aap's RULES_PROPOSED.md: an IMU stillness test
+  cannot see constant velocity. The reference is gone.
+- With the flow withheld, master's zero-velocity injections (PosVelFusion,
+  AID_NONE and the aided "no recent velocity aiding" path, both gated on
+  `onGroundNotMoving`) pulled the velocity once the IMU read still: 0.70
+  m/s off at 1.05 m/s. Both now take the same range check while armed.
+- Out of range high counts as off the ground, and the re-arm leg now
+  covers it: RNGFND1_MAX lowered to 10 m before the disarm, re-armed
+  straight after without waiting for a heartbeat (0.20 s apart), so the
+  first 1.7 s of the 2.3 s from the re-arm to 2 m reads Stat 3 (measured
+  on the no-OutOfRangeHigh mutant's run, the same setup).
+- A tall mount with the clearance at the default lost aiding on the
+  ground. Probe: SIM_SONAR_OFFSET 0.6, RNGFND1_GNDCLR 0.10, no home, armed
+  idle in ALT_HOLD. The arm's datum reset puts HAGL at 0.10, and the range
+  pulls it back to 0.5 m at 6.8 s (0.16, 0.27, 0.35, 0.41, 0.46 at 0.5 s
+  steps). With a fixed 0.5 m the flow was withheld throughout and aiding
+  stopped at 5.1 s; master kept it. The check is now `rngOnGnd +
+  ON_GROUND_HGT_MAX_M`, measured from the clearance, which also keeps the
+  armed zero velocity for a tall mount with its clearance set.
+
+| leg | v7 | master's EKF | 0.5 m absolute | no OutOfRangeHigh |
+|---|---|---|---|---|
+| LOITER landing, 0.19 m on the ground | aiding kept | kept | kept | kept |
+| ALT_HOLD, out of range low, bad flow | kept, walk 0.01-0.02 m | 0.01 m | 0.01 m | 0.02 m |
+| armed, no home, 0.55 m on the ground | kept | kept | stopped aiding | kept |
+| re-arm, above range at first, fall to 2 m | 0.35 off at 1.37 | 1.91 off at 1.26 | (not reached) | 1.35 off at 1.13 |
+
+Earlier runs of the re-arm leg: in range throughout (RNGFND1_MAX 60),
+v5 read 0.31-0.33 off at 1.06-1.10, master 1.12 at 1.05, no zero-velocity
+guard 0.70 at 1.05, no zero-flow guard 1.25 at 1.09 (that run also left
+the zero region, EKF height to 3.79 m). With the first above-range setup
+the re-arm came about 1 s after the disarm and the window held only 8-9
+samples, too few to judge; with OutOfRangeHigh the change read 0.45 off
+at 1.20 and master 1.28 at 1.08. The GNDCLR+0.05 variant failed the
+LOITER landing at 6.4 s (v3) and 6.2 s (v4).
+
+The landing leg now traces the zero region while landed (XKF4 SS bit 10
+clear, XKF5 HAGL under 0.5). The re-arm leg requires it, so on a build
+carrying #32768 it raises "proves nothing" and needs rework by whichever
+PR lands second. OpticalFlowFocusAlt and Replay pass; Copter and Replay
+build with AP_RANGEFINDER_ENABLED 0 and EK3_FEATURE_OPTFLOW_FUSION 0.
+Probe and runners in the session scratch (`probe_tall.py.txt`,
+`ab_tall.sh`, `ab_v7.sh`).
+
+Then `rb-34292-v8` (`476772e023`, `125dbb6637`): Codex found the check
+read only `rangeDataDelayed.sensor_idx`, set after three fresh Good
+samples, so a downward range finder that had never read Good behind a
+forward-facing instance 0 was never consulted. The check now walks every
+downward instance: off the ground when at least one has a reading and
+each that does reads off the ground; Good below the threshold or out of
+range low on any of them keeps the vehicle on the ground. That also
+closes the two-range-finder note: one faulty instance reading above
+range on the ground no longer takes the zeros alone. Not tested with two
+range finders. v8 run: change passes all legs, re-arm 0.40 off at 1.03;
+0.5 m absolute stopped aiding on the tall leg; no OutOfRangeHigh 1.72
+off at 1.27.
+
+Codex also raised flow withheld from the main filter still reaching
+EstimateTerrainOffset() when range arrives (EK3_FLOW_USE 2, GPS in use,
+5 m/s or more). Left: it arrives there as the real flow, which against
+GPS velocity measures the true height; master gives the estimator the
+zero in that state, and passes it a stale sample whenever range comes
+without flow.
 
 ## 2026-11-19: OpticalFlowLandedZeroNeedsGround on the SFD stack (4.7.3 refresh1)
 

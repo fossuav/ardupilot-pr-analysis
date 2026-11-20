@@ -798,6 +798,23 @@ marker and release note. CI still running when it reviewed.
 
 Triage of the round: Tools/SFD `PR_STATUS.md`, 2026-11-19.
 
+## 2026-11-18: rebased onto #32768 on master with #35105 (tier 2)
+
+#32768 was replayed onto master `edd2107456` (with #35105) and gained two
+commits, ending at `41320d3b89` (../32768/README.md, 2026-11-18). The six
+PR commits pick onto it with no conflict and `git range-diff` shows every
+patch unchanged. Three commit bodies carried squashed commits' subjects
+(the gate's commit-squashed-subjects); they are rewritten as prose, and
+the third commit's subject now names both tests it adds. Tree identical
+to the tested replay (`pr-baro-gnd-effect-tested`, `e47683c355`).
+
+Local `pr-baro-gnd-effect` at `060e79f7b0`. Each commit builds Copter and
+Plane. On the head, all three of this PR's tests and all ten of #32768's
+pass (BaroGroundEffectAtTakeoff, BaroGroundEffectResetSuppression,
+EK3TouchdownHeightNotSnapped; nine Copter and the QuadPlane AMSL test).
+#35105's record has this PR reading `get_time_flying_ms()`, which #35105
+does not change on Copter; nothing here contradicts that.
+
 ## 2026-11-19: restacked on #32768's round-10 fixes, local `sq/32972-1119` (`3b8e67784a`), pushed 2026-11-19
 
 This PR's six commits cherry-picked onto #32768's `9a2e86c914` with no

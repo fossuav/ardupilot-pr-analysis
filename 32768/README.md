@@ -1394,6 +1394,47 @@ AP-Review round 10 at `41320d3b89`, COMMENT, nothing blocking:
 
 Triage of the round: Tools/SFD `PR_STATUS.md`, 2026-11-19.
 
+## 2026-11-18: on master with #35105, and the landed flag gated (tier 2)
+
+#35105 merged (Copter tells AHRS `vehicle_landed` from `set_land_complete()`,
+and EKF3 is on the ground while armed and landed). The 32 commits pick onto
+master `edd2107456` with no conflict (local `rb-32768-master`). Two commits
+on top: `ea265362eb` reports landed to AHRS only while `disarmed_in_air` is
+clear, and again when the land detector clears it; `6920b1481e` makes
+HeightDatumKeptOnMidairRearm log the replay records and check, for the
+second after the re-arm, that Copter still reads landed (RFRH TF 0) while
+RFRN `vehicle_landed` stays clear.
+
+SITL: all ten of the PR's tests pass (nine Copter, the QuadPlane AMSL one).
+Without `ea265362eb`, HeightDatumKeptOnMidairRearm fails: "the EKF was told
+the vehicle had landed while it fell".
+
+Why it matters (34292's record, 2026-11-18): on master, a flow-only copter
+re-armed while falling has its vertical velocity zeroed and its height put
+at the ground clearance by the arm-time datum reset (no home is ever set),
+and the landed zero flow then pins its horizontal velocity. This PR's
+`disarmed_in_air` refusal is the fix for the reset; the gate keeps #35105's
+flag off for the fall. Not measured together with the flow probe yet.
+
+## 2026-11-18 (evening): the landed report cleared on a climb-away (tier 2)
+
+Review of `ea265362eb`: a re-armed copter that climbs away and lands armed
+was never reported landed, because `disarmed_in_air` was cleared only by
+the disarmed land detector. `set_land_complete(false)` now clears it too:
+that is Copter's own takeoff event (throttle raised with the motors at
+full spool), after which the armed land detector decides when the vehicle
+lands. HeightDatumKeptOnMidairRearm checks both: for 1 s after the re-arm
+RFRH TF 0 with RFRN landed 0, and RFRN landed 1 at the final
+LAND_COMPLETE (EV 18) + 0.3 s. Mutants without the gate and without the
+clear each fail it; all ten tests pass with both.
+
+Local `rb-32768-master-v2`: the 32 commits on `edd2107456`, then
+`f6f06af2f7` (Copter, rewording only against `ccac2fa148`: "not reported
+landed", since EKF3 holds a disarmed vehicle on the ground whatever it is
+told, and the clear explained as Copter's takeoff event) and `41320d3b89`
+(autotest). `rb-32768-master` is kept at `9768fe6ed5`. All 34 commits
+build Copter and Plane on SITL, each in turn.
+
 ## 2026-11-19: round 10 answered, local `sq/32768-1119` (`9a2e86c914`), pushed 2026-11-19
 
 Andy lifted the hands-off for this round. Three commits on `41320d3b89`:
