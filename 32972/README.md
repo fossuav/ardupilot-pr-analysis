@@ -807,3 +807,8 @@ BaroGroundEffectResetSuppression, EK3TouchdownHeightNotSnapped, and
 #32768's MidairRearmLandedAtRest and HeightDatumKeptOnMidairRearm pass
 (tier 2, one run each). Round 16's items are #32768's and answered
 there.
+
+## 2026-11-20: restacked on #32768's round-11 fix, pushed `1586744bc0`
+
+Its six commits replayed on #32768's `91a980f6e8`; only the test
+registration list conflicted. Its four tests pass.

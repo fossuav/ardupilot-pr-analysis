@@ -1448,3 +1448,19 @@ a source switch rather than the arming reset, and the fix takes it out
 whatever set it. Answered on the issue pointing here, with
 HeightKeptOnAidingLossWithAltOffset's 3.67 m / 0.01 m, and an offer to
 split the commit out if a maintainer would rather take it first.
+
+## 2026-11-20: per-core datum reset reported, pushed `91a980f6e8`
+
+With Andy's word for this round. `9d80fa4e6d` makes
+`NavEKF3::resetHeightDatum()` return true if any core reset, as each
+core decides for its own height source but any reset re-zeroes the
+shared baro. `91a980f6e8` adds BaroDriftClearedOnSecondaryCore
+(EK3_SRC_OPTIONS bit 3; core 0 on range finder height, core 1 on baro):
+without the fix 9.2 m of baro drift is re-zeroed with no EKF_ALT_RESET,
+with it one is logged. Callers checked: AP_AHRS (EKF2 now follows),
+Copter's arm path (logs, refreshes terrain), Blimp (logs); Plane,
+AP_Baro and Replay ignore it. Not changed: EKF2's own
+`resetHeightDatum()` still reports its primary only, and a secondary
+EKF3 core can still move the baro under a refusing primary (the
+frontend redesign deferred earlier). Replied with the agent label
+(issuecomment-7051121877).

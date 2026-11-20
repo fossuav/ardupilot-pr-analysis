@@ -292,3 +292,13 @@ five commits and the dropped change, posted with the push.
 Pushed 2026-11-19, force: #33484 `8316113fbb...8ed697cba1`, #34630
 `f7be321b60...746f2908cb`, #35147 `06299bca20...27bb095723`; all three
 mergeable. Description posted the same day.
+
+## 2026-11-20: ground leg restored, pushed `a84d999b56`
+
+`a84d999b56` restores the leg the #35105 rebase dropped, reworded as
+"no set when aiding starts on the ground": it passes at the head and
+fails with `&& !onGround` removed from the set's gate. Range freshness
+(#33484's `14ea671178`) is carried into `flowResetRangeState()`. In
+FuseOptFlow the set's early return comes before #33484's timer restart,
+so a sample the set consumes is not counted as tested.
+Replied (issuecomment-7051121123).

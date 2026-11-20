@@ -458,3 +458,8 @@ With #35147's restack (that record): cherry-picked onto master
 `321896137f`, every commit `=` in `git range-diff`; force-pushed
 `f7be321b60...746f2908cb`. The stack's tests pass at #35147's head and at #33484's
 own (tier 2). Nothing of this PR changed.
+
+## 2026-11-20: restacked on #33484's round-19 fixes, pushed `4f1220b5f5`
+
+The bot's two open items were #33484's code and are fixed there. This PR
+replays cleanly onto them. Replied (issuecomment-7051120727).

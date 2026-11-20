@@ -82,3 +82,13 @@ instrumented: one core reset 167 ms after the range returned, its switch
 unconfirmed restart): the failing run's replay defers, the leg passed ten
 in ten, and the 423-log fleet replay is unchanged. Pushed and commented
 (issuecomment-7049227050).
+
+## 2026-11-20: restacked on #33484's round-19 fixes, pushed `0fec57455e`
+
+The new-reading test now applies to every regime through
+`flowResetRangeState()`. Found a latent link failure in this PR's pushed
+code: `MIN(..., aglKfRestartConfirmSigma)` in `selectHeightForFusion()`
+bound the static constexpr member by reference, which under gnu++11
+needs an out-of-class definition; Copter.Replay's build failed to link
+once #33484's fixes changed the inlining. Fixed in `48f3825f31` by
+reading it by value. Replied (issuecomment-7051121473).

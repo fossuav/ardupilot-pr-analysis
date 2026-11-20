@@ -1982,3 +1982,33 @@ With #35147's restack (that record): cherry-picked onto master
 `321896137f`, every commit `=` in `git range-diff`; force-pushed
 `8316113fbb...8ed697cba1`. The stack's tests pass at #35147's head and at #33484's
 own (tier 2). Nothing of this PR changed.
+
+## 2026-11-20: AP-Review round 19 fixed, pushed `14460238b3`
+
+Rebased onto master `c69185e3ed` (`57f6aff566`), then three fixes:
+
+- `4819fd4eff` restarts both axis timers on a sample either axis could pass
+  (inside EK3_FLOW_MAX on both) more than half a lockout after the last. It
+  covers a dropout, a tilt spell, a FLOW_ALT_MIN dip and fast flow, and
+  replaces the dip's own restart. Half a lockout keeps at least half of one
+  tested and clears the 200 ms one dropped sample leaves at 10 Hz. The
+  first version (200 ms, any `really_fuse` sample) missed the fast-flow
+  spell; a cold read caught it.
+- `14ea671178` also requires a range sample that was not a copy to have
+  reached the fusion horizon within 500 ms (`rngNewReadingTime_ms`, set
+  at `storedRange.recall`). SITL backends hold a reading no longer than
+  that, so only the bot's extracted-code harness shows the held case.
+- `14460238b3` takes a steady range's reading time from the newest sample
+  when it equals the median. Mirroring the median code over 58 samples:
+  a steady range read afresh counted 38 copies before, 0 after.
+
+SITL A/B (`bf8f1593b7` runs the spell leg for dip, dropout and fast
+flow): reset 0.07 s after a dropout with the pushed code, 0.12 s after a
+fast-flow spell with the first fix, 0.54-0.79 s with the final one.
+Fleet Replay (master-based, #35306 and the landed-flag rebuild patched
+in, 423 logs): 60 change; flow more than 1 m/s out 5194 -> 5191 s (11
+cores lower, 8 higher); GPS p95 summed +0.3 m/s (largest +0.63 on a lane
+already at 13 m/s); deferred recoveries 292 -> 205.
+
+Left as a trade-off: a range finder slower than about 2 Hz reads stale
+part of the time. Replied with the agent label (issuecomment-7051120330).

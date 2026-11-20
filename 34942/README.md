@@ -1904,3 +1904,14 @@ it removes only the unhealthy-primary route (message corrected); the
 test checks health, not the lane, which is what the commits now claim.
 Description edits (the two "onGround means disarmed" statements, and
 the armed leg) posted 2026-11-19.
+
+## 2026-11-20: AP-Review round 8 minors fixed, pushed `641c394960`
+
+`175357be10` corrects the rest reset comment (on the ground, which on
+Copter includes THROW's armed wait). `641c394960` re-arms the rest check
+where each rest starts, so a shock shorter than a prediction step is
+caught: an extracted-code probe gives one reset for a 1- or 3-sample
+shock leaving 0.75 m/s, none before. SITL cannot make a sub-step shock.
+423 replayed logs are unchanged; EK3HardLandingRearm passed 5 of 5. The
+description's Limits lines were corrected the same day. Replied
+(issuecomment-7051122557).

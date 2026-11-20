@@ -957,3 +957,8 @@ acro tests and the rest of #32471's pass at this head (see that record).
 Four commits `=` on `ca52de2e10`. VibrationRectificationBiasLearning,
 HoverBiasSavedFirstFlightAfterRest, AccelBiasLearningInhibitedInAcro,
 AccelBiasAcroExitVelocityError and Copter.Replay pass.
+
+## 2026-11-20: restacked on #32471's bit-2 fix, pushed `283e9583fd`
+
+The held time follows only this PR's ground hold, not its acro hold.
+Its three tests pass. Replied (issuecomment-7051122224).

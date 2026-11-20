@@ -63,3 +63,9 @@ recovery does not run there.
   drifts on the ground when idling motors keep onGroundNotMoving false.
 - A range finder that reads below its minimum on the floor needs #32232's
   substitution; on master its range is stale and nothing is held.
+
+## 2026-11-20: restacked, pushed `64196a8a82`
+
+Carried onto #35307's `0fec57455e` with no change of its own. With
+#33484's new-reading test, an assumed or held range now reads stale here
+too, so nothing is held on one.

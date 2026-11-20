@@ -2498,3 +2498,15 @@ PR no longer changes it), a bullet says why Flags2 and not the
 free-looking bit 1, and the tests paragraph names the HoverZBias bit.
 Open: the inhibit stays a DAL event pair "because the RFRN flags byte is
 full", which a reviewer may now answer with Flags2.
+
+## 2026-11-20: a bit-2 release before the first flight, pushed `4130ed9fde`
+
+From AP-Review's round on #32473. `0e62b070b8` refuses a first flight
+after bit 2 held the bias at rest, with "Hover Z-bias not saved: bit 2
+held, reboot". Restarting the rest wait was not enough: in SITL the
+released Z bias overshoots to 0.67 against 0.18 and takes 25-30 s to
+settle, against 10 s after a zeroing. `4130ed9fde` adds the leg: the
+pushed code saved 0.066 against the right 0.088; now kept, and an EKF
+reset at rest opens the next first flight (saves 0.0886). Not changed:
+the held time is stamped on the inhibit's ticks, so an EKF reset in the
+second before the release shortens the rest wait by under 1 s.
