@@ -1436,3 +1436,15 @@ the rest check while armed) not posted.
 #32475's `update_vehicle_landed()`: one formula, `ap.land_complete &&
 !ap.disarmed_in_air && !flightmode->is_carried()`, with this PR's two
 direct `set_vehicle_landed()` calls routed through it.
+
+## 2026-11-20: issue #35302 is this PR's AID_NONE offset fix
+
+#35302 (a 4.6.3 flight, GPS disabled in ALT_HOLD after a switch to a
+baro height set) reports the height jumping by `baroHgtOffset` when
+aiding stops, with the same one-line fix as `5fbd966bd6`.
+`meaHgtAtTakeOff` is read only by that reset on master and the SFD
+beta, so the two are the same change; the reporter's offset comes from
+a source switch rather than the arming reset, and the fix takes it out
+whatever set it. Answered on the issue pointing here, with
+HeightKeptOnAidingLossWithAltOffset's 3.67 m / 0.01 m, and an offer to
+split the commit out if a maintainer would rather take it first.
