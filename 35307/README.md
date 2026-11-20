@@ -69,3 +69,16 @@ keyed XKF7 and the OSD floor to a lane with a downward range finder.
 - #33484's "Both axes wrong" leg (a8eaab68f9) failed once and passed on
   rerun: a reset can fall as the leg clears the fault and disarms, with
   no XKF1 after it. Timing race in that test, not this PR.
+
+## 2026-11-20: pending height source switch
+
+While stacking #35312, the range-height restart leg failed about one run
+in five: when the range finder came back as the main height source,
+`activeHgtSource` changed one update before `ResetPositionD()` reset the
+height to the range, and in that update the range-height regime read
+confirmed with the baro's height. Caught with replay logging on and
+instrumented: one core reset 167 ms after the range returned, its switch
+25 ms later. Fixed in `80e1cb5824` (a pending switch counts as an
+unconfirmed restart): the failing run's replay defers, the leg passed ten
+in ten, and the 423-log fleet replay is unchanged. Pushed and commented
+(issuecomment-7049227050).
