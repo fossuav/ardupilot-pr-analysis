@@ -2,6 +2,10 @@
 
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 
+**2026-11-23, later:** the notch update without libm is on branch
+`notch-fast-sincos`, not on the PR and not yet flown. See "2026-11-23: the
+notch update without libm" below.
+
 **2026-11-23:** PR head `5e97be2505`, 86 commits on master `321896137f`;
 the alpha2 flight card flown on `031f2549`, see
 [bench-2026-11-23.md](bench-2026-11-23.md).
@@ -282,7 +286,13 @@ commits used to make.
 
 ## Status (one line)
 
-2026-11-23, latest: log 15 flew the hard leg on `031f2549`, Acro with flips
+2026-11-23, latest: the notch update's `sinf()` and `cosf()` replaced by an
+inlined polynomial on branch `notch-fast-sincos` (`727edd1929`). Host tests
+and SITL only: the core1 saving, at most 7-8 points, is not measured. The
+next step is `Tools/RP2350/flight-test/NOTCH_CARD.md` on that branch, on
+the computer with the quad. PR head unchanged.
+
+2026-11-23: log 15 flew the hard leg on `031f2549`, Acro with flips
 at 0.54 throttle, 37 A and 30 m/s. Port clean: worst rate-loop gap 0.94 ms,
 no long loops or log drops. Core1 rises about 3 points with motor speed and
 peaked at 68.3%; notch coefficient updates are 25.1% of its busy time. PR
@@ -1189,6 +1199,91 @@ rest is not:
   (issuecomment-5671163072). Andy's hardware test of the change set is
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
+
+## 2026-11-23: the notch update without libm
+
+Andy asked for the notch performance work after log 15. Branch
+`notch-fast-sincos`, on alpha2 `031f2549`. **Not run on a board and not
+flown**, so no CPU saving is measured here.
+
+| commit | what |
+|---|---|
+| `c1c925b716` | Filter: test the coefficients through the impulse response against a double precision design. Passes on the existing code |
+| `727edd1929` | Filter: sine and cosine from one inlined polynomial pair |
+| `8b1271bf0d` | Tools: `NOTCH_CARD.md` and `HISTORY.md`. Not for upstream |
+
+Where the time goes. The quad has 4 motors, 4 harmonics and a triple notch,
+so 48 notches, re-centred at half the 3201 Hz gyro rate because
+`INS_HNTCH_OPTS` 22 sets `LoopRateUpdate`. `AP_ESC_Telem::get_rpm()`
+interpolates between ESC reports, so a centre differs at each update and
+the unchanged check in `init_with_A_and_Q()` rarely fires (derived from the
+source, not measured). The coefficient update is 25.09% of core1's busy
+samples in log 15. Within that, `sinf`, `cosf` and their helpers are 12.32%
+of core1's busy samples (`__ieee754_rem_pio2f` 5.34, `__kernel_cosf` 2.67,
+`__kernel_sinf` 1.94, `cosf` 1.20, `sinf` 1.17), and 10.80% in flight 3.
+That caps what this change can save at 7.1-8.2 points of core1 load, less
+the polynomial's own cost.
+
+The change. `sin_cos_0_to_pi()` reduces the angle to +-pi/4, using pi/2 and
+pi in two parts, and evaluates a degree 7 sine and a degree 8 cosine. It is
+forced inline, so it runs from SRAM inside the registered
+`init_with_A_and_Q` and needs no registry change. No parameter changes.
+
+| Check, on the host unless stated | Result |
+|---|---|
+| Every float angle from 1e-4 to pi (125,262,020) | max error sin 6.5-8.0e-8, cos 7.4-8.8e-8, with and without fused multiply-add; glibc 3.3e-8 |
+| This quad's notch at 3201 Hz (A 0.1, Q 11.7), 30 Hz up | 89% of coefficient sets bit-identical; worst response difference 0.002 dB at the centre, 0.003 dB within +-8% |
+| 1-8 kHz, 15-40 dB, Q 1-8, 30 Hz up | 90% bit-identical; worst 0.001 dB at the centre, 0.0033 dB within +-8% |
+| Stability, 5 Hz up, 400 Hz-8 kHz, 10-60 dB, Q 0.7-20 | 0 unstable of 370,320 coefficient sets |
+| `CoefficientsTest` | passes before and after; fails with a sign deliberately flipped |
+| RPI_UAVFC build | +424 B flash, +208 B SRAM, no `sinf` or `cosf` call left in the Vector3f update, no warnings |
+| MatekH743 build | +432 B flash, no warnings |
+
+The host baseline is glibc's `sinf` and `cosf`, not the newlib versions the
+firmware links. Newlib itself was not compared.
+
+SITL `DynamicRpmNotchesRateThread`, six alternating runs of each binary,
+peak in dB:
+
+| | Unchanged (4 valid runs) | Changed (6 runs) |
+|---|---|---|
+| No notch | 15.00, sd 2.45 | 16.00, sd 1.22 |
+| Single dynamic notch | -21.60, sd 1.46 | -20.54, sd 0.70 |
+| Notch per motor | -25.34, sd 0.60 | -25.24, sd 1.31 |
+
+The no-notch row cannot be affected by the change, so its 1.0 dB difference
+shows the noise of this test. Two runs of the **unchanged** binary failed,
+one on a 47.7 Hz peak at -2.15 dB after the notch was added and one on a
+`GLOBAL_POSITION_INT` timeout. That is the test's flakiness, and the six
+clean runs of the changed binary are not evidence that it fixed anything.
+
+Measured and rejected:
+
+| Change | Argument for | Why not |
+|---|---|---|
+| Polynomials over 0 to pi/2 with one reflection | one branch fewer, no two-part constants | max error 1.7e-7 in sin and 2.1e-7 in cos, about five times glibc's. Reducing to +-pi/4 with a two-part pi gives 8.0e-8 and 8.8e-8 |
+
+Not tried: one out-of-line helper, which would save most of the flash now
+spent on three inlined template copies but needs its own SRAM placement on
+RP2350; and recurrences across harmonics, which clash with each notch's own
+slew limit.
+
+Owed: the flight in `Tools/RP2350/flight-test/NOTCH_CARD.md`, which needs
+the quad's motors because stopped motors leave every centre below the 400
+Hz where the old path turned expensive. It compares `RPLD.C1` by throttle
+band with log 15's 64.8, 65.6, 66.8 and 67.8%, and the gyro attenuation
+with log 15's -25 to -31 dB at 150-250 Hz, -37 to -41 dB at 250-400 Hz and
+-42 to -44 dB at 400-1000 Hz (`batch_fft.py`, 205-330 s). `INS_HNTCH_OPTS`
+18 against 22 remains the larger, separate lever.
+
+Reproduce, from `tools/notch_sincos/`:
+
+```sh
+python3 fit_coeffs.py
+gcc -std=gnu11 -O2 -mfma -ffp-contract=fast accuracy2.c -lm -o <scratch>/a2 && <scratch>/a2
+gcc -std=gnu11 -O2 -mfma -ffp-contract=fast accuracy3.c -lm -o <scratch>/a3 && <scratch>/a3 40 10 40
+./verify_source.sh <checkout of notch-fast-sincos> <scratch>
+```
 
 ## 2026-11-23: the alpha2 flight card
 
