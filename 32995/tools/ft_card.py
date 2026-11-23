@@ -30,10 +30,11 @@ def summary(values, scale=1.0):
 
 
 def windows(events):
-    arm = next((t for t, i in events if i == EV_ARM), None)
-    disarm = next((t for t, i in events if i == EV_DISARM and arm is not None and t > arm), None)
+    # the armed period holding the first flight: a log can arm more than once
     fly = next((t for t, i in events if i == EV_NOT_LANDED), None)
     land = next((t for t, i in events if i == EV_LAND and fly is not None and t > fly), None)
+    arm = max((t for t, i in events if i == EV_ARM and fly is not None and t < fly), default=None)
+    disarm = next((t for t, i in events if i == EV_DISARM and land is not None and t > land), None)
     return arm, disarm, fly, land
 
 
@@ -69,6 +70,7 @@ def main(path):
     print('params', {k: params.get(k) for k in PARAMS})
     events = [(t, m.Id) for t, m in data['EV']]
     arm, disarm, fly, land = windows(events)
+    first_arm = next(t for t, i in events if i == EV_ARM)
     print(f'armed {arm} to {disarm}; flying {fly} to {land}; flight {None if not fly or not land else land - fly:.1f} s')
     print('modes', [(round(t, 1), m.Mode) for t, m in data['MODE']])
     print('ERR', [(round(t, 1), m.Subsys, m.ECode) for t, m in data['ERR']])
@@ -79,7 +81,7 @@ def main(path):
     def between(kind, a, b):
         return [(t, m) for t, m in data[kind] if a <= t <= b]
 
-    for name, a, b in (('FLIGHT', fly, land), ('ARMED', arm, disarm), ('DISARMED-BEFORE', 10.0, arm)):
+    for name, a, b in (('FLIGHT', fly, land), ('ARMED', arm, disarm), ('DISARMED-BEFORE', 10.0, first_arm)):
         print(f'--- {name} {a:.1f}-{b:.1f}')
         rows = between('RPLD', a, b)
         for field in ('C0', 'C1', 'XHit', 'XAcc'):
@@ -137,7 +139,7 @@ def main(path):
     if data['LEDC']:
         print('--- LEDC', [(round(t, 1), m.On) for t, m in data['LEDC']])
         edges = [(t, m.On) for t, m in data['LEDC']]
-        for label, a, b in (('FLIGHT', fly, land), ('ARMED', arm, disarm), ('DISARMED', 10.0, arm)):
+        for label, a, b in (('FLIGHT', fly, land), ('ARMED', arm, disarm), ('DISARMED', 10.0, first_arm)):
             per = {0: collections.defaultdict(list), 1: collections.defaultdict(list)}
             pairs = []
             for i, (start, on) in enumerate(edges):

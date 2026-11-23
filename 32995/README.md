@@ -277,11 +277,18 @@ commits used to make.
   `031f2549`: three clean low-throttle flights with the hard leg not
   flown, core1 at 64-65% armed, LED_roll's in-flight cost, and the first
   in-flight PC profile of both cores, with `__ieee754_rem_pio2f` the one
-  real placement miss on core1.
+  real placement miss on core1. Log 15, later the same day, flew the hard
+  leg in Acro at 30 m/s and 37 A, with the port still clean.
 
 ## Status (one line)
 
-2026-11-23, latest: the alpha2 flight card flown on `031f2549` (#32995 at
+2026-11-23, latest: log 15 flew the hard leg on `031f2549`, Acro with flips
+at 0.54 throttle, 37 A and 30 m/s. Port clean: worst rate-loop gap 0.94 ms,
+no long loops or log drops. Core1 rises about 3 points with motor speed and
+peaked at 68.3%; notch coefficient updates are 25.1% of its busy time. PR
+head unchanged (see [bench-2026-11-23.md](bench-2026-11-23.md)).
+
+2026-11-23: the alpha2 flight card flown on `031f2549` (#32995 at
 `5e97be2505` with the follow-ups and profiling commits). Port clean on
 three flights, but all at low throttle: the hard leg was not flown. Core1
 64-65% armed, 45% disarmed; LED_roll +5.8 points of core0, +0.4 of core1.
@@ -1200,6 +1207,20 @@ profiles from flight 3. Measurements, tools and the open list are in
   the registry records as not profiling) and `__udivmoddi4` (2.13%, largely
   the idle-load measurement itself; derived from the disassembly, not A/B
   tested). Core0's table filled, so its placement cannot be judged.
+
+Later the same day, log 15 flew the hard leg on the profile build: Acro
+with flips, 0.54 throttle, 37.1 A reported and 30.3 m/s.
+
+- The port stayed clean. Worst rate-loop gap in flight 0.94 ms, no long
+  loops, log drops or ESC telemetry errors.
+- Core1 goes from 64.8% below 0.15 throttle to 67.8% at 0.30-0.45, and
+  peaked at 68.3%. Core0 follows the mode: 48.6% in Acro, 56.0% in Loiter.
+- `__ieee754_rem_pio2f` rose to 5.34% of core1's busy time with motor speed.
+- A new compass calibration and `COMPASS_MOT`. The measured coupling is 5.9
+  mG/A, under a third of log 8's, and EKF yaw stayed within about 6 deg of
+  true through the Acro.
+- First card flight with a reply on the DisplayPort. Logs 12-14 received
+  nothing on SERIAL1.
 
 ## 2026-11-19: ESC passthrough on the PIO DShot outputs
 

@@ -39,8 +39,9 @@ def main(path):
     ev = [(t, m.Id) for t, m in data['EV']]
     fly = next(t for t, i in ev if i == 28)
     land = next(t for t, i in ev if i == 18 and t > fly)
-    arm = next(t for t, i in ev if i == 10)
-    disarm = next(t for t, i in ev if i == 11 and t > arm)
+    # the armed period holding the flight: a log can arm more than once
+    arm = max(t for t, i in ev if i == 10 and t < fly)
+    disarm = next(t for t, i in ev if i == 11 and t > land)
 
     def win(kind, a=fly, b=land):
         return [m for t, m in data[kind] if a <= t <= b]

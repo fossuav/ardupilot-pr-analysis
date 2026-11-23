@@ -76,20 +76,22 @@ def callers(elf):
 
 def disarm_load(path):
     log = DFReader.DFReader_binary(path, zero_time_base=False)
-    arm = disarm = None
+    events = []
     rows = []
     while True:
         m = log.recv_match(type=['EV', 'RPLD'])
         if m is None:
             break
         if m.get_type() == 'EV':
-            if m.Id == 10 and arm is None:
-                arm = m.TimeUS
-            elif m.Id == 11 and arm is not None and disarm is None:
-                disarm = m.TimeUS
+            events.append((m.TimeUS, m.Id))
         else:
             rows.append(m)
-    after = [m for m in rows if m.TimeUS > disarm + 5e6]
+    # the armed period holding the flight: a log can arm more than once
+    fly = next(t for t, i in events if i == 28)
+    land = next(t for t, i in events if i == 18 and t > fly)
+    arm = max(t for t, i in events if i == 10 and t < fly)
+    disarm = next(t for t, i in events if i == 11 and t > land)
+    after =[m for m in rows if m.TimeUS > disarm + 5e6]
     late = [m for m in rows if arm + 15e6 < m.TimeUS < disarm - 2e6]
     mean = lambda v: sum(v) / len(v) if v else float('nan')
     print(f'{path.rsplit("/", 1)[-1]}: armed C0 {mean([m.C0 for m in late]):.1f} C1 {mean([m.C1 for m in late]):.1f}; '
