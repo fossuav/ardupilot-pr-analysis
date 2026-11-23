@@ -110,3 +110,18 @@ lane's velocity error in the 3 s after lift-off is 0.02-0.10 m/s lower on
 six of the seven lift-offs (0.13-0.33 m/s against 0.20-0.42). So the
 lift-off has flown clean with the hold, its protection is still not
 exercised, and on these flights it costs a little at lift-off.
+
+## 2026-11-23: AP-Review round 2 answered, pushed at `ab1cbb1a73`
+
+On top of `0fec57455e` for #35307: `16ea0b4d9e` (builds with the range finder
+compiled out), `8c1d9763ac` (each deferral reason has its own report timer) and
+`4bcfc44274` (the both-axes leg leaves out the reset its own cleanup causes). For
+this PR: `6926aa57d3` compares the range as the sensor read it with the ground
+clearance, and `ab1cbb1a73` adds a leg with the sensor 0.15 m below the IMU, where
+the flow is shut out without the fix.
+
+EK3_FlowAxisLockoutRecovery 24 of 24 (21 of 24 before `4bcfc44274`, on the leg's
+own cleanup). Five other flow and Replay tests pass, and the range-finder-off and
+AGL-KF-off builds build. Replay of 385 distinct logs: no EKF state changes, 22
+logs print more deferral messages. Left as it is: flow slower than 4 Hz gets no
+lockout recovery, which is the behaviour without #33484.

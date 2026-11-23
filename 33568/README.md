@@ -771,3 +771,11 @@ at 1.5-3.2 m reached 9.0 m/s on the flow lane with no loss of the position
 flag and no gap in usable flow over 0.5 s. Peak speed ran up to 27 % over
 the cap. None was flown at log111's 0.67 m; the cap scales with height, so
 the flow rate margin is the same (derived from the source, not measured).
+
+### 2026-11-23: the 4.2 rad/s gate over the fleet, tier 1b
+
+Replay of 385 distinct logs with the gate at 7.4: 197 change, GPS velocity error
+p95 higher on 11 cores and lower on 8, summed +7.7 m/s, of which 5.0 is one flow
+lane going from 0.94 to 5.95 m/s p95. 12 rad/s is the same. Raising the gate does
+not help, so it stays; the answer to log111 is `EK3_FLOW_MAX` within its
+documented 1-4 range.

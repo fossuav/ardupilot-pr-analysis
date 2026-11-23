@@ -1121,3 +1121,10 @@ in range (one returning zero on a lost return) pins the height to the
 floor until the 5 s timeout". It went invalid at 41.3 s. Nothing reached
 the control (VALT, baro height), but lockout resets (#33484) then scaled
 the flow by the floor height and took the velocity to near zero.
+
+### 2026-11-23: giving the height up at the floor, tier 1b
+
+A prototype marking the AGL KF invalid when a coast from a range well above the
+floor reaches it: 21 of 385 distinct logs move, p95 higher on 4 cores and lower
+on 3, summed 0.0, and logs 110 and 113 are effectively unchanged. The coast is not
+what drives the flow lane's error on these flights, so nothing is proposed.
