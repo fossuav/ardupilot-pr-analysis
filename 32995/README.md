@@ -2,6 +2,10 @@
 
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 
+**2026-11-23:** PR head `5e97be2505`, 86 commits on master `321896137f`;
+the alpha2 flight card flown on `031f2549`, see
+[bench-2026-11-23.md](bench-2026-11-23.md).
+
 **2026-11-18:** PR head `9f1dcc9985`, 76 commits on master
 `321896137f`. "Status (one line)" is the
 current state; the paragraphs directly below describe the branch as it
@@ -269,10 +273,22 @@ commits used to make.
   current zero's temperature drift seen on the compass in flight; the GSF
   16-35 deg wrong in Loiter at 0.4 deg of spread; and a Loiter yaw tool
   that reads drag in a turn.
+- [bench-2026-11-23.md](bench-2026-11-23.md) - the alpha2 flight card on
+  `031f2549`: three clean low-throttle flights with the hard leg not
+  flown, core1 at 64-65% armed, LED_roll's in-flight cost, and the first
+  in-flight PC profile of both cores, with `__ieee754_rem_pio2f` the one
+  real placement miss on core1.
 
 ## Status (one line)
 
-2026-11-20, latest: DShot150 and DShot300 on the PIO, as Betaflight does
+2026-11-23, latest: the alpha2 flight card flown on `031f2549` (#32995 at
+`5e97be2505` with the follow-ups and profiling commits). Port clean on
+three flights, but all at low throttle: the hard leg was not flown. Core1
+64-65% armed, 45% disarmed; LED_roll +5.8 points of core0, +0.4 of core1.
+Notch coefficient updates are 23.6% of core1's busy time. PR head
+unchanged (see [bench-2026-11-23.md](bench-2026-11-23.md)).
+
+2026-11-20: DShot150 and DShot300 on the PIO, as Betaflight does
 it, with Betaflight's end-of-cycle delay fix; the five STM32-neutral
 commits (stack trims, DShot) moved ahead of the six STM32-changing ones.
 PR head `5e97be2505`, 86 commits (see the DShot section).
@@ -1166,6 +1182,24 @@ rest is not:
   (issuecomment-5671163072). Andy's hardware test of the change set is
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
+
+## 2026-11-23: the alpha2 flight card
+
+Logs 12, 13 and 14 from the quad on `031f2549`, with both cores' PC
+profiles from flight 3. Measurements, tools and the open list are in
+[bench-2026-11-23.md](bench-2026-11-23.md).
+
+- No failsafe, internal error, long loop, log drop or ESC telemetry error.
+  Worst rate-loop gap in flight 0.92-0.96 ms.
+- The hard-flying leg was not flown: `CTUN.ThO` peaked at 0.17 and reported
+  current at 6 A, against 0.70 and 50 A in log 8. Load under real throttle
+  on this build is not measured.
+- Core1 is 64-65% armed and 45% after disarm. LED_roll costs core0 5.8
+  points and core1 0.4, with the rate loop unchanged.
+- Core1 is 7.6% in flash, almost all `__ieee754_rem_pio2f` (4.44%, which
+  the registry records as not profiling) and `__udivmoddi4` (2.13%, largely
+  the idle-load measurement itself; derived from the disassembly, not A/B
+  tested). Core0's table filled, so its placement cannot be judged.
 
 ## 2026-11-19: ESC passthrough on the PIO DShot outputs
 
