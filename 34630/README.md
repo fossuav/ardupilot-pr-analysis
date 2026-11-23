@@ -463,3 +463,9 @@ own (tier 2). Nothing of this PR changed.
 
 The bot's two open items were #33484's code and are fixed there. This PR
 replays cleanly onto them. Replied (issuecomment-7051120727).
+
+## 2026-11-23: restacked on #33484's test fix, pushed `b450f1a400`
+
+Every commit `=` in `git range-diff`. The tree differs from `4f1220b5f5`
+only by #33484's 7-line autotest change (`255fe24724`), so nothing of this
+PR changed. CI on this head had not finished when this was written.

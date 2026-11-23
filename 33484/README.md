@@ -2012,3 +2012,19 @@ already at 13 m/s); deferred recoveries 292 -> 205.
 
 Left as a trade-off: a range finder slower than about 2 Hz reads stale
 part of the time. Replied with the agent label (issuecomment-7051120330).
+
+### Superseded 2026-11-23 in its log count
+
+The 423 files of that fleet Replay are 381 distinct logs: 40 flights sit
+in the cache under two or three names, so its counts and sums take them
+more than once. The numbers stay as measured; re-run on the distinct logs
+before citing them.
+
+## 2026-11-23: the both-axes leg's flake fixed, pushed `255fe24724`
+
+One autotest commit on `14460238b3`, no library change. The leg clears the
+X offset before disarming, which is a new lockout on the axis the last
+reset anchored to it, and that reset can fall as the vehicle disarms with
+no XKF1 after it: the leg failed 3 runs in 24. It now checks only the
+resets before the offset is cleared. EK3_FlowAxisLockoutRecovery 24 of 24
+at this head (tier 2). CI on this head had not finished when this was written.

@@ -51,6 +51,13 @@ keyed XKF7 and the OSD floor to a lane with a downward range finder.
   cores (largest 12.05 -> 4.37 m/s), higher on 1 by 0.01. On top of flow
   averaging: 574 -> 331 s, GPS p95 summed -1.3, none worse.
 
+### Superseded 2026-11-23 in its log count
+
+The 423 files of that fleet Replay are 381 distinct logs: 40 flights sit
+in the cache under two or three names, so its counts and sums take them
+more than once. The numbers stay as measured; re-run on the distinct logs
+before citing them.
+
 ## Decided, not changed
 
 - Kept under EK3_FEATURE_OPTFLOW_AGL_KF (#33484's define for the flow
@@ -69,6 +76,10 @@ keyed XKF7 and the OSD floor to a lane with a downward range finder.
 - #33484's "Both axes wrong" leg (a8eaab68f9) failed once and passed on
   rerun: a reset can fall as the leg clears the fault and disarms, with
   no XKF1 after it. Timing race in that test, not this PR.
+
+### Superseded 2026-11-23
+
+The leg's race is fixed in #33484 (`255fe24724`, 24 of 24).
 
 ## 2026-11-20: pending height source switch
 
@@ -92,3 +103,29 @@ bound the static constexpr member by reference, which under gnu++11
 needs an out-of-class definition; Copter.Replay's build failed to link
 once #33484's fixes changed the inlining. Fixed in `48f3825f31` by
 reading it by value. Replied (issuecomment-7051121473).
+
+## 2026-11-23: AP-Review's second round fixed, pushed `186c96fa4a`
+
+On #35147's `fc082533e1`, eight commits are now this PR's. `28f9a00d81`
+builds the recovery with the range finder compiled out, where
+`flowLockoutRecoveryConfigured()` returns false. `186c96fa4a` gives each
+deferral reason its own 10 s report timer, so "range stale" no longer
+hides the restart that follows it. The both-axes leg fix first pushed here
+as `4bcfc44274` moved to #33484 the same day; the tree is unchanged by the
+move. Description updated and posted 2026-11-23.
+
+Tier 2, at `ab1cbb1a73` on this code: EK3_FlowAxisLockoutRecovery 24 of
+24; EK3_FlowVelocityAtAidingStart, OSDEKFLanes, OpticalFlowFocusAlt,
+OpticalFlow and Copter.Replay pass; builds with AP_RANGEFINDER_ENABLED=0
+and EK3_FEATURE_OPTFLOW_AGL_KF=0 pass. Tier 1b, `64196a8a82` against
+`ab1cbb1a73`: no EKF state change on 385 distinct logs, 22 print more
+deferral messages. CI on this head had not finished when this was written.
+
+Open: a 5 s height timeout with the range finder as the height source
+restarts the height through `ResetHeight()` without arming
+`rngHgtRestartConfirm` (AP-Review, low). Derived from the source, not
+measured. Flight code, not changed.
+
+Reply drafted and held at Andy's word, 2026-11-23, not posted:
+
+> The guard is in 28f9a00d81, and a build with the range finder compiled out now links. The description counts the eight commits. The height timeout restarting the height from one range sample is still open.

@@ -30,6 +30,13 @@ MAVLink 100 Hz, one ARK around 200 Hz.
   time the flow is 1 m/s out of agreement with the velocity -16%; GPS p95
   lower on 74 cores, higher on 61, summed +17.2, all of it one log.
 
+### Superseded 2026-11-23 in its log count
+
+The 423 files of that fleet Replay are 381 distinct logs: 40 flights sit
+in the cache under two or three names, so its counts and sums take them
+more than once. The numbers stay as measured; re-run on the distinct logs
+before citing them.
+
 ## The one regression: a flow lane locked out on the ground
 
 An O4 log, core 1 (a flow lane, GPS on core 0): GPS p95 8.0 -> 25.2 m/s.
@@ -78,3 +85,9 @@ ground as a measured height, and look at the 5 cm clamp's gate.
 #33484 carries a per-sample quality that master lacks; the beta needs
 the quality averaged with the samples (post-merge fixup in the SFD
 REFRESH_NOTES; the beta port `1c1d7fa154` did it).
+
+## Open, 2026-11-23 (head `cd6a948cc5`)
+
+AP-Review asks for the Replay test to run at `SIM_FLOW_RATE` 100. Not
+changed. Its other point, the unaveraged Z body rate, is the pre-existing
+behaviour recorded under "Decided".

@@ -302,3 +302,10 @@ fails with `&& !onGround` removed from the set's gate. Range freshness
 FuseOptFlow the set's early return comes before #33484's timer restart,
 so a sample the set consumes is not counted as tested.
 Replied (issuecomment-7051121123).
+
+## 2026-11-23: restacked on #33484's test fix, pushed `fc082533e1`
+
+Every commit `=` in `git range-diff`. The tree differs from `a84d999b56`
+only by #33484's 7-line autotest change (`255fe24724`). The description's
+commit count, which said five, was corrected to six and posted the same
+day. CI on this head had not finished when this was written.

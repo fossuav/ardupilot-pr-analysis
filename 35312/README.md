@@ -54,6 +54,20 @@ recovery does not run there.
   -1.2 m/s. One hopping log 2.86 -> 3.84 m/s p95: its flow lane is
   rejected through most hops in both builds, differences between hops.
 
+### Superseded 2026-11-23 by a recount on distinct logs
+
+The 423-log figure counted cached copies of the same flights, and it only holds
+on a build carrying #32232. Recounted on 385 distinct logs, the landed flag
+rebuilt from events, hold on against hold off, 93 lanes landed for over 3 s:
+
+- With #32232 (the SFD 4.7 beta): 8 lanes over 0.5 m/s on the ground (worst
+  15.3), 1 with the hold (0.75). GPS p95 lower on 4 cores, higher on 2, summed
+  -13.8 m/s, -13.1 of it one flight.
+- On this PR's own stack: the hold changes none of those lanes. In six of the
+  seven logs the range finder is out of range low for the whole landed spell,
+  so the range is stale and nothing is held. SITL's range finder reads the
+  floor, so the autotest does not show this.
+
 ## Found along the way
 
 - #35307 bug, fixed in `80e1cb5824`: a pending height source switch let
@@ -126,16 +140,19 @@ AGL-KF-off builds build. Replay of 385 distinct logs: no EKF state changes, 22
 logs print more deferral messages. Left as it is: flow slower than 4 Hz gets no
 lockout recovery, which is the behaviour without #33484.
 
-### Correction to the fleet result above, tier 1b
+## 2026-11-23 (later): the test fix moved to #33484, pushed `36fd5a2254`
 
-The 423-log figure counted cached copies of the same flights, and it only holds
-on a build carrying #32232. Recounted on 385 distinct logs, the landed flag
-rebuilt from events, hold on against hold off, 93 lanes landed for over 3 s:
+Same tree as `ab1cbb1a73`. This PR's four commits are now `2dd57ed0b9`,
+`9b39eb98b6`, `7d626bab2c` (was `6926aa57d3`) and `36fd5a2254` (was
+`ab1cbb1a73`), on #35307's `186c96fa4a`. There `16ea0b4d9e` is now
+`28f9a00d81` and `8c1d9763ac` is `186c96fa4a`; the leg fix `4bcfc44274` is
+`255fe24724` on #33484.
 
-- With #32232 (the SFD 4.7 beta): 8 lanes over 0.5 m/s on the ground (worst
-  15.3), 1 with the hold (0.75). GPS p95 lower on 4 cores, higher on 2, summed
-  -13.8 m/s, -13.1 of it one flight.
-- On this PR's own stack: the hold changes none of those lanes. In six of the
-  seven logs the range finder is out of range low for the whole landed spell,
-  so the range is stale and nothing is held. SITL's range finder reads the
-  floor, so the autotest does not show this.
+The description was updated and posted the same day: four commits, the
+recount on 385 distinct logs, and that real logs need #32232. The old line
+about a run of one-second hops was removed, as the recount no longer shows
+it. CI on this head had not finished when this was written.
+
+Reply drafted and held at Andy's word, 2026-11-23, not posted:
+
+> The build guard is in 28f9a00d81, and the range finder compiled out now builds. 7d626bab2c compares the range as the sensor read it with `RNGFND1_GNDCLR`: with a sensor 0.15 m below the IMU the new leg (36fd5a2254) has the flow shut out without it and holds with it. 186c96fa4a gives each deferral reason its own report timer, so "range stale" no longer hides "range restarted", and 255fe24724 stops the both-axes leg checking the reset its own cleanup causes: the lockout test passed 24 of 24. 385 distinct replayed logs show no change in any EKF state. Flow slower than 4 Hz is left as it is: it gets no lockout recovery, which is the behaviour without #33484.
