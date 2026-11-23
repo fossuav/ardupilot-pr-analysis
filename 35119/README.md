@@ -71,3 +71,27 @@ singleton).
 - Unflown. No flight log applies: the path reset is vehicle-side state
   Replay does not re-run.
 - AP-Review's first round.
+
+## 2026-11-23: AP-Review's cleanup race fixed, pushed `ebd956ae15`
+
+`request_thorough_cleanup()` now also waits for `!reset_pending()`. Tier 2,
+with a probe queueing a reset just before the check: `42f34760d1`
+acknowledged with the reset pending, this head did not.
+SmartRTLResetHome passes 3 of 3, and SMART_RTL and SMART_RTL_EnterLeave
+pass. SMART_RTL_Repeat fails 3 of 3 on the merge base `aea9a1b5d4`, the old
+head and this one, and is in `disabled_tests`.
+
+Rejected, from a cold read of this commit: that `pending` clears before
+`reset_path()` runs, so the acknowledgement can come before the reset.
+Derived from the source, not measured: `handle_reset_request()` runs with
+`_path_sem` held, and `pop_point()` and `peek_point()` take it with
+`take_nonblocking()` and fail until the reset is done, so no old point can
+be read. A `set_home()` after the acknowledgement still replaces the path
+during a return; this change does not address that.
+
+Not done: AP-Review's optional squash of the rework commits.
+
+Open, for Andy: peterbarker's 2026-11-15 suggestion to add an auxiliary
+function that does the reset and have the script call it has no reply.
+
+CI and AP-Review on this head had not finished when this was written.

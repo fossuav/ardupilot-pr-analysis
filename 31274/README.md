@@ -583,3 +583,14 @@ BLHeli-serial ESC whose bidirectional DShot never decodes a frame
 publishes no percentage, so the takeoff check skips the error rate; and
 a percentage stale for over 2^32 us reads fresh for 210 ms at the
 `micros()` wrap.
+
+## 2026-11-23: ESC.Err wording and description, pushed `85637708f4`
+
+One doc commit on `d51f368fbb`. ESC.Err now says what
+`bdshot_error_rate()` computes: bad replies since the 5 s window restarted,
+over at least 250 replies, and while the window holds fewer no lower than
+the last full one, reading 100 until 250 have been counted. The logger
+metadata check and Copter.MotorTestErrorRate pass (tier 2).
+
+The description, posted the same day, credits master's `edd2107456` with
+two of the three DShot fixes. CI and AP-Review on this head had not finished when this was written.

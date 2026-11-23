@@ -42,3 +42,10 @@ Title changed to "Copter, Plane: stop INS_HNTC2 MODE and HMNCS changing across a
 ## 2026-11-06: reply posted
 
 https://github.com/ArduPilot/ardupilot/pull/34251#issuecomment-6684180081
+
+## 2026-11-23: rebased onto ArduPilot-4.7, pushed `69dca4c23c`
+
+AP-Review's should-fix at `dff8813535` was the title and description, which
+had been corrected since. The two commits moved over 49 commits of 4.7 with
+the same patch-id. Copter and Plane SITL build at this head; the boot table
+in the description was not re-run. CI and AP-Review on this head had not finished when this was written.

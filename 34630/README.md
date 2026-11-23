@@ -469,3 +469,13 @@ replays cleanly onto them. Replied (issuecomment-7051120727).
 Every commit `=` in `git range-diff`. The tree differs from `4f1220b5f5`
 only by #33484's 7-line autotest change (`255fe24724`), so nothing of this
 PR changed. CI on this head had not finished when this was written.
+
+## 2026-11-23 (later): the 4 Hz limit documented, pushed `59e895f182`
+
+AP-Review's round 19 at `b450f1a400` reproduced the slow-flow finding in
+SITL with `SIM_FLOW_RATE` 3. A gap over 250 ms restarts both axis timers, so
+a source slower than 4 Hz never declares a lockout, as without #33484. One
+comment-only commit documents that, and this PR's own commits are now
+fifteen. Its description, saying the same, was posted the same day.
+EK3_FlowAxisLockoutRecovery passes 3 of 3 at #35312's `81e38e253b`, which
+carries this commit (tier 2). CI and AP-Review on this head had not finished when this was written.

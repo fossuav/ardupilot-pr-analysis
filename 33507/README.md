@@ -984,3 +984,10 @@ Two findings, neither on master alone.
   flag, replay unchanged; 40 flow and AGL KF tests pass. Master has
   neither #32232's assumed range nor the AGL KF, so this PR needs it
   only if #32232 merges first.
+
+## 2026-11-23: same code at a new head, pushed `581ae5f429`
+
+AP-Review's one ask at `a869b2ac57` was the description's stack line, which
+had been corrected since. The bot does not review a head twice, so this
+PR's two commits were re-picked on #34457's `e6d636fab3` as `7313322a93`
+and `581ae5f429`. The tree is identical to `a869b2ac57`. CI and AP-Review on this head had not finished when this was written.

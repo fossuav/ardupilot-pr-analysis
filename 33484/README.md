@@ -2028,3 +2028,7 @@ reset anchored to it, and that reset can fall as the vehicle disarms with
 no XKF1 after it: the leg failed 3 runs in 24. It now checks only the
 resets before the offset is cleared. EK3_FlowAxisLockoutRecovery 24 of 24
 at this head (tier 2). CI on this head had not finished when this was written.
+
+## 2026-11-23 (later): AP-Review ACCEPT at `255fe24724`
+
+Round 25 accepts the head with the both-axes leg fix.

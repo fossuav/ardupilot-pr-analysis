@@ -128,4 +128,21 @@ measured. Flight code, not changed.
 
 Reply drafted and held at Andy's word, 2026-11-23, not posted:
 
-> The guard is in 28f9a00d81, and a build with the range finder compiled out now links. The description counts the eight commits. The height timeout restarting the height from one range sample is still open.
+> The guard is in d5301acbb1, and a build with the range finder compiled out now links. The description counts the eight commits. The height timeout restarting the height from one range sample is still open.
+
+## 2026-11-23 (later): restacked on #34630's comment, pushed `21597f0586`
+
+Same code. `28f9a00d81` is now `d5301acbb1` and `186c96fa4a` is
+`21597f0586`; the held reply above quotes the new hashes.
+
+AP-Review's round 2 at `186c96fa4a` leaves two low findings, not changed:
+
+- `ResetHeight()` on a same-source height timeout does not arm
+  `rngHgtRestartConfirm`, the item already recorded above.
+- New: the compiler may reorder the two plain stores at
+  `AP_NavEKF3_OptFlowFusion.cpp:847`. The bot reports GCC -O3 writing
+  `flowVelResetUnhealthy = true` first, so on a multi-core Linux board
+  PX4Flow's bus thread could see the latch with an old run start, which
+  `0be392bd9e` set out to prevent. Its claim, not reproduced here.
+
+CI and AP-Review on this head had not finished when this was written.

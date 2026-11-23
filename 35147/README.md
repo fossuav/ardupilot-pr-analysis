@@ -309,3 +309,9 @@ Every commit `=` in `git range-diff`. The tree differs from `a84d999b56`
 only by #33484's 7-line autotest change (`255fe24724`). The description's
 commit count, which said five, was corrected to six and posted the same
 day. CI on this head had not finished when this was written.
+
+## 2026-11-23 (later): ACCEPT at `fc082533e1`, restacked as `e55b2fac24`
+
+Round 12 accepted `fc082533e1`, with two notes. The head then moved to
+carry #34630's comment-only commit, so this PR's six commits are unchanged
+but the new head needs its own round. CI and AP-Review on this head had not finished when this was written.

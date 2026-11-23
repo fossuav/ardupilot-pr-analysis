@@ -155,4 +155,10 @@ it. CI on this head had not finished when this was written.
 
 Reply drafted and held at Andy's word, 2026-11-23, not posted:
 
-> The build guard is in 28f9a00d81, and the range finder compiled out now builds. 7d626bab2c compares the range as the sensor read it with `RNGFND1_GNDCLR`: with a sensor 0.15 m below the IMU the new leg (36fd5a2254) has the flow shut out without it and holds with it. 186c96fa4a gives each deferral reason its own report timer, so "range stale" no longer hides "range restarted", and 255fe24724 stops the both-axes leg checking the reset its own cleanup causes: the lockout test passed 24 of 24. 385 distinct replayed logs show no change in any EKF state. Flow slower than 4 Hz is left as it is: it gets no lockout recovery, which is the behaviour without #33484.
+> The build guard is in d5301acbb1, and the range finder compiled out now builds. 74abb493b4 compares the range as the sensor read it with `RNGFND1_GNDCLR`: with a sensor 0.15 m below the IMU the new leg (81e38e253b) has the flow shut out without it and holds with it. 21597f0586 gives each deferral reason its own report timer, so "range stale" no longer hides "range restarted", and 255fe24724 stops the both-axes leg checking the reset its own cleanup causes: the lockout test passed 24 of 24. 385 distinct replayed logs show no change in any EKF state. Flow slower than 4 Hz is left as it is: it gets no lockout recovery, which is the behaviour without #33484.
+
+## 2026-11-23 (third push): restacked on #34630's comment, `81e38e253b`
+
+Same code. This PR's four commits are now `58575ed623`, `e397514066`,
+`74abb493b4` and `81e38e253b`, on #35307's `21597f0586`, where the build
+guard is `d5301acbb1`. The held reply above quotes the new hashes. CI and AP-Review on this head had not finished when this was written.

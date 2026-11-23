@@ -71,3 +71,11 @@ AP-Review (2026-09-30, COMMENT at `3552323d24`) asked for the title to match the
 ## 2026-11-06: reply posted
 
 https://github.com/ArduPilot/ardupilot/pull/32398#issuecomment-6684180341
+
+## 2026-11-23: rebased onto master, pushed `c8589e753c`
+
+AP-Review's request at `3552323d24` was the retitle, done since. Its
+optional `#if ARMING_DELAY_MS < 0` check was not taken. Same patch-id over
+1129 commits of master. SITL and skyviper-v2450 Copter build, and
+Copter.ArmFeatures passes (tier 2). peterbarker's change request is still
+recorded. CI and AP-Review on this head had not finished when this was written.
