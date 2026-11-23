@@ -89,3 +89,24 @@ to disarm:
 
 So the code path has flown and did no harm, and its protection against a
 touchdown error has not been exercised in flight.
+
+## 2026-11-23: second flight, log111 (boot 756), tier 1 and 1b
+
+The same build, this time with the flow lane primary. The hold ran on 188
+of the 191 flow fusions from LAND_COMPLETE to disarm (11.0 s). Again the
+landing did not need it: at most 0.030 m/s and NI 1 with the hold, 0.031
+m/s and NI 2 with it removed in Replay.
+
+## 2026-11-23: lift-off from armed, log112 (boot 759), tier 1 and 1b
+
+The case this PR protects, flown on the flow lane: three lift-offs from
+armed after 1.7-6.9 s on the ground, sticks centred, with at most 2.7 deg
+of tilt and 0.09-0.30 m of drift by GPS. The hold ran on 356 of the 372
+flow fusions on the ground across seven landed spells.
+
+None of these touchdowns left the error the hold is for. With it removed
+in Replay the landed speed changes by at most 0.011 m/s, and the flow
+lane's velocity error in the 3 s after lift-off is 0.02-0.10 m/s lower on
+six of the seven lift-offs (0.13-0.33 m/s against 0.20-0.42). So the
+lift-off has flown clean with the hold, its protection is still not
+exercised, and on these flights it costs a little at lift-off.

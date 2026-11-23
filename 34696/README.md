@@ -268,6 +268,14 @@ The top-up itself was done 2026-10-09 as topup14 on
 The test bodies are identical to the PRs', and `EKFFailsafeRestoreMode`,
 `ModeVAltHold` and `EKFSourceSetFailsafe` pass on that stack.
 
+## 2026-11-23: a restore in flight, log111 (boot 756), tier 1
+
+SFD 4.7.3-beta3 `b9b81e7703`, on the flow lane with `FS_EKF_ACTION` 2. Two
+"position lost" failsafes (236.4 and 241.5 s) took Loiter to ALT_HOLD, and
+the second cleared at 242.8 s. The pilot flew on in ALT_HOLD, centred the
+sticks by about 248 s, and "EKF Failsafe: restored Loiter Mode" came at
+251.0 s. Loiter braked from about 2.3 m/s and was still within about 1.5 s.
+
 ## Reproduce
 
 ```bash

@@ -26,6 +26,15 @@ gone 0.5 s without a range fusion.
 That confirms the stale height caused this error. The test is no better
 over the whole acro, so the remedy is still open. One log, one airframe.
 
+### 2026-11-23: five more on log113 (boot 760), tier 1 and 1b
+
+The same airframe and build in ACRO: the AGL KF reached its floor while
+valid on five more range outages (111.3-112.1, 118.7-119.5, 127.9-128.4,
+134.0-136.5 and 213.9-215.3 s), with the range reading 5.6-11.9 m
+tilt-corrected on its return. Withholding flow after 0.5 s without a range
+fusion changes nothing on this flight (flow lane median 3.51 -> 3.54 m/s,
+p95 11.10 both), because a yaw error unrelated to this PR dominates it.
+
 ## 2026-11-10: a SITL landing that reproduces the coast (from #35077)
 
 The touchdown coast that reproduced only erratically here (3 mm and

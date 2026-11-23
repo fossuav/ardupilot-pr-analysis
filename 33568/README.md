@@ -736,3 +736,38 @@ there, (`EK3_FLOW_MAX` - 1) x the AGL KF height (local commit
 https://github.com/ArduPilot/ardupilot/pull/33568#issuecomment-6684179544
 
 Description updated (the replay is of an earlier revision, one at this head still to do; the #34380 paragraph gives the merge order and the disabled test).
+
+## 2026-11-23: the speed cap above the EKF's flow gate, log111 (boot 756), tier 1 and 1b
+
+SFD 4.7.3-beta3 `b9b81e7703`, flying on the flow lane with `EK3_FLOW_MAX`
+7.4, which is above its documented 1-4 range. `writeOptFlowMeas()` drops
+flow over a fixed 4.2 rad/s, but the Loiter cap is (`EK3_FLOW_MAX` - 1) x
+the AGL KF height. At 0.67 m the cap was 4.3 m/s, and the flow passes 4.2
+rad/s at 2.8 m/s, so Loiter could fly the sensor out of the EKF's input.
+
+In all six losses of the position flag it fell 1.02-1.13 s after the last
+usable sample. Two lasted 1 s or more and raised an EKF failsafe (236.4
+and 241.5 s). The velocity stayed within about 0.5 m/s of GPS through
+both.
+
+The dropped samples were good: compensated flow times range against GPS
+reads slope 0.91-0.94, correlation 0.87-0.95, from 1 to 10 rad/s.
+
+| Replay, flow gate | flag lost | velocity error against GPS, median / p95 / max (m/s) |
+|---|---|---|
+| 4.2 rad/s (flown) | 6 times, 3.6 s | 0.16 / 0.67 / 1.82 |
+| 7.4 rad/s | once, 0.7 s | 0.16 / 0.68 / 1.82 |
+| 12 rad/s | once, 0.5 s | 0.16 / 0.68 / 1.82 |
+
+Not a proposed change yet. Replay cannot show the flight that would have
+followed, the 4.2 gate is also the EKF's check for corrupt samples (see
+`../33484/README.md`, log20's null frame), and it has not been replayed
+over the fleet. One log, one airframe.
+
+### 2026-11-23: the same airframe at `EK3_FLOW_MAX` 4.0, log112 (boot 759), tier 1
+
+With the cap at 3 x height, under the 4.2 gate, 13 full-stick Loiter passes
+at 1.5-3.2 m reached 9.0 m/s on the flow lane with no loss of the position
+flag and no gap in usable flow over 0.5 s. Peak speed ran up to 27 % over
+the cap. None was flown at log111's 0.67 m; the cap scales with height, so
+the flow rate margin is the same (derived from the source, not measured).
