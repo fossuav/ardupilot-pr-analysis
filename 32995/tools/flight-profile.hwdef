@@ -1,0 +1,4 @@
+# The RP2350 PC sampler for a flight profile. It records only while armed.
+# ./waf configure --board RPI_UAVFC --extra-hwdef=<this file> && ./waf copter
+undef AP_RP2350_PC_SAMPLER_ENABLED
+define AP_RP2350_PC_SAMPLER_ENABLED 1

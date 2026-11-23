@@ -286,7 +286,24 @@ commits used to make.
 
 ## Status (one line)
 
-2026-11-23, latest: the notch update's `sinf()` and `cosf()` replaced by an
+2026-11-23, latest: the notch change has left this PR for its own, #35358,
+opened at `3709950bca` from `andyp1per:pr-notch-sinf-cosf`, as
+`calculate_sinf_cosf()` with Cephes' published constants, references and
+documented error. On the bench core1 goes from 67.3% to 59.8%. Moving only
+libm's range reduction to SRAM gave 64.8% from 67.0%, so about a third of
+the saving is the flash penalty and the rest is arithmetic. This branch
+needs a RAM registry line for the helper when it takes that commit.
+Attenuation still needs a flight, and on by default needs a maintainer's
+agreement (see [bench-2026-11-23.md](bench-2026-11-23.md), section 16).
+
+2026-11-23: `notch-fast-sincos` A/B on the bench with injected
+motor RPM, eight boots: core1 67.2% to 59.6%, no overlap between builds.
+Attenuation is untested, so `NOTCH_CARD.md` is still owed. The unexplained
+97% load `PEAK` is a start-up artefact of the measurement, with a fix on
+local branch `pr33366-load-peak-settle` (`68e90044c2`, not pushed). PR head
+unchanged (see [bench-2026-11-23.md](bench-2026-11-23.md), sections 13-15).
+
+2026-11-23: the notch update's `sinf()` and `cosf()` replaced by an
 inlined polynomial on branch `notch-fast-sincos` (`727edd1929`). Host tests
 and SITL only: the core1 saving, at most 7-8 points, is not measured. The
 next step is `Tools/RP2350/flight-test/NOTCH_CARD.md` on that branch, on
@@ -1262,6 +1279,7 @@ Measured and rejected:
 | Change | Argument for | Why not |
 |---|---|---|
 | Polynomials over 0 to pi/2 with one reflection | one branch fewer, no two-part constants | max error 1.7e-7 in sin and 2.1e-7 in cos, about five times glibc's. Reducing to +-pi/4 with a two-part pi gives 8.0e-8 and 8.8e-8 |
+| Move only `__ieee754_rem_pio2f` to SRAM on the RP2350 | one registry line, no new maths, no change on any other board | core1 67.04% to 64.79%, against 59.71% with the helper (alpha2 `031f2549`, three bench boots each) |
 
 Not tried: one out-of-line helper, which would save most of the flash now
 spent on three inlined template copies but needs its own SRAM placement on
@@ -1284,6 +1302,18 @@ gcc -std=gnu11 -O2 -mfma -ffp-contract=fast accuracy2.c -lm -o <scratch>/a2 && <
 gcc -std=gnu11 -O2 -mfma -ffp-contract=fast accuracy3.c -lm -o <scratch>/a3 && <scratch>/a3 40 10 40
 ./verify_source.sh <checkout of notch-fast-sincos> <scratch>
 ```
+
+### Superseded 2026-11-23 by the bench A/B
+
+"Not run on a board" and "no CPU saving is measured" no longer hold. On the
+motorless RPI_UAVFC bench, with the quad's notch set and injected motor RPM
+putting 66% of harmonic centres above 400 Hz (log 15: 64%), eight
+alternating boots took core1 from 67.19% to 59.63% busy by PC sampling. The
+trig calls went from 10.48 points to none, and the worst armed rate-loop
+gap from 0.91-0.92 ms to 0.83-0.89 ms. Log 15's trig cost is lower than the
+bench's, so expect 6-8 points in flight. Attenuation needs the flight in
+`NOTCH_CARD.md`. Details in section 14 of
+[bench-2026-11-23.md](bench-2026-11-23.md).
 
 ## 2026-11-23: the alpha2 flight card
 
