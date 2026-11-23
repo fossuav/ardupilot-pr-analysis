@@ -1,6 +1,31 @@
 # AGL KF: clear the velocity when the height rests on its floor
 
 
+## 2026-11-23: a coast to the floor in flight, log110 (boot 754), tier 1 and 1b
+
+SFD 4.7.3-beta3 `b9b81e7703`, `EK3_OPTIONS` 94, an outdoor GPS and flow
+quad in ACRO with the flow lane not primary. In a dive at 40-50 deg of
+tilt the range finder was out for about 3.7 s. The AGL KF stayed valid and
+coasted from 10.8 m to its 0.05 m floor, where it sat for 0.6 s
+(206.93-207.53 s). The range read 9.5 m, tilt-corrected, when it returned.
+
+The flow scaled by that height took the lane from 1.1 to 4.0 m/s off GPS,
+over 2 m/s for 5.5 s and under 1 m/s about 6.8 s after the floor was
+reached. Replay is exact against the flight (1.9e-6 m/s).
+
+Tested in Replay, not a proposed fix: no flow fusion once the AGL KF has
+gone 0.5 s without a range fusion.
+
+| flow lane error against GPS (m/s) | as flown | flow withheld |
+|---|---|---|
+| 205.8-212.8 s, median / max | 3.26 / 4.09 | 1.55 / 2.32 |
+| whole acro, median | 1.16 | 1.34 |
+| whole acro, p95 | 3.41 | 3.25 |
+| whole acro, max | 4.20 | 4.57 |
+
+That confirms the stale height caused this error. The test is no better
+over the whole acro, so the remedy is still open. One log, one airframe.
+
 ## 2026-11-10: a SITL landing that reproduces the coast (from #35077)
 
 The touchdown coast that reproduced only erratically here (3 mm and

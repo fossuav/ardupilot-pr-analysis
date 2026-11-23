@@ -69,3 +69,23 @@ recovery does not run there.
 Carried onto #35307's `0fec57455e` with no change of its own. With
 #33484's new-reading test, an assumed or held range now reads stale here
 too, so nothing is held on one.
+
+## 2026-11-23: first flight, log110 (boot 754), tier 1 and 1b
+
+Flown on the SFD 4.7.3-beta3 build `b9b81e7703`, which carries this PR at
+its 2026-11-20 head. An outdoor GPS and flow quad, flow on core 1, GPS
+primary throughout. It landed in LOITER at about 0.6 m/s and sat armed for
+12.7 s with the range finder out of range low.
+
+An instrumented Replay, exact to 1.9e-6 m/s against the flight, shows the
+hold ran on 235 of the 238 flow fusions while armed and landed. The other
+three had a stale range. The landing did not need it. From LAND_COMPLETE
+to disarm:
+
+| Replay | speed median / max (m/s) | NI max |
+|---|---|---|
+| with the hold | 0.012 / 0.069 | 5 |
+| hold removed | 0.003 / 0.076 | 7 |
+
+So the code path has flown and did no harm, and its protection against a
+touchdown error has not been exercised in flight.

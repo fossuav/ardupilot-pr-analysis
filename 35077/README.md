@@ -231,3 +231,19 @@ as the EU dev call agreed on 2026-11-11. #34292 was re-scoped onto it and
 were rebased onto it the same day. In the SFD stack it sits in the
 merged section of prs.txt, with FLOW_ALT_MIN pinned to index 9 (the beta's
 FLOW_HGT_MIN index), so a saved value carries over.
+
+## 2026-11-23: the gate's first flight, log110 (boot 754), tier 1 and 1b
+
+SFD 4.7.3-beta3 `b9b81e7703`, `FLOW_ALT_MIN` 0.15, an outdoor GPS and flow
+quad with the flow lane not primary. An instrumented Replay, exact to
+1.9e-6 m/s against the flight, shows the gate withheld 48 flow samples in
+three spans: lift-off (89.93-90.20 s), touchdown (290.64-292.34 s) and
+206.94-207.49 s in the air.
+
+The airborne span is the concern raised in the 2026-11-10 09:25Z comment,
+in a different form. The range finder was out for about 3.7 s in a dive
+and the AGL KF, still valid, coasted to its floor with the vehicle about
+9.5 m up, so the gate fired on a height that was wrong. Removing the gate
+in Replay moves the flow lane's velocity error by at most 0.15 m/s (median
+3.73 against 3.88 m/s over 205.8-208.8 s). The coast is recorded in
+`../34457/README.md`.
