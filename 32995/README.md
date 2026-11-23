@@ -1222,6 +1222,11 @@ with flips, 0.54 throttle, 37.1 A reported and 30.3 m/s.
 - First card flight with a reply on the DisplayPort. Logs 12-14 received
   nothing on SERIAL1.
 
+The compass difference is hardware: Andy fitted a new GPS/compass module
+between logs 9 and 12. `COMPASS_DEV_ID` goes from a QMC5883L to an IST8310,
+so compass figures from log 9 and earlier are not comparable with logs
+12-15.
+
 ## 2026-11-19: ESC passthrough on the PIO DShot outputs
 
 AP_BLHeli's passthrough (ESC configuration and flashing over the signal
