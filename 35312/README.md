@@ -125,3 +125,17 @@ own cleanup). Five other flow and Replay tests pass, and the range-finder-off an
 AGL-KF-off builds build. Replay of 385 distinct logs: no EKF state changes, 22
 logs print more deferral messages. Left as it is: flow slower than 4 Hz gets no
 lockout recovery, which is the behaviour without #33484.
+
+### Correction to the fleet result above, tier 1b
+
+The 423-log figure counted cached copies of the same flights, and it only holds
+on a build carrying #32232. Recounted on 385 distinct logs, the landed flag
+rebuilt from events, hold on against hold off, 93 lanes landed for over 3 s:
+
+- With #32232 (the SFD 4.7 beta): 8 lanes over 0.5 m/s on the ground (worst
+  15.3), 1 with the hold (0.75). GPS p95 lower on 4 cores, higher on 2, summed
+  -13.8 m/s, -13.1 of it one flight.
+- On this PR's own stack: the hold changes none of those lanes. In six of the
+  seven logs the range finder is out of range low for the whole landed spell,
+  so the range is stale and nothing is held. SITL's range finder reads the
+  floor, so the autotest does not show this.
