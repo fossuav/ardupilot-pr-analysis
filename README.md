@@ -23,8 +23,9 @@ public review comments and what was extracted from them, not flight data.
 Not a PR either: `issue-<number>/` directories record upstream issues we
 may pick up, listed under "Issues" below.
 
-[ai-review/](ai-review/README.md) holds the badge that marks AI review
-comments on GitHub; comments link to it by raw URL, so do not move it.
+[sfd-review/](sfd-review/README.md) holds the badge that opens an SFD
+Review comment on GitHub; comments link to it by raw URL, so do not move
+it.
 
 ## Conventions
 

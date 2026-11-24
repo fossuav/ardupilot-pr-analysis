@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the "Andy's AI Review" badge from the SFD wordmark.
+"""Build the "SFD Review" badge from the SFD wordmark.
 
 Usage: make_badge.py <sfd_logo2.png> [out_dir]
 
@@ -122,7 +122,7 @@ def svg(word):
     glyphs = ' '.join(path_d(cv2.approxPolyDP(k, 1.2, True).reshape(-1, 2) * scale + [ox, oy]) for k in contours)
 
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {V} {V}" width="{V}" height="{V}">',
-             "<title>Andy's AI Review</title>",
+             "<title>SFD Review</title>",
              f'<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{INDIGO}"/>'
              f'<stop offset="1" stop-color="{VIOLET}"/></linearGradient></defs>',
              f'<path fill="url(#g)" d="{path_d(badge)}"/>',
@@ -140,8 +140,8 @@ def main():
     word = load_wordmark(sys.argv[1])
     big = render(word)
     for size in SIZES:
-        save_png(downscale(big, size), os.path.join(out, f'ai-review-badge-{size}.png'))
-    with open(os.path.join(out, 'ai-review-badge.svg'), 'w') as f:
+        save_png(downscale(big, size), os.path.join(out, f'sfd-review-badge-{size}.png'))
+    with open(os.path.join(out, 'sfd-review-badge.svg'), 'w') as f:
         f.write(svg(word))
 
 
