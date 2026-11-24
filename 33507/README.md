@@ -1,7 +1,7 @@
 # PR #33507 - estimate the accel-Z bias inside the AGL KF (EKF3)
 
 
-Pushed 2026-11-24: `pr-agl-kf-zbias` `581ae5f429...79e11816d0` (forced, rebased onto master with #35105). Replies and description edits drafted, not yet posted.
+Pushed 2026-11-24: `pr-agl-kf-zbias` `581ae5f429...79e11816d0` (forced, rebased onto master with #35105). Posted the same day: the reply to rmackay9 (https://github.com/ArduPilot/ardupilot/pull/33507#issuecomment-7131371380), replies in tridge's two threads and peterbarker's three (discussion_r4679921905, r4679922306, r4679922648, r4679923003, r4679923288), and the description edits (gate, flash, stack line, the new subtest, the rejected alternatives; "checks four things" became five).
 
 ## 2026-11-24 (evening): variant E committed, quick review, branches ready, not pushed
 

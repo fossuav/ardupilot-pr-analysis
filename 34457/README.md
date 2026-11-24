@@ -1,7 +1,7 @@
 # AGL KF: clear the velocity when the height rests on its floor
 
 
-Pushed 2026-11-24: `pr-aglkf-floor-velocity` `e6d636fab3...f3121b1ccb` (forced, rebased onto master with #35105; head `f3121b1ccb` is `fc/34457-1124f`, which replaces `fc/34457-1124c` named below). Description edits drafted, not yet posted.
+Pushed 2026-11-24: `pr-aglkf-floor-velocity` `e6d636fab3...f3121b1ccb` (forced, rebased onto master with #35105; head `f3121b1ccb` is `fc/34457-1124f`, which replaces `fc/34457-1124c` named below). Description edits posted the same day (the three review commits, the MatekF405 size, the FloorVelocity row -0.37 / +0.001).
 
 ## 2026-11-24: #33507's review round reaches this PR, rebased on master with #35105, not pushed
 
