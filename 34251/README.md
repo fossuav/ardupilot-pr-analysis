@@ -49,3 +49,7 @@ AP-Review's should-fix at `dff8813535` was the title and description, which
 had been corrected since. The two commits moved over 49 commits of 4.7 with
 the same patch-id. Copter and Plane SITL build at this head; the boot table
 in the description was not re-run. CI and AP-Review on this head had not finished when this was written.
+
+## 2026-11-24: AP-Review at `69dca4c23c`, ACCEPT
+
+No findings remain.

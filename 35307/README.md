@@ -146,3 +146,47 @@ AP-Review's round 2 at `186c96fa4a` leaves two low findings, not changed:
   `0be392bd9e` set out to prevent. Its claim, not reproduced here.
 
 CI and AP-Review on this head had not finished when this was written.
+
+## 2026-11-24: AP-Review round 5 at `21597f0586`, COMMENT
+
+The same two lows as before, nothing new: the same-source height timeout
+restart is not confirmed (`AP_NavEKF3_OptFlowFusion.cpp:1028`), and the
+store order of the latch and run start across threads (`:849`). See
+#35312's entry for the optional `EK3_OPTIONS` rate caveat on this PR's
+sentence.
+
+## 2026-11-24: round 5's low fixed and the EK3_OPTIONS rate, local `fc/35307-1124b` (`e6b3835829`), not pushed
+
+- `ba0f2cacaf`: `EK3_OPTIONS` says the recovery needs flow samples no
+  more than 250 ms apart. A first wording said 4 Hz or faster; the Codex
+  cold read pointed out that the code tests the gap, not the rate.
+- `8d351c271a`: `ResetHeight()` arms `rngHgtRestartConfirm` whenever the
+  range finder is the height source, so a restart after a 5 s height
+  timeout is confirmed as one after a switch is.
+- `e6b3835829`: a new leg. Range finder height source, climbed to
+  6-8 m, the range stepped 4 m long and a flow axis stuck: the height
+  times out and restarts from the long reading while the lockout waits.
+  SITL, tier 2: without the fix the first core checked resets on the
+  restart sample in 3 runs of 3; with it the whole test passes 3 of 3.
+  A first version stepped the range 3 m short and failed both ways.
+  Probes showed why: a restart to a short height widens the flow gate,
+  the locked axis passes again at the reset and no recovery is pending
+  in the confirmation window. A long step narrows the gate and the
+  lockout outlasts the reset.
+- Replay, tier 1b: the 423 cached logs through Replay without and with
+  the fix, unchanged 423 of 423 (2.88 M XKF1 rows; two logs empty in
+  both).
+- A SITL build with `EK3_FEATURE_OPTFLOW_AGL_KF` 0 builds.
+- Not changed: round 5's second low, the order of the quality latch's
+  stores against the PX4Flow bus thread. #33484's `0be392bd9e` orders
+  them in source and says that does not make them safe to share; #34783
+  removes the cross-thread access by publishing PX4Flow frames from the
+  main loop. The audit reads it OPEN, as expected.
+
+Quick review: gate clean (notes only), cold reads: the doc wording
+(fixed), the fix and the test no findings. Description drafted: eleven
+commits, six legs, the third restart. #35312 restacked on it. The reply
+held on 11-23 is folded into a new draft. Not pushed.
+
+Pushed 2026-11-24 at `e6b3835829`. Description and reply
+(issuecomment-7136265843) posted the same day.

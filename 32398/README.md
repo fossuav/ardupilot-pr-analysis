@@ -79,3 +79,8 @@ optional `#if ARMING_DELAY_MS < 0` check was not taken. Same patch-id over
 1129 commits of master. SITL and skyviper-v2450 Copter build, and
 Copter.ArmFeatures passes (tier 2). peterbarker's change request is still
 recorded. CI and AP-Review on this head had not finished when this was written.
+
+## 2026-11-24: AP-Review at `c8589e753c`, ACCEPT
+
+Nothing blocks. The optional `#if ARMING_DELAY_MS < 0` `#error` is still
+not added, and peterbarker's March change request is still recorded.

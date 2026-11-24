@@ -479,3 +479,8 @@ comment-only commit documents that, and this PR's own commits are now
 fifteen. Its description, saying the same, was posted the same day.
 EK3_FlowAxisLockoutRecovery passes 3 of 3 at #35312's `81e38e253b`, which
 carries this commit (tier 2). CI and AP-Review on this head had not finished when this was written.
+
+## 2026-11-24: AP-Review at `59e895f182`, ACCEPT
+
+The 4 Hz comment settles the slow-source minor. Two notes remain, reset
+covariance and the flow latch threading, both information only.

@@ -569,3 +569,61 @@ lane with an absolute position when one is healthy, or a warning) would
 be a vehicle-level decision, not this PR's. `FS_DR_ENABLE` RTL would act
 the same way on this lane; core 1 never set the dead-reckoning bit on
 logs 87 or 88, so it did not.
+
+## 2026-11-24: rishabsingh3003's review (2026-11-23)
+
+He asks for the PR to refuse a source set selection under `EK3_SRC_OPTIONS`
+bit 3 rather than move the lane. With a source set per core the sources are
+fixed to the cores, and a lane is picked with `EK3_PRIMARY` (and
+`EK3_OPTIONS` bit 1), which MAVLink and Lua can already set. A selection
+that moves the lane extends what a source set means and overrides
+`EK3_PRIMARY`. Refusing keeps the ACK honest and drops the DAL change,
+which he notes may keep old Replay logs working. An RC lane switch, if
+wanted, would be its own aux function. tridge's 2026-09-30 change request
+is still recorded. No reply; a design decision for Andy. The beta flies the
+lane-moving form (the 2026-11-07 section above).
+
+Decided 2026-11-24 (Andy): cut this PR to the bug fix, refusing a source
+set selection that changes nothing under `EK3_SRC_OPTIONS` bit 3 rather
+than moving the lane, which drops the DAL change; lane selection goes in a
+new PR as its own aux function. Not started.
+
+## 2026-11-24 (evening): rewritten as the bug fix, local `fc/34456-refuse4` (`a2c786613f`), not pushed
+
+On master `68b1a73ef2`, from scratch. Eight commits: the source set
+library, NavEKF3, AHRS, MAVLink, RC and the Lua binding each pass on
+whether a selection was taken (refusing only an index out of range, which
+callers already filtered), then `b235976bd6` refuses a selection under
+`EK3_SRC_OPTIONS` bit 3, and `a2c786613f` tests it. NavEKF3 logs the
+Replay event only for a selection taken; no DAL change. Dropped: the lane
+selection (`b6f517a189`), both DAL commits, the named option accessor and
+the ahrs-source-extnav-optflow applet change. Under bit 3 the selected
+set was never read (`MAX_EKF_CORES` is 3, the number of sets), so old logs
+replay as before. Flash +88 bytes on MatekF405 and Pixhawk1-1M.
+
+SITL, tier 2: `EKF3SRCPerCoreSelection` passes 3 of 3 and fails without
+the refusal (ACCEPTED at the first command), with a refusal that still
+assigns the set (XKFS.SS 1 after the bit is cleared) and with refused
+selections logged for Replay (REV3 `[14, 15, 15, 14, 14, 13]` against
+`[14, 13]`). `MAV_CMD_SET_EKF_SOURCE_SET`, `EKF3SRCPerCore` and
+`ScriptingAHRSSource` pass; Replay and Plane build.
+
+Review: gate clean; Codex cold read of the whole diff and of each test
+version, audit of the thread (rishabsingh3003, tridge, peterbarker,
+AP-Review) all CLOSED. Taken from the cold reads: REV3 and XKFS checks,
+dropped-block check, distinct messages for the aux command and the switch,
+`EK3_SRC_OPTIONS` text saying EK3_PRIMARY sets the preferred core, and
+the RC message naming `EK3_SRC_OPTIONS` (the audit reads this PARTIAL, as
+it does not say "per core"; left, as RC cannot know the reason).
+
+The SFD beta flies the lane-moving form. With this version a source set
+switch under bit 3 is refused, so a vehicle that moved lanes that way
+needs the new aux function 188 (and `EK3_OPTIONS` bit 1 in flight). The
+new PR, on local `fc/ekf-primary-aux6`, sets `EK3_PRIMARY` from a switch;
+it gets its own entry once opened. Description and reply drafted, not
+posted.
+
+Pushed 2026-11-24 as `a2c786613f` (force, over `62e7e604d0`, kept locally as
+`pre-rewrite/34456`). The aux function is open as #35366. The description,
+title and reply to rishabsingh3003 (issuecomment-7136266821) posted the
+same day; the old description is the one the sections above describe.

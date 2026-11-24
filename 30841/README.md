@@ -106,3 +106,8 @@ CLOSED; the buffer PARTIAL only because the log is parsed before the
 dropped-block check, which still fails the test before any rate is
 judged. The optional minor (read `log_rate_hz` once) is not in this
 round.
+
+## 2026-11-23: merged
+
+peterbarker approved and tridge merged it on 2026-11-23 (`60b55498bd`).
+The SFD beta's locked head `8ea1891fc6` is patch-identical to what merged.

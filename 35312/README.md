@@ -162,3 +162,23 @@ Reply drafted and held at Andy's word, 2026-11-23, not posted:
 Same code. This PR's four commits are now `58575ed623`, `e397514066`,
 `74abb493b4` and `81e38e253b`, on #35307's `21597f0586`, where the build
 guard is `d5301acbb1`. The held reply above quotes the new hashes. CI and AP-Review on this head had not finished when this was written.
+
+## 2026-11-24: AP-Review round 5 at `81e38e253b`, COMMENT
+
+No blocking findings. Three minors, all in commits below this PR's own:
+the same-source height timeout restart not being confirmed (#35307), the
+bus-thread quality latch (note only), and, optional, that the
+`EK3_OPTIONS` description still says a single-axis lockout is recovered
+without #34630's 4 Hz limit. That sentence is #35307's (`415f4b9800`).
+The held reply above is still not posted.
+
+## 2026-11-24: restacked on #35307's `e6b3835829`, local `fc/35312-1124`, not pushed
+
+Four commits, `a2ba6bac80`, `27acbad096`, `683f670028` and `ad4a44e7af`.
+The patch against #35307 matches `81e38e253b`'s against `21597f0586`
+apart from line offsets. EK3_FlowAxisLockoutRecovery passes 2 of 2 at
+this head (SITL, tier 2). Round 5's EK3_OPTIONS caveat went into #35307
+(`ba0f2cacaf`). The reply held on 11-23 quotes the old hashes.
+
+Pushed 2026-11-24 at `ad4a44e7af`. Reply (issuecomment-7136266323) posted
+the same day; the reply held on 11-23 was dropped.

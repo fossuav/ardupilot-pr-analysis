@@ -3,6 +3,11 @@
 
 Pushed 2026-11-24: `pr-aglkf-floor-velocity` `e6d636fab3...f3121b1ccb` (forced, rebased onto master with #35105; head `f3121b1ccb` is `fc/34457-1124f`, which replaces `fc/34457-1124c` named below). Description edits posted the same day (the three review commits, the MatekF405 size, the FloorVelocity row -0.37 / +0.001).
 
+## 2026-11-24 (afternoon): AP-Review round 20 at `f3121b1ccb`, ACCEPT
+
+Nothing asked. The floor-hold known limit stays a minor and the optional
+member move stays withdrawn.
+
 ## 2026-11-24: #33507's review round reaches this PR, rebased on master with #35105, not pushed
 
 The review comments were on #33507, whose diff carries this PR. Local

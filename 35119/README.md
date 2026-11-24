@@ -95,3 +95,9 @@ Open, for Andy: peterbarker's 2026-11-15 suggestion to add an auxiliary
 function that does the reset and have the script call it has no reply.
 
 CI and AP-Review on this head had not finished when this was written.
+
+## 2026-11-24: AP-Review round 2 at `ebd956ae15`, COMMENT
+
+The cleanup race is accepted as fixed. Two minors: the optional squash,
+and peterbarker's 2026-11-15 aux function suggestion, which still has no
+reply. Both still for Andy.

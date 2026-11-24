@@ -61,3 +61,13 @@ GPS p95 summed +6.1, one faithful outlier (an O4 log, core 1,
   some replayed XKF5 rows carry fewer than seven fields and
   `flow_time_over()` reads `x['HAGL']`. `x.get('HAGL', 0)` fixes it; owed
   in the aap repo.
+
+## 2026-11-24: merged
+
+AP-Review accepted `08580d258c` on 2026-11-23 with one optional wording
+point: with the old layout the sensor count reads zero, not nonsense, as
+`copy_message` zero-fills past the five logged bytes. peterbarker approved
+and merged it on 2026-11-24 (`a6578b612d`), noting that the comment above
+`LR_MsgHandler.cpp:238` belongs inside the code it describes. Both are
+left for a follow-up if wanted. The SFD beta's locked head is
+patch-identical to what merged.

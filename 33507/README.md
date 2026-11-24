@@ -3,6 +3,52 @@
 
 Pushed 2026-11-24: `pr-agl-kf-zbias` `581ae5f429...79e11816d0` (forced, rebased onto master with #35105). Posted the same day: the reply to rmackay9 (https://github.com/ArduPilot/ardupilot/pull/33507#issuecomment-7131371380), replies in tridge's two threads and peterbarker's three (discussion_r4679921905, r4679922306, r4679922648, r4679923003, r4679923288), and the description edits (gate, flash, stack line, the new subtest, the rejected alternatives; "checks four things" became five).
 
+## 2026-11-24 (evening): round 21's should-fix answered, pushed `b32ef70b3c`
+
+`b32ef70b3c` (autotest) runs the two floor subtests armed in STABILIZE
+with RC3 at 1300, once `EXTENDED_SYS_STATE` reports IN_AIR: land_complete
+is clear and the vehicle still rests on the floor, so onGround is false
+and only the floor test keeps the bias out, as on every lift-off for a
+moment and a slow manual spool-up for longer. Each window is 15 s. The
+log check requires NOT_LANDED as the last landed event before the window
+and every range reading in it Good and at or below
+`max(RNGFND1_GNDCLR, 0.05)`.
+
+SITL, tier 2. The offset subtest's fault figures follow the first
+subtest's collapse, as the bounds were relaxed to let both report:
+
+| build | on the floor | with a 2 cm offset |
+|---|---|---|
+| as built (3 runs of 3) | 1.0004 | 1.0007 |
+| `onFloor = false`, the gate on onGround alone | 0.069 | 0.018 |
+| floor test on the corrected reading only | 0.12 | 0.018 |
+| fused floor learns the bias | 0.90 | 0.90 |
+| no gate | 0.029 | 0.018 |
+
+A first version waited 3 s for the motors (NOT_LANDED came 1.2 s after
+the throttle) and checked only the spread of the readings; the Codex cold
+read asked for the floor bound and the Good status, both now in. Quick
+review: gate clean, cold read of the final commit no findings, audit of
+round 21's two items CLOSED. Description drafted: the sentence with
+"0.030 without" carries these figures, and the stack line says "the last
+nine". Pushed the same day; the description and the reply (issuecomment-7136265344)
+posted 2026-11-24.
+
+## 2026-11-24 (afternoon): AP-Review round 21 at `79e11816d0`, COMMENT
+
+Should-fix: the first two floor subtests ("Bias variance holds while
+resting on the floor" and the `RNGFND1_POS_Z` one) never arm, so
+`onGround` closes the gate by itself and nothing tests `onFloor`.
+AP-Review measured 1.0003 and 1.0006 with `onFloor = false`. Confirmed by
+reading the test (tier 3): neither subtest arms. It asks for the floor
+checks to run armed after land_complete clears, the lift-off window the
+11-24 reply gives for keeping `onFloor` (bias std 1.0004 against 0.87 at
+the first lift-off in the gate probe below). It also asks for the
+0.042/0.030 and 0.024/0.019 figures in those comments, and the
+description's "0.030 without", to be brought up to date: they were
+measured before `onGround` joined the gate. Not changed. The
+good-then-too-low lift-off hold stays a note.
+
 ## 2026-11-24 (evening): variant E committed, quick review, branches ready, not pushed
 
 Local branches in `../fix-33507`, on master `d4d8a7d1e3`: `fc/34457-1124f`

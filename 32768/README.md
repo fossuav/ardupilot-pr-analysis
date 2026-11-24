@@ -1505,3 +1505,14 @@ AP_Baro and Replay ignore it. Not changed: EKF2's own
 EKF3 core can still move the baro under a refusing primary (the
 frontend redesign deferred earlier). Replied with the agent label
 (issuecomment-7051121877).
+
+## 2026-11-24: rmackay9 split the AID_NONE offset fix out as #35340
+
+On 2026-11-23 rmackay9 opened #35340 for #35302: the one line of
+`6e41ed4663` (`meaHgtAtTakeOff = baroDataDelayed.hgt - baroHgtOffset`)
+with his own comment, and a test also named
+HeightKeptOnAidingLossWithAltOffset (44 lines against `7e32942d59`'s 60).
+Andy approved it the same day and AP-Review accepted it. The commits are
+not patch-identical, so once it merges this PR drops `6e41ed4663` and
+`7e32942d59` on its rebase; patch-id will not drop them. The SFD manifest
+notes #35340 as not carried. Hands-off: the rebase needs Andy's word.

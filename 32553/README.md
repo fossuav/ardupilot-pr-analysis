@@ -1060,3 +1060,35 @@ Reply to the AP-Review round posted 2026-10-11 (issue comment 6110170989), the t
 Beta topup11 `52ec3c77`: "EKF3 IMU0 terrain offset reopened after takeoff"
 at all four takeoffs of one boot (38.8, 55.1, 71.2, 86.1 s), IMU1 as well
 on the last two. Already flown and squashed; nothing new to fold.
+
+## 2026-11-24: rishabsingh3003's change request (2026-11-23)
+
+One inline comment on `a3ec1e8016`, on the `GCS_SEND_TEXT` "EKF3 IMU%u
+terrain offset reopened after takeoff" (`AP_NavEKF3_OptFlowFusion.cpp:124`):
+"Do we really need this GCS print? Doesn't really tell the user anything".
+It is sent after a takeoff, once for each core that reopens, and asks
+nothing of the user, which LOG-2 also rules out. Dropping it changes no
+estimator output. No reply yet; for Andy.
+
+## 2026-11-24: rishabsingh3003's GCS message dropped, local `fc/32553-1124b` (`987982e519`), not pushed
+
+`f74c0e33d6` (autotest) takes the evidence of the reopen from
+`XKF5.Herr` (the square root of `Popt`, m) rather than the status text:
+the largest rise over its running minimum on core 0, 5-20 s after
+arming, must reach a quarter of `EK3_RNG_M_NSE`, 0.125 m. SITL, tier 2:
+0.26, 0.26 and 0.31 m with the reopen over three runs (rms 0.23-0.27 m);
+with the reopen line removed Herr never rose more than 0.02 m in the
+whole flight, landing included, and that build fails first on the rms,
+0.46 m. The logged rise is about 0.3 m rather than the 0.5 m the reopen
+sets, as range fusion runs before XKF5 is written (from the Codex cold
+read; the commit message says so). `987982e519` drops the
+`GCS_SEND_TEXT`.
+
+Quick review: gate clean, cold reads no findings on the test and one on
+the first wording of the code commit's message (fixed), audit CLOSED.
+Description drafted: "requires the reopen's status text" becomes the
+Herr rise. The flight evidence above used the message; later flights
+show the reopen as the step in Herr. Not pushed.
+
+Pushed 2026-11-24 at `987982e519`. Description and the inline reply to
+rishabsingh3003 (discussion_r4682430028) posted the same day.

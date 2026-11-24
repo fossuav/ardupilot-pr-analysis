@@ -315,3 +315,8 @@ day. CI on this head had not finished when this was written.
 Round 12 accepted `fc082533e1`, with two notes. The head then moved to
 carry #34630's comment-only commit, so this PR's six commits are unchanged
 but the new head needs its own round. CI and AP-Review on this head had not finished when this was written.
+
+## 2026-11-24: AP-Review at `e55b2fac24`, ACCEPT
+
+Nothing asked; the two standing notes (zeroed sample before takeoff
+detection, the bus-thread quality latch) stay information only.

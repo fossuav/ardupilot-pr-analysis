@@ -594,3 +594,7 @@ metadata check and Copter.MotorTestErrorRate pass (tier 2).
 
 The description, posted the same day, credits master's `edd2107456` with
 two of the three DShot fixes. CI and AP-Review on this head had not finished when this was written.
+
+## 2026-11-24: AP-Review at `85637708f4`, ACCEPT
+
+Both minors from the last round are fixed; nothing is open.
