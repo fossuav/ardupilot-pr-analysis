@@ -1,6 +1,99 @@
 # PR #33507 - estimate the accel-Z bias inside the AGL KF (EKF3)
 
 
+## 2026-11-24: review round (tridge, peterbarker, rmackay9), rebased on master with #35105, not pushed
+
+Local branches in `../fix-33507`: `fc/34457-1124c` (#34457, now 15
+commits) and `fc/33507-1124d` (this PR's four on top), cherry-picked onto
+master `d4d8a7d1e3`, which carries #35105. Before any fix both PRs' diffs
+were byte-identical to the pushed heads (`e6d636fab3`, `581ae5f429`).
+
+### rmackay9: is `onFloor` still needed now that #35105 sets onGround from land_complete? Kept.
+
+SITL A/B on the rebased stack, tier 2. A throwaway probe arms in Loiter,
+waits 10 s armed on the ground, climbs to 3 m, hovers 20 s, lands and
+waits 15 s armed, three times. A is the gate as it is; B is
+`learnBias = !onGround`.
+
+| | A (`onFloor`) | B (`!onGround`) |
+|---|---|---|
+| bias std at the first lift-off, takeoff throttle 1800 | 1.0004 | 0.8719 |
+| same, takeoff throttle 1650 | 1.0004 | 0.7310 |
+| bias std at the later lift-offs and from touchdown to LAND_COMPLETE | 0.017-0.034 | the same |
+
+The vehicle sits on the floor with onGround false for 0.32-0.45 s from
+NOT_LANDED to the range leaving the floor, and 1.32-1.40 s from touchdown
+to LAND_COMPLETE. After the first flight the std is already about 0.017
+from learning in the air, so only the first lift-off differs.
+
+Replay of three flights on SFD 4.7.3-beta3 (`b9b81e7703`, which carries
+#35105; boots 754, 756, 759), tier 1b, as flown against B: identical on
+two, under 0.009 in bias and bias std on the third. Those flights cannot
+test this: the range finder reads out of range low on the ground
+(`RNGFND1_MIN` 0.05, Stat 2 on every ground sample), so no reading reaches
+either gate there. Their windows were shorter than SITL's: 0.16-0.26 s
+from NOT_LANDED to lift-off, 1.25-1.81 s from touchdown to LAND_COMPLETE.
+
+Inspection, tier 3: only `ArduCopter/land_detector.cpp` calls
+`set_vehicle_landed()`. Plane sets fly-forward false in VTOL modes, Sub
+always, and Rover is a ground vehicle, so all three take `detectFlight()`'s
+non-fly-forward branch, where onGround is the disarmed state. Armed and
+resting on the range finder's floor, B would learn from floor readings as
+Copter did before #35105.
+
+### Found while reworking FloorVelocity: a wrong bias freezes at the floor (open, tier 2)
+
+With the bias state, a 3 m range step on the ground taken away after only
+0.8 s, while the filter was still overshooting (3.55 m, +1.79 m/s), left
+the bias at -0.376 m/s/s, its std at 2.119 and VAgl at -0.100 m/s, all
+unchanged for more than 20 s at the floor. Every update there takes no
+bias gain (range samples carry `onFloor`, and the fused floor passes
+`learnBias` false), so the bias learned in the transient cannot be
+unlearned, and the fused floor holds a standing velocity against it.
+#34457 alone does not do this. Since #34457 fuses the floor rather than
+clamping to it, a state below the floor gives an innovation that depends on
+the bias, so "a reading at the floor carries nothing about the bias" holds
+only while the bias is right. The 2026-11-06 entry measured the fused floor
+learning the bias at 0.90 on the ground, against 0.030 with no gate. Not
+changed: for discussion.
+
+### tridge and peterbarker: flash on boards without the AGL KF
+
+MatekF405 copter, which builds without optical flow, text bytes:
+
+| build | text | against master |
+|---|---|---|
+| master `d4d8a7d1e3` | 864488 | |
+| the stack as pushed, rebased | 864580 | +92 |
+| #34457 with `d3d0e17ebe` | 864488 | 0, no symbol or string differs |
+| this PR with `05169c0bfc` and `edc135e935` | 864404 | -84: a shorter log structure table and no XKFA strings |
+
+The +92 was the parameter table entry (+16) and `AGL_ABIAS_P`,
+`readRangeFinder()` (+56, the too-low time and the floor flag),
+`InitialiseVariables()` (+8) and XKFA's longer format strings.
+
+- `d3d0e17ebe` (#34457): `rngOutOfRangeLowTime_ms` only with the AGL KF.
+- `05169c0bfc`: `EK3_AGL_ABIAS_P`, its member, and the range sample's
+  floor flag and its writes only with the AGL KF. The first feature guard in
+  NavEKF3's parameter tables; `AP_NavEKF3.h` now includes the feature
+  header.
+- `edc135e935`: XKFA's log structure entry only with the AGL KF, as
+  AP_Beacon does for BCN.
+
+SITL's EKF3 objects differ from before only in `__LINE__` immediates, and
+its AP_Logger objects carry the same data. Built: MatekF405 at each,
+SITL Replay, sitl_periph_universal AP_Periph. The two constants Peter
+flagged, `rngFreshTime_ms` and `rngOnGndNoDataTime_ms`, are `static
+constexpr` and cost nothing; they name literals that
+`selectHeightForFusion()` uses outside any range finder guard.
+
+### Tests at `fc/33507-1124d`
+
+The six AGL KF tests and OpticalFlow pass. FloorVelocity, reworked in
+#34457, reads -0.016 to -0.017 m/s with the bias state over three runs; the
+old fixed waits read -0.006 to -0.038.
+
+
 ## 2026-11-05: restacked onto #34457's fused floor (pushed as `f11d194786`)
 
 #34457 now fuses the floor below the AGL height as a measurement between range

@@ -1,6 +1,45 @@
 # AGL KF: clear the velocity when the height rests on its floor
 
 
+## 2026-11-24: #33507's review round reaches this PR, rebased on master with #35105, not pushed
+
+The review comments were on #33507, whose diff carries this PR. Local
+branch `fc/34457-1124c` in `../fix-33507`: the twelve commits cherry-picked
+onto master `d4d8a7d1e3` (byte-identical diff), then three. Flash and the
+`onFloor` question are in `../33507/README.md`.
+
+- `d3d0e17ebe` (tridge): `rngOutOfRangeLowTime_ms`, its reset and its
+  write only with `EK3_FEATURE_OPTFLOW_AGL_KF` as well, the only reader
+  being the AGL KF. MatekF405 copter is then the same size as master; SITL
+  objects differ only in line numbers.
+- `00b85d15e1` (peterbarker, "on a real vehicle what happens in these 6
+  seconds?"): FloorVelocity's 15, 6 and 20 s waits become waits on what
+  they waited for. The AGL KF is valid on the floor 4.7 s after boot and the
+  EKF ready to arm at 13.9 s, so the 15 s only filled the 50-sample window
+  `xkfa_recent_mean()` reads (a first run without it failed on the log not
+  yet holding 50 valid samples). The step waits on the EKF's height above
+  ground, which a GCS sees as `OPTICAL_FLOW.ground_distance`, settling
+  within 2.9-3.3 m for 2 s and then back under 0.5 m. A first version
+  waited only for 2 m, took the step away 0.8 s in, mid-overshoot, and on
+  #33507 read +0.125, -0.075 and -0.100 m/s (one failure in three); that is
+  the frozen-bias finding in `../33507/README.md`.
+  Measured, SITL: +0.0009 to +0.0016 m/s here and -0.016 to -0.017 with
+  #33507 (three runs each); -0.371 on master's AGL KF with only
+  `28aadb8f19`'s decay change, where the old waits read -0.432. Turning off
+  only the fused floor on this head does not latch (+0.004 m/s): the range
+  reading at the floor corrects from below.
+- `ed5a4de623`: NoCoastBelowMin failed one run in five on this head, the
+  step velocity 0.014 m/s against its 0.015 provocation check (0.014-0.050
+  over five runs). The 0.5 s ran from the parameter's acknowledgement. It
+  now runs from the range finder reporting the step: 0.018-0.039 m/s over
+  seven runs, all passing. `OPTICAL_FLOW` cannot be used there, as the test
+  flies on GPS with no flow sensor. Without the coast stop the height still
+  rises 0.339 and 0.389 m.
+
+The five AGL KF tests pass at `fc/34457-1124c`. The description's
+"twelve commits" and its FloorVelocity row (-0.43 / -0.0001) need updating.
+
+
 ## 2026-11-23: a coast to the floor in flight, log110 (boot 754), tier 1 and 1b
 
 SFD 4.7.3-beta3 `b9b81e7703`, `EK3_OPTIONS` 94, an outdoor GPS and flow
