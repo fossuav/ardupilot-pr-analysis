@@ -4,16 +4,21 @@
 ## 2026-11-24 (evening): variant E committed, quick review, branches ready, not pushed
 
 Local branches in `../fix-33507`, on master `d4d8a7d1e3`: `fc/34457-1124f`
-(#34457, head `f3121b1ccb`) and `fc/33507-1124h` (this PR's eight on top,
-head `3d4f65196e`). They replace the `-1124c`/`-1124d` heads named below.
+(#34457, head `f3121b1ccb`) and `fc/33507-1124i` (this PR's eight on top,
+head `79e11816d0`). They replace the `-1124c`/`-1124d` heads named below.
 
 This PR's commits: `38df56c770` bias state, `221ccecf23` its test (both
 unchanged), `121834863f` parameter and floor flag guarded, `f046e82fc5`
 XKFA's log format guarded, `c98968f7c3` build_options.py: the AGL KF
-option depends on RANGEFINDER, `5c5171289a` the AGL KF feature needs range
-finder measurements (default and `#error`; the feature header includes the
-range finder config), `4bb2c5b6f0` `learnBias = !(onFloor || onGround)`
-and `EK3_AGL_ABIAS_P`'s description, `3d4f65196e` the armed subtest.
+option depends on RANGEFINDER, `8026353ffa` the AGL KF feature needs range
+finder measurements (by default, and a range finder `#error` of its own
+beside master's untouched optical flow one; the feature header includes
+the range finder config), `2b3d2c0145` `learnBias = !(onFloor ||
+onGround)` and `EK3_AGL_ABIAS_P`'s description, `79e11816d0` the armed
+subtest. A single range-finder-only check was tried and dropped: forcing
+the AGL KF on without optical flow then fails to link (undefined
+AglKalmanFilter::InitialiseVariables, which lives in the flow-only block),
+so master's flow check stays.
 
 Quick /pr-review (gate, thread, Codex cold reads of every new commit, an
 audit of the seven review comments). What it changed:
