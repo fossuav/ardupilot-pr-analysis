@@ -1,6 +1,8 @@
 # PR #33507 - estimate the accel-Z bias inside the AGL KF (EKF3)
 
 
+Pushed 2026-11-24: `pr-agl-kf-zbias` `581ae5f429...79e11816d0` (forced, rebased onto master with #35105). Replies and description edits drafted, not yet posted.
+
 ## 2026-11-24 (evening): variant E committed, quick review, branches ready, not pushed
 
 Local branches in `../fix-33507`, on master `d4d8a7d1e3`: `fc/34457-1124f`
