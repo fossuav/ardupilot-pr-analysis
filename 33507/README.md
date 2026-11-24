@@ -1,6 +1,52 @@
 # PR #33507 - estimate the accel-Z bias inside the AGL KF (EKF3)
 
 
+## 2026-11-24 (evening): variant E committed, quick review, branches ready, not pushed
+
+Local branches in `../fix-33507`, on master `d4d8a7d1e3`: `fc/34457-1124f`
+(#34457, head `f3121b1ccb`) and `fc/33507-1124h` (this PR's eight on top,
+head `3d4f65196e`). They replace the `-1124c`/`-1124d` heads named below.
+
+This PR's commits: `38df56c770` bias state, `221ccecf23` its test (both
+unchanged), `121834863f` parameter and floor flag guarded, `f046e82fc5`
+XKFA's log format guarded, `c98968f7c3` build_options.py: the AGL KF
+option depends on RANGEFINDER, `5c5171289a` the AGL KF feature needs range
+finder measurements (default and `#error`; the feature header includes the
+range finder config), `4bb2c5b6f0` `learnBias = !(onFloor || onGround)`
+and `EK3_AGL_ABIAS_P`'s description, `3d4f65196e` the armed subtest.
+
+Quick /pr-review (gate, thread, Codex cold reads of every new commit, an
+audit of the seven review comments). What it changed:
+- The armed subtest as first written auto-disarmed at `DISARM_DELAY`'s
+  10 s inside its 15 s window, and did not check the stimulus. Now
+  `DISARM_DELAY` 0, asserts armed, and checks from the log that the
+  readings sit above the floor; the offset went 0.06 -> 0.08 m because at
+  0.06 only half did. Measured: 1.0009 over three runs, 0.0176 and 0.0177
+  with the floor test alone.
+- tridge asked for flow *and* range finder: the AGL KF define and its
+  `#error` now need both, with the build option dependency to match (a
+  Codex cold read of the first version flagged the missing `#error` and
+  build_options.py entry). Forcing the AGL KF on with range finders off
+  now stops at the `#error`.
+- `rngOutOfRangeLowTime_ms`'s write guard matches its declaration
+  (`2a7e1af8c6` in #34457). Overriding `EK3_FEATURE_RANGEFINDER_MEASUREMENTS`
+  alone does not build on master either (storedRange), so not a supported
+  configuration.
+- FloorVelocity's return wait starts at 0.01 m, as OPTICAL_FLOW reports 0
+  with no height above ground (`35fe76e1e8`).
+- With E, FloorVelocity on this PR reads 0.000 m/s (three runs), the
+  comment says so.
+Disputed, not changed: E leaves QuadPlane VTOL, Rover and Sub learning
+from an above-floor reading while armed (stated in the commit and the
+comment).
+
+Verified: SITL objects with flow and range finder identical to before
+each guard apart from line numbers; feature-off SITL builds (no flow, no
+AGL KF, no range finder) at both heads; Replay, AP_Periph; MatekF405
+#34457 = master, this PR -84 bytes. The six AGL KF tests and OpticalFlow
+pass at both heads.
+
+
 ## 2026-11-24: review round (tridge, peterbarker, rmackay9), rebased on master with #35105, not pushed
 
 Local branches in `../fix-33507`: `fc/34457-1124c` (#34457, now 15
