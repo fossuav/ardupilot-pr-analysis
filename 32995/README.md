@@ -287,7 +287,7 @@ commits used to make.
 ## Status (one line)
 
 2026-11-23, latest: the notch change has left this PR for its own, #35358,
-opened at `3709950bca` from `andyp1per:pr-notch-sinf-cosf`, as
+now at `bd5a581d84` from `andyp1per:pr-notch-sinf-cosf`, as
 `calculate_sinf_cosf()` with Cephes' published constants, references and
 documented error. On the bench core1 goes from 67.3% to 59.8%. Moving only
 libm's range reduction to SRAM gave 64.8% from 67.0%, so about a third of
