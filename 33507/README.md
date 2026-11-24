@@ -57,6 +57,52 @@ only while the bias is right. The 2026-11-06 entry measured the fused floor
 learning the bias at 0.90 on the ground, against 0.030 with no gate. Not
 changed: for discussion.
 
+#### Later the same day: the fused floor learning the bias, A/B and Replay sweep. Rejected.
+
+Variant C: the fused floor's `FuseAglKfHeight(..., true)`, range samples
+at the floor still gated. A is the gate as it is.
+
+SITL, tier 2: OpticalFlowAGLKalmanFilter's floor std 0.9012 (fails its
+0.95 bound, as built to); first lift-off std 0.90 against 1.00 in the gate
+probe. The frozen-bias provocation (3 m step dropped mid-overshoot, 40 s on
+the floor) does not get better: A leaves the bias at -0.124 m/s/s, std
+2.19, VAgl -0.033 m/s; C drives the bias to its +1.0 `EK3_ACC_BIAS_LIM`
+limit with VAgl +0.46 m/s for the whole 40 s. Worst height error over the
+range finder in the 18 s after the following lift-off: A -0.22 m, C
+-0.15 m.
+
+Replay sweep, tier 1b: beta3 Replay (`b9b81e7703`) as is against C, 177
+logs from the replay cache that ran `EK3_OPTIONS` bit 3 with a range
+finder (deduplicated; Replay deterministic, 12 of 12 identical A against
+A). 132 carry XKFA in the build's format; the 45 without it give GPS only.
+Height error is the AGL height against the tilt-corrected range finder;
+GPS is horizontal velocity error to a 3D fix in flight.
+
+| group | logs | lift-offs | bias std at lift-off p50, A / C | worst height error in 18 s after lift-off p50, p95, A / C | in-flight height error rms p50, A / C |
+|---|---|---|---|---|---|
+| flow quad, range finder too low on the ground, recent | 63 | 140 | 1.00 / 0.04 | 0.18, 4.14 / 0.24, 4.44 m | 0.12 / 0.12 m |
+| same quad, older logs | 45 | 34 | 1.00 / 0.02 | 0.15, 4.40 / 0.22, 5.31 m | 0.21 / 0.49 m |
+| 2.5 inch quad, MAVLink range finder | 40 | 103 | 0.02 / 0.02 | 0.28, 1.81 / 0.28, 1.84 m | 0.09 / 0.09 m |
+
+Over all 354 lift-offs C is better by more than 0.1 m on 28 and worse on
+48. GPS p95 on the flow quad's recent logs: median 1.09 -> 1.04 m/s.
+
+Why: with the range finder too low on the ground the fused floor runs on
+every filter step at the range finder's noise, far more information than
+the floor holds, and collapses the std the gate exists to keep. The frozen
+bias at the floor is left as is: the transient that teaches the wrong bias
+also raises its std (2.1-2.2 here), so the filter relearns it in flight.
+
+New, from the same sweep: on the 2.5 inch quad the gate does not hold the
+std at all (0.02 at lift-off under A). Its `RNGFND1_GNDCLR` and
+`RNGFND1_MIN` are 0.02 m, so `rngOnGnd` is the 0.05 m minimum, and its
+on-ground readings run 0.02-0.09 m (the pre-arm median 0.02-0.06 m on six
+logs). A median reading over 0.05 m is not on the floor, so the bias
+learns on the ground. Candidate, not tested: `learnBias = !(onFloor ||
+onGround)`, which #35105 makes cover an armed, landed Copter. Replay of
+those logs (4.7.2, before #35105) reads the landed flag as 0, so it could
+show only the disarmed part.
+
 ### tridge and peterbarker: flash on boards without the AGL KF
 
 MatekF405 copter, which builds without optical flow, text bytes:
