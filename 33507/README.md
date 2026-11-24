@@ -103,6 +103,49 @@ onGround)`, which #35105 makes cover an armed, landed Copter. Replay of
 those logs (4.7.2, before #35105) reads the landed flag as 0, so it could
 show only the disarmed part.
 
+#### Variant E: `learnBias = !(onFloor || onGround)` for range samples, tested
+
+The fused floor keeps `learnBias` false. A is the gate as it is.
+
+SITL, tier 2, on the rebased stack (#35105 in), the gate probe:
+
+| range finder on the ground | bias std at first lift-off, A | E |
+|---|---|---|
+| reads 0, under `rngOnGnd` | 1.000 | 1.000 |
+| reads 0.04-0.08 m over a 0.05 m `rngOnGnd` (`RNGFND1_GNDCLR` 0.02, `SIM_SONAR_OFFSET` 0.06, `SIM_SONAR_RND` 0.02), like the 2.5 inch quad | 0.036 | 0.912 |
+
+E holds 1.000 to NOT_LANDED and loses 0.09 in the spool-up, where neither
+term holds; later lift-offs are the same under both. With the second
+range finder and `SIM_ACC1_BIAS_Z` 0.5 set at the first takeoff, two runs
+each: worst AGL height error over the range finder in the 18 s after
+lift-off A -1.00 and -1.01 m (rms 0.43), E -0.41 and +0.39 m (rms 0.24 and
+0.25); both learn about +0.30 by +18 s. The six AGL KF tests and
+OpticalFlow pass on E (floor std 1.0003, offset 1.0006, injected bias
+0.000 -> 0.340, FloorVelocity +0.0000 m/s). None of them catches the leak:
+the floor subtest is disarmed with the reading on the floor.
+
+Replay sweep, tier 1b, A against E over the same 177 logs: 97 identical.
+Only the three beta3 flights carry #35105's landed flag, and their range
+finder reads too low on the ground, so Replay exercises E's onGround only
+while disarmed. First lift-off of each log and core with the bias std held
+over 0.5: flow quad 106 -> 112 of 112, 2.5 inch quad 28 -> 31 of 37,
+throw quad 8 -> 10 of 24, the rest unchanged. Worst height error in the 18
+s after those lift-offs: better by more than 0.1 m on 4 (the flow quad's
+log66 +0.39 -> +0.27 m; on the 2.5 inch quad +0.44 -> +0.32 and +3.16 ->
++2.89 m), worse on 2 (throw quad). All 354 lift-offs: 8 better, 5 worse by
+more than 0.1 m. In-flight error changed by more than 0.1 m rms on four
+log-cores: two better (3.19 -> 2.38, 0.55 -> 0.41 m) and a bench log's 2 s
+hop worse (0.17 -> 0.78 m), where the range finder read 1.8-4.6 m against
+a height near 1 m and A had learned +0.23 from a disarmed reading off the
+floor. Landed dwells with the AGL velocity under -0.3 m/s: 2.5 inch quad 32
+-> 29, throw quad 30 -> 32, flow quad 17 -> 17.
+
+Cost: a vehicle handled or carried disarmed reads onGround, so its range
+samples teach nothing until armed (the bench log; a throw quad carried
+disarmed). A land detector false positive in flight stops the learning;
+it does not fabricate anything. This is the idiom the EKF3 playbook gives
+for an observability gate, `!onGround` beside the measurement test.
+
 ### tridge and peterbarker: flash on boards without the AGL KF
 
 MatekF405 copter, which builds without optical flow, text bytes:
