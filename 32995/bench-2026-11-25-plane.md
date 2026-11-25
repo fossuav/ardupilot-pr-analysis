@@ -210,11 +210,15 @@ At Andy's request (option 2 of three offered), Copter's default is now
 lowered by a board define rather than `defaults.parm`, so other vehicles
 keep their own. Committed on `rp2350-v5-squashed-and-cleaned-and-rebased`
 on top of `5e97be2505` as `88704a865c` (AP_Scheduler), `2e6a62251b`
-(hwdef) and `1411b17f5b` (DEVELOPMENT.md); not pushed:
+(hwdef) and `1411b17f5b` (DEVELOPMENT.md), pushed in `f4c65bc4f1` and
+now `2e9128a39f`..`ea31077f81` (see "Reorder, marker spelling and an
+elevon check"):
 
 - `AP_Scheduler.cpp`: `AP_SCHEDULER_COPTER_DEFAULT_LOOP_RATE_HZ`
   (400 unless a board sets it) for Copter and Heli builds; Sub keeps its
-  own 400 in a separate branch, everything else 50 as before.
+  own 400 in a separate branch, everything else 50 as before. Since the
+  reorder the define lives in `AP_Scheduler_config.h` and
+  `AP_Scheduler.cpp` keeps master's line numbers.
 - RPI_UAVFC and Laurel: `define AP_SCHEDULER_COPTER_DEFAULT_LOOP_RATE_HZ
   200` in `hwdef.dat`, with the reasoning moved from `defaults.parm`,
   whose `SCHED_LOOP_RATE 200` lines go. Pico2 keeps its line: it is
@@ -241,7 +245,8 @@ build with its new default.
 
 At Andy's request, a sweep of Plane's hot paths into SRAM, on
 `1411b17f5b`. Committed as `06c2529e91` (the marker), `7b5393edc0` (waf)
-and `29e77d95b8` (the entries); not pushed.
+and `29e77d95b8` (the entries); pushed in `f4c65bc4f1`, now part of
+`5c1eacaf48`, `53f9a958a2` and `815f847a85`.
 
 Selection (`sweep.py`, `pick_entries.py`). A static call graph of the
 Plane ELF from the FAST tasks and the 50 Hz control tasks, kept to code
@@ -322,7 +327,7 @@ boots do not overlap on any row.
 
 At Andy's request, the same sweep for FBWB, CRUISE, LOITER and AUTO, on
 `29e77d95b8` (the per-loop path already in SRAM). Committed as
-`373c878559`; not pushed.
+`373c878559`; pushed in `f4c65bc4f1`, now part of `815f847a85`.
 
 Safety on the bench. These are auto-throttle modes, and the flight
 board has `TKOFF_THR_MINACC` and `TKOFF_THR_MINSPD` at 0, with which an
@@ -436,7 +441,8 @@ Shared code left in flash on `373c878559`, armed in AUTO and CRUISE at
 At Andy's request, placements for the EKF3 and AHRS code Plane runs, as
 `[arduplane]` so that Copter is not touched until it has its own
 A/B. Committed on `373c878559` as `20e3226232` (the qualified picks),
-`04361430a2` (waf) and `f4c65bc4f1` (the entries); pushed later that day.
+`04361430a2` (waf) and `f4c65bc4f1` (the entries); pushed later that day,
+now part of `5c1eacaf48`, `53f9a958a2` and `815f847a85`.
 
 Shared code made the marker's limit matter. One generator run serves
 every program a waf run links, and they share the generated section
@@ -496,26 +502,27 @@ build. The two A boots differed more than the B boots (`ahrs_update`
 
 After the push of `f4c65bc4f1` the ten commits were squashed to seven
 and moved ahead of the six that change STM32 output, force-pushed to the
-PR as `b9db33af08`, 93 commits on master. The loop-rate commit now keeps `AP_Scheduler.cpp`'s line
-numbers, with the define in `AP_Scheduler_config.h`; as pushed it moved
-four `INTERNAL_ERROR` lines, which changes every normal STM32 build. The
-generator and waf commits of the marker were each squashed into one, and
-a Tools commit makes `rp2350_ramfunc2_update.py --verify` honour the
-marker: without it, `--verify` of Copter reported Plane's 89 EKF3 and
-AHRS entries as left in flash.
+PR as `b9db33af08`, 93 commits on master. The loop-rate commit now keeps
+`AP_Scheduler.cpp`'s line numbers, with the define in
+`AP_Scheduler_config.h`; as pushed it moved four `INTERNAL_ERROR` lines,
+which changes every normal STM32 build. The generator and waf commits of
+the marker were each squashed into one, and a Tools commit makes
+`rp2350_ramfunc2_update.py --verify` honour the marker: without it,
+`--verify` of Copter reported Plane's 89 EKF3 and AHRS entries as left
+in flash.
 
-| commit | change | STM32 output |
-|---|---|---|
-| `2e9128a39f` | AP_Scheduler: a board can lower Copter's default loop rate | unchanged |
-| `d10b9d016f` | hwdef: RPI_UAVFC and Laurel lower only Copter's | unchanged |
-| `ea31077f81` | DEVELOPMENT.md: where Copter's loop rate is set | unchanged |
-| `5c1eacaf48` | generator: a placement entry names its programs | unchanged |
-| `53f9a958a2` | waf: passes the programs it links to the generator | unchanged |
-| `4f20652cea` | Tools: `--verify` honours program markers | unchanged |
-| `815f847a85` | registry: Plane's hot code, 224 entries | unchanged |
-| `bcd5e3a919`..`b9db33af08` | the six, patch-identical | as before |
+| commit | change | from `f4c65bc4f1`'s | STM32 output |
+|---|---|---|---|
+| `2e9128a39f` | AP_Scheduler: a board can lower Copter's default loop rate | `88704a865c`, made line-neutral | unchanged |
+| `d10b9d016f` | hwdef: RPI_UAVFC and Laurel lower only Copter's | `2e6a62251b` | unchanged |
+| `ea31077f81` | DEVELOPMENT.md: where Copter's loop rate is set | `1411b17f5b` | unchanged |
+| `5c1eacaf48` | generator: a placement entry names its programs | `06c2529e91`, `20e3226232` | unchanged |
+| `53f9a958a2` | waf: passes the programs it links to the generator | `7b5393edc0`, `04361430a2` | unchanged |
+| `4f20652cea` | Tools: `--verify` honours program markers | new | unchanged |
+| `815f847a85` | registry: Plane's hot code, 224 entries | `29e77d95b8`, `373c878559`, `f4c65bc4f1` | unchanged |
+| `bcd5e3a919`..`b9db33af08` | the six, patch-identical | `5681589003`..`5e97be2505` | as before |
 
-The marker was spelled `[<program>,...]`, and this note now uses the
+The marker was spelled `[only <program>]`, and this note now uses the
 new spelling throughout. At Andy's request it is a list of programs,
 `[arduplane]` or `[arducopter,arduplane]`, so one entry can serve
 several. `[inlinable]` stays the one bare keyword. A name that is not a
@@ -569,7 +576,23 @@ off (RC3 0), and with no valid throttle channel Plane's radio failsafe
 resets roll and pitch to trim on every input frame; it then went to
 CIRCLE and RTL, and every MANUAL step read 1500. Holding RC3 at its
 minimum, as `session.py` does, keeps the radio valid (`THR_FS_VALUE`
-950).
+950). Andy watched S3's servo arm move through the run.
+
+Nothing more should be squashed yet. The seven touch one subsystem
+each, and the three in AP_HAL_ChibiOS are separate changes: the loop
+rate's documentation, the generator, which has to land before waf
+passes `--program` or its usage check fails the build, and the
+placement, which takes effect only after it. `d10b9d016f` and
+`ea31077f81` correct lines the PR's own `6b196dca03` (hwdef: add
+RPI_UAVFC), `53ecc9f213` (hwdef: add Laurel) and `9c3be899a9` added,
+and the marker extends the generator, waf hook and Tools script of
+`9c3be899a9`, `efb538de80` and `00f151bac3`, so the final history
+would fold them there, with `2e9128a39f` moved beside `fdd7484fa9`.
+Not yet: the board commits carry flight evidence, `d10b9d016f` takes
+Plane from 200 to 50 Hz and Plane has not flown on these boards, and
+folding them rewrites about 60 reviewed commits, each to be rebuilt.
+Revisit once Plane has flown on RPI_UAVFC, or when a maintainer asks
+for the final squash; `815f847a85` stays Plane's own commit.
 
 ## Board state afterwards
 
@@ -611,6 +634,11 @@ failsafe latched: the board is in RTL, disarmed, with "Radio failsafe
 on" until the transmitter returns or it reboots. No parameters were
 written. OpenOCD shut down with `C_DEBUGEN` cleared on both cores and
 the bridge stopped.
+
+The board still runs `f4c65bc4`, which after the force push is on no
+branch (the reflog keeps it). Its code is `b9db33af08`'s but for
+`AP_Scheduler.cpp`'s line numbers and the marker spelling, which does
+not reach the binary; reflash only to make the version string match.
 
 ## Reproduce
 

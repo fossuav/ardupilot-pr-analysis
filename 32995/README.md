@@ -12,8 +12,9 @@ a registry marker, `[arduplane]` or `[arducopter,arduplane]`, that limits
 an entry to those programs' own code (`5c1eacaf48`, `53f9a958a2`), and
 `--verify` honouring it (`4f20652cea`); and Plane's per-loop path,
 navigation path, EKF3 and AHRS in SRAM (`815f847a85`). The elevons
-follow Plane's mix exactly through to the pin. Andy's flight board runs
-`f4c65bc4`.
+follow Plane's mix exactly through to the pin, and Andy saw the servo
+move. Andy's flight board runs `f4c65bc4`, the same code. Still owed:
+see "Outstanding", 2026-11-25.
 
 **2026-11-23, later:** the notch update without libm is on branch
 `notch-fast-sincos`, not on the PR and not yet flown. See "2026-11-23: the
@@ -303,12 +304,14 @@ commits used to make.
   core0's busy time is XIP fetches, and the registries hold none of
   Plane's own path. At Plane's own 50 Hz default core0 is 35.5% busy;
   the board's `defaults.parm` had set 200 for every vehicle, and
-  `88704a865c`..`1411b17f5b` move Copter's 200 into a hwdef define
-  instead. Plane's per-loop path in SRAM (`06c2529e91`..`29e77d95b8`,
-  14.4 KB) takes armed FBWA at 200 Hz from 57.6% to 51.3% of core0, and
-  its navigation path (`373c878559`, 4.6 KB) about half a point more in
-  CRUISE and LOITER. Its EKF3 and AHRS (`20e3226232`..`f4c65bc4f1`,
-  17.3 KB, Plane's copies only) take FBWA and AUTO from 52% to 46%.
+  `2e9128a39f`..`ea31077f81` move Copter's 200 into a hwdef define
+  instead. Plane's per-loop path in SRAM (14.4 KB) takes armed FBWA at
+  200 Hz from 57.6% to 51.3% of core0, and its navigation path (4.6 KB)
+  about half a point more in CRUISE and LOITER. Its EKF3 and AHRS
+  (17.3 KB, Plane's copies only) take FBWA and AUTO from 52% to 46%.
+  All three are `815f847a85`, under the `[arduplane]` marker of
+  `5c1eacaf48`..`4f20652cea`; the elevons follow Plane's mix to the
+  pins.
 
 ## Status (one line)
 
@@ -1252,6 +1255,17 @@ rest is not:
   (issuecomment-5671163072). Andy's hardware test of the change set is
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
+
+2026-11-25, the Plane commits (`2e9128a39f`..`815f847a85`):
+
+- `/pr-review` has not run on them.
+- The PR description is stale: it says 71 commits (now 93) and five
+  that change STM32 output (now six), and says nothing of Plane.
+- Plane has not flown on RPI_UAVFC. Once it has, or when a maintainer
+  asks for the final squash, fold the loop-rate fix into the board
+  and documentation commits it corrects and the marker into the
+  generator, waf and Tools commits it extends (bench-2026-11-25-plane.md,
+  "Reorder, marker spelling and an elevon check").
 
 ## 2026-11-23: the notch update without libm
 
