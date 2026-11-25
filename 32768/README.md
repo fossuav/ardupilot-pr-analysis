@@ -1516,3 +1516,62 @@ Andy approved it the same day and AP-Review accepted it. The commits are
 not patch-identical, so once it merges this PR drops `6e41ed4663` and
 `7e32942d59` on its rebase; patch-id will not drop them. The SFD manifest
 notes #35340 as not carried. Hands-off: the rebase needs Andy's word.
+
+## 2026-11-24: EKF2 BARO_ALT_OFFSET re-arm, pushed `f4b84d7dd7`
+
+Andy opened the PR to fixes again on 2026-11-24. From #32972's AP-Review
+round 18 at `1586744bc0` (minor, tagged #32768): with EKF2 selected and
+`BARO_ALT_OFFSET` set, a ground re-arm zeroed the height while the
+recalibrated baro read the offset, and EKF2 kept `baroHgtOffset` at zero,
+so the copter climbed to the offset on the ground. #32768's own round at
+`91a980f6e8` (ACCEPT) did not raise it.
+
+- `37f9a16628` AP_NavEKF2: `baroHgtOffset` and `meaHgtAtTakeOff` taken from
+  the first baro sample after the reset, at the read and before the takeoff
+  floor (so a negative offset is not floored at zero); the floor in
+  `selectHeightForFusion()` and the AID_NONE entry height remove the offset.
+  The floor there feeds `ResetHeight()` only: `velPosObs[5]` is taken before
+  it, as on master.
+- `f4b84d7dd7` autotest: `BaroDriftClearedWithAltOffsetEKF2` and
+  `HeightKeptOnAidingLossWithAltOffsetEKF2`, through helpers shared with
+  the EKF3 tests. The aiding-loss check now matches the vehicle's whole
+  text: the harness logs its own "want=(... stopped aiding)" lines, and on
+  EKF2 the first came 15 s before aiding stopped. The EKF3 test was not
+  fooled (fails 3.64 m without `5fbd966bd6`), but shared the pattern.
+
+SITL (tier 2), 5 m offset unless stated:
+
+| check | previous head | this change |
+|---|---|---|
+| EKF2 re-arm, peak in 15 s armed | 4.86 m (2 of 2 fail) | 0.08 m (3 of 3 pass) |
+| EKF2 re-arm, -5 m offset, armed / after disarm | 4.15 m | 0.053 / 0.059 m |
+| EKF2 aiding lost at 20 m | none (offset not in the filter) | none; 3.62-3.63 m without the AID_NONE change |
+| EKF3 aiding lost | 0.00 m; 3.64 m without `5fbd966bd6` | unchanged |
+| `BaroDriftClearedWithAltOffset`, `BaroDriftClearedWithEKF2` | pass | pass |
+
+When #35340 merges its HeightKeptOnAidingLossWithAltOffset collides with
+this PR's, which now calls the shared helper: keep the helper version.
+Not changed: EKF2's `resetHeightDatum()` still reports its primary only.
+Quick review: Codex cold read and audit; the finding closed, the two
+cold-read points (floor wording, negative offset) answered above.
+Pushed 2026-11-24 (fast-forward); the test count and `storedBaro` row
+updated in the description and a reply posted (issuecomment-7138362403).
+
+## 2026-11-25: rebased onto master, pushed `ed26188628`
+
+Force-pushed `f4b84d7dd7...ed26188628` on `pr-baro-drift-minimum`, onto
+master after the 11-24 and 11-25 merges. Dropped `5fbd966bd6`, the AID_NONE
+baro offset fix, merged as `fccae0af3b` with #35347 (rmackay9's, replacing
+his #35340). This PR's test of that path, `06d5715db2`, covers the arm-time
+seeding of the offset from BARO_ALT_OFFSET rather than #35347's source
+switch, so it stays, renamed `HeightKeptOnAidingLossWithBaroAltOffset` (and
+its EKF2 twin): #35347's test took `HeightKeptOnAidingLossWithAltOffset`,
+and the first clean pick left two defs of that name, the later (master's)
+shadowing ours. `e73dd2b056`'s message names the new test. #35347's origin
+height correction (`95c913f2ab`) does not meet this PR's datum reset, which
+is refused with `EK3_OGN_HGT_MASK` bit 2. SITL at the new head: this PR's
+13 copter tests, master's `HeightKeptOnAidingLossWithAltOffset` and
+`HeightKeptOnAidingLossWithOgnHgtMask`, QuadPlane
+`AmslAltPreservedAfterUpdateHomeAtDifferentElevation`, Copter `Clamp` and
+Helicopter `StabilizeTakeOff` pass. The AID_NONE row was removed from the
+description and a comment posted (issuecomment-7159906968).
