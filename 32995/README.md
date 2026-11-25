@@ -294,7 +294,8 @@ commits used to make.
   instead. Plane's per-loop path in SRAM (`06c2529e91`..`29e77d95b8`,
   14.4 KB) takes armed FBWA at 200 Hz from 57.6% to 51.3% of core0, and
   its navigation path (`373c878559`, 4.6 KB) about half a point more in
-  CRUISE and LOITER.
+  CRUISE and LOITER. Its EKF3 and AHRS (`20e3226232`..`f4c65bc4f1`,
+  17.3 KB, Plane's copies only) take FBWA and AUTO from 52% to 46%.
 
 ## Status (one line)
 

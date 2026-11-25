@@ -371,6 +371,116 @@ code was not hot enough to be picked. Against the per-loop path's 6.4
 points of core0 for 16.6 KB, this set buys about half a point for
 4.9 KB.
 
+## Registry entries a Plane build does not need
+
+Andy asked which of the shared registry entries only Copter uses, so a
+Plane build could stop placing them (`[only arducopter]`: a Copter build
+still places them, and the entry sorts as before, so Copter's picks are
+unchanged) and spend the SRAM on EKF3 and AHRS instead.
+
+`copter_only.py` classes each entry of the three registries against the
+Plane ELF of `373c878559`, using every Plane profile of the day
+(2,313,479 PC samples, both cores, disarmed to AUTO, each attributed
+with its own build) and the Plane ELF's direct calls and function
+addresses held anywhere, literal pools in code included:
+
+| Registry | not in Plane | Plane runs it | reachable, never sampled | multirotor only |
+|---|---|---|---|---|
+| RAMFUNC2 (679) | 56 | 520, 90,388 B | 66, 12,428 B | 37, 6,182 B |
+| Scratch X (14) | 0 | 8, 1,424 B | 2, 36 B | 4, 1,764 B |
+| Scratch Y (15) | 0 | 12, 2,870 B | 2, 402 B | 1, 416 B |
+
+- Not in Plane: ArduCopter itself, the rate thread's INS functions and
+  some ChibiOS code. They cost a Plane build nothing already.
+- Multirotor only: 42 entries, 8,362 B, all `AC_AttitudeControl`,
+  `AP_Motors` and `Thrust_Linearization`; never sampled, and every caller
+  chain ends in QuadPlane, tailsitter or tiltrotor code or those
+  libraries. Within Plane these are QuadPlane's, which runs them every
+  loop in VTOL modes at its 300 Hz default, so taking them out of a
+  Plane build trades QuadPlane speed for fixed-wing SRAM. They include
+  all four Scratch X entries, 1,764 B of core0's 3,808 B bank.
+- Reachable but never sampled: configuration-dependent, not unused.
+  The largest is `NavEKF3_core::FuseMagnetometer` (4,212 B), which Plane
+  uses in flight once EKF3 fuses the full field; on a stationary bench
+  it fuses yaw only. Others are the PIO OSD thread, harmonic notch
+  updates (`INS_HNTCH_ENABLE` 0 here) and `powf`. Keep.
+- A first pass that read function addresses from data sections only
+  called ten entries unreferenced; thread entries, functors and
+  callbacks take their addresses from literal pools in code, and with
+  those scanned none is.
+
+Decision, Andy, 2026-11-25: the multirotor entries stay. QuadPlane is
+out of scope for now, but it is not to be broken deliberately, and with
+fixed-wing Plane at its limit at 400 Hz, QuadPlane at 300 Hz running
+its attitude control and mixing from flash would likely fall behind.
+EKF3 and AHRS placements are to be additions only, paid from free heap.
+
+Shared code left in flash on `373c878559`, armed in AUTO and CRUISE at
+200 Hz: `AP_NavEKF3` 4.4-4.5% of core0, `AP_Math` 2.3-2.4%, GCS
+2.2-2.3%, `AP_AHRS` 1.9-2.0%, `AP_Logger` 1.0-1.1% and `AP_Common`
+(`Location`) 1.1%.
+
+## EKF3 and AHRS for Plane
+
+At Andy's request, placements for the EKF3 and AHRS code Plane runs, as
+`[only arduplane]` so that Copter is not touched until it has its own
+A/B. Committed on `373c878559` as `20e3226232` (the qualified picks),
+`04361430a2` (waf) and `f4c65bc4f1` (the entries); not pushed.
+
+Shared code made the marker's limit matter. One generator run serves
+every program a waf run links, and they share the generated section
+lists, so a plain `./waf` that builds every vehicle would have handed
+Plane's picks of shared functions to Copter as well; for the Plane-only
+names above that could not happen, since Copter has none of them. The
+picks of an `[only <program>]` entry now name that program's own
+objects and library archive (`*libArduPlane_libs.a:*` and
+`*ArduPlane/*`), as waf passes `--program arduplane:ArduPlane`. A bare
+`--program <name>` keeps the old unqualified picks, so the generator and
+waf changes can land in either order. RPI_UAVFC Plane with
+`--consistent-builds` gives `69d7ce322eb0` with the old picks and the
+qualified ones.
+
+Selection (`lib_pick.py`): the functions of `AP_NavEKF3`, `AP_NavEKF`,
+`AP_AHRS` and `AP_DAL` still in flash on `373c878559`, ranked by mean
+share of core0 over ten profiles of that code (armed MANUAL, FBWA,
+CRUISE, LOITER and AUTO, two boots each). They held 7.09% of core0 in
+229 sampled functions. Taken: 0.02% of core0 or more, or 0.01% at 0.7%
+per KB, and none below 0.1% per KB; 89 functions, 17,288 B, 5.18% of
+core0. The floor drops 14 large, thinly sampled functions (17.0 KB,
+0.93%), among them `FuseVelPosNED` (3.3 KB), `selectHeightForFusion`,
+`setAidingMode`, `readGpsData`, and `fuseEulerYaw`, which Plane's EKF3
+uses only on the ground (in flight it fuses the full field through
+`FuseMagnetometer`, already in SRAM). Without the floor, 0.03% alone
+would have taken 66 functions and 28.1 KB for 5.24%.
+
+Checked: RPI_UAVFC and Laurel Plane build with no warnings, `--verify`
+finds every registered function in SRAM, and RPI_UAVFC copter with
+`--consistent-builds` is `0a224befa8e2` both alone and from one
+`./waf copter plane` run, in which Copter's
+`NavEKF3_core::updateFilterStatus` stays in flash (0x100b6208) and
+Plane's is in SRAM (0x20017150). Plane's SRAM code grows by 18,320 B
+(78 more veneers); static heap 317,104 to 298,800 B.
+
+A/B on the flight board, A `373c878559` (as built before the commit),
+B the same plus the entries, boots A B B A, 200 Hz, EKF3 and the fake
+GPS, throttle output pinned as for the navigation modes:
+
+| | FBWA A / B | AUTO A / B |
+|---|---|---|
+| core0 busy | 52.0 / 45.8% | 52.2 / 45.9% |
+| scheduler load | 30.0 / 24.8% | 30.3 / 25.4% |
+| `Plane::ahrs_update` | 881 / 646 us | 864 / 600 us |
+| FAST tasks per loop | 1084 / 859 us | 1069 / 817 us |
+| XIP hit rate | 84.5 / 86.6% | 84.5 / 86.5% |
+| MEMINFO free | 152,836 / 134,532 B | 152,828 / 134,524 B |
+
+Core0 busy and scheduler load do not overlap between A and B in either
+mode. `stabilize`, `set_servos` and `navigate` moved by a few
+microseconds either way, inside the spread between boots of the same
+build. The two A boots differed more than the B boots (`ahrs_update`
+824 and 938 us in FBWA). This set buys about 6 points of core0 for
+18.3 KB, the per-loop path's rate.
+
 ## Board state afterwards
 
 `SCHED_LOOP_RATE` 200 and `GPS1_TYPE` 1 restored and read back, and the
@@ -389,7 +499,11 @@ restored and the test mission cleared, which also took `MIS_TOTAL` back
 to the 0 it had at the start. The full parameter list then matches the
 start but for `BARO1_GND_PRESS`, the boot gyro offsets and the `STAT_*`
 counters (`STAT_BOOTCNT` 30). The board runs `29e77d95b8`, the
-committed head with Plane's per-loop path in SRAM. OpenOCD shut down with `C_DEBUGEN` cleared on both
+committed head with Plane's per-loop path in SRAM.
+
+After the EKF3 and AHRS round the same restore and comparison hold, with
+`STAT_BOOTCNT` 35; the board runs A of that A/B, the code of
+`373c878559`, identifying as `29e77d95`. OpenOCD shut down with `C_DEBUGEN` cleared on both
 cores, the COM32 bridge stopped, the board disarmed.
 
 ## Reproduce
