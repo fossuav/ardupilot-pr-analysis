@@ -495,9 +495,8 @@ build. The two A boots differed more than the B boots (`ahrs_update`
 ## Reorder, marker spelling and an elevon check
 
 After the push of `f4c65bc4f1` the ten commits were squashed to seven
-and moved ahead of the six that change STM32 output, on local branch
-`rp2350-plane-reorder3`: tip `b9db33af08`, 93 commits on master, not
-pushed. The loop-rate commit now keeps `AP_Scheduler.cpp`'s line
+and moved ahead of the six that change STM32 output, force-pushed to the
+PR as `b9db33af08`, 93 commits on master. The loop-rate commit now keeps `AP_Scheduler.cpp`'s line
 numbers, with the define in `AP_Scheduler_config.h`; as pushed it moved
 four `INTERNAL_ERROR` lines, which changes every normal STM32 build. The
 generator and waf commits of the marker were each squashed into one, and
