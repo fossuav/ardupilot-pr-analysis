@@ -27,6 +27,18 @@ Inside, `cantFuseFlowData` reaches
 `MAX(ofDataDelayed.flowRadXY[0], flowRadXY[1]) > _maxFlowRate` with nothing
 having established that a flow sample exists.
 
+### Superseded 2026-11-24 by the dev-call review and a SITL A/B
+
+The read is not uninitialised. `of_elements` holds its rates in `Vector2F`
+and `Vector3F`, whose default constructors zero them (`AP_Math/vector2.h:50`),
+so a failed recall leaves `flowRadXY` and `flowRadXYcomp` at zero. Master's
+defect is deterministic: `cantFuseFlowData` comes out false on a plain
+GPS-aided Plane above 5 m/s, and the estimator tests, and where the gate
+passes fuses, a zero flow it never measured, with an innovation equal to the
+whole predicted line-of-sight rate. The fix is unchanged; only its
+explanation was wrong. The text above is left because the reachability
+argument below it still holds.
+
 ## Reachability: it does not need a flow sensor
 
 This is the part that is easy to get wrong, and I did get it wrong first time.
@@ -75,6 +87,17 @@ is no trap**, so the consequence is instead a fabricated flow rate fused into
 the terrain estimate, or a spurious rejection of a good rangefinder update,
 depending on what was on the stack. No flight log has been checked for
 symptoms of that.
+
+### Superseded 2026-11-24 by a SITL A/B
+
+The `memset(0xFF)` demonstration shows what garbage would do, not what master
+does: it overwrites the zeros the constructors had just written. Master's
+actual behaviour, measured in `Plane.TerrainEstimatorWithoutFlowSensor`
+(the RangeFinder test's 10 m mission and AUTO landing, no flow sensor):
+557 of 661 XKF5 rows carry a terrain flow innovation (AFI wraps negative on
+the ground roll, about 59 rad/s), and through the final approach the terrain
+height reads up to 2.8 m above the measured range (38 rows more than 0.5 m
+over). With the fix: 0 of 661, 0 rows, worst 0.08 m.
 
 ## Measured and rejected
 
@@ -132,3 +155,26 @@ The stack trace appears in `dumpstack.sh_arduplane.<pid>.out` in the repo root.
 - Not reviewed by `/pr-review` before opening.
 - No hardware or flight-log evidence that the silent (non-SITL) consequence has
   ever bitten anyone.
+
+## 2026-11-24: mechanism corrected, test added, rebuilt on master
+
+Prompted by the dev-call review of 2026-09-06 (head `fb25853f82`) and
+rmackay9's inline comment of the same day asking for the comment to be one
+line. Branch `sq/34305-1124f`, pushed 2026-11-24 with the description and a reply: `0f54502ee7` (the fix,
+reworded, comment now rmackay9's "don't fuse flow data unless available")
+and `babeeb2c04` (the test, with `EK3_FLOW_USE` pinned at 2 after a second cold read), on master `68b1a73ef2`.
+
+- `Plane.TerrainEstimatorWithoutFlowSensor` asserts XKF5.AFI stays zero
+  while XKF5.RI, written only by the estimator's range branch, shows it
+  running (about 240 rows). Fails on master 3 of 3, passes 5 of 5. The
+  first version counted rows with `rng > 0`, which a cold review rightly
+  said would pass with the estimator not running at all.
+- The bug has been there since 4.1.0: `15658362b5` made the buffer element a
+  local.
+- EKF2 has the same gap (`AP_NavEKF2_OptFlowFusion.cpp:78`), with the last
+  sample rather than zeros once a flow sensor has been seen, as there
+  `ofDataDelayed` is a member. Not changed; EKF2 is compiled out by default.
+
+The Open items above about the missing autotest and the missing
+`/pr-review` are closed by this round (quick review, Codex cold read and
+audit: all five raised points closed).
