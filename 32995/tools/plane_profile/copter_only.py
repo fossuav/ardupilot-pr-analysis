@@ -70,10 +70,13 @@ for reg in REGISTRIES:
         sym = rest.split("#", 1)[0].strip()
         if not sym:
             continue
-        only = re.search(r"\[only ([A-Za-z_][A-Za-z0-9_]*)\]", line)
+        # the programs an "[arduplane]" or "[arducopter,arduplane]" marker limits it to
+        comment = rest.split("#", 1)[1] if "#" in rest else ""
+        programs = sorted({p for t in re.findall(r"\[([A-Za-z_][\w,-]*)\]", comment) if t != "inlinable"
+                           for p in t.split(",")})
         entries.append({"registry": reg, "path": path.strip(), "sym": sym,
                         "key": sym if path.strip() == "(archive)" else key(sym),
-                        "archive": path.strip() == "(archive)", "only": only.group(1) if only else None})
+                        "archive": path.strip() == "(archive)", "programs": programs or None})
 
 # --- library of an object, as in libgroup.py
 where = collections.defaultdict(set)

@@ -35,7 +35,7 @@ core0, its navigation path (4.6 KB) about half a point more in CRUISE
 and LOITER, and its EKF3 and AHRS (17.3 KB) 52.0% to 45.8% in FBWA and
 52.2% to 45.9% in AUTO. Chained across rounds, which were separate
 boots, FBWA went from about 57.6% to 45.8% and free memory from 174 KB
-to 134.5 KB. All of it is `[only arduplane]`; RPI_UAVFC Copter is
+to 134.5 KB. All of it is `[arduplane]`; RPI_UAVFC Copter is
 byte-identical. QuadPlane's multirotor code stays in SRAM in Plane builds
 by Andy's decision.
 
@@ -260,7 +260,7 @@ alone: moving them moves Copter's code too.
 
 The change:
 
-- `rp2350_ramfunc2_sections.sh`: an `[only <program>]` marker and a
+- `rp2350_ramfunc2_sections.sh`: an `[<program>,...]` marker and a
   `--program` option. A marked entry is placed, and its miss is fatal,
   only when its program is named; otherwise it is skipped. The program
   rides in the sort key's condition field after an `@`, so unmarked
@@ -269,7 +269,7 @@ The change:
 - `Tools/ardupilotwaf/chibios.py`: `--program` for each program linked
   for hardware.
 - The RAMFUNC2 registry: the marker documented, and the 84 entries as
-  `[only arduplane]`, the header-defined ones also `[inlinable]`.
+  `[arduplane]`, the header-defined ones also `[inlinable]`.
 - `rp2350/DEVELOPMENT.md`: the marker in the registry rules.
 
 Checked: RPI_UAVFC and Laurel Plane build with no warnings, the strict
@@ -360,7 +360,7 @@ pick matched nothing, and the strict check, which tests that the symbol
 exists, did not notice. The registry names the section's owner instead.
 Every registered function is then in SRAM. RPI_UAVFC copter with
 `--consistent-builds` is still `0a224befa8e2` (taken before that
-one-line fix, which changes only an `[only arduplane]` entry).
+one-line fix, which changes only an `[arduplane]` entry).
 
 A/B, A `29e77d95b8`, B the same plus the 51 entries, boots A B B A,
 200 Hz, EKF3 and the fake GPS, armed at zero throttle as above:
@@ -385,7 +385,7 @@ points of core0 for 16.6 KB, this set buys about half a point for
 ## Registry entries a Plane build does not need
 
 Andy asked which of the shared registry entries only Copter uses, so a
-Plane build could stop placing them (`[only arducopter]`: a Copter build
+Plane build could stop placing them (`[arducopter]`: a Copter build
 still places them, and the entry sorts as before, so Copter's picks are
 unchanged) and spend the SRAM on EKF3 and AHRS instead.
 
@@ -434,16 +434,16 @@ Shared code left in flash on `373c878559`, armed in AUTO and CRUISE at
 ## EKF3 and AHRS for Plane
 
 At Andy's request, placements for the EKF3 and AHRS code Plane runs, as
-`[only arduplane]` so that Copter is not touched until it has its own
+`[arduplane]` so that Copter is not touched until it has its own
 A/B. Committed on `373c878559` as `20e3226232` (the qualified picks),
-`04361430a2` (waf) and `f4c65bc4f1` (the entries); not pushed.
+`04361430a2` (waf) and `f4c65bc4f1` (the entries); pushed later that day.
 
 Shared code made the marker's limit matter. One generator run serves
 every program a waf run links, and they share the generated section
 lists, so a plain `./waf` that builds every vehicle would have handed
 Plane's picks of shared functions to Copter as well; for the Plane-only
 names above that could not happen, since Copter has none of them. The
-picks of an `[only <program>]` entry now name that program's own
+picks of an `[<program>,...]` entry now name that program's own
 objects and library archive (`*libArduPlane_libs.a:*` and
 `*ArduPlane/*`), as waf passes `--program arduplane:ArduPlane`. A bare
 `--program <name>` keeps the old unqualified picks, so the generator and
@@ -492,6 +492,86 @@ build. The two A boots differed more than the B boots (`ahrs_update`
 824 and 938 us in FBWA). This set buys about 6 points of core0 for
 18.3 KB, the per-loop path's rate.
 
+## Reorder, marker spelling and an elevon check
+
+After the push of `f4c65bc4f1` the ten commits were squashed to seven
+and moved ahead of the six that change STM32 output, on local branch
+`rp2350-plane-reorder3`: tip `b9db33af08`, 93 commits on master, not
+pushed. The loop-rate commit now keeps `AP_Scheduler.cpp`'s line
+numbers, with the define in `AP_Scheduler_config.h`; as pushed it moved
+four `INTERNAL_ERROR` lines, which changes every normal STM32 build. The
+generator and waf commits of the marker were each squashed into one, and
+a Tools commit makes `rp2350_ramfunc2_update.py --verify` honour the
+marker: without it, `--verify` of Copter reported Plane's 89 EKF3 and
+AHRS entries as left in flash.
+
+| commit | change | STM32 output |
+|---|---|---|
+| `2e9128a39f` | AP_Scheduler: a board can lower Copter's default loop rate | unchanged |
+| `d10b9d016f` | hwdef: RPI_UAVFC and Laurel lower only Copter's | unchanged |
+| `ea31077f81` | DEVELOPMENT.md: where Copter's loop rate is set | unchanged |
+| `5c1eacaf48` | generator: a placement entry names its programs | unchanged |
+| `53f9a958a2` | waf: passes the programs it links to the generator | unchanged |
+| `4f20652cea` | Tools: `--verify` honours program markers | unchanged |
+| `815f847a85` | registry: Plane's hot code, 224 entries | unchanged |
+| `bcd5e3a919`..`b9db33af08` | the six, patch-identical | as before |
+
+The marker was spelled `[<program>,...]`, and this note now uses the
+new spelling throughout. At Andy's request it is a list of programs,
+`[arduplane]` or `[arducopter,arduplane]`, so one entry can serve
+several. `[inlinable]` stays the one bare keyword. A name that is not a
+vehicle program (`antennatracker`, `arducopter`, `arducopter-heli`,
+`arduplane`, `ardurover`, `ardusub`, `blimp`, `AP_Periph`) fails every
+RP2350 build, so a misspelt `[inlinabel]` cannot drop an entry silently.
+On the same objects the old and new generators write byte-identical
+section lists for no program, Copter alone with `--strict`, Plane alone,
+both, and a bare `--program arduplane`. A list places an entry in each
+listed program from that program's own archive, two tags on one line
+merge, and `[arduplnae]`, `[arduplane,]` and `[inlinabel]` each fail
+with the file and line. With `--consistent-builds`, RPI_UAVFC Copter is
+`0a224befa8e2` and Plane `7626a88d4182` at both the old and the new tip;
+the `69d7ce322eb0` above was Plane before its EKF3 and AHRS entries.
+MatekH743 Copter is `f1db94851b64` at the new tip. The seven, checked
+before the respelling, keep `29c14509aeab`; the respelling touches only
+what an STM32 build does not compile (the generator, the registries,
+docs, a Tools script and a comment in `chibios.py`). Before the
+respelling, on otherwise the same trees: every new commit built RPI_UAVFC
+Copter and Plane without warnings; MatekH743 normal builds differed from
+the base only in the version string and the git hash word; Laurel and
+Pico2 built without warnings at the placement commit and the tip.
+
+The elevons were then driven through Plane's output path with the board
+disarmed (`tools/plane_profile/servo_test.py`): RC overrides from system
+id 255 on roll and pitch, throttle held at `RC3_MIN` (1100) and every
+other channel ignored, 3 s per step, then PWM slice 3 read over SWD. S3
+is `SERVO3_FUNCTION` 77 (left elevon) on GPIO7, slice 3 channel B; S4 is
+78 on GPIO6, channel A; the motor is DShot600 on S1 (GPIO9, PIO2). The
+slice runs DIV 200 and TOP 20000: 1 us ticks, a 20.001 ms frame, 50.00
+Hz. In MANUAL all seven steps matched the mix predicted from `RC1_*`,
+`RC2_*`, `MIXING_GAIN` 0.5 and `SERVO3_*`/`SERVO4_*` exactly, and the pin
+carried the same widths:
+
+| roll, pitch | S3 | S4 |
+|---|---|---|
+| 1500, 1500 | 1500 | 1500 |
+| 1800, 1500 | 1350 | 1650 |
+| 1200, 1500 | 1650 | 1350 |
+| 1500, 1800 | 1650 | 1650 |
+| 1500, 1200 | 1350 | 1350 |
+| 1800, 1800 | 1500 | 1800 |
+
+In FBWA, with the board at 0.6 deg roll and -4.8 deg pitch, centred
+sticks gave 1510/1506, roll right 1428/1590, roll left 1593/1425, pitch
+1800 1558/1553 and pitch 1200 1452/1449: the same directions as MANUAL,
+from the attitude controllers. S1 stayed at 1000 throughout.
+
+The first attempt overrode roll and pitch alone. Andy's transmitter was
+off (RC3 0), and with no valid throttle channel Plane's radio failsafe
+resets roll and pitch to trim on every input frame; it then went to
+CIRCLE and RTL, and every MANUAL step read 1500. Holding RC3 at its
+minimum, as `session.py` does, keeps the radio valid (`THR_FS_VALUE`
+950).
+
 ## Board state afterwards
 
 `SCHED_LOOP_RATE` 200 and `GPS1_TYPE` 1 restored and read back, and the
@@ -525,6 +605,14 @@ then, and channel 8 (`FLTMODE_CH`) at 987 us selects `FLTMODE1`, which
 is RTL on this airframe. OpenOCD shut down with `C_DEBUGEN` cleared on both
 cores, the COM32 bridge stopped, the board disarmed.
 
+After the elevon check: the board was found in MANUAL with no radio (it
+had rebooted since, `STAT_BOOTCNT` 38, and `INITIAL_MODE` is 0). The
+overrides count as radio input, so once they stopped the throttle
+failsafe latched: the board is in RTL, disarmed, with "Radio failsafe
+on" until the transmitter returns or it reboots. No parameters were
+written. OpenOCD shut down with `C_DEBUGEN` cleared on both cores and
+the bridge stopped.
+
 ## Reproduce
 
 Tools in `tools/plane_profile/`; they use `attrib.py`, `xipctr.py` and
@@ -546,6 +634,8 @@ python3 plane_profile/abana.py <dir with A/ and B/> <out> <ardupilot checkout>
 # registry entries a Plane build does not need; shared-library candidates
 python3 plane_profile/copter_only.py <plane ELF> <map> <ardupilot checkout> out.json <ELF>:<map>:<samples glob>...
 python3 plane_profile/lib_pick.py <plane ELF> <map> <ardupilot checkout> AP_NavEKF3,AP_NavEKF,AP_AHRS,AP_DAL <ELF>:<map>:<samples glob>...
+# elevons through Plane's output path, disarmed, with PWM slice 3 over SWD
+python plane_profile/servo_test.py <out>
 ```
 
 `ab.py` flashes the flight board, so it is for a disarmed bench only; it

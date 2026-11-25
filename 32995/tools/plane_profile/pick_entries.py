@@ -94,7 +94,7 @@ for r in picked:
     path, header = source_of(r["name"])
     name = r["name"] if "method_wrapper" in r["name"] else key(r["name"])
     name = re.sub(r"\(void\*\)$", "", name)
-    marks = "[only arduplane]" + (" [inlinable]" if header else "")
+    marks = "[arduplane]" + (" [inlinable]" if header else "")
     print(f"{path}|{name}  # {r['size']} B {marks}")
 print("# rejected:")
 for r, why in rejected:

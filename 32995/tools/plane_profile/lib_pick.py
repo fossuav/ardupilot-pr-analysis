@@ -98,4 +98,4 @@ print(f"# picked {len(picked)} functions, {sum(r[1] for r in picked)} B, {sum(r[
 for pct, size, k, lib, src in picked:
     path = next((p for p in subprocess.run(["git", "-C", repo, "ls-files", f"libraries/{lib}/{src}"],
                                            capture_output=True, text=True).stdout.split()), f"libraries/{lib}/{src}")
-    print(f"{path}|{k}  # {size} B, {pct:.3f}% [only arduplane]")
+    print(f"{path}|{k}  # {size} B, {pct:.3f}% [arduplane]")
