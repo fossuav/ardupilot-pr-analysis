@@ -1054,6 +1054,19 @@ Quick review at `5e4346a261`: gate clean, one Codex cold read of the five commit
 
 Climb probe re-flown at the pushed head (`plots/aglkf_4_climb_sitl_fused_floor.png`): velocity / true 1.01 and 1.02, worst height error 0.28 / 0.40 m; the touchdown coast is gone (height stays on the floor, velocity dips to -0.4 m/s and settles in about 4 s); the 0.25 m overshoot after the climb stops remains. Also checked for the description: on log9 the fused floor holds the pre-takeoff dwell at -0.01 m/s (no floor handling -0.51 on today's code); replay_sweep's own floor-velocity column for log9 reads -8.8 m/s with the fused floor against -1.1 with the clear, but that is in-flight floor contact with no range data (the descent kept in the velocity), not ground wind-up. On the beta the main filter's records differ slightly between the clear and the fused floor from early in each flight (the AGL KF feeds velD fusion and flow scaling there); in-flight height error and takeoffs unchanged across the 34. Posted 2026-11-05: description rewritten (leads with the halved climb velocity on master; the fused floor, the named limits, the costs); reply to rmackay9 https://github.com/ArduPilot/ardupilot/pull/34457#issuecomment-6657687701 (graph to be attached by hand); reply to AP-Review's touchdown should-fix https://github.com/ArduPilot/ardupilot/pull/34457#issuecomment-6657688047; follow-ups in peterbarker's threads #discussion_r4480275715 (0.25) and #discussion_r4480276044 (0.3).
 
+#### Superseded 2026-11-25 by a fleet Replay of #33507's `b32ef70b3c`
+
+"The hold never engages on any of the 57 logs" above does not hold on
+today's code. Replay of the 417 cached logs (375 distinct flights) through
+#33507's head `b32ef70b3c` (which carries this PR) and the same build with
+the floor hold removed: the AGL height differs on 16 flights, by 0.37 to
+7.9 m, every segment on the ground, disarmed or landed, with the range
+finder reporting too low, and the hold keeping the height at the floor.
+Details and the scripts in `../33507/README.md` (2026-11-25). The finding
+above is left in place: it was measured on the 57 logs and the 11-05 code,
+and the fleet now holds flights it did not have (newer SFD-O4 and throw
+flights among them).
+
 ## 2026-11-06: the fused floor flown, SFD-O4 log78
 
 SFD-O4 log78 (flown 2026-11-05 indoors), beta topup11 `52ec3c77`, which
