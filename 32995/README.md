@@ -283,6 +283,16 @@ commits used to make.
   in-flight PC profile of both cores, with `__ieee754_rem_pio2f` the one
   real placement miss on core1. Log 15, later the same day, flew the hard
   leg in Acro at 30 m/s and 37 A, with the port still clean.
+- [bench-2026-11-25-plane.md](bench-2026-11-25-plane.md) - ArduPlane on
+  RPI_UAVFC without a rate thread, on `5e97be25`: core1 15-18% busy in
+  every condition, core0 56% in armed FBWA at 200 Hz with EKF3 and 79% at
+  400 Hz, where the scheduler starts deferring tasks; two thirds of
+  core0's busy time is XIP fetches, and the registries hold none of
+  Plane's own path. At Plane's own 50 Hz default core0 is 35.5% busy;
+  the board's `defaults.parm` had set 200 for every vehicle, and
+  `88704a865c`..`1411b17f5b` move Copter's 200 into a hwdef define
+  instead. Plane's per-loop path in SRAM (`06c2529e91`..`29e77d95b8`,
+  14.4 KB) takes armed FBWA at 200 Hz from 57.6% to 51.3% of core0.
 
 ## Status (one line)
 
