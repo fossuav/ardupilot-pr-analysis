@@ -106,3 +106,18 @@ Heads: `f7dc1426d7`, `1c0016f360` (the carried commit), `314b2a8a31`
 
 - The kept height has not flown; the beta carries it from topup2.
 - No QuadPlane or drag fusion test.
+
+## 2026-11-25: rebased onto master, pushed `718eed6734`
+
+Force-pushed `314b2a8a31...718eed6734` on `pr-ekf3-no-horiz-source`, onto
+master after the 11-24 and 11-25 merges. Dropped `7ce21209cd` (keep the
+height when no horizontal source stops aiding) and its test `314b2a8a31`.
+#35347, merged 2026-11-25, takes the baro offset out of the AID_NONE height
+reset and adds the EKF origin height correction, which removes the step
+those commits avoided. A/B at the rebased head with the commit reverted
+(SITL, tier 2): `EK3_NoHorizontalSourceKeepsHeight` stays within 0.08 m in
+both cases (GPS height with the baro 5 m off; `EK3_OGN_HGT_MASK` 5 after a
+3 m drift), against 0.00 and 0.09 m with the commit and 3.3 and 1.9 m
+before #35347. `EK3_NoHorizontalSourceStopsAiding` and Plane
+`EK3NoHorizontalSourceDeadReckons` pass at `718eed6734`. Description
+updated and a comment posted (issuecomment-7159907570).
