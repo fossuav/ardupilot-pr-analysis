@@ -1180,3 +1180,102 @@ switch-in height; refresh15's Replay at 2 reproduces the flown rows.
 Replay cannot show what VALT then flies. Over a flat field; over uneven
 ground at those speeds the range height moves with the terrain, which is
 the reason for the gate.
+
+## 2026-11-25: a throw's height error kept by the switch to range height (tier 1, 1b, 2)
+
+log57 (customer quad, 1245450/282) on `b81f2132`: a TBS_LUCID_H7 flow
+quad, no GPS or compass, baro height with `EK3_RNG_USE_HGT` 10 of a 10 m
+range finder, `EK3_OPTIONS` 94, thrown by hand indoors (`THROW_TYPE` 1,
+next mode VALT). The logger dropped 13% of the Replay frames; 139-165 s,
+the throw and the switch, is the only stretch with none, and the Replays
+below are judged there and on the flown log. Heights are against the
+floor 1.0 m below the arming datum, where baro and range agree with the
+motors off before the throw and after the disarm.
+
+- The throw left the EKF 0.66 m high at the first good range reading
+  (1.3 s blind, 6 g and up to 11.5 rad/s in the tumble; 0.16 m of it from
+  the baro), and a vertical velocity error of about 0.3 m/s took it to
+  2 m over the next 5 s on the baro, which read 1-2 m high itself once
+  the motors spooled up.
+- The terrain estimator took that height as right and moved the ground up
+  1.7 m (its variance opened by the 4 m the throw carried the vehicle, at
+  `EK3_TERR_GRAD` 0.1). 6.4 s after the throw's detection this PR's switch
+  took range height in flight on the AGL KF height, setting the height to
+  the learned ground less the range. The EKF then sat 1.5-2 m high for
+  the rest of the flight and touched down reading 0.8 m.
+- Replay with the terrain estimate held from the throw to the switch
+  (scratch switch on `b81f2132`): mean error -0.07 m against 1.68 m,
+  against the ground as the EKF had it before the throw.
+- The exposure is this PR's. On master Copter marks the terrain stable
+  only while taking off or landing, so after a throw master switches to
+  range height only in a landing or take-off. Replaying these logs
+  through master-based EKF code switches in flight anyway: the vehicle's
+  one "terrain not stable" event comes before logging starts, and the EKF
+  defaults the flag to true. A master-code Replay of such a log overstates
+  master's exposure.
+
+### A possible fix, parked 2026-11-25
+
+As THROW detects the throw, the vehicle asks EKF3 (a generic AHRS call,
+logged as a DAL event so Replay applies it) to keep the ground it has
+then, only if the terrain was fused recently. The terrain estimator keeps
+running, so nothing else sees a kept ground. At a switch to range height
+within a window after the request, the terrain state takes the kept
+ground before the height reset, so the switch corrects the height
+instead of keeping its error. To settle:
+
+- The window. Detection to range height on 21 throws of two airframes
+  (on SFD builds with this PR's switch): 0.2-9.7 s on 16, the other five
+  13.6-20.7 s on one flight that hovered above the switch height. 10 s
+  held on log57 (6.4 s); 5 s did not.
+- The AGL-only "terrain offset reset from range" at the switch learns the
+  ground from the height again; within the window it must take the kept
+  ground or stand aside.
+- A flat floor is assumed across the throw, which covered 5-17 m here.
+  A drop from a carrier or a platform keeps the wrong ground, hence the
+  freshness test; a throw from a balcony is not caught by it.
+- `throw_detected()` waits for a 2.5 m/s velocity reversal, so a little
+  of the tumble can already be in the terrain state.
+
+Measured on the first form, which held the terrain state itself (branch
+`proto/1125-terrain-hold` on the beta), not the form above:
+
+- log57, hold from detection: mean 1.75 to 0.26 m, touchdown 1.65 to
+  0.16 m. From the end of uprighting the same.
+- The fleet's 72 throws in 39 logs, the request emulated at each logged
+  transition: against the range on 17, 0-3 s 1.24 to 1.21 m and 3-15 s
+  1.11 to 1.02 m (5 better, 2 worse by 0.25-0.5 m); scored against GPS,
+  no change. No request: the fleet's 369 logs unchanged.
+- Limited to where the range finder can give the height: before that
+  gate two indoor throws with `EK3_RNG_USE_HGT` -1 came out 0.6-0.75 m
+  worse, the held ground feeding a wrong height above ground to the flow
+  fusion with no switch to protect.
+
+A master branch, `pr-throw-terrain-hold` (`388ffaccbc`, local, not
+pushed), carries the first form and an autotest, `ThrowTerrainHold` (a
+5 m baro glitch from the detection, then LAND into range height: largest
+error over the last 2.5 m 3.8-3.9 m without, 0.6 m with). Its review,
+three Claude readers and three Codex cold reads, found what the form
+above answers:
+
+- a link failure with `EK3_FEATURE_OPTFLOW_FUSION` off: the core methods
+  sit in `AP_NavEKF3_OptFlowFusion.cpp`, their callers unguarded;
+- a held terrain state puts the height's error into the EKF's height
+  above ground, the flow fusion's range (without the AGL KF option) and
+  the flow speed limits for the whole window, and with `THROW_NEXTMODE`
+  at its default no switch ever comes;
+- refreshing `gndHgtValidTime_ms` while held changes `gndOffsetValid`'s
+  readers;
+- the switch in and the switch out used different heights and could
+  alternate;
+- the held ground was not checked for freshness;
+- the test passed if no sample fell in its window.
+
+### Measured and rejected
+
+| Change | Result | Why not |
+|---|---|---|
+| Reset the height to the baro as uprighting completes, before the motors spool up | log57: 0.93 to 0.40 m at the first range reading, flight mean 1.95 to 1.79 alone. 15 fleet throws with a range reading then: baro closer than the EKF on 6, mean error 1.81 m against 1.61 | the baro before spool-up is not reliably the better reference |
+| Open the vertical velocity variance at that reset | hover after the throw 1.70 to 1.87 m | lets the prop-washed baro lift the height faster |
+| At every switch, weigh the re-learned terrain against the ground last fixed by range height (variance `EK3_TERR_GRAD` x distance) | log57, against the ground the EKF had before the throw: 1.57 to 1.49 m at `EK3_TERR_GRAD` 0.1, 0.92 to 0.07 m at 0. Fleet at its own settings: 117 of 369 logs changed, 277 corrections, 27 of 1 m or more | a broad change nothing can verify, and the step detector it needs misfired in the throw |
+| `EK3_RNG_USE_HGT` 50 with the reset | log57: 0.11 m | range height to 3.5 m follows steps in the floor; a stairwell flight on this airframe moved the height by metres |
