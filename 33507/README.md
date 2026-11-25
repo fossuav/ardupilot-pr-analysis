@@ -3,6 +3,86 @@
 
 Pushed 2026-11-24: `pr-agl-kf-zbias` `581ae5f429...79e11816d0` (forced, rebased onto master with #35105). Posted the same day: the reply to rmackay9 (https://github.com/ArduPilot/ardupilot/pull/33507#issuecomment-7131371380), replies in tridge's two threads and peterbarker's three (discussion_r4679921905, r4679922306, r4679922648, r4679923003, r4679923288), and the description edits (gate, flash, stack line, the new subtest, the rejected alternatives; "checks four things" became five).
 
+## 2026-11-25: rmackay9 asks to replace the floor hold with onGround. Measured: keep it
+
+rmackay9 (review 2026-11-25, changes requested, "I'd like to test this a bit more"):
+OptFlowFusion.cpp:886 "may need to be adjusted now that the vehicle code is telling
+the EKF when it is landed", core.cpp:296 "I think we don't need this aglKfHeldOnFloor
+any more. I think we should be able to simply use onGround". Draft reply not posted.
+
+Since #35105, `onGround` while armed is Copter's `land_complete` (`detectFlight()`:
+`motorsArmed && !dal.get_vehicle_landed()`); no other vehicle sets the flag. Copter holds
+`land_complete` through a THROW carry until the throw is detected.
+
+**Supersedes #34457's 2026-11-05 note** "the hold never engages on any of the 57
+logs" (superseded in place there) on today's code. Replay of the 417 cached logs (375
+distinct flights) through `b32ef70b3c` and the same build with the hold removed: the AGL
+height differs on 16 flights, by 0.37 to 7.9 m. Every segment, on every replayed core,
+is the vehicle on the ground, disarmed or landed, with the range finder reporting too
+low; without the hold the height coasts up, with it it stays at the floor and closer to
+the Good readings there are. The largest: 3.1 m over 41 s armed on the ground after a
+landing (SFD-O4 refresh28 log51), 7.9 m disarmed (another airframe's setup
+flight), and one
+airframe that tipped over on landing with the main filter reading 0.6 to 1.8 m/s up for
+14 s, the case the hold was written for (PR 0.10 m, no hold 3.2 m).
+
+Replay of the landed flag: logs before #35105 carry none, so a Replay built with
+`tools/floor_hold_onground/replay_landed_from_events.diff` (experiment only) takes it
+from the log's own LAND_COMPLETE 18 / NOT_LANDED 28 / DISARMED 11 events. Determinism
+checked: one build replayed twice gives identical output. Four logs with the AGL KF off
+differ in velocity between builds (up to 25 m/s on one); both uses of the AGL KF check
+the option, so that is a build artifact and not the hold. Not chased.
+
+Variants, built on `b32ef70b3c` plus that change:
+
+| variant | floor hold condition |
+|---|---|
+| A | this PR |
+| R | `onGround` alone (rmackay9's suggestion) |
+| B | `onGround` and the range finder reporting too low (fresh) |
+| N | none |
+
+Fleet scan (`landed_scan.py`): armed with `land_complete` set and the range finder
+reading Good above its clearance + 0.5 m, 46 periods in 18 distinct logs, 417 s. 34 are
+THROW carries, up to 39 s at up to 7.6 m. The non-THROW ones checked were bench handling
+(upside down, pitched 82 deg at a wall) or a vehicle resting on something 1.1 to 2.3 m
+up; none was flight.
+
+Replay of the 26 throws with the AGL KF running (one throw quad, hand-launched,
+~1 m carries; `compare.py`, `summarise.py`). Replayed A matches the flown AGL KF in the
+carries within 0.13 m.
+
+| | A (PR) | R (onGround) | B |
+|---|---|---|---|
+| AGL median through every carry | tracks the range in 7 (0.6-1.15 m) | 0.05 m in all 26 | 0.05 m in 3 of the 7 |
+| carry flow innovation RMS, median | 1.29 rad/s | 5.99 | 2.35 |
+| after release, AGL within 0.2 m + 20 % of range, median | 0.39 s | 1.14 s (later on 23 of 26) | 0.39 s (all 26 within 0.05 s of A) |
+| flow innovation RMS first 3 s after release, median / max | 1.15 / 4.28 | 9.74 / 21.71 (over 2x A on 24) | 1.15 / 4.28 |
+
+R's AGL height spikes off the floor whenever its gate accepts a reading, then the next
+predict step pins it again (plot). SITL, the PR's six AGL tests: R fails
+OpticalFlowAGLKfFloorVelocity (disarmed, range stepped up 3 m, AGL stays 0.10 m, which a
+GCS sees as OPTICAL_FLOW.ground_distance); B passes all six.
+
+Conclusion: the hold earns its place (16 flights), onGround alone would cover those
+(each is disarmed or landed) but misfires through every THROW carry, and B is no better
+than A (worse in 3 carries). Keep A. Plot: `plots/aglkf_floor_hold_onground_throw.png`
+(throw-log19, the first carry, `tools/floor_hold_onground/plot_throw.py 3`).
+
+Follow-up, asked whether THROW should stop reporting landed while carried (rmackay9
+declined that on #35105 on 2026-11-16, for land_complete/EKF consistency). Same build,
+`b32ef70b3c`, landed flag off (as flown) against on (from the events), 30 thrown
+carries (`landed_onoff.py`): flow samples rejected in the 3 s after release, median 84 %
+off and 35 % on; flow innovation RMS 2.07 against 1.43 rad/s. The stop/restart aiding
+cycles around the throws in 5 of the 9 logs occur only with the flag off, and with it
+off the EKF often reports the vehicle nearly still at release (0.1 to 2.7 m/s, against
+2.5 to 6.3 with it on) and rejects all flow after. The in-flight yaw alignment completes
+only with it off (5 logs), the trade rmackay9 accepted. No GPS in these logs, so this is
+agreement with the flow sensor, not truth; the two builds' positions part by tens of
+metres within 5 s. Conclusion: #35105's landed carry is the better behaviour for these
+throws; no case to change THROW. It does not affect the floor hold question, which
+compared A and R with the flag on in both.
+
 ## 2026-11-24 (evening): round 21's should-fix answered, pushed `b32ef70b3c`
 
 `b32ef70b3c` (autotest) runs the two floor subtests armed in STABILIZE
