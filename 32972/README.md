@@ -829,3 +829,21 @@ there.
 
 Its six commits replayed on #32768's `91a980f6e8`; only the test
 registration list conflicted. Its four tests pass.
+
+## 2026-11-24: restacked on #32768's EKF2 offset fix, pushed `53490d488b`
+
+Round 18's EKF2 `BARO_ALT_OFFSET` minor is fixed in #32768 (`37f9a16628`,
+`f4b84d7dd7`). This PR's six commits cherry-picked onto it, `git range-diff`
+all `=`, tree equal to the old head plus #32768's change; SITL copter builds.
+Pushed 2026-11-24 with a reply (issuecomment-7138362791).
+
+## 2026-11-25: rebased onto master, pushed `467dfa2fff`
+
+Force-pushed `53490d488b...467dfa2fff` on `pr-baro-gnd-effect`, onto master
+after the 11-24 and 11-25 merges. Restacked on #32768's new head.
+`d05e81de11` (skip the AID_NONE height reset in ground effect) conflicted
+with #35347 and was resolved keeping both: the origin height correction is
+added to `meaHgtAtTakeOff` first, then the reset is skipped in ground
+effect as before. Its three tests,
+`HeightKeptOnAidingLossWithBaroAltOffset` and master's two AID_NONE tests
+pass at the new head (SITL, tier 2).
