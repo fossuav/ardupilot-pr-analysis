@@ -79,3 +79,10 @@ Pushed `fbf9c380f9` -> `4293e19e9f` (force, 3 commits to 2, same tree; backup `p
 ## 2026-11-02: AP-Review at the squashed head
 
 ACCEPT at `4293e19e9f` (2026-10-31 21:31), up from COMMENT. One minor, the pre-existing early-`continue` flag lag in rate_thread.cpp.
+
+## 2026-11-25: rebased onto master, pushed `16f83c1f3b`
+
+Force-pushed `4293e19e9f...16f83c1f3b` on `pr-fast-rate-tcal`, onto master
+after the 11-24 and 11-25 merges. The test commit's registration conflicted
+with master's new tests and was resolved additively; `git range-diff` shows
+no other change. `RateThreadTempCal` passes at the new head (SITL, tier 2).
