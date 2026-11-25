@@ -61,3 +61,11 @@ Pushed 2026-11-02 (afternoon) to andyp1per with a lease: `c66dba662b` -> `d464e2
 ## 2026-11-02 (night)
 
 AP-Review round 2 (COMMENT at `d464e2156a`): fold the Sim on Hardware fix into its target. Folded into "let the SITL gyro rate follow INS_GYRO_RATE" (SITL-only code, so neither commit can fly): `sq/34642-1102c` head `49312747a0`, tree identical; backup `pre-squash/34642-1102`. Pushed 2026-11-02 at `49312747a0`.
+
+## 2026-11-25: rebased onto master, pushed `b7da352cc3`
+
+Force-pushed `49312747a0...b7da352cc3` on `pr-sitl-gyro-rate`, onto master
+after the 11-24 and 11-25 merges. Master's new tests sat beside this PR's
+registration, so only the test commit's context moved; `git range-diff`
+shows no other change. `SITLGyroRate` passes at the new head (SITL, tier
+2).
