@@ -9,7 +9,9 @@ no logs committed.
 ## Status (one line)
 
 Upstream behaviour, characterised on two real flights; both replay exactly
-on the beta. Fix and autotest open as #34941 (head `247d0fb74e`),
+on the beta. Fix and autotest open as #34941 (head `9e0dbfd526` since
+2026-11-25; tridge approved, rmackay9 to merge once the autotest fixes
+of the last section land),
 replayed on both flights (see the last two sections). It is the
 root of the SFD-O4 Loiter that did not stop (log61), with the terrain
 lookup in `../33585/` deciding which way the velocity was wrong when the
@@ -597,3 +599,36 @@ AP-Review round 7 at `08c0b2ef0b`, ACCEPT: the added and removed lines
 are unchanged and the new tests pass on its box. The two minors (the
 flying gate applied on read, the uncapped in-flight tilt credit) need
 no change, as before.
+
+## 2026-11-25: peterbarker's test review answered, pushed `9e0dbfd526`
+
+tridge approved on 2026-11-25 and peterbarker requested changes; rmackay9
+will merge once the autotest fixes are in (dev call). Peter's four
+comments were all on the tests' own cleanup: no context_push/pop or
+try/finally (the harness already cleans up after a test), and end
+OpticalFlowTiltNoTimeout with a force disarm instead of levelling and
+flying home.
+
+All three tests lost their context pairs and try/finally blocks;
+OpticalFlowTiltNoTimeout and OpticalFlowTiltTurnRecovery now end with a
+force disarm and reboot_sitl(), since Copter fails a passing test left
+more than 2 m from its start. Removing NoTimeout's nested context also
+removed the fresh STATUSTEXT collection its banked subtest relied on: that
+line is now context_clear_collection(). Left as context_collect() it does
+nothing, and the wait would match the level subtest's earlier timeout.
+
+SITL at `f679b3541e` (tree identical to `9e0dbfd526`), 2026-11-25, tier 2.
+The tests were rewritten, so these are new measurements, not corrections:
+NoTimeout's banked lane timed out 5.2 s after its flow stopped, roll at
+least 51.1 deg; TurnRecovery 0.07 and 0.34 m/s off 2 s after levelling,
+no timeouts; NotFlying timed out 5.00 s after relative aiding started,
+disarmed and armed (armed 4.91 s before it). The assertions are unchanged,
+and the tests were not re-run against master.
+
+Quick /pr-review at `f679b3541e`: APPROVE, the Codex cold read found
+nothing, and its audit closed all four comments. Folded into the test
+commit (a test change only) and force-pushed `08c0b2ef0b...9e0dbfd526`
+2026-11-25; the EKF commit `26488e62a7` is unchanged. aap `199bc5b` adds
+the rule to the autotest playbook. Replies posted 2026-11-25 under each
+of Peter's four comments (review comments 4691903371, 4691903639,
+4691903856, 4691904094).
