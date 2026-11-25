@@ -211,16 +211,25 @@ Leaving a stale number beside new code is the same error as editing one.
   net names, document numbers and file paths; grep the write-up for them
   before it is committed. The 2026-10-28 round-29 entry for #32995 carried
   a designator from one until the next commit.
-- Nothing here can be committed or pushed from a Claude session. The
-  ArduPilot checkout's `pre_bash_check.py` wants a commit prefix starting
-  with a letter, so it rejects `32995:`, and it cannot authorise a push for
-  this repo: `grant_push.py` checks the branch against the repo it runs in,
+- A Claude session can commit here but not push. The ArduPilot checkout's
+  `pre_bash_check.py` wants a commit prefix starting with a letter, so it
+  rejects `32995:` but passes `prs:`, the prefix the log uses (`e77b2f6`
+  went in that way on 2026-11-25). It cannot authorise a push for this
+  repo: `grant_push.py` checks the branch against the repo it runs in,
   while `pre_bash_check.py` resolves the token in the ArduPilot checkout,
   so no grant satisfies both (found 2026-09-21; the offered fix, not
   taken, is to tell `grant_push.py` which repo to check and to resolve the
   git dir from the command's working directory). The `!` prefix counts as
-  a Claude session too. Stage the change and leave the commit and push to
+  a Claude session too. Commit when asked, as below, and leave the push to
   Andy.
+- One commit per PR, with its number in the subject: `prs: 34941, <what
+  changed>`, `flights: 32995, <what>` for a flight record, or the
+  directory name for a PR not yet opened. A session that touched several
+  PRs makes one commit for each, so `git log -- <number>/` reads as that
+  PR's history; `prs: the second round of 11-23 pushes on ten PRs` is the
+  shape to avoid. A file outside the PR directories goes in a commit of its
+  own (`conventions:` for this file) unless its change is about one PR
+  only, and then it goes in with that PR.
 - Record the branch head commit and the date any set of numbers was taken
   at. A number without its commit cannot be reproduced.
 - A commit that exists on two branches (the `cb5026417f` / `361da5d064`
