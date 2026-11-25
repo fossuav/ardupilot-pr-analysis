@@ -80,6 +80,9 @@ ground as a measured height, and look at the 5 cm clamp's gate.
 - `delTimeOF` is zeroed before the Z body rate reads it, so Z is the latest
   IMU sample, not a window average: pre-existing, left out.
 
+  Superseded 2026-11-24 by two fleet Replays (below): Z is now averaged over
+  the same samples as the flow, from the newest IMU sample at each arrival.
+
 ## On the SFD beta
 
 #33484 carries a per-sample quality that master lacks; the beta needs
@@ -91,3 +94,38 @@ REFRESH_NOTES; the beta port `1c1d7fa154` did it).
 AP-Review asks for the Replay test to run at `SIM_FLOW_RATE` 100. Not
 changed. Its other point, the unaveraged Z body rate, is the pre-existing
 behaviour recorded under "Decided".
+
+## 2026-11-24: Z rate averaged, Replay check at 100 Hz
+
+Answering AP-Review round 1 at `cd6a948cc5`. Local branch
+`sq/35308-1124m`, pushed 2026-11-24 with the description edits and a reply: the PR's two commits restacked on master
+`68b1a73ef2` (patch-identical, `git range-diff` all `=`; the old base
+predated #35306, which fleet Replay needs), then `1361a2f678` (Z rate) and
+`ed842aef96` (Replay test at `SIM_FLOW_RATE` 100).
+
+The review's literal fix, reading `delAngBodyOF.z / delTimeOF` before the
+gyro bias update resets it, was tried first and is worse. `delAngBodyOF` is
+summed from `imuDataDelayed` (`AP_NavEKF3_core.cpp:801`), so its window sits
+at the fusion time horizon, behind the flow by the buffer delay; the newest
+IMU sample master always used in practice is closer. Fleet Replay, 423
+files, before = the restacked head:
+
+| Z rate | logs changed | GPS p95 summed over cores | flow more than 1 m/s out |
+|---|---|---|---|
+| `delAngBodyOF` read before the reset | 226 | +10.35 m/s (14 lower, 13 higher) | +394 s (10079 -> 10473) |
+| newest IMU averaged over the samples (kept) | 225 | -0.84 m/s (9 lower, 10 higher, 214 same) | -87 s (10025 -> 9938) |
+
+The changed logs are the faster sensors (several samples per measurement);
+10 Hz logs replay identically. The large moves either way are in logs whose
+replay already runs away (hundreds of m/s against GPS). Z reaches the fusion
+only through `bodyRadXYZ % posOffsetBody` in `FuseOptFlow()`.
+
+SITL at the new head: `EK3_FlowSamplesAveraged`, `OpticalFlow` and `Replay`
+(flow bit at 100 Hz) pass.
+
+Quick review, Codex cold read and audit: both round-1 findings closed. The
+cold read's other points are pre-existing and not changed: the IMU Z rate is
+not corrected for the EKF's gyro bias, and is taken at arrival while the
+flow is back-dated by `EK3_FLOW_DELAY` - both as master's newest-sample path
+was. It also notes the 100 Hz Replay check runs with zero flow offsets, so
+it covers the averaging but not Z; Z's evidence is the fleet Replay.
