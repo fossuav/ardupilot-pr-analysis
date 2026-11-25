@@ -8,7 +8,10 @@ Pushed 2026-11-24: `pr-agl-kf-zbias` `581ae5f429...79e11816d0` (forced, rebased 
 rmackay9 (review 2026-11-25, changes requested, "I'd like to test this a bit more"):
 OptFlowFusion.cpp:886 "may need to be adjusted now that the vehicle code is telling
 the EKF when it is landed", core.cpp:296 "I think we don't need this aglKfHeldOnFloor
-any more. I think we should be able to simply use onGround". Draft reply not posted.
+any more. I think we should be able to simply use onGround". Reply posted
+2026-11-25 with the plot, after the archive push that serves it:
+https://github.com/ArduPilot/ardupilot/pull/33507#discussion_r4694585190,
+and a pointer to it in the core.cpp thread (#discussion_r4694586405).
 
 Since #35105, `onGround` while armed is Copter's `land_complete` (`detectFlight()`:
 `motorsArmed && !dal.get_vehicle_landed()`); no other vehicle sets the flag. Copter holds
