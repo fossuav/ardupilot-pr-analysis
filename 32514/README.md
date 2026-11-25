@@ -673,3 +673,11 @@ The audit of the 11-12 and 11-13 flights: no EKF failsafe came, so the
 spool-down hold (`a18542c8fb`) did not run; the helper shared with
 #35146 stays as it is, and the fold above is optional, both commits
 unflown.
+
+## 2026-11-25: rebased onto master, pushed `b76fca4d78`
+
+Force-pushed `ba31a35a3f...b76fca4d78` on `ekf-check-source-reset`, onto
+master after the 11-24 and 11-25 merges. Nine commits; the test commit's
+registration conflicted with master's new tests and was resolved
+additively, `git range-diff` shows no other change. `EKFSourceSetFailsafe`
+passes at the new head (SITL, tier 2).
