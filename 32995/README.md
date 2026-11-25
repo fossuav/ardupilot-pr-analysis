@@ -2,6 +2,15 @@
 
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 
+**2026-11-25:** ArduPlane on RPI_UAVFC, see
+[bench-2026-11-25-plane.md](bench-2026-11-25-plane.md). Ten local
+commits on PR head `5e97be2505`, not pushed: Copter's 200 Hz loop rate
+moved from `defaults.parm` to a hwdef define (`88704a865c`..`1411b17f5b`),
+the `[only <program>]` registry marker limited to the program's own code
+(`06c2529e91`, `7b5393edc0`, `20e3226232`, `04361430a2`), and Plane's
+per-loop path, navigation path, EKF3 and AHRS in SRAM (`29e77d95b8`,
+`373c878559`, `f4c65bc4f1`). Andy's flight board runs `f4c65bc4`.
+
 **2026-11-23, later:** the notch update without libm is on branch
 `notch-fast-sincos`, not on the PR and not yet flown. See "2026-11-23: the
 notch update without libm" below.
@@ -298,6 +307,15 @@ commits used to make.
   17.3 KB, Plane's copies only) take FBWA and AUTO from 52% to 46%.
 
 ## Status (one line)
+
+2026-11-25: Plane on RPI_UAVFC has no rate thread, so core1 idles at
+15-18% and core0 carries everything. Armed in FBWA at 200 Hz with EKF3,
+core0 went from 57.6% to 45.8% busy with Plane's per-loop path, its
+navigation path and its EKF3 and AHRS in SRAM (36.3 KB of functions,
+39.8 KB of SRAM with veneers, `[only arduplane]`, Copter
+byte-identical). At 50 Hz, Plane's own default and now its default on
+these boards, core0 was 35.5% busy before any of them. Ten local
+commits, not pushed; PR head unchanged at `5e97be2505`.
 
 2026-11-23, latest: the notch change has left this PR for its own, #35358,
 now at `bd5a581d84` from `andyp1per:pr-notch-sinf-cosf`, as

@@ -28,6 +28,17 @@ with EKF3 leaves core0 35.5% busy and the scheduler at 16%, with no long
 loops. About 32% of core0 is busy even disarmed at 50 Hz: threads,
 interrupts and kernel outside the main loop's tasks.
 
+**Where the day ended.** Three placement rounds, each an A B B A test
+on the flight board at 200 Hz with EKF3 and committed on its own:
+Plane's per-loop path (14.4 KB) took armed FBWA from 57.6% to 51.3% of
+core0, its navigation path (4.6 KB) about half a point more in CRUISE
+and LOITER, and its EKF3 and AHRS (17.3 KB) 52.0% to 45.8% in FBWA and
+52.2% to 45.9% in AUTO. Chained across rounds, which were separate
+boots, FBWA went from about 57.6% to 45.8% and free memory from 174 KB
+to 134.5 KB. All of it is `[only arduplane]`; RPI_UAVFC Copter is
+byte-identical. QuadPlane's multirotor code stays in SRAM in Plane builds
+by Andy's decision.
+
 **Both rates are well above Plane's own default.** Plane's compiled
 `SCHED_LOOP_RATE` default is 50 Hz (`AP_Scheduler.cpp` 43-47; QuadPlane
 raises its own default to 300, `ArduPlane/Parameters.cpp` 1354). The 200
@@ -503,7 +514,15 @@ committed head with Plane's per-loop path in SRAM.
 
 After the EKF3 and AHRS round the same restore and comparison hold, with
 `STAT_BOOTCNT` 35; the board runs A of that A/B, the code of
-`373c878559`, identifying as `29e77d95`. OpenOCD shut down with `C_DEBUGEN` cleared on both
+`373c878559`, identifying as `29e77d95`.
+
+Then, at Andy's request, `f4c65bc4f1` was built and flashed over COM32
+(the uploader verified it). The board reports `ArduPlane V4.8.0-dev
+(f4c65bc4)`, its parameters match the start of the session as above
+(`STAT_BOOTCNT` 36), MEMINFO 138,152 B free and scheduler load 16-18%
+disarmed at 200 Hz. It booted into RTL: Andy's transmitter was on by
+then, and channel 8 (`FLTMODE_CH`) at 987 us selects `FLTMODE1`, which
+is RTL on this airframe. OpenOCD shut down with `C_DEBUGEN` cleared on both
 cores, the COM32 bridge stopped, the board disarmed.
 
 ## Reproduce
@@ -524,6 +543,9 @@ python3 plane_profile/sweep.py <ELF> <map> <ardupilot checkout> sweep.json <arm_
 python3 plane_profile/pick_entries.py sweep.json <copter ELF> <ardupilot checkout>
 python3 plane_profile/ab.py ABBA <dir with A/ and B/ firmware> <out>   # with GPS1_TYPE 14
 python3 plane_profile/abana.py <dir with A/ and B/> <out> <ardupilot checkout>
+# registry entries a Plane build does not need; shared-library candidates
+python3 plane_profile/copter_only.py <plane ELF> <map> <ardupilot checkout> out.json <ELF>:<map>:<samples glob>...
+python3 plane_profile/lib_pick.py <plane ELF> <map> <ardupilot checkout> AP_NavEKF3,AP_NavEKF,AP_AHRS,AP_DAL <ELF>:<map>:<samples glob>...
 ```
 
 `ab.py` flashes the flight board, so it is for a disarmed bench only; it
