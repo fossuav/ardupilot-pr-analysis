@@ -688,3 +688,11 @@ estimate. `LOIT_DRAG_COEF` 0.01 on logs 15-16, 0.2 on logs 18 and 22
   ran 0.15-0.40 m past the target and slid back 0.21-0.32 m: the
   signature of a coefficient below the airframe's drag. No hands-off stop
   was flown at 0.2.
+
+## 2026-11-25: rebased onto master, pushed `532c337a89`
+
+Force-pushed `eeb29ea447...532c337a89` on `pr-loiter-brake-drag`, onto
+master after the 11-24 and 11-25 merges. The test commit's registration
+conflicted with master's new tests and was resolved additively; `git range-
+diff` shows no other change. `LoiterAirframeDragFeedForward` passes at the
+new head (SITL, tier 2).
