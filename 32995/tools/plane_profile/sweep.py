@@ -24,7 +24,11 @@ sample_files = sys.argv[5:]
 PLANE_LIBS = {"ArduPlane", "APM_Control", "AP_TECS", "AP_L1_Control", "AP_Landing", "AP_Soaring"}
 ROOTS = ["Plane::ahrs_update", "Plane::update_control_mode", "Plane::stabilize", "Plane::set_servos",
          "Plane::read_radio", "Plane::update_speed_height", "Plane::check_short_rc_failsafe",
-         "Plane::Log_Write_FullRate", "Plane::update_throttle_hover"]
+         "Plane::Log_Write_FullRate", "Plane::update_throttle_hover",
+         # the navigation tasks
+         "Plane::navigate", "Plane::update_alt", "Plane::calc_airspeed_errors", "Plane::adjust_altitude_target",
+         "Plane::update_GPS_50Hz", "Plane::update_GPS_10Hz", "Plane::ekf_check", "Plane::update_logging10",
+         "Plane::update_logging25", "Plane::update_is_flying_5Hz"]
 
 # basename -> library, as libgroup.py does it
 where = collections.defaultdict(set)

@@ -307,6 +307,70 @@ boots do not overlap on any row.
   DEVELOPMENT.md rule says a core0 caller of Scratch Y does worse than
   main SRAM.
 
+## Navigation modes
+
+At Andy's request, the same sweep for FBWB, CRUISE, LOITER and AUTO, on
+`29e77d95b8` (the per-loop path already in SRAM). Committed as
+`373c878559`; not pushed.
+
+Safety on the bench. These are auto-throttle modes, and the flight
+board has `TKOFF_THR_MINACC` and `TKOFF_THR_MINSPD` at 0, with which an
+AUTO takeoff check passes with no launch. For these runs `SERVO1_MAX`
+was set to `SERVO1_MIN` (1000): `SRV_Channel::pwm_from_range()` returns
+the minimum when the maximum is not above it, so every throttle demand
+went out as 1000 us, DShot stop, with the throttle function still
+assigned and TECS on its normal path. Plane writes the throttle PWM
+directly only as zero. `session.py` also force-disarmed if
+`SERVO_OUTPUT_RAW` ever showed servo 1 above 1000; it never did. AUTO
+flew a mission of two waypoints 500-600 m from home at 100 m with no
+takeoff item, uploaded for the test and cleared afterwards.
+
+On `29e77d95b8`, scheduler load was 29.4% in FBWB and CRUISE, 30.0% in
+LOITER and 31.9% in AUTO, against 28.7% in FBWA. The navigation code
+itself is cheap at these rates: `update_speed_height` (TECS) about
+50 us at 50 Hz, 0.26% of core0, and `navigate` 31-134 us at 10 Hz, at
+most 0.13%. Plane-only code left in flash was 1.64% of core0 across the
+four modes. `ahrs_update` is 110 us dearer per loop in AUTO than in
+FBWB; the extra is spread over DCM, EKF3 control, the compass, the GSF,
+terrain grid lookups and L1, no source file above 0.2% of core0, so it
+is not a placement target.
+
+Selection as before, with lower thresholds because the remainder is
+thin: 0.01% of core0, or 0.005% at 0.3% per KB. 51 functions, 4.6 KB,
+covering 0.97% of core0: TECS `_update_speed` and `update_50hz`, the L1
+and mode updates, the navigation roll, pitch and throttle and the
+controller getters. 0.03% would have taken 9 functions (2.3 KB, 0.40%)
+and 0.015% 28 (3.9 KB, 0.77%).
+
+`--verify` found one entry still in flash: GCC had folded
+`ModeAuto::does_auto_throttle` into `ModeAuto::does_auto_navigation` as
+an alias, so the first name has no section of its own, the generator's
+pick matched nothing, and the strict check, which tests that the symbol
+exists, did not notice. The registry names the section's owner instead.
+Every registered function is then in SRAM. RPI_UAVFC copter with
+`--consistent-builds` is still `0a224befa8e2` (taken before that
+one-line fix, which changes only an `[only arduplane]` entry).
+
+A/B, A `29e77d95b8`, B the same plus the 51 entries, boots A B B A,
+200 Hz, EKF3 and the fake GPS, armed at zero throttle as above:
+
+| | CRUISE A / B | LOITER A / B | AUTO A / B |
+|---|---|---|---|
+| core0 busy | 52.5 / 52.0% | 52.5 / 52.0% | 51.5 / 51.6% |
+| Plane-only code, of core0 | 2.59 / 1.69% | 2.63 / 1.66% | 2.69 / 1.71% |
+| scheduler load | 30.0 / 29.4% | 29.9 / 29.3% | 30.0 / 29.6% |
+| FAST tasks per loop | 1067 / 1029 us | 1062 / 1026 us | 1062 / 1021 us |
+| `update_speed_height` | 50 / 25 us | 52 / 24 us | 53 / 25 us |
+| `update_control_mode` | 28 / 16 us | 34 / 17 us | 33 / 15 us |
+| MEMINFO free | 157,764 / 152,836 B | 157,756 / 152,828 B | 157,756 / 152,828 B |
+
+Core0 busy and scheduler load do not overlap between A and B in CRUISE
+and LOITER; in AUTO, core0 busy overlaps and the scheduler load ranges
+touch. `navigate` in AUTO stayed at 124 us: the mission and L1 waypoint
+code was not hot enough to be picked. Against the per-loop path's 6.4
+points of core0 for 16.6 KB, this set buys about half a point for
+4.9 KB.
+
 ## Board state afterwards
 
 `SCHED_LOOP_RATE` 200 and `GPS1_TYPE` 1 restored and read back, and the
@@ -318,7 +382,14 @@ the next real fix overwrites it. The board now runs A of the placement
 A/B, `1411b17f5b`, the committed branch head, rather than the
 `5e97be25` it had at the start; `STAT_BOOTCNT` went from 13 to 24. Bench
 logs `00000001.BIN` to `00000005.BIN`, and one per A/B boot after them,
-are on the SD card. OpenOCD shut down with `C_DEBUGEN` cleared on both
+are on the SD card.
+
+After the navigation round: `SERVO1_MAX` 2000 and `GPS1_TYPE` 1
+restored and the test mission cleared, which also took `MIS_TOTAL` back
+to the 0 it had at the start. The full parameter list then matches the
+start but for `BARO1_GND_PRESS`, the boot gyro offsets and the `STAT_*`
+counters (`STAT_BOOTCNT` 30). The board runs `29e77d95b8`, the
+committed head with Plane's per-loop path in SRAM. OpenOCD shut down with `C_DEBUGEN` cleared on both
 cores, the COM32 bridge stopped, the board disarmed.
 
 ## Reproduce
@@ -342,7 +413,14 @@ python3 plane_profile/abana.py <dir with A/ and B/> <out> <ardupilot checkout>
 ```
 
 `ab.py` flashes the flight board, so it is for a disarmed bench only; it
-stops OpenOCD and the bridge before every upload.
+stops OpenOCD and the bridge before every upload. `CONDS` picks its
+conditions and `abana.py`'s; `MIN_PCT`, `MIN_DENSE_PCT` and
+`DENSE_PER_KB` set `pick_entries.py`'s thresholds.
+
+For the navigation modes, first set `SERVO1_MAX` to `SERVO1_MIN` and
+`GPS1_TYPE` 14, then `plane_profile/mission.py upload <lat> <lon>` at the
+fake GPS position; afterwards `mission.py clear` and restore both
+parameters.
 
 `session.py` force-arms, overrides channels 1-4 from system id 255 and
 caps throttle at 1180. With no radio, a lost override stream leads to

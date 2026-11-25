@@ -29,6 +29,8 @@ MAV = mavutil.mavlink
 FORCE = 21196
 THR_MIN = 1100
 THR_CAP = 1180          # 10% of the 1100-1900 range: the most this script will ever send
+# armed with the throttle output (servo 1) above this PWM: force-disarm and stop
+SERVO1_LIMIT = int(os.environ.get("SERVO1_LIMIT", "1000"))
 TOOLS = os.path.dirname(os.path.abspath(__file__))
 PROFILE = os.path.join(TOOLS, "..", "scripting_profile")
 IGN = 65535
@@ -96,10 +98,20 @@ def pump(secs, rec=None):
     """Read messages for secs, keeping the armed state and mode current."""
     t_end = time.time() + secs
     while time.time() < t_end:
-        msg = m.recv_match(type=["HEARTBEAT", "SYS_STATUS", "MEMINFO", "STATUSTEXT"], blocking=True, timeout=0.5)
+        msg = m.recv_match(type=["HEARTBEAT", "SYS_STATUS", "MEMINFO", "STATUSTEXT", "SERVO_OUTPUT_RAW"],
+                           blocking=True, timeout=0.5)
         if msg is None:
             continue
         t = msg.get_type()
+        if t == "SERVO_OUTPUT_RAW":
+            if state["armed"] and msg.servo1_raw > SERVO1_LIMIT:
+                print(f"  THROTTLE OUTPUT {msg.servo1_raw} above {SERVO1_LIMIT}: force-disarming", flush=True)
+                for _ in range(5):
+                    m.mav.command_long_send(m.target_system, m.target_component,
+                                            MAV.MAV_CMD_COMPONENT_ARM_DISARM, 0, 0, FORCE, 0, 0, 0, 0, 0)
+                    time.sleep(0.05)
+                raise SystemExit("throttle watchdog")
+            continue
         if t == "HEARTBEAT":
             if msg.get_srcSystem() == m.target_system and msg.type != MAV.MAV_TYPE_GCS:
                 state["armed"] = bool(msg.base_mode & MAV.MAV_MODE_FLAG_SAFETY_ARMED)
@@ -157,6 +169,7 @@ def ftp_get(remote, local):
 
 for msg_id in (MAV.MAVLINK_MSG_ID_SYS_STATUS, MAV.MAVLINK_MSG_ID_MEMINFO):
     command(MAV.MAV_CMD_SET_MESSAGE_INTERVAL, msg_id, 500000)
+command(MAV.MAV_CMD_SET_MESSAGE_INTERVAL, MAV.MAVLINK_MSG_ID_SERVO_OUTPUT_RAW, 100000)
 
 ovr = threading.Thread(target=override_loop, daemon=True)
 ovr.start()

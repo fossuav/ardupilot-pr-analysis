@@ -292,7 +292,9 @@ commits used to make.
   the board's `defaults.parm` had set 200 for every vehicle, and
   `88704a865c`..`1411b17f5b` move Copter's 200 into a hwdef define
   instead. Plane's per-loop path in SRAM (`06c2529e91`..`29e77d95b8`,
-  14.4 KB) takes armed FBWA at 200 Hz from 57.6% to 51.3% of core0.
+  14.4 KB) takes armed FBWA at 200 Hz from 57.6% to 51.3% of core0, and
+  its navigation path (`373c878559`, 4.6 KB) about half a point more in
+  CRUISE and LOITER.
 
 ## Status (one line)
 

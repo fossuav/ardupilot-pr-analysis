@@ -111,7 +111,7 @@ def main():
         log("cores running, flash matches")
         env = dict(os.environ, FAKE_GPS="1", EKF_WAIT="120")
         s = subprocess.run(["timeout", "600", PY, os.path.join(TOOLS, "session.py"), rdir,
-                            "arm_man:armed:0:30000", "arm_fbwa:armed:5:30000"],
+                            *os.environ.get("CONDS", "arm_man:armed:0:30000 arm_fbwa:armed:5:30000").split()],
                            env=env, stdout=open(f"{rdir}/session.log", "w"), stderr=subprocess.STDOUT)
         release_openocd()
         tail = open(f"{rdir}/session.log").read().splitlines()

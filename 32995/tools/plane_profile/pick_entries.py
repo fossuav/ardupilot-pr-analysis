@@ -8,13 +8,14 @@ the registry matches) that also exists in the Copter ELF, so Copter cannot move.
 Prints registry lines with the source file of each function.
 """
 import json
+import os
 import re
 import subprocess
 import sys
 
-MIN_PCT = 0.03          # mean share of core0 samples
-MIN_DENSE_PCT = 0.015
-DENSE_PER_KB = 1.0
+MIN_PCT = float(os.environ.get("MIN_PCT", "0.03"))          # mean share of core0 samples
+MIN_DENSE_PCT = float(os.environ.get("MIN_DENSE_PCT", "0.015"))
+DENSE_PER_KB = float(os.environ.get("DENSE_PER_KB", "1.0"))
 
 sweep, copter_elf, repo = sys.argv[1:4]
 d = json.load(open(sweep))

@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import attrib  # noqa: E402
 
 abdir, rundir, repo = sys.argv[1:4]
+CONDS = os.environ.get("CONDS", "arm_man arm_fbwa").split()
 PLANE_LIBS = {"ArduPlane", "APM_Control", "AP_TECS", "AP_L1_Control", "AP_Landing", "AP_Soaring"}
 
 where = collections.defaultdict(set)
@@ -89,7 +90,7 @@ rows = []
 for rdir in sorted(glob.glob(f"{rundir}/run*")):
     run = os.path.basename(rdir)
     letter = run[-1]
-    for cond in ("arm_man", "arm_fbwa"):
+    for cond in CONDS:
         snap = f"{rdir}/{cond}_snap.json"
         if not os.path.exists(snap):
             continue
@@ -103,6 +104,7 @@ for rdir in sorted(glob.glob(f"{rundir}/run*")):
         rows.append(dict(run=run, letter=letter, cond=cond, load=j["load_mean"], c1=c1, hit=hit, fast=fast,
                          stab=t["Plane::stabilize*"][0], servos=t["Plane::set_servos*"][0],
                          ahrs=t["Plane::ahrs_update*"][0], ctl=t["Plane::update_control_mode*"][0],
+                         nav=t.get("Plane::navigate", (0, 0))[0], tecs=t.get("Plane::update_speed_height", (0, 0))[0],
                          free=j["free_min"], **p))
 
 hdr = (f"{'run':8s} {'cond':8s} {'c0 busy':>7s} {'xip%':>5s} {'plane':>6s} {'pl xip':>6s} {'veneer':>6s} "
@@ -113,8 +115,8 @@ for r in rows:
           f"{r['veneer']:6.2f} {r['c1']:5.1f} {r['load']:5.1f} {r['hit']:7.2f} {r['fast']:7d} {r['stab']:5d} "
           f"{r['servos']:6d} {r['ahrs']:5d} {r['ctl']:7d} {r['free']:7d}")
 print()
-for cond in ("arm_man", "arm_fbwa"):
-    for k in ("busy", "plane", "load", "hit", "fast", "stab", "servos", "ahrs", "ctl", "free"):
+for cond in CONDS:
+    for k in ("busy", "plane", "load", "hit", "fast", "stab", "servos", "ahrs", "ctl", "nav", "tecs", "free"):
         a = [r[k] for r in rows if r["cond"] == cond and r["letter"] == "A"]
         b = [r[k] for r in rows if r["cond"] == cond and r["letter"] == "B"]
         if a and b:
