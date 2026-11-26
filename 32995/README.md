@@ -2,6 +2,19 @@
 
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 
+**2026-11-26:** Rover on the motorless RPI_UAVFC testbed, see
+[bench-2026-11-26-rover.md](bench-2026-11-26-rover.md). At Rover's 50 Hz
+default core0 is 33-35% busy armed; at 400 Hz 74-90%, mostly XIP
+fetches. `3715cf8ccd` places Rover's hot code in SRAM as `[ardurover]`
+(255 functions, 29.9 KB; the 58 Plane EKF3 and AHRS entries Rover runs
+become `[arduplane,ardurover]`): armed core0 at 400 Hz 74-89% to
+50-64%, at 50 Hz 33-35% to 28-30%, `ahrs_update` down a third to a
+half, 33.6 KB less free memory; Copter and Plane byte-identical. One
+local commit on `b9db33af08`, not pushed. Rover's GCS tasks at the
+board's 25 Hz saved under 1.5 points and were left out. The testbed's
+Copter build and parameters are backed up locally, and it now runs
+Rover `3715cf8c`.
+
 **2026-11-25:** ArduPlane on RPI_UAVFC, see
 [bench-2026-11-25-plane.md](bench-2026-11-25-plane.md). Pushed as PR
 head `f4c65bc4f1`, ten commits on `5e97be2505`. Then squashed, reordered
@@ -1255,6 +1268,10 @@ rest is not:
   (issuecomment-5671163072). Andy's hardware test of the change set is
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
+
+2026-11-26, the Rover commit `3715cf8ccd`: not pushed, not reviewed by
+`/pr-review`, and Rover has not driven on it. The PR description says
+nothing of Rover either.
 
 2026-11-25, the Plane commits (`2e9128a39f`..`815f847a85`):
 
