@@ -2,6 +2,28 @@
 
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 
+**2026-11-26, later:** RPI_UAVFC's servo outputs, see
+[bench-2026-11-26-buzzer-outputs.md](bench-2026-11-26-buzzer-outputs.md).
+Pushed as PR head `6ce2608538`, 111 commits: the Rover and registry
+commits below, then twelve from the alpha branch. The boards' shared
+settings move into `rp2350_halconf.h`, `rp2350_mcuconf.h` and `PICO2.py`
+(`4c18fd279a`..`9d5f193fc3`, byte-identical for Copter, Plane and the
+bootloaders on all three boards). RP2350 gets alternative configs with
+PWM outputs (`6eb2b13fb8`..`3c9c76cbef`), and an output on the buzzer's
+slice takes it, silencing the buzzer (`dff53c7ec7`). RPI_UAVFC's Spare IO
+pads GP1-GP3 become outputs 5-7 and the LED connector output 8
+(`ac0fdc18f7`), and `BRD_ALT_CONFIG` 1 makes the ESC TEL and DVTX SBUS
+pins outputs 9 and 10 (`d96c167e45`). On the bench every output's pulse
+read back over SWD, and the buzzer stayed at 4 kHz with a strip on output
+8 and fell silent with output 8 as a servo; a script's strip left it at
+2.66 kHz until `dff53c7ec7` restarted the slice on the alarm's clock.
+MatekH743 changes only in `WITH_SEMAPHORE` line numbers and the name of
+one jump table. Every new commit
+builds Copter for the three boards. Not flown, and `/pr-review` has not
+run on the 18 new commits. The alpha2 branch is rebuilt on this head as
+`f785258777`; its old head is local branch
+`pre-rebase/ArduPilot-4.8-rp2350-alpha2-20261126`.
+
 **2026-11-26:** Rover on the motorless RPI_UAVFC testbed, see
 [bench-2026-11-26-rover.md](bench-2026-11-26-rover.md). At Rover's 50 Hz
 default core0 is 33-35% busy armed; at 400 Hz 74-90%, mostly XIP
@@ -10,7 +32,7 @@ fetches. `3715cf8ccd` places Rover's hot code in SRAM as `[ardurover]`
 become `[arduplane,ardurover]`): armed core0 at 400 Hz 74-89% to
 50-64%, at 50 Hz 33-35% to 28-30%, `ahrs_update` down a third to a
 half, 33.6 KB less free memory; Copter and Plane byte-identical. One
-local commit on `b9db33af08`, not pushed. Rover's GCS tasks at the
+local commit on `b9db33af08`, pushed later the same day in `6ce2608538`. Rover's GCS tasks at the
 board's 25 Hz saved under 1.5 points and were left out. The registry
 scripts now carry the program markers (`af935a65c2`): the repair
 script checks marked entries for `--vehicle` and keeps their markers,
@@ -333,6 +355,12 @@ commits used to make.
   pins.
 
 ## Status (one line)
+
+2026-11-26: PR head `6ce2608538`, 111 commits on master `321896137f`:
+Rover's hot code in SRAM and the registry tooling, then RPI_UAVFC's servo
+outputs 5-10 with RP2350 alternative configs and the buzzer's slice
+hand-over, and the boards' shared settings in one place. The outputs are
+bench-tested; none of the 18 new commits has flown or had `/pr-review`.
 
 2026-11-25: Plane on RPI_UAVFC has no rate thread, so core1 idles at
 15-18% and core0 carries everything. Armed in FBWA at 200 Hz with EKF3,
@@ -1275,16 +1303,25 @@ rest is not:
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
 
+2026-11-26, the outputs commits (`4c18fd279a`..`6ce2608538`):
+
+- `/pr-review` has not run on them.
+- Outputs 5-10 and the buzzer's slice hand-over have run only on the
+  bench. An RPI_UAVFC updated from a build with the LED on output 5 keeps
+  a stored `SERVO5_FUNCTION` 120, and GP1 then carries the LED signal
+  until it is set to 0; release notes and the PR description should say so.
+
 2026-11-26, the Rover commit `3715cf8ccd` and the registry tooling
-`af935a65c2`..`c4db4a566b` (five commits, folded from eleven): not pushed, not reviewed by `/pr-review`,
-and Rover has not driven on the placement. The PR description says
-nothing of Rover either.
+`af935a65c2`..`c4db4a566b` (five commits, folded from eleven): pushed in
+`6ce2608538`, not reviewed by `/pr-review`, and Rover has not driven on
+the placement. The PR description says nothing of Rover either.
 
 2026-11-25, the Plane commits (`2e9128a39f`..`815f847a85`):
 
 - `/pr-review` has not run on them.
-- The PR description is stale: it says 71 commits (now 93) and five
-  that change STM32 output (now six), and says nothing of Plane.
+- The PR description is stale: it says 71 commits (now 111) and five
+  that change STM32 output (now six, and the buzzer commit's line
+  numbers after them), and says nothing of Plane.
 - Plane has not flown on RPI_UAVFC. Once it has, or when a maintainer
   asks for the final squash, fold the loop-rate fix into the board
   and documentation commits it corrects and the marker into the
@@ -2748,7 +2785,9 @@ confirmed. Eleven additive commits on `90e876b1b1`, local tip
   PWMD1, shared on RPI_UAVFC by output 5 and the buzzer, and restarted it
   at output 5's 1 MHz against the alarm's 1.5 MHz (4 kHz near 2.67 kHz).
   An LED group on RP2350 now leaves the slice alone. Not checked on
-  hardware.
+  hardware. **2026-11-26: checked** - with a strip on the LED connector,
+  output 8 since `ac0fdc18f7`, tones measured 4 kHz
+  ([bench-2026-11-26-buzzer-outputs.md](bench-2026-11-26-buzzer-outputs.md)).
 - `63d22c9b04`: start_sm() and restart_sm() set and clear PIO2 CTRL bits
   through the atomic aliases.
 
@@ -2780,7 +2819,8 @@ onto `1b8b7e68cf` as `cfc250c56a` (backup
 SemaphoreRecursion example. Each time the 20 extras applied cleanly and
 range-diff showed them unchanged, the branch moved by exactly the PR's
 own change, and RPI_UAVFC, Laurel and Pico2 built. Not flown; bench
-checks owed: the buzzer pitch with a NeoPixel strip on output 5, DShot
+checks owed: the buzzer pitch with a NeoPixel strip on output 5
+(**2026-11-26: checked**, 4 kHz, the strip now on output 8), DShot
 start and recovery, the 399 kHz microSD init, and ESC.Err against a log.
 
 ### AP-Review round 25 at `1b8b7e68cf`, 2026-10-26
@@ -2941,7 +2981,9 @@ blocker. CHANGES_REQUESTED still stands from tpwrules (2026-05-10), Peter
 except Peter's and tridge's 2026-10-07 threads on the removed Betaflight
 config header (the pinout is now in Laurel/HARDWARE.md). PIOUART
 half-duplex echo suppression needs a SmartAudio test; the ESC.Err counting
-and the buzzer pitch with a NeoPixel on output 5 are unchecked on hardware.
+and the buzzer pitch with a NeoPixel on output 5 are unchecked on hardware
+(**2026-11-26:** the buzzer pitch is checked, 4 kHz with the strip now on
+output 8).
 The nine ways DEVELOPMENT.md says Laurel lags RPI_UAVFC all stand, among
 them the frame, notch and GPS_DRV_OPTIONS in defaults.parm, no
 AP_STORAGE_NO_WRITE_WHILE_ARMED, thread statistics on, HAL_OSD_TYPE_DEFAULT
