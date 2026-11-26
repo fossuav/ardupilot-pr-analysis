@@ -220,19 +220,23 @@ Then, at Andy's request, two more:
   markers: against the PR-head Rover ELF it now knows 766 Rover functions
   as registered, against the build with the Rover entries none of them in
   flash, as `--verify` says.
-- `--rp2350-relocate` (`58e288dfac`, with `6f6ce1a495` letting the script
-  take the program as waf names it): when the placement step stops on a
-  miss, the build runs the script with `--apply` for each program being
-  linked, generates the placement again and links. With the same test
-  rename, `./waf copter plane rover --rp2350-relocate` repaired the Plane
-  and Rover misses in their own builds and linked all three, a single
-  `--targets bin/arduplane,bin/ardurover` build repaired both at once, and
-  every registered function was then in SRAM in each. A Scratch bank
-  overflow fails at the link, after that step, so it still needs the
-  script's `--build`. `14f61e9355` points the generator's hint and
-  DEVELOPMENT.md at the option. At `14f61e9355` MatekH743 Copter is still
-`f1db94851b64` and RPI_UAVFC Copter and Plane `0a224befa8e2` and
-`7626a88d4182` with `--consistent-builds`.
+- A waf option, `--rp2350-relocate` (`58e288dfac`), ran the script with
+  `--apply` from the build when the placement step stopped on a miss. It
+  worked on the test rename, alone and with Plane and Rover linked in one
+  command, but Andy did not want the build editing the registries, so
+  `7ecc3fe410` drops it. Instead `6d10c9493f` has the failed placement
+  print the command for each program whose entries missed, with the
+  `--program` waf gave the generator (`6f6ce1a495` lets the script take
+  it), and say to run it, then with `--apply`, review and build again.
+  With the same test rename the Rover build printed
+  `rp2350_ramfunc2_update.py --board RPI_UAVFC --program ardurover:Rover`;
+  run as printed it showed both replacements, `--apply` wrote them under
+  their markers, and the next build linked with every registered function
+  in SRAM. An unmarked miss, reported only by Copter's strict check, names
+  `arducopter`. At `14f61e9355` MatekH743 Copter was still `f1db94851b64`
+  and RPI_UAVFC Copter and Plane `0a224befa8e2` and `7626a88d4182` with
+  `--consistent-builds`; `7ecc3fe410` returns the waf files to their
+  state before the option.
 
 ## Board state afterwards
 

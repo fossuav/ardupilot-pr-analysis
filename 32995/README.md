@@ -15,9 +15,10 @@ board's 25 Hz saved under 1.5 points and were left out. The registry
 scripts now carry the program markers (`af935a65c2`, `46d1e21896`): the
 repair script checks marked entries for `--vehicle` and keeps their
 markers, and the size annotator no longer strips them; the PC
-profiler now matches registry entries (`3ec670ca66`), and
-`./waf <vehicle> --rp2350-relocate` runs the repair from the build
-(`6f6ce1a495`..`14f61e9355`). The testbed is
+profiler now matches registry entries (`3ec670ca66`), and a build
+that stops on a miss prints the repair command for each program
+(`6d10c9493f`; a waf option that ran it, `58e288dfac`, was dropped in
+`7ecc3fe410` as the build should not edit the registries). The testbed is
 back on its Copter `031f2549` from the full-flash backup, parameters
 matching.
 
@@ -1276,7 +1277,9 @@ rest is not:
   safe
 
 2026-11-26, the Rover commit `3715cf8ccd` and the registry tooling
-`af935a65c2`..`14f61e9355` (six commits): not pushed, not reviewed by `/pr-review`,
+`af935a65c2`..`7ecc3fe410` (eight commits; `58e288dfac` and `7ecc3fe410`
+add and drop the waf option, and fold away with the hint commits): not
+pushed, not reviewed by `/pr-review`,
 and Rover has not driven on the placement. The PR description says
 nothing of Rover either.
 
