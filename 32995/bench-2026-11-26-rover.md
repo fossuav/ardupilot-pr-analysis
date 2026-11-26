@@ -198,8 +198,8 @@ well enough to be trusted with them:
   the 425 program markers, and it counted 10.2 KB of Plane-only entries
   as "in flash".
 
-`af935a65c2` fixes both, and `46d1e21896` makes the generator's repair
-hint ask for `--vehicle`. Tested in a scratch worktree with a commit that
+`af935a65c2` fixes both, and `c4db4a566b` reworks the generator's repair
+hint (below). Tested in a scratch worktree with a commit that
 renamed `AP_MotorsUGV::output_regular` (`[ardurover]`) and
 `EKFGSF_yaw::predictAHRS` (`[arduplane,ardurover]`): the Rover build
 failed on both, and `--vehicle rover --build` placed the renamed
@@ -216,20 +216,19 @@ Then, at Andy's request, two more:
 - `rp2350_pc_profiler.py` read everything after the `|` as the name, size
   comment included, so of the registry's 965 entries only the 231 without
   a comment could ever match, and its report suggested functions already
-  placed. `3ec670ca66` takes the name as the generator does and reads the
+  placed. `2fb9557691` takes the name as the generator does and reads the
   markers: against the PR-head Rover ELF it now knows 766 Rover functions
   as registered, against the build with the Rover entries none of them in
   flash, as `--verify` says.
 - `--rp2350-relocate`, a waf option that runs the script with `--apply`
-  for each program being linked before placement (`ff04a1c932`, with
-  `6f6ce1a495` letting the script take the program as waf names it). It
-  runs only when asked: a build that stops on a miss says to build again
-  with it (`c03929fa2a`, shortened in `a69b247657`) and prints, per
-  program whose entries missed, the script command that shows the plan
-  without editing. The first
-  version ran the script on a miss whenever the option was given
-  (`58e288dfac`); Andy wanted nothing run without being asked, it went
-  (`7ecc3fe410`, `6d10c9493f`) and came back in this form. With the same
+  for each program being linked before placement (`9c4cb9de14`, with
+  `eaa3c7c4db` letting the script take the program as waf names it). It
+  runs only when asked: a build that stops on a miss says, in one line,
+  to rebuild with it, then prints a preview command per program whose
+  entries missed (`c4db4a566b`). A first version ran the script on a miss
+  whenever the option was given; Andy wanted nothing run without being
+  asked and a terser message, and the versions were folded into those
+  two commits (old tip kept as `backup/pre-rover-fold-20261126`). With the same
   test rename: `./waf rover` stopped, registry untouched, and printed
   `rp2350_ramfunc2_update.py --board RPI_UAVFC --program ardurover:Rover`,
   which showed both replacements; `./waf rover --rp2350-relocate`
@@ -237,7 +236,7 @@ Then, at Andy's request, two more:
   function in SRAM; a second run with the option changed nothing, and a
   Copter and Plane build with it found nothing to repair. A Scratch bank
   overflow fails at the link, after the placement step, so it still needs
-  the script's `--build`. At `c03929fa2a` MatekH743 Copter is still
+  the script's `--build`. At `c4db4a566b` MatekH743 Copter is still
   `f1db94851b64` and RPI_UAVFC Copter and Plane `0a224befa8e2` and
   `7626a88d4182` with `--consistent-builds`.
 
