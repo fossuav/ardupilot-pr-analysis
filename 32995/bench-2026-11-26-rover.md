@@ -220,23 +220,25 @@ Then, at Andy's request, two more:
   markers: against the PR-head Rover ELF it now knows 766 Rover functions
   as registered, against the build with the Rover entries none of them in
   flash, as `--verify` says.
-- A waf option, `--rp2350-relocate` (`58e288dfac`), ran the script with
-  `--apply` from the build when the placement step stopped on a miss. It
-  worked on the test rename, alone and with Plane and Rover linked in one
-  command, but Andy did not want the build editing the registries, so
-  `7ecc3fe410` drops it. Instead `6d10c9493f` has the failed placement
-  print the command for each program whose entries missed, with the
-  `--program` waf gave the generator (`6f6ce1a495` lets the script take
-  it), and say to run it, then with `--apply`, review and build again.
-  With the same test rename the Rover build printed
-  `rp2350_ramfunc2_update.py --board RPI_UAVFC --program ardurover:Rover`;
-  run as printed it showed both replacements, `--apply` wrote them under
-  their markers, and the next build linked with every registered function
-  in SRAM. An unmarked miss, reported only by Copter's strict check, names
-  `arducopter`. At `14f61e9355` MatekH743 Copter was still `f1db94851b64`
-  and RPI_UAVFC Copter and Plane `0a224befa8e2` and `7626a88d4182` with
-  `--consistent-builds`; `7ecc3fe410` returns the waf files to their
-  state before the option.
+- `--rp2350-relocate`, a waf option that runs the script with `--apply`
+  for each program being linked before placement (`ff04a1c932`, with
+  `6f6ce1a495` letting the script take the program as waf names it). It
+  runs only when asked: a build that stops on a miss says to build again
+  with it (`c03929fa2a`) and prints, per program whose entries missed,
+  the script command that shows the plan without editing. The first
+  version ran the script on a miss whenever the option was given
+  (`58e288dfac`); Andy wanted nothing run without being asked, it went
+  (`7ecc3fe410`, `6d10c9493f`) and came back in this form. With the same
+  test rename: `./waf rover` stopped, registry untouched, and printed
+  `rp2350_ramfunc2_update.py --board RPI_UAVFC --program ardurover:Rover`,
+  which showed both replacements; `./waf rover --rp2350-relocate`
+  repaired both under their markers and linked, every registered
+  function in SRAM; a second run with the option changed nothing, and a
+  Copter and Plane build with it found nothing to repair. A Scratch bank
+  overflow fails at the link, after the placement step, so it still needs
+  the script's `--build`. At `c03929fa2a` MatekH743 Copter is still
+  `f1db94851b64` and RPI_UAVFC Copter and Plane `0a224befa8e2` and
+  `7626a88d4182` with `--consistent-builds`.
 
 ## Board state afterwards
 
