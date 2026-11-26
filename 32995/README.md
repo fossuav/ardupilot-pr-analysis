@@ -1309,19 +1309,19 @@ rest is not:
 - Outputs 5-10 and the buzzer's slice hand-over have run only on the
   bench. An RPI_UAVFC updated from a build with the LED on output 5 keeps
   a stored `SERVO5_FUNCTION` 120, and GP1 then carries the LED signal
-  until it is set to 0; release notes and the PR description should say so.
+  until it is set to 0; the alpha release notes should say so.
 
 2026-11-26, the Rover commit `3715cf8ccd` and the registry tooling
 `af935a65c2`..`c4db4a566b` (five commits, folded from eleven): pushed in
 `6ce2608538`, not reviewed by `/pr-review`, and Rover has not driven on
-the placement. The PR description says nothing of Rover either.
+the placement.
 
 2026-11-25, the Plane commits (`2e9128a39f`..`815f847a85`):
 
 - `/pr-review` has not run on them.
-- The PR description is stale: it says 71 commits (now 111) and five
-  that change STM32 output (now six, and the buzzer commit's line
-  numbers after them), and says nothing of Plane.
+- The PR description was brought up to date on 2026-11-26: 111 commits,
+  the six that change STM32 output and the buzzer commit's line numbers
+  after them, Plane and Rover, the outputs and alternative configs.
 - Plane has not flown on RPI_UAVFC. Once it has, or when a maintainer
   asks for the final squash, fold the loop-rate fix into the board
   and documentation commits it corrects and the marker into the
