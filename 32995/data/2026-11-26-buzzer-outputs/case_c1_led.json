@@ -1,0 +1,125 @@
+{
+ "label": "c1_led",
+ "params": {
+  "SERVO5_FUNCTION": 0.0,
+  "SERVO8_FUNCTION": 120.0,
+  "SERVO9_FUNCTION": 0.0,
+  "SERVO10_FUNCTION": 0.0,
+  "BRD_ALT_CONFIG": 0.0,
+  "SCR_ENABLE": 0.0,
+  "NTF_BUZZ_TYPES": 3.0
+ },
+ "texts": [
+  "ArduCopter V4.8.0-dev (1bad3ce4)",
+  "ChibiOS: f92aa3d2",
+  "RPI_UAVFC D3E02752 61980428 8576BDE0",
+  "RCOut: DS600:1-4 PWM:5-7 NeoP:8",
+  "IMU0: fast sampling 3.2kHz/3.2kHz",
+  "Frame: QUAD/X_REV",
+  "EKF3 IMU0 MAG0 initial yaw alignment complete",
+  "EKF3 IMU0 tilt alignment complete",
+  "PreArm: EKF attitude is bad",
+  "PreArm: Compass not calibrated",
+  "PreArm: AHRS: Waiting for 3D fix",
+  "PreArm: Battery 1 below minimum arming voltage",
+  "EKF3 IMU0 forced reset",
+  "EKF3 IMU0 initialised",
+  "EKF3 IMU0 MAG0 initial yaw alignment complete",
+  "EKF3 IMU0 tilt alignment complete"
+ ],
+ "static": {
+  "funcsel": {
+   "2": 7,
+   "3": 4,
+   "5": 31,
+   "12": 4,
+   "13": 4,
+   "14": 4,
+   "41": 31
+  },
+  "slices": {
+   "1": {
+    "en": 1,
+    "csr": 1,
+    "div": 133.3125,
+    "top": 375,
+    "period_us": 250.6,
+    "a_us": 0.0,
+    "b_us": 0.0
+   },
+   "2": {
+    "en": 0,
+    "csr": 0,
+    "div": 1.0,
+    "top": 65535,
+    "period_us": 327.7,
+    "a_us": 0.0,
+    "b_us": 0.0
+   },
+   "6": {
+    "en": 1,
+    "csr": 1,
+    "div": 200.0,
+    "top": 20000,
+    "period_us": 20001.0,
+    "a_us": 0.0,
+    "b_us": 0.0
+   },
+   "7": {
+    "en": 1,
+    "csr": 1,
+    "div": 200.0,
+    "top": 20000,
+    "period_us": 20001.0,
+    "a_us": 0.0,
+    "b_us": 0.0
+   },
+   "8": {
+    "en": 0,
+    "csr": 0,
+    "div": 1.0,
+    "top": 65535,
+    "period_us": 327.7,
+    "a_us": 0.0,
+    "b_us": 0.0
+   }
+  }
+ },
+ "tune": [
+  [
+   1,
+   133.3125,
+   375,
+   250.6,
+   0.0,
+   0.0,
+   7,
+   4,
+   325
+  ],
+  [
+   1,
+   133.3125,
+   375,
+   250.6,
+   0.0,
+   124.6,
+   7,
+   4,
+   4037
+  ]
+ ],
+ "raw_before": {
+  "1": 1000,
+  "2": 1000,
+  "3": 1000,
+  "4": 1000,
+  "5": 0,
+  "6": 0,
+  "7": 0,
+  "8": 0,
+  "9": 0,
+  "10": 0
+ },
+ "after_servo": null
+}
