@@ -11,9 +11,12 @@ become `[arduplane,ardurover]`): armed core0 at 400 Hz 74-89% to
 50-64%, at 50 Hz 33-35% to 28-30%, `ahrs_update` down a third to a
 half, 33.6 KB less free memory; Copter and Plane byte-identical. One
 local commit on `b9db33af08`, not pushed. Rover's GCS tasks at the
-board's 25 Hz saved under 1.5 points and were left out. The testbed's
-Copter build and parameters are backed up locally, and it now runs
-Rover `3715cf8c`.
+board's 25 Hz saved under 1.5 points and were left out. The registry
+scripts now carry the program markers (`af935a65c2`, `46d1e21896`): the
+repair script checks marked entries for `--vehicle` and keeps their
+markers, and the size annotator no longer strips them. The testbed is
+back on its Copter `031f2549` from the full-flash backup, parameters
+matching.
 
 **2026-11-25:** ArduPlane on RPI_UAVFC, see
 [bench-2026-11-25-plane.md](bench-2026-11-25-plane.md). Pushed as PR
@@ -1269,8 +1272,9 @@ rest is not:
   planned for 2026-09-15, including whether the RP2350 fault-path save is
   safe
 
-2026-11-26, the Rover commit `3715cf8ccd`: not pushed, not reviewed by
-`/pr-review`, and Rover has not driven on it. The PR description says
+2026-11-26, the Rover commit `3715cf8ccd` and the registry script fixes
+`af935a65c2`, `46d1e21896`: not pushed, not reviewed by `/pr-review`,
+and Rover has not driven on the placement. The PR description says
 nothing of Rover either.
 
 2026-11-25, the Plane commits (`2e9128a39f`..`815f847a85`):

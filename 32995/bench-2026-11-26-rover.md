@@ -180,14 +180,54 @@ against 58 us; about 17 ms a second against 23 ms). Under 1.5 points of
 core0 does not pay for capping Rover's MAVLink receive and streams at
 25 Hz, so it is not committed.
 
+## The registry scripts and the program markers
+
+Two scripts read the registries, and neither knew the program markers
+well enough to be trusted with them:
+
+- `rp2350_ramfunc2_update.py`, which repairs entries after a rebase, ran
+  the generator with `--strict` and no `--program`. A marked entry was
+  never checked, so a Rover build that failed on one got no plan, and
+  `--vehicle rover` instead reported dozens of Copter-only entries as
+  missing ("removed upstream in ... Sub: Refactor ..."). What replaced an
+  entry was written unmarked, which would have put a Plane or Rover name
+  into Copter's strict check, and the run rewrote the build's own section
+  lists.
+- `rp2350_ramfunc2_sizes.py --update` kept only `[needs]`-style markers
+  and `[inlinable]`: against the Rover ELF it would have stripped 288 of
+  the 425 program markers, and it counted 10.2 KB of Plane-only entries
+  as "in flash".
+
+`af935a65c2` fixes both, and `46d1e21896` makes the generator's repair
+hint ask for `--vehicle`. Tested in a scratch worktree with a commit that
+renamed `AP_MotorsUGV::output_regular` (`[ardurover]`) and
+`EKFGSF_yaw::predictAHRS` (`[arduplane,ardurover]`): the Rover build
+failed on both, and `--vehicle rover --build` placed the renamed
+functions under those markers, one plan per set of programs, and linked.
+Copter, Plane and Rover then built, verified and planned clean, the
+build's section lists unchanged by the plan. The annotator keeps all 425
+markers and leaves Plane-only lines alone against a Rover ELF. A first
+test renamed by appending a suffix, which the script's `git log -S`
+cannot see, as the old name is still a substring; that limit predates
+the markers.
+
 ## Board state afterwards
 
-The testbed runs Rover `3715cf8c` (the code measured as B; the uploader
+The testbed ran Rover `3715cf8c` (the code measured as B; the uploader
 verified it), disarmed, `SCHED_LOOP_RATE` 50, `GPS1_TYPE` 1 and
-`EK3_GPS_CHECK` 31 restored, the bench mission cleared. The settings copied from the Copter parameters stay, and the
-accelerometer is uncalibrated. Its Copter build and parameters are in the
-backup above; restoring them is Andy's call. OpenOCD shut down with
-`C_DEBUGEN` cleared on both cores, and the COM15 bridge stopped.
+`EK3_GPS_CHECK` 31 restored, the bench mission cleared. The settings
+copied from the Copter parameters stayed, with the accelerometer
+uncalibrated. OpenOCD shut down with `C_DEBUGEN` cleared on both cores,
+and the COM15 bridge stopped.
+
+Then, at Andy's request, the testbed went back to Copter: the backed-up
+4 MB image programmed at `0x10000000` over SWD in 30 s ("Verified OK").
+`reset run` through OpenOCD left core1 in the boot ROM at `0x19c` while
+core0 ran the app, as DEVELOPMENT.md warns; `cold_reset` brought both
+up in the app. It reports ArduCopter `031f2549`, `STAT_BOOTCNT` 178
+(177 at the backup), and all 1748 parameters match the backup but for
+those every boot rewrites: `BARO1_GND_PRESS`, the boot gyro offsets and
+their temperature, `STAT_BOOTCNT` and `STAT_RUNTIME`.
 
 In AUTO on a stationary fix Rover asks for full throttle: output 3 sat at
 1900 us throughout. Harmless on this motorless bench, but the AUTO
