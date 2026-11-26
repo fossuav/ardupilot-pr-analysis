@@ -211,6 +211,29 @@ test renamed by appending a suffix, which the script's `git log -S`
 cannot see, as the old name is still a substring; that limit predates
 the markers.
 
+Then, at Andy's request, two more:
+
+- `rp2350_pc_profiler.py` read everything after the `|` as the name, size
+  comment included, so of the registry's 965 entries only the 231 without
+  a comment could ever match, and its report suggested functions already
+  placed. `3ec670ca66` takes the name as the generator does and reads the
+  markers: against the PR-head Rover ELF it now knows 766 Rover functions
+  as registered, against the build with the Rover entries none of them in
+  flash, as `--verify` says.
+- `--rp2350-relocate` (`58e288dfac`, with `6f6ce1a495` letting the script
+  take the program as waf names it): when the placement step stops on a
+  miss, the build runs the script with `--apply` for each program being
+  linked, generates the placement again and links. With the same test
+  rename, `./waf copter plane rover --rp2350-relocate` repaired the Plane
+  and Rover misses in their own builds and linked all three, a single
+  `--targets bin/arduplane,bin/ardurover` build repaired both at once, and
+  every registered function was then in SRAM in each. A Scratch bank
+  overflow fails at the link, after that step, so it still needs the
+  script's `--build`. `14f61e9355` points the generator's hint and
+  DEVELOPMENT.md at the option. At `14f61e9355` MatekH743 Copter is still
+`f1db94851b64` and RPI_UAVFC Copter and Plane `0a224befa8e2` and
+`7626a88d4182` with `--consistent-builds`.
+
 ## Board state afterwards
 
 The testbed ran Rover `3715cf8c` (the code measured as B; the uploader
