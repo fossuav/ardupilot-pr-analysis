@@ -32,8 +32,9 @@ fetches. `3715cf8ccd` places Rover's hot code in SRAM as `[ardurover]`
 become `[arduplane,ardurover]`): armed core0 at 400 Hz 74-89% to
 50-64%, at 50 Hz 33-35% to 28-30%, `ahrs_update` down a third to a
 half, 33.6 KB less free memory; Copter and Plane byte-identical. One
-local commit on `b9db33af08`, pushed later the same day in `6ce2608538`. Rover's GCS tasks at the
-board's 25 Hz saved under 1.5 points and were left out. The registry
+local commit on `b9db33af08`, pushed later the same day in
+`6ce2608538`. Rover's GCS tasks at the board's 25 Hz saved under 1.5
+points and were left out. The registry
 scripts now carry the program markers (`af935a65c2`): the repair
 script checks marked entries for `--vehicle` and keeps their markers,
 and the size annotator no longer strips them; the PC profiler now

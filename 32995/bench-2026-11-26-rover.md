@@ -153,8 +153,8 @@ The same A/B at Rover's default 50 Hz, A B B A:
 
 At 50 Hz core0 has room either way; what a user gains there is the EKF
 and AHRS update taking about 0.6 ms less each loop. Committed as
-`3715cf8ccd` on `rp2350-v5-squashed-and-cleaned-and-rebased`, not pushed
-and not reviewed.
+`3715cf8ccd`, pushed the same day in PR head `6ce2608538`, and not
+reviewed by `/pr-review`.
 
 ## Rover's GCS rate: measured and left out
 
