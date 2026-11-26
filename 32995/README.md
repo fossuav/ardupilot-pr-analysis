@@ -1276,8 +1276,8 @@ rest is not:
   safe
 
 2026-11-26, the Rover commit `3715cf8ccd` and the registry tooling
-`af935a65c2`..`c03929fa2a` (ten commits; the waf option and the hint
-went through three versions, `58e288dfac`..`c03929fa2a`, which fold into
+`af935a65c2`..`a69b247657` (eleven commits; the waf option and the hint
+went through several versions, `58e288dfac`..`a69b247657`, which fold into
 one waf and one hint commit): not pushed, not reviewed by `/pr-review`,
 and Rover has not driven on the placement. The PR description says
 nothing of Rover either.

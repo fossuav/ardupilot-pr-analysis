@@ -224,8 +224,9 @@ Then, at Andy's request, two more:
   for each program being linked before placement (`ff04a1c932`, with
   `6f6ce1a495` letting the script take the program as waf names it). It
   runs only when asked: a build that stops on a miss says to build again
-  with it (`c03929fa2a`) and prints, per program whose entries missed,
-  the script command that shows the plan without editing. The first
+  with it (`c03929fa2a`, shortened in `a69b247657`) and prints, per
+  program whose entries missed, the script command that shows the plan
+  without editing. The first
   version ran the script on a miss whenever the option was given
   (`58e288dfac`); Andy wanted nothing run without being asked, it went
   (`7ecc3fe410`, `6d10c9493f`) and came back in this form. With the same
