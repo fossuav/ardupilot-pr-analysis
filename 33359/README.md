@@ -1279,3 +1279,17 @@ above answers:
 | Open the vertical velocity variance at that reset | hover after the throw 1.70 to 1.87 m | lets the prop-washed baro lift the height faster |
 | At every switch, weigh the re-learned terrain against the ground last fixed by range height (variance `EK3_TERR_GRAD` x distance) | log57, against the ground the EKF had before the throw: 1.57 to 1.49 m at `EK3_TERR_GRAD` 0.1, 0.92 to 0.07 m at 0. Fleet at its own settings: 117 of 369 logs changed, 277 corrections, 27 of 1 m or more | a broad change nothing can verify, and the step detector it needs misfired in the throw |
 | `EK3_RNG_USE_HGT` 50 with the reset | log57: 0.11 m | range height to 3.5 m follows steps in the floor; a stairwell flight on this airframe moved the height by metres |
+
+## 2026-11-27: rebased onto master after #34941 merged
+
+Merged #34941 (2026-11-26) adds `flowWithheld_ms = 0;` beside
+`prevFlowFuseTime_ms` where this PR counts a fused flow axis, so the PR
+conflicted with master. Rebased onto `caa5f0d272` with master's line kept
+first and the PR's axis check after it, as on the SFD beta. The PR's net
+added and removed lines match the old head's, file by file.
+
+SITL (tier 2) at the new head: Copter and Plane build;
+EK3_AglKfVerticalMotion, EK3_RngHgtSwitchStepUp,
+EK3_RngHgtSwitchNoVelocity, EK3_RngHgtSwitchRegainHigh,
+EK3_RngHgtSwitchRegainOdometry and #34941's OpticalFlowTiltNoTimeout pass.
+Pushed `83ce4e09d6` -> `de30870b32` (force).

@@ -279,3 +279,15 @@ every workflow (AP-Review's should-fix on #35147). Replayed onto master
 shows only context changes, in the two AP_AHRS commits and the OSD test
 registration. Copter builds and OSDEKFLanes passes (tier 2).
 Pushed 2026-11-14, force `871498e4aa...04a38ebd1b`; mergeable again.
+
+## 2026-11-27: rebased onto master after #34941 merged
+
+Merged #34941 (2026-11-26) adds `flowWithheld_ms` and `flowSampleTime_ms`
+beside `prevFlowFuseTime_ms`, where this PR adds `flowPassTimeAxis_ms`:
+three additive conflicts (OptFlowFusion.cpp, core.cpp, core.h), both sides
+kept, master's first. The PR's net added and removed lines match the old
+head's, file by file.
+
+SITL (tier 2) at the new head: Copter and Plane build; OSDEKFLanes
+(Copter) and OSDEKFLanesDCMFallback (Rover) pass. Pushed `b9188ebf80` ->
+`e559e10629` (force).

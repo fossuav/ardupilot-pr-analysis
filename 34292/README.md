@@ -3239,3 +3239,17 @@ in-air EKF height 5.2-31.8 m, worst velocity error 0.23-0.45 m/s at
 re-scope (`3f8f6f29c1`, 11-18), the day after the release was cut, so
 no earlier SFD branch ran it. The beta skips the two datum legs with an
 early return (`d2d638cf21`); the first two legs run and pass.
+
+## 2026-11-27: rebased onto master after #34941 merged
+
+Merged #34941 (2026-11-26) registers three tests where this PR registers
+OpticalFlowLandedZeroNeedsGround: a registration union, nothing else. The
+PR's net added and removed lines match the old head's, file by file.
+
+SITL (tier 2): Copter builds; OpticalFlowLandedZeroNeedsGround passed 2 of
+3 runs at the new head and once at the old. The failing run's re-arm leg
+read 0.36 m/s of velocity error against a limit of half the drift speed,
+0.355 at 0.71 m/s; the passing runs read 0.12 at 1.28 and 0.04 at 1.20
+(old head 0.21 at 1.12). The limit scales with a drift speed that varies
+run to run, so a slow drift leaves little margin. Pushed `3f8f6f29c1` ->
+`2fa1398001` (force).

@@ -84,3 +84,9 @@ recorded. CI and AP-Review on this head had not finished when this was written.
 
 Nothing blocks. The optional `#if ARMING_DELAY_MS < 0` `#error` is still
 not added, and peterbarker's March change request is still recorded.
+
+## 2026-11-26: merged
+
+Merged to master on 2026-11-26 (21:12Z) as `ba8f8726eb` and `752af4a8c8`,
+patch-identical to the head. No open PR conflicted with it. SFD refresh5
+carries it in prs.txt's merged list.

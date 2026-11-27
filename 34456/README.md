@@ -627,3 +627,10 @@ Pushed 2026-11-24 as `a2c786613f` (force, over `62e7e604d0`, kept locally as
 `pre-rewrite/34456`). The aux function is open as #35366. The description,
 title and reply to rishabsingh3003 (issuecomment-7136266821) posted the
 same day; the old description is the one the sections above describe.
+
+## 2026-11-26: merged
+
+Merged to master on 2026-11-26 (14:28Z) as eight commits, `1d6194993f` to
+`ee87dc0c30`, patch-identical to the head. #35366's test conflicted with
+its test and was rebased onto master on 2026-11-27. SFD refresh5 carries
+it in prs.txt's merged list.

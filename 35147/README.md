@@ -320,3 +320,11 @@ but the new head needs its own round. CI and AP-Review on this head had not fini
 
 Nothing asked; the two standing notes (zeroed sample before takeoff
 detection, the bus-thread quality latch) stay information only.
+
+## 2026-11-27: restacked on #34630 after #33484 was rebased onto master
+
+#33484 was rebased onto master after #34941 merged, and #34630 restacked
+on it. This PR's six commits above #34630 picked with no conflict. The
+PR's net added and removed lines match the old head's, file by file.
+Copter builds; EK3_FlowVelocityAtAidingStart passes at #35312's head.
+Pushed `e55b2fac24` -> `0aa8103c10` (force).

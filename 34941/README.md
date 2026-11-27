@@ -632,3 +632,11 @@ commit (a test change only) and force-pushed `08c0b2ef0b...9e0dbfd526`
 the rule to the autotest playbook. Replies posted 2026-11-25 under each
 of Peter's four comments (review comments 4691903371, 4691903639,
 4691903856, 4691904094).
+
+## 2026-11-26: merged
+
+Merged to master on 2026-11-26 (14:24Z) as `c08e376a2f` and `6245745180`,
+patch-identical to the head. It conflicted with seven open PRs, rebased
+onto master on 2026-11-27: #33359, #34543, #34292 and the flow stack
+#33484, #34630, #35147, #35307, #35312 (see `../33484/README.md`). SFD
+refresh5 carries it in prs.txt's merged list.

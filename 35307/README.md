@@ -190,3 +190,11 @@ held on 11-23 is folded into a new draft. Not pushed.
 
 Pushed 2026-11-24 at `e6b3835829`. Description and reply
 (issuecomment-7136265843) posted the same day.
+
+## 2026-11-27: restacked on #35147 after #33484 was rebased onto master
+
+#33484 was rebased onto master after #34941 merged, and #34630 and #35147
+restacked on it. This PR's eleven commits picked with no conflict. The
+PR's net added and removed lines match the old head's, file by file.
+Copter builds; EK3_FlowAxisLockoutRecovery passes at #35312's head. Pushed
+`e6b3835829` -> `0dbca93b8a` (force).

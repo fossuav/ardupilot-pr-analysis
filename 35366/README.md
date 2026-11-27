@@ -54,3 +54,14 @@ position that matches no case, and the live armed state. Declined:
 Note: `Tools/scripts/size_compare_branches.py` without
 `--parallel-copies` checks branches out in the current directory and
 deletes its `build/`; run it in a scratch worktree.
+
+## 2026-11-27: rebased onto master after #34456 merged
+
+Merged #34456 (2026-11-26) adds EKF3SRCPerCoreSelection at the place this
+PR adds EKF3PrimaryCoreSwitch, which git split into alternating hunks.
+Both kept whole, master's first, each identical to its source;
+registration union. The PR's net added and removed lines match the old
+head's, file by file.
+
+SITL (tier 2): Copter builds; EKF3PrimaryCoreSwitch and
+EKF3SRCPerCoreSelection pass. Pushed `626c4fc53d` -> `9dbd5880df` (force).

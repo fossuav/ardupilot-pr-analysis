@@ -182,3 +182,13 @@ this head (SITL, tier 2). Round 5's EK3_OPTIONS caveat went into #35307
 
 Pushed 2026-11-24 at `ad4a44e7af`. Reply (issuecomment-7136266323) posted
 the same day; the reply held on 11-23 was dropped.
+
+## 2026-11-27: restacked on #35307 after #33484 was rebased onto master
+
+#33484 was rebased onto master after #34941 merged, and the stack above it
+restacked. This PR's four commits picked with no conflict. The PR's net
+added and removed lines match the old head's, file by file. Copter and
+Plane build; EK3_FlowAxisLockoutRecovery, OSDEKFLanes,
+EK3_FlowVelocityAtAidingStart, OpticalFlowTiltNoTimeout,
+OpticalFlowTiltTurnRecovery and OpticalFlowTiltTimeoutNotFlying pass.
+Pushed `ad4a44e7af` -> `d467de19e3` (force).

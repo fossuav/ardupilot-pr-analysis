@@ -484,3 +484,11 @@ carries this commit (tier 2). CI and AP-Review on this head had not finished whe
 
 The 4 Hz comment settles the slow-source minor. Two notes remain, reset
 covariance and the flow latch threading, both information only.
+
+## 2026-11-27: restacked on #33484 rebased onto master
+
+#33484 was rebased onto master after #34941 merged (see
+`../33484/README.md`). This PR's 30 commits above it picked with no
+conflict. The PR's net added and removed lines match the old head's, file
+by file. Copter builds; the tests run at #35312's head pass (see #33484).
+Pushed `59e895f182` -> `c2b2e05146` (force).

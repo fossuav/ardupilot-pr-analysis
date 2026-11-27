@@ -2032,3 +2032,20 @@ at this head (tier 2). CI on this head had not finished when this was written.
 ## 2026-11-23 (later): AP-Review ACCEPT at `255fe24724`
 
 Round 25 accepts the head with the both-axes leg fix.
+
+## 2026-11-27: rebased onto master after #34941 merged
+
+Merged #34941 (2026-11-26) rewrote the AID_RELATIVE flow timeout so time
+the tilt check withheld flow does not count, and added its members beside
+`prevFlowFuseTime_ms`. The first lockout commit conflicted in Control.cpp,
+OptFlowFusion.cpp, core.cpp and core.h. Master's timeout is kept and this
+PR's `flowFusionTimeout |= flowVelResetUnhealthy` follows it, as on the
+SFD beta; the rest is additive, master's lines first. The PR's net added
+and removed lines match the old head's, file by file.
+
+#34630, #35147, #35307 and #35312 restacked on the new head with no
+conflict. SITL (tier 2): Copter builds at every head;
+EK3_FlowAxisLockoutRecovery and OpticalFlowTiltNoTimeout pass here, and at
+#35312's head EK3_FlowAxisLockoutRecovery, OSDEKFLanes,
+EK3_FlowVelocityAtAidingStart and #34941's three tilt tests. Pushed
+`255fe24724` -> `2d41aa6397` (force).
