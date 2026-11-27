@@ -10,10 +10,18 @@ group's counter to TOP 0xFFFF and starts each pulse by writing TOP into
 it: the elevons got 1500 us pulses at the 200 Hz loop rate, and every
 5.5-7 ms at 50 Hz. Output 8 with function 0 took the buzzer's slice, so
 the banner said ", buzzer off" with no LED fitted; `745189e2d6` leaves
-such an output out of its group and the buzzer plays. Both are on local
-branch `rp2350-oneshot-buzzer` (to `a600ccc8d7`, on alpha2's head); the
-flight wing runs that build, with `SCHED_LOOP_RATE` 50 for flying. Not
-flown. Enabling OneShot exposed an upstream stall of Copter's fast rate
+such an output out of its group and the buzzer plays. Pushed the same
+day as PR head `81a63460db`, four commits on `6ce2608538` (`3c9085c5ec`,
+`a3b25f3e04`, then the hwdef and developer notes), with the messages and
+notes reworded after a Codex cold read: a slice left untriggered repeats
+its last widths after 65.5 ms (8.2 ms for OneShot125), and function 0 on
+output 8 no longer serves `DO_SET_SERVO`. MatekH743 changes only in
+`WITH_SEMAPHORE` line numbers; every new commit builds RPI_UAVFC Copter.
+The PR description now lists OneShot. alpha2 is rebuilt on this head
+with #35410 as `6d5570e1d2`, its old head local branch
+`pre-rebase/ArduPilot-4.8-rp2350-alpha2-20261127`. The flight wing runs
+the pre-push build `a600ccc8d7`, same code, with `SCHED_LOOP_RATE` 50 for
+flying. Not flown. Enabling OneShot exposed an upstream stall of Copter's fast rate
 thread with OneShot motors, measured on the test quad and fixed in
 #35410, see [../35410/](../35410/).
 
