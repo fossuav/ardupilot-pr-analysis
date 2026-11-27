@@ -2,6 +2,28 @@
 
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 
+**2026-11-27, evening:** rebased onto master `caa5f0d272`, 265 commits
+on from `321896137f`, so CI runs again: PR head `beb7d760b8`, 116
+commits, the old head kept as local branch
+`pre-rebase/rp2350-v5-squashed-20261127` (`90fb974382`). One conflict,
+in #24 "AP_Bootloader: add RP2350 support": master's `97aadf91af` moved
+the external flash init ahead of the boot decision, to where #24 had put
+its RP2350 SCRATCH breadcrumbs. Both are kept, and #24 adds and removes
+the same lines as before; `git range-diff` finds the other 115 commits
+identical. Master's `BOOT_FROM_EXT_FLASH` default moved to
+`AP_CheckFirmware_config.h`, which #24's `#if !BOOT_FROM_EXT_FLASH`
+still finds; its RNG and signing changes do not reach RP2350. With
+`--consistent-builds`, MatekH743 and MatekF405 copter and the
+CubeRedPrimary bootloader (external flash, so the resolved code) are
+byte-identical at master and at #87 (`e74037c2f6`). At the tip the three
+RP2350 boards build Copter, Plane and the bootloader, RPI_UAVFC Rover
+too, with no warnings, as do MatekH743 copter and SITL Copter and Plane
+(SITL Copter's four warnings are lwip's); the strict placement check
+found no misses, so the relocator was not needed. GitHub reports the PR
+mergeable; AP-Review's two blockers at `90fb974382` were the conflict
+and the ChibiOS pin. The every-commit build sweep was started after the
+push.
+
 **2026-11-27, later:** the flight wing powered on the bench with alpha2
 `6d5570e1d2`. Its ESC lead was on the LED connector, so output 1's
 bidirectional DShot never had a reply (`RCOutput_pico::_stall_restarts`
@@ -394,6 +416,11 @@ commits used to make.
   pins.
 
 ## Status (one line)
+
+2026-11-27, evening: rebased onto master `caa5f0d272` as PR head
+`beb7d760b8`, 116 commits, one conflict in the bootloader commit;
+STM32 byte-identical through #87, every RP2350 board building at the tip,
+mergeable again so CI runs.
 
 2026-11-26: PR head `6ce2608538`, 111 commits on master `321896137f`:
 Rover's hot code in SRAM and the registry tooling, then RPI_UAVFC's servo
