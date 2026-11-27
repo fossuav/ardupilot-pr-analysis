@@ -77,9 +77,10 @@ of silence and high 45% of 15550 samples during `MFT60L1O4CC`, with slice
 1's B compare at 187 counts of 1.5 MHz: the pin toggles at 4 kHz, 50%
 duty. Its pad has isolation off, input enabled and the 2 mA drive. The
 board has no buzzer, only pads that a MOSFET on GPIO3 switches to ground,
-the other pad being 3.3 V; the wing's buzzer was across the switched pad
-and ground, where it never sees a voltage. The fix is to move it to the
-3.3 V pad; not yet heard.
+the other pad being 3.3 V; a plain buzzer goes across those two. The
+wing's buzzer is a module with its own on/off switch, fitted across the
+switched pad and ground, and the cause turned out to be the switch: it
+was off. The wiring, first suspected, was not the fault.
 
 ## Follow-on
 

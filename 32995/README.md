@@ -9,10 +9,11 @@ bidirectional DShot never had a reply (`RCOutput_pico::_stall_restarts`
 battery reading were also put right on the bench. The buzzer stayed
 silent. On the test quad GPIO3 toggles at 4 kHz, 50% duty, during a tune
 (read over SWD), so the firmware drives it; the
-board has no buzzer, only pads that a MOSFET on GPIO3 switches to ground,
-and the wing's was fitted across the switched pad and ground instead of
-3V3; moving it is not yet heard. The hwdef's "fitted transducer" came from another design; corrected
-on the PR as `90fb974382`, alpha2 rebuilt on it as `3ba42b4296`. The entry
+board has no buzzer, only pads that a MOSFET on GPIO3 switches to ground.
+The wing's is a module with its own on/off switch, and the switch was off;
+its wiring, across the switched pad and ground, was suspected first and
+was not the fault. The hwdef's "fitted transducer" came from another design; corrected
+on the PR as `90fb974382`, alpha2 rebuilt on it as `361c33d0ee`. The entry
 below said the buzzer plays; it was the PWM in the registers only.
 
 **2026-11-27:** OneShot and the buzzer on the flight wing, see
