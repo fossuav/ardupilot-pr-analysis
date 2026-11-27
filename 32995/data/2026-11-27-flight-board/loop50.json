@@ -1,0 +1,159 @@
+{
+ "label": "loop50",
+ "banner": [
+  "ArduPlane V4.8.0-rp2350-alpha2 (a600ccc8)",
+  "ChibiOS: f92aa3d2",
+  "RPI_UAVFC 81104608 F6ADEC6A 4379F555",
+  "RCOut: DS600:1-2 OneS:3-6 PWM:7",
+  "IMU0: fast sampling 3.2kHz/3.2kHz"
+ ],
+ "servo_raw": {
+  "1": 1000,
+  "2": 0,
+  "3": 1500,
+  "4": 0,
+  "5": 1500,
+  "6": 0,
+  "7": 0,
+  "8": 0,
+  "9": 0,
+  "10": 0
+ },
+ "funcsel": {
+  "2": 4,
+  "3": 4,
+  "6": 4,
+  "7": 4,
+  "12": 4,
+  "13": 4
+ },
+ "slices": {
+  "1": {
+   "en": 1,
+   "csr": 1,
+   "div": 133.3125,
+   "top": 375,
+   "period_us": 250.6,
+   "a_us": 0.0,
+   "b_us": 0.0
+  },
+  "3": {
+   "en": 1,
+   "csr": 1,
+   "div": 200.0,
+   "top": 65535,
+   "period_us": 65536.0,
+   "a_us": 0.0,
+   "b_us": 1500.0
+  },
+  "4": {
+   "en": 1,
+   "csr": 1,
+   "div": 200.0,
+   "top": 20000,
+   "period_us": 20001.0,
+   "a_us": 0.0,
+   "b_us": 0.0
+  },
+  "6": {
+   "en": 1,
+   "csr": 1,
+   "div": 200.0,
+   "top": 65535,
+   "period_us": 65536.0,
+   "a_us": 1500.0,
+   "b_us": 0.0
+  }
+ },
+ "pulses": {
+  "3": {
+   "gpio": 7,
+   "slice": 3,
+   "ch": "B",
+   "samples": 2482,
+   "ctr_max": 6908,
+   "ctr_p99": 5967,
+   "ctr_median": 2745,
+   "high_frac_outtopad": 0.3022,
+   "high_frac_gpio_in": 0.3268
+  },
+  "4": {
+   "gpio": 6,
+   "slice": 3,
+   "ch": "A",
+   "samples": 2482,
+   "ctr_max": 6908,
+   "ctr_p99": 5967,
+   "ctr_median": 2745,
+   "high_frac_outtopad": 0.0,
+   "high_frac_gpio_in": 0.0
+  },
+  "5": {
+   "gpio": 12,
+   "slice": 6,
+   "ch": "A",
+   "samples": 2482,
+   "ctr_max": 6050,
+   "ctr_p99": 5970,
+   "ctr_median": 2823,
+   "high_frac_outtopad": 0.2897,
+   "high_frac_gpio_in": 0.3263
+  },
+  "6": {
+   "gpio": 13,
+   "slice": 6,
+   "ch": "B",
+   "samples": 2482,
+   "ctr_max": 6050,
+   "ctr_p99": 5970,
+   "ctr_median": 2823,
+   "high_frac_outtopad": 0.0,
+   "high_frac_gpio_in": 0.0
+  },
+  "8": {
+   "gpio": 2,
+   "slice": 1,
+   "ch": "A",
+   "samples": 2482,
+   "ctr_max": 375,
+   "ctr_p99": 371,
+   "ctr_median": 186,
+   "high_frac_outtopad": 0.0,
+   "high_frac_gpio_in": 0.0
+  }
+ },
+ "tune": [
+  [
+   1,
+   133.3125,
+   375,
+   250.6,
+   0.0,
+   0.0,
+   4,
+   4,
+   314
+  ],
+  [
+   1,
+   133.3125,
+   375,
+   250.6,
+   0.0,
+   124.6,
+   4,
+   4,
+   3918
+  ]
+ ],
+ "tune_texts": [
+  "PreArm: AHRS: EKF3 Roll/Pitch inconsistent 17 deg.",
+  " Wait or rebo",
+  "PreArm: Compass not calibrated",
+  "PreArm: AHRS: waiting for home",
+  "PreArm: Battery 1 below minimum arming voltage",
+  "PreArm: Scripting: /APM/scripts/flight.lua:17: No ",
+  "paramete",
+  "PreArm: Waiting for RC"
+ ]
+}

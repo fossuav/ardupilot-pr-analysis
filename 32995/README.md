@@ -2,6 +2,21 @@
 
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 
+**2026-11-27:** OneShot and the buzzer on the flight wing, see
+[bench-2026-11-27-oneshot-buzzer.md](bench-2026-11-27-oneshot-buzzer.md).
+OneShot was refused on RP2350, which has no one-pulse mode, so Plane's
+`ONESHOT_MASK` elevons ran as 50 Hz PWM. `151ef305e8` runs a oneshot
+group's counter to TOP 0xFFFF and starts each pulse by writing TOP into
+it: the elevons got 1500 us pulses at the 200 Hz loop rate, and every
+5.5-7 ms at 50 Hz. Output 8 with function 0 took the buzzer's slice, so
+the banner said ", buzzer off" with no LED fitted; `745189e2d6` leaves
+such an output out of its group and the buzzer plays. Both are on local
+branch `rp2350-oneshot-buzzer` (to `a600ccc8d7`, on alpha2's head); the
+flight wing runs that build, with `SCHED_LOOP_RATE` 50 for flying. Not
+flown. Enabling OneShot exposed an upstream stall of Copter's fast rate
+thread with OneShot motors, measured on the test quad and fixed in
+#35410, see [../35410/](../35410/).
+
 **2026-11-26, later:** RPI_UAVFC's servo outputs, see
 [bench-2026-11-26-buzzer-outputs.md](bench-2026-11-26-buzzer-outputs.md).
 Pushed as PR head `6ce2608538`, 111 commits: the Rover and registry
