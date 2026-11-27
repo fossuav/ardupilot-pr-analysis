@@ -8,7 +8,8 @@ OneShot on RP2350 for #32995: with `FSTRATE_ENABLE` and `MOT_PWM_TYPE` 1
 every push from Copter's rate thread waited in `trigger_groups()` for the
 last motor pulse, so a 1591 Hz rate thread ran at about 940 Hz armed, and
 disarmed its rate logic flooded the GCS with "Rate CPU" messages. Bench
-only, on an RP2350 quad; no STM32 hardware run, no flight.
+only, on an RP2350 quad; no STM32 hardware run, no flight. Carried on the
+alpha2 branch from `6d5570e1d2`, after #35358.
 
 ## Conclusion
 
