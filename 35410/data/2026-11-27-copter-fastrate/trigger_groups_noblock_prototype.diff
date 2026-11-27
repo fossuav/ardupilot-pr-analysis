@@ -1,0 +1,17 @@
+diff --git a/libraries/AP_HAL_ChibiOS/RCOutput.cpp b/libraries/AP_HAL_ChibiOS/RCOutput.cpp
+index 70efe53ae2..409efd4152 100644
+--- a/libraries/AP_HAL_ChibiOS/RCOutput.cpp
++++ b/libraries/AP_HAL_ChibiOS/RCOutput.cpp
+@@ -1673,6 +1673,12 @@ void RCOutput::trigger_groups()
+     rcout_timer_t now = rcout_micros();
+ 
+     if (!AP_HAL::timeout_expired(last_pulse_trigger_us, now, trigger_widest_pulse)) {
++        if (!hal.scheduler->in_main_thread()) {
++            // PROTOTYPE: the rate thread pushes faster than these pulses can go out, so leave
++            // this push's widths to the next trigger rather than hold the thread until they end
++            chMtxUnlock(&trigger_mutex);
++            return;
++        }
+         // guarantee minimum pulse separation
+         hal.scheduler->delay_microseconds(AP_HAL::timeout_remaining(last_pulse_trigger_us, now, trigger_widest_pulse));
+     }

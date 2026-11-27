@@ -1,0 +1,1741 @@
+{
+ "label": "B_oneshot",
+ "set": [
+  [
+   "MOT_PWM_TYPE",
+   1.0
+  ]
+ ],
+ "params": {
+  "MOT_PWM_TYPE": 1.0,
+  "FSTRATE_ENABLE": 2.0,
+  "FSTRATE_DIV": 2.0,
+  "SCHED_LOOP_RATE": 200.0,
+  "INS_GYRO_RATE": 2.0
+ },
+ "banner": [
+  "ArduCopter V4.8.0-rp2350-alpha2 (a600ccc8)",
+  "ChibiOS: f92aa3d2",
+  "RPI_UAVFC D3E02752 61980428 8576BDE0",
+  "RCOut: OneS:1-4 PWM:7",
+  "IMU0: fast sampling 3.2kHz/3.2kHz",
+  "Frame: QUAD/X_REV",
+  "Rate CPU high, rate set to 796Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 796Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 796Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 796Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 796Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 796Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 796Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 796Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 796Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 796Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 795Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 795Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 795Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 795Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 795Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 795Hz",
+  "Rate CPU normal, rate set to 1061Hz",
+  "Rate CPU high, rate set to 795Hz",
+  "Rate CPU normal, rate set to 1061Hz"
+ ],
+ "battery_v": 0.401,
+ "disarmed": {
+  "samples": 2543,
+  "slices": {
+   "3": {
+    "ctr_max": 1536,
+    "ctr_p99": 1264,
+    "ctr_p90": 983,
+    "ctr_median": 548,
+    "regs": {
+     "en": 1,
+     "csr": 1,
+     "div": 200.0,
+     "top": 65535,
+     "period_us": 65536.0,
+     "a_us": 1000.0,
+     "b_us": 1000.0
+    }
+   },
+   "4": {
+    "ctr_max": 65535,
+    "ctr_p99": 1285,
+    "ctr_p90": 986,
+    "ctr_median": 548,
+    "regs": {
+     "en": 1,
+     "csr": 1,
+     "div": 200.0,
+     "top": 65535,
+     "period_us": 65536.0,
+     "a_us": 1000.0,
+     "b_us": 1000.0
+    }
+   }
+  },
+  "high": {
+   "1": 0.9147,
+   "2": 0.9182,
+   "3": 0.9233,
+   "4": 0.9249
+  }
+ },
+ "arm_time": 1795776948.5771167,
+ "armed": {
+  "samples": 3939,
+  "slices": {
+   "3": {
+    "ctr_max": 65535,
+    "ctr_p99": 1194,
+    "ctr_p90": 974,
+    "ctr_median": 548,
+    "regs": {
+     "en": 1,
+     "csr": 1,
+     "div": 200.0,
+     "top": 65535,
+     "period_us": 65536.0,
+     "a_us": 1000.0,
+     "b_us": 1000.0
+    }
+   },
+   "4": {
+    "ctr_max": 65535,
+    "ctr_p99": 1190,
+    "ctr_p90": 981,
+    "ctr_median": 544,
+    "regs": {
+     "en": 1,
+     "csr": 1,
+     "div": 200.0,
+     "top": 65535,
+     "period_us": 65536.0,
+     "a_us": 1000.0,
+     "b_us": 1000.0
+    }
+   }
+  },
+  "high": {
+   "1": 0.9335,
+   "2": 0.9309,
+   "3": 0.9317,
+   "4": 0.9266
+  }
+ },
+ "disarm_time": 1795776957.7274776,
+ "texts": [
+  [
+   1795776918.03,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776918.11,
+   "PreArm: RC not found"
+  ],
+  [
+   1795776918.11,
+   "PreArm: EKF attitude is bad"
+  ],
+  [
+   1795776918.11,
+   "PreArm: Compass not calibrated"
+  ],
+  [
+   1795776918.11,
+   "PreArm: AHRS: Waiting for 3D fix"
+  ],
+  [
+   1795776918.11,
+   "PreArm: Battery 1 below minimum arming voltage"
+  ],
+  [
+   1795776918.11,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776918.2,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776918.31,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776918.41,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776918.48,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776918.6,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776918.68,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776918.8,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776918.87,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776919.0,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776919.07,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776919.19,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776919.27,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776919.39,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776919.47,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776919.57,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776919.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776919.77,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776919.85,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776919.98,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776920.05,
+   "EKF3 IMU0 forced reset"
+  ],
+  [
+   1795776920.05,
+   "EKF3 IMU0 initialised"
+  ],
+  [
+   1795776920.05,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776920.12,
+   "EKF3 IMU0 MAG0 initial yaw alignment complete"
+  ],
+  [
+   1795776920.17,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776920.25,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776920.38,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776920.45,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776920.55,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776920.62,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776920.75,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776920.82,
+   "EKF3 IMU0 tilt alignment complete"
+  ],
+  [
+   1795776920.82,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776920.95,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776921.02,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776921.15,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776921.22,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776921.34,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776921.42,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776921.54,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776921.62,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776921.72,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776921.82,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776921.92,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776922.0,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776922.12,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776922.19,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776922.32,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776922.39,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776922.52,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776922.6,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776922.7,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776922.77,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776922.9,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776922.97,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776923.1,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776923.17,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776923.3,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776923.4,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776923.5,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776923.59,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776923.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776923.8,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776923.87,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776923.99,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776924.07,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776924.19,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776924.26,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776924.38,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776924.46,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776924.59,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776924.66,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776924.76,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776924.86,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776924.96,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776925.04,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776925.17,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776925.24,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776925.37,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776925.45,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776925.55,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776925.62,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776925.75,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776925.82,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776925.95,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776926.02,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776926.15,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776926.22,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776926.33,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776926.4,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776926.53,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776926.6,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776926.72,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776926.8,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776926.92,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776927.0,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776927.12,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776927.2,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776927.32,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776927.4,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776927.5,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776927.58,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776927.7,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776927.77,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776927.9,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776927.98,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776928.08,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776928.18,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776928.28,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776928.38,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776928.48,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776928.55,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776928.68,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776928.75,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776928.87,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776928.95,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776929.07,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776929.15,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776929.28,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776929.35,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776929.46,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776929.54,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776929.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776929.74,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776929.84,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776929.94,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776930.04,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776930.11,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776930.24,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776930.31,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776930.44,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776930.51,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776930.65,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776930.71,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776930.82,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776930.9,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776931.01,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776931.09,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776931.23,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776931.31,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776931.42,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776931.5,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776931.61,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776931.64,
+   "EKF3 IMU0 forced reset"
+  ],
+  [
+   1795776931.64,
+   "EKF3 IMU0 initialised"
+  ],
+  [
+   1795776931.69,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776931.78,
+   "EKF3 IMU0 MAG0 initial yaw alignment complete"
+  ],
+  [
+   1795776931.8,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776931.89,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776932.01,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776932.07,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776932.19,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776932.27,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776932.39,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776932.48,
+   "EKF3 IMU0 tilt alignment complete"
+  ],
+  [
+   1795776932.48,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776932.57,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776932.66,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776932.78,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776932.87,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776932.99,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776933.05,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776933.17,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776933.26,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776933.38,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776933.43,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776933.55,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776933.64,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776933.76,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776933.85,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776933.97,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776934.03,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776934.15,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776934.23,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776934.35,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776934.41,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776934.53,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776934.62,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776934.74,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776934.8,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776934.92,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776935.01,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776935.13,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776935.22,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776935.33,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776935.39,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776935.51,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776935.6,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776935.72,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776935.77,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776935.89,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776935.98,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776936.1,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776936.19,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776936.31,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776936.37,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776936.49,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776936.58,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776936.7,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776936.76,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776936.87,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776936.96,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776937.08,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776937.14,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776937.26,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776937.35,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776937.47,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776937.56,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776937.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776937.73,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776937.85,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776937.94,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776938.06,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776938.12,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776938.24,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776938.33,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776938.45,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776938.51,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776938.63,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776938.72,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776938.83,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776938.92,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776939.04,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776939.1,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776939.22,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776939.31,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776939.43,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776939.49,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776939.61,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776939.69,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776939.81,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776939.87,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776939.99,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776940.11,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776940.2,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776940.32,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776940.41,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776940.5,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776940.59,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776940.71,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776940.79,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776940.91,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776940.97,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776941.09,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776941.18,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776941.3,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776941.36,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776941.48,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776941.57,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776941.68,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776941.77,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776941.89,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776941.95,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776942.07,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776942.16,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776942.28,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776942.34,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776942.46,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776942.55,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776942.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776942.73,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776942.84,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776942.93,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776943.05,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776948.58,
+   "Rate CPU normal, rate set to 1591Hz"
+  ],
+  [
+   1795776948.62,
+   "Radio Failsafe - Disarming"
+  ],
+  [
+   1795776948.62,
+   "Rate CPU high, rate set to 1061Hz"
+  ],
+  [
+   1795776948.72,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776948.78,
+   "Rate CPU high, rate set to 636Hz"
+  ],
+  [
+   1795776948.9,
+   "Rate CPU normal, rate set to 795Hz"
+  ],
+  [
+   1795776948.99,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776949.11,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776949.2,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776949.29,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776949.38,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776949.5,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776949.59,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776949.71,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776949.77,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776949.89,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776949.98,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776950.1,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776950.16,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776950.27,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776950.36,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776950.48,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776950.54,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776950.66,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.67,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.76,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776955.87,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776955.93,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776956.05,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776956.14,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776956.26,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776956.35,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776956.44,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776956.53,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776956.65,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776956.73,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776956.85,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776956.91,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776957.03,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776957.12,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776957.24,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776957.3,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776957.42,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776957.51,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776957.62,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776957.71,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776957.82,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776957.91,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776958.03,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776958.09,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776958.21,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776958.3,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776958.42,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776958.48,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776958.6,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776958.68,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776958.8,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776958.86,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776958.98,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776959.07,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776959.19,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776959.25,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776959.37,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776959.46,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776959.57,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776959.66,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776959.78,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776959.84,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776959.96,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776960.05,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776960.08,
+   "EKF3 IMU0 forced reset"
+  ],
+  [
+   1795776960.08,
+   "EKF3 IMU0 initialised"
+  ],
+  [
+   1795776960.17,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776960.17,
+   "EKF3 IMU0 MAG0 initial yaw alignment complete"
+  ],
+  [
+   1795776960.23,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776960.35,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776960.44,
+   "Rate CPU high, rate set to 795Hz"
+  ],
+  [
+   1795776960.56,
+   "Rate CPU normal, rate set to 1061Hz"
+  ],
+  [
+   1795776960.62,
+   "Rate CPU high, rate set to 795Hz"
+  ]
+ ]
+}

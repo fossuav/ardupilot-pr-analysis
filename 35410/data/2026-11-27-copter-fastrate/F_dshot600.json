@@ -1,0 +1,169 @@
+{
+ "label": "F_dshot600",
+ "set": [
+  [
+   "MOT_PWM_TYPE",
+   6.0
+  ]
+ ],
+ "params": {
+  "MOT_PWM_TYPE": 6.0,
+  "FSTRATE_ENABLE": 2.0,
+  "FSTRATE_DIV": 2.0,
+  "SCHED_LOOP_RATE": 200.0,
+  "INS_GYRO_RATE": 2.0
+ },
+ "banner": [
+  "ArduCopter V4.8.0-rp2350-alpha2 (a600ccc8)",
+  "ChibiOS: f92aa3d2",
+  "RPI_UAVFC D3E02752 61980428 8576BDE0",
+  "RCOut: DS600:1-4 PWM:7",
+  "IMU0: fast sampling 3.2kHz/3.2kHz",
+  "Frame: QUAD/X_REV",
+  "PreArm: RC not found",
+  "PreArm: EKF attitude is bad",
+  "PreArm: Compass not calibrated",
+  "PreArm: AHRS: Waiting for 3D fix",
+  "PreArm: Battery 1 below minimum arming voltage"
+ ],
+ "battery_v": 0.375,
+ "start_time": 1795778465.4458504,
+ "disarmed": {
+  "samples": 3438,
+  "slices": {
+   "3": {
+    "ctr_max": 5000,
+    "ctr_p99": 4946,
+    "ctr_p90": 4494,
+    "ctr_median": 2510,
+    "regs": {
+     "en": 1,
+     "csr": 1,
+     "div": 200.0,
+     "top": 5000,
+     "period_us": 5001.0,
+     "a_us": 0.0,
+     "b_us": 0.0
+    }
+   },
+   "4": {
+    "ctr_max": 5000,
+    "ctr_p99": 4945,
+    "ctr_p90": 4513,
+    "ctr_median": 2535,
+    "regs": {
+     "en": 1,
+     "csr": 1,
+     "div": 200.0,
+     "top": 5000,
+     "period_us": 5001.0,
+     "a_us": 0.0,
+     "b_us": 0.0
+    }
+   }
+  },
+  "high": {
+   "1": 0.9924,
+   "2": 0.9921,
+   "3": 0.9919,
+   "4": 0.9913
+  }
+ },
+ "arm_time": 1795778496.118728,
+ "armed": {
+  "samples": 4177,
+  "slices": {
+   "3": {
+    "ctr_max": 5000,
+    "ctr_p99": 4958,
+    "ctr_p90": 4515,
+    "ctr_median": 2488,
+    "regs": {
+     "en": 1,
+     "csr": 1,
+     "div": 200.0,
+     "top": 5000,
+     "period_us": 5001.0,
+     "a_us": 0.0,
+     "b_us": 0.0
+    }
+   },
+   "4": {
+    "ctr_max": 4999,
+    "ctr_p99": 4955,
+    "ctr_p90": 4510,
+    "ctr_median": 2502,
+    "regs": {
+     "en": 1,
+     "csr": 1,
+     "div": 200.0,
+     "top": 5000,
+     "period_us": 5001.0,
+     "a_us": 0.0,
+     "b_us": 0.0
+    }
+   }
+  },
+  "high": {
+   "1": 0.9928,
+   "2": 0.9923,
+   "3": 0.9914,
+   "4": 0.9911
+  }
+ },
+ "disarm_time": 1795778506.2467122,
+ "texts": [
+  [
+   1795778466.64,
+   "EKF3 IMU0 forced reset"
+  ],
+  [
+   1795778466.64,
+   "EKF3 IMU0 initialised"
+  ],
+  [
+   1795778466.76,
+   "EKF3 IMU0 MAG0 initial yaw alignment complete"
+  ],
+  [
+   1795778467.45,
+   "EKF3 IMU0 tilt alignment complete"
+  ],
+  [
+   1795778479.06,
+   "EKF3 IMU0 forced reset"
+  ],
+  [
+   1795778479.06,
+   "EKF3 IMU0 initialised"
+  ],
+  [
+   1795778479.18,
+   "EKF3 IMU0 MAG0 initial yaw alignment complete"
+  ],
+  [
+   1795778479.89,
+   "EKF3 IMU0 tilt alignment complete"
+  ],
+  [
+   1795778496.12,
+   "Rate CPU normal, rate set to 1591Hz"
+  ],
+  [
+   1795778496.15,
+   "Radio Failsafe - Disarming"
+  ],
+  [
+   1795778508.65,
+   "EKF3 IMU0 forced reset"
+  ],
+  [
+   1795778508.65,
+   "EKF3 IMU0 initialised"
+  ],
+  [
+   1795778508.74,
+   "EKF3 IMU0 MAG0 initial yaw alignment complete"
+  ]
+ ]
+}
