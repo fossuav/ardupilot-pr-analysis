@@ -67,6 +67,20 @@ buzzer kept its slice (`loop50.json`). The board was left on a600ccc8d7.
 - Pre-existing: the board's `flight.lua:17` asks for a parameter that does
   not exist, and pre-arm reports it.
 
+## Later: the buzzer was silent
+
+"The buzzer has the slice" above is the PWM registers only; nobody heard
+it. Powered on the bench with alpha2 `6d5570e1d2`, the wing made no sound
+and its banner had no ", buzzer off". On the Copter test quad (alpha2
+031f2549, `SERVO8_FUNCTION` 0) GPIO3 read over SWD was low throughout 3 s
+of silence and high 45% of 15550 samples during `MFT60L1O4CC`, with slice
+1's B compare at 187 counts of 1.5 MHz: the pin toggles at 4 kHz, 50%
+duty. Its pad has isolation off, input enabled and the 2 mA drive. The
+board has no buzzer, only pads that a MOSFET on GPIO3 switches to ground,
+the other pad being 3.3 V; the wing's buzzer was across the switched pad
+and ground, where it never sees a voltage. The fix is to move it to the
+3.3 V pad; not yet heard.
+
 ## Follow-on
 
 The OneShot trigger runs in the pushing thread, so a fast rate loop

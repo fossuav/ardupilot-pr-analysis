@@ -2,6 +2,19 @@
 
 Analysis archive for [ArduPilot/ardupilot#32995](https://github.com/ArduPilot/ardupilot/pull/32995).
 
+**2026-11-27, later:** the flight wing powered on the bench with alpha2
+`6d5570e1d2`. Its ESC lead was on the LED connector, so output 1's
+bidirectional DShot never had a reply (`RCOutput_pico::_stall_restarts`
+510 a second, a frame every second update); the GPS, one servo and the
+battery reading were also put right on the bench. The buzzer stayed
+silent. On the test quad GPIO3 toggles at 4 kHz, 50% duty, during a tune
+(read over SWD), so the firmware drives it; the
+board has no buzzer, only pads that a MOSFET on GPIO3 switches to ground,
+and the wing's was fitted across the switched pad and ground instead of
+3V3; moving it is not yet heard. The hwdef's "fitted transducer" came from another design; corrected
+on the PR as `90fb974382`, alpha2 rebuilt on it as `3ba42b4296`. The entry
+below said the buzzer plays; it was the PWM in the registers only.
+
 **2026-11-27:** OneShot and the buzzer on the flight wing, see
 [bench-2026-11-27-oneshot-buzzer.md](bench-2026-11-27-oneshot-buzzer.md).
 OneShot was refused on RP2350, which has no one-pulse mode, so Plane's
@@ -10,7 +23,8 @@ group's counter to TOP 0xFFFF and starts each pulse by writing TOP into
 it: the elevons got 1500 us pulses at the 200 Hz loop rate, and every
 5.5-7 ms at 50 Hz. Output 8 with function 0 took the buzzer's slice, so
 the banner said ", buzzer off" with no LED fitted; `745189e2d6` leaves
-such an output out of its group and the buzzer plays. Pushed the same
+such an output out of its group and the buzzer's PWM runs (registers
+only; the wing's buzzer turned out silent, see below). Pushed the same
 day as PR head `81a63460db`, four commits on `6ce2608538` (`3c9085c5ec`,
 `a3b25f3e04`, then the hwdef and developer notes), with the messages and
 notes reworded after a Codex cold read: a slice left untriggered repeats
