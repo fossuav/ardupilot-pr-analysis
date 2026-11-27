@@ -21,8 +21,13 @@ too, with no warnings, as do MatekH743 copter and SITL Copter and Plane
 (SITL Copter's four warnings are lwip's); the strict placement check
 found no misses, so the relocator was not needed. GitHub reports the PR
 mergeable; AP-Review's two blockers at `90fb974382` were the conflict
-and the ChibiOS pin. The every-commit build sweep was started after the
-push.
+and the ChibiOS pin. The every-commit sweep after the push built each
+commit for the targets its files feed: 217 builds, no failures, on 101 of
+the 116 commits (MatekH743 copter 50, SITL copter 20, RPI_UAVFC copter
+70, plane 35, rover 10 and bootloader 3, Pico2 and Laurel copter 10 and
+11, CubeRedPrimary bootloader 8). The other 15 change only documentation
+or tools, or RP2350 files before the first RP2350 board lands at #27
+(#9, #11, #18, #26), which the builds from #29 on compile.
 
 **2026-11-27, later:** the flight wing powered on the bench with alpha2
 `6d5570e1d2`. Its ESC lead was on the LED connector, so output 1's
@@ -419,8 +424,8 @@ commits used to make.
 
 2026-11-27, evening: rebased onto master `caa5f0d272` as PR head
 `beb7d760b8`, 116 commits, one conflict in the bootloader commit;
-STM32 byte-identical through #87, every RP2350 board building at the tip,
-mergeable again so CI runs.
+STM32 byte-identical through #87, every commit building for the targets
+it feeds (217 builds), mergeable again so CI runs.
 
 2026-11-26: PR head `6ce2608538`, 111 commits on master `321896137f`:
 Rover's hot code in SRAM and the registry tooling, then RPI_UAVFC's servo
